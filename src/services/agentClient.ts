@@ -96,27 +96,32 @@ export const agentClient = {
       const name = file.name;
       let preview: any[] = [];
       let schema: Record<string, string> = {};
+      let rowCount = 0;
 
       if (ext === 'csv') {
         const text = await file.text();
         const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-        preview = (parsed.data as any[]).slice(0, 5);
-        schema = inferSchema(parsed.data as any[]);
+        const allData = parsed.data as any[];
+        preview = allData.slice(0, 5);
+        schema = inferSchema(allData);
+        rowCount = allData.length;
       } else {
         const buf = await file.arrayBuffer();
         const wb = XLSX.read(buf);
         const firstSheet = wb.SheetNames[0];
         const ws = wb.Sheets[firstSheet];
         const json = XLSX.utils.sheet_to_json(ws);
-        preview = (json as any[]).slice(0, 5);
-        schema = inferSchema(json as any[]);
+        const allData = json as any[];
+        preview = allData.slice(0, 5);
+        schema = inferSchema(allData);
+        rowCount = allData.length;
       }
 
       const source: Source = {
         id: uid(),
         type: 'file',
         name,
-        metaJSON: { schema, preview },
+        metaJSON: { schema, preview, rowCount },
         ownerId,
         createdAt: nowISO(),
       };

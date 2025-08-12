@@ -140,6 +140,10 @@ const Sources = () => {
             <CardContent>
               {s.type === 'file' ? (
                 <div className="space-y-4">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span><strong>{s.metaJSON.rowCount || 0}</strong> linhas</span>
+                    <span><strong>{Object.keys(s.metaJSON.schema).length}</strong> colunas</span>
+                  </div>
                   <div>
                     <p className="font-medium mb-2">Schema inferido</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
