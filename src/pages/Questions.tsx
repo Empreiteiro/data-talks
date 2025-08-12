@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { agentClient } from "@/services/agentClient";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const Questions = () => {
@@ -82,22 +82,37 @@ const Questions = () => {
                       </Table>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={h.feedback === 'up' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        aria-label="Feedback positivo"
+                        onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'up' ? null : 'up'); setVersion(v => v + 1); }}
+                      >
+                        <ThumbsUp />
+                      </Button>
+                      <Button
+                        variant={h.feedback === 'down' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        aria-label="Feedback negativo"
+                        onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'down' ? null : 'down'); setVersion(v => v + 1); }}
+                      >
+                        <ThumbsDown />
+                      </Button>
+                    </div>
                     <Button
-                      variant={h.feedback === 'up' ? 'secondary' : 'ghost'}
+                      variant="ghost"
                       size="sm"
-                      aria-label="Feedback positivo"
-                      onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'up' ? null : 'up'); setVersion(v => v + 1); }}
+                      aria-label="Deletar pergunta"
+                      onClick={() => { 
+                        if (confirm('Tem certeza que deseja deletar esta pergunta?')) {
+                          agentClient.deleteQuestion(h.id); 
+                          setVersion(v => v + 1); 
+                        }
+                      }}
                     >
-                      <ThumbsUp />
-                    </Button>
-                    <Button
-                      variant={h.feedback === 'down' ? 'secondary' : 'ghost'}
-                      size="sm"
-                      aria-label="Feedback negativo"
-                      onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'down' ? null : 'down'); setVersion(v => v + 1); }}
-                    >
-                      <ThumbsDown />
+                      <Trash2 />
                     </Button>
                   </div>
                   <div className="flex items-center justify-between">

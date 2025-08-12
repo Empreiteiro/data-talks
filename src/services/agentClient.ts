@@ -305,6 +305,15 @@ export const agentClient = {
       write(DB.qa, qa);
     }
     return s;
+  },
+
+  // Delete QA session
+  deleteQuestion(sessionId: string): void {
+    const ownerId = getCurrentUserId();
+    const qa = read<QASession>(DB.qa);
+    const agents = this.listAgents().map(a => a.id);
+    const filtered = qa.filter(q => !(q.id === sessionId && agents.includes(q.agentId)));
+    write(DB.qa, filtered);
   }
 };
 
