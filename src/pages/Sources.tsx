@@ -82,11 +82,20 @@ const Sources = () => {
       // Refresh sources list
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       
-      alert(`BigQuery conectado com sucesso! ${result.availableTables?.length || 0} tabelas disponíveis.`);
+      alert(`BigQuery conectado com sucesso! Fonte: ${result.source?.name}`);
       
     } catch (error: any) {
       console.error('BigQuery connection error:', error);
-      alert(`Erro ao conectar BigQuery: ${error.message}`);
+      
+      // Extract more specific error information
+      let errorMessage = 'Erro desconhecido';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      alert(`Erro ao conectar BigQuery: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
