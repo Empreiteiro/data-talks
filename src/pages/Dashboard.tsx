@@ -14,7 +14,7 @@ const Dashboard = () => {
     <main className="container py-10">
       <SEO title="Dashboard | Converse com seus dados" description="Visão geral das fontes, perguntas e alertas" canonical="/dashboard" />
       <h1 className="text-3xl font-semibold mb-6">Dashboard</h1>
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-4">
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Fontes de Dados</CardTitle>
@@ -40,6 +40,15 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">{alerts.length} alerta(s) configurado(s)</p>
             <Button variant="secondary" onClick={() => navigate('/alerts')}>Criar Alerta</Button>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Configuração do Agente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">Adicione o detalhamento das fontes para o agente entender o contexto.</p>
+            <Button variant="secondary" onClick={() => navigate('/agent')}>Configurar Agente</Button>
           </CardContent>
         </Card>
       </div>
