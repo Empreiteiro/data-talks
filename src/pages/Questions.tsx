@@ -43,12 +43,17 @@ const Questions = () => {
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-3 md:grid-cols-[240px_1fr_auto]">
-            <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="border rounded-md px-3 py-2 bg-background">
-              {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
-            </select>
-            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
-            <Button onClick={ask} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-2">Agente</label>
+              <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background">
+                {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
+              </select>
+            </div>
+            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+              <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
+              <Button onClick={ask} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
+            </div>
           </div>
 
           <div className="grid gap-6">
@@ -95,7 +100,11 @@ const Questions = () => {
                       <ThumbsDown />
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Latency: {h.latencyMs}ms · Status: {h.status}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(h.createdAt).toLocaleString('pt-BR')} · Latency: {h.latencyMs}ms · Status: {h.status}
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             ))}
