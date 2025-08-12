@@ -170,7 +170,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      alerts_safe: {
+        Row: {
+          agent_id: string | null
+          created_at: string | null
+          email: string | null
+          frequency: string | null
+          id: string | null
+          name: string | null
+          next_run: string | null
+          question: string | null
+          user_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string | null
+          email?: never
+          frequency?: string | null
+          id?: string | null
+          name?: string | null
+          next_run?: string | null
+          question?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string | null
+          email?: never
+          frequency?: string | null
+          id?: string | null
+          name?: string | null
+          next_run?: string | null
+          question?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
