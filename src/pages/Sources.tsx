@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { agentClient, Source } from "@/services/agentClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { X } from "lucide-react";
 
 const Sources = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -66,7 +67,26 @@ const Sources = () => {
             <Button onClick={handleUpload} disabled={!files.length || loading}>{loading ? 'Enviando...' : 'Fazer upload'}</Button>
           </div>
           {files.length > 0 && (
-            <p className="text-sm text-muted-foreground mt-2">Selecionados: {files.map(f => f.name).join(', ')}</p>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {files.map((f, idx) => (
+                <span
+                  key={`${f.name}-${f.size}-${f.lastModified}`}
+                  className="inline-flex items-center gap-2 rounded-md bg-secondary text-secondary-foreground px-2.5 py-1 text-xs"
+                >
+                  <span className="font-medium">{f.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1"
+                    aria-label={`Remover ${f.name}`}
+                    onClick={() => setFiles(prev => prev.filter((_, i) => i !== idx))}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </span>
+              ))}
+            </div>
           )}
         </TabsContent>
         <TabsContent value="bq" className="mt-6">
