@@ -121,7 +121,7 @@ const Sources = () => {
           <Card className="shadow-sm">
             <CardContent className="pt-6">
               <p className="text-muted-foreground text-center">
-                Nenhuma fonte de dados encontrada. Adicione dados através do painel do Supabase por enquanto.
+                Nenhuma fonte de dados encontrada. Faça upload de arquivos CSV ou XLSX acima.
               </p>
             </CardContent>
           </Card>
