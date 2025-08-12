@@ -18,7 +18,8 @@ import { useAuth } from "@/hooks/useAuth";
 const queryClient = new QueryClient();
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, initializing } = useAuth();
+  if (initializing) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 };

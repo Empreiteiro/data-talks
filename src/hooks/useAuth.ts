@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
   id: string;
@@ -6,45 +8,90 @@ export interface User {
   name: string;
 }
 
-const USERS_KEY = "demo_users";
-const SESSION_KEY = "demo_session_user";
+const cleanupAuthState = () => {
+  try {
+    localStorage.removeItem('supabase.auth.token');
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    if (typeof sessionStorage !== "undefined") {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
+  } catch {}
+};
 
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+const toSafeUser = (session: Session | null): User | null => {
+  const u = session?.user;
+  if (!u) return null;
+  return {
+    id: u.id,
+    email: u.email || "",
+    name: (u.user_metadata && (u.user_metadata.name as string)) || (u.email ? u.email.split("@")[0] : ""),
+  };
+};
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) setUser(JSON.parse(raw));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      setUser(toSafeUser(s));
+    });
+
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setUser(toSafeUser(s));
+      setInitializing(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const users: Array<User & { password: string }> = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-    const found = users.find((u) => u.email === email && u.password === password);
-    if (!found) throw new Error("Credenciais inválidas");
-    const { password: _p, ...safe } = found;
-    localStorage.setItem(SESSION_KEY, JSON.stringify(safe));
-    setUser(safe);
-    return safe;
+    cleanupAuthState();
+    try { await supabase.auth.signOut({ scope: "global" }); } catch {}
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+    setSession(data.session);
+    setUser(toSafeUser(data.session));
+    return toSafeUser(data.session);
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    const users: Array<User & { password: string }> = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-    if (users.some((u) => u.email === email)) throw new Error("E-mail já cadastrado");
-    const newUser: User & { password: string } = { id: uid(), name, email, password };
-    users.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    const { password: _p, ...safe } = newUser;
-    localStorage.setItem(SESSION_KEY, JSON.stringify(safe));
-    setUser(safe);
-    return safe;
+    cleanupAuthState();
+    try { await supabase.auth.signOut({ scope: "global" }); } catch {}
+    const redirectUrl = `${window.location.origin}/`;
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+        emailRedirectTo: redirectUrl
+      }
+    });
+    if (error) throw new Error(error.message);
+    if (data.session) {
+      setSession(data.session);
+      setUser(toSafeUser(data.session));
+    }
+    return { user: toSafeUser(data.session), session: data.session, requiresConfirmation: !data.session };
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(SESSION_KEY);
-    setUser(null);
+  const logout = useCallback(async () => {
+    cleanupAuthState();
+    try { await supabase.auth.signOut({ scope: "global" }); } catch {}
+    cleanupAuthState();
+    window.location.href = "/login";
   }, []);
 
-  return { user, isAuthenticated: !!user, login, register, logout };
+  return { user, session, isAuthenticated: !!session?.user, initializing, login, register, logout };
 }

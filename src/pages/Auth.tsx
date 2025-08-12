@@ -3,23 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+
 
 const Auth = () => {
-  const { login, register } = useAuth();
-  const navigate = useNavigate();
+  const { login, register, isAuthenticated } = useAuth();
+  
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      window.location.href = '/dashboard';
+    }
+  }, [isAuthenticated]);
   async function onLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     const data = new FormData(e.currentTarget);
     try {
       await login(String(data.get('email')), String(data.get('password')));
-      navigate('/dashboard');
-    } catch (err: any) { setError(err.message); }
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setError(err.message || 'Falha ao entrar. Tente novamente.');
+    }
   }
 
   async function onRegister(e: React.FormEvent<HTMLFormElement>) {
@@ -27,9 +35,15 @@ const Auth = () => {
     setError(null);
     const data = new FormData(e.currentTarget);
     try {
-      await register(String(data.get('name')), String(data.get('email')), String(data.get('password')));
-      navigate('/dashboard');
-    } catch (err: any) { setError(err.message); }
+      const res: any = await register(String(data.get('name')), String(data.get('email')), String(data.get('password')));
+      if (res && !res.session) {
+        setInfo('Cadastro realizado! Verifique seu e-mail para confirmar e então faça login.');
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } catch (err: any) {
+      setError(err.message || 'Falha ao registrar. Tente novamente.');
+    }
   }
 
   return (
@@ -71,6 +85,7 @@ const Auth = () => {
                 <Input name="password" id="password2" type="password" required />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
+              {info && <p className="text-sm text-muted-foreground">{info}</p>}
               <Button type="submit" className="w-full">Criar conta</Button>
             </form>
           </TabsContent>
