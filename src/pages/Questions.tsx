@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { agentClient } from "@/services/agentClient";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const Questions = () => {
@@ -11,8 +12,9 @@ const Questions = () => {
   const [agentId, setAgentId] = useState(agents[0]?.id || "");
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
+  const [version, setVersion] = useState(0);
 
-  const history = useMemo(() => agentClient.listHistory(agentId), [agentId]);
+  const history = useMemo(() => agentClient.listHistory(agentId), [agentId, version]);
 
   function ask() {
     if (!agentId) return alert('Crie e ative um agente primeiro');
@@ -21,6 +23,7 @@ const Questions = () => {
       agentClient.ask(agentId, question);
       setQuestion("");
       setLoading(false);
+      setVersion(v => v + 1);
     }, 400);
   }
 
@@ -74,6 +77,24 @@ const Questions = () => {
                       </Table>
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={h.feedback === 'up' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      aria-label="Feedback positivo"
+                      onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'up' ? null : 'up'); setVersion(v => v + 1); }}
+                    >
+                      <ThumbsUp />
+                    </Button>
+                    <Button
+                      variant={h.feedback === 'down' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      aria-label="Feedback negativo"
+                      onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'down' ? null : 'down'); setVersion(v => v + 1); }}
+                    >
+                      <ThumbsDown />
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">Latency: {h.latencyMs}ms · Status: {h.status}</p>
                 </CardContent>
               </Card>

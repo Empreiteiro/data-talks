@@ -18,6 +18,9 @@ export interface Agent {
   name?: string;
   description: string;
   createdAt: string;
+  // Sharing
+  shareToken: string;
+  sharePassword?: string;
 }
 
 export interface QASession {
@@ -30,6 +33,7 @@ export interface QASession {
   latencyMs: number;
   status: 'ok' | 'error';
   createdAt: string;
+  feedback?: 'up' | 'down';
 }
 
 export interface Alert {
@@ -154,7 +158,7 @@ export const agentClient = {
   createBriefing(sourceIds: string[], description: string, name?: string): Agent {
     if (description.trim().length < 200) throw new Error('Descrição mínima de 200 caracteres');
     const ownerId = getCurrentUserId();
-    const agent: Agent = { id: uid(), ownerId, name: name?.trim() || undefined, description, createdAt: nowISO() };
+    const agent: Agent = { id: uid(), ownerId, name: name?.trim() || undefined, description, createdAt: nowISO(), shareToken: uid(), sharePassword: undefined };
     const agents = read<Agent>(DB.agents);
     agents.push(agent);
     write(DB.agents, agents);
@@ -167,6 +171,52 @@ export const agentClient = {
   listAgents(): Agent[] {
     const ownerId = getCurrentUserId();
     return read<Agent>(DB.agents).filter(a => a.ownerId === ownerId);
+  },
+
+  getAgent(id: string): Agent | undefined {
+    const ownerId = getCurrentUserId();
+    return read<Agent>(DB.agents).find(a => a.ownerId === ownerId && a.id === id);
+  },
+
+  getAgentSourceIds(agentId: string): string[] {
+    const links = read<{ agentId: string; sourceId: string }>(DB.agentSources);
+    return links.filter(l => l.agentId === agentId).map(l => l.sourceId);
+  },
+
+  updateAgent(agentId: string, updates: { name?: string; description?: string; sourceIds?: string[] }) {
+    const agents = read<Agent>(DB.agents);
+    const a = agents.find(x => x.id === agentId);
+    if (!a) throw new Error('Agente não encontrado');
+    if (typeof updates.name !== 'undefined') a.name = updates.name?.trim() || undefined;
+    if (typeof updates.description !== 'undefined') a.description = updates.description;
+    write(DB.agents, agents);
+
+    if (updates.sourceIds) {
+      const links = read<{ agentId: string; sourceId: string }>(DB.agentSources).filter(l => l.agentId !== agentId);
+      updates.sourceIds.forEach(sid => links.push({ agentId, sourceId: sid }));
+      write(DB.agentSources, links);
+    }
+    return a;
+  },
+
+  setAgentShare(agentId: string, password?: string) {
+    const agents = read<Agent>(DB.agents);
+    const a = agents.find(x => x.id === agentId);
+    if (!a) throw new Error('Agente não encontrado');
+    a.sharePassword = password || undefined;
+    if (!a.shareToken) a.shareToken = uid();
+    write(DB.agents, agents);
+    return a;
+  },
+
+  getAgentByShareToken(token: string): Agent | undefined {
+    return read<Agent>(DB.agents).find(a => a.shareToken === token);
+  },
+
+  verifySharePassword(agentId: string, password: string): boolean {
+    const a = read<Agent>(DB.agents).find(x => x.id === agentId);
+    if (!a) return false;
+    return (a.sharePassword || '') === (password || '');
   },
 
   // QA
@@ -230,6 +280,17 @@ export const agentClient = {
     events.unshift(evt);
     write(DB.alertEvents, events);
     return evt;
+  },
+
+  // Feedback for QA sessions
+  setFeedback(sessionId: string, feedback: 'up' | 'down' | null) {
+    const qa = read<QASession>(DB.qa);
+    const s = qa.find(x => x.id === sessionId);
+    if (s) {
+      (s as any).feedback = feedback || undefined;
+      write(DB.qa, qa);
+    }
+    return s;
   }
 };
 

@@ -45,7 +45,7 @@ const Alerts = () => {
               <div>
                 <Label>Agente</Label>
                 <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background">
-                  {agents.map(a => <option key={a.id} value={a.id}>{a.id.slice(0,6)}...</option>)}
+                  {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
                 </select>
               </div>
               <div>
