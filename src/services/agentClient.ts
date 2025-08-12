@@ -15,6 +15,7 @@ export interface Source {
 export interface Agent {
   id: string;
   ownerId: string;
+  name?: string;
   description: string;
   createdAt: string;
 }
@@ -150,10 +151,10 @@ export const agentClient = {
   },
 
   // Agent
-  createBriefing(sourceIds: string[], description: string): Agent {
+  createBriefing(sourceIds: string[], description: string, name?: string): Agent {
     if (description.trim().length < 200) throw new Error('Descrição mínima de 200 caracteres');
     const ownerId = getCurrentUserId();
-    const agent: Agent = { id: uid(), ownerId, description, createdAt: nowISO() };
+    const agent: Agent = { id: uid(), ownerId, name: name?.trim() || undefined, description, createdAt: nowISO() };
     const agents = read<Agent>(DB.agents);
     agents.push(agent);
     write(DB.agents, agents);

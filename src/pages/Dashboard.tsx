@@ -26,6 +26,15 @@ const Dashboard = () => {
         </Card>
         <Card className="shadow-sm">
           <CardHeader>
+            <CardTitle>Configuração do Agente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">Adicione o detalhamento das fontes para o agente entender o contexto.</p>
+            <Button variant="secondary" onClick={() => navigate('/agent')}>Configurar Agente</Button>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm">
+          <CardHeader>
             <CardTitle>Perguntas & Respostas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -40,15 +49,6 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">{alerts.length} alerta(s) configurado(s)</p>
             <Button variant="secondary" onClick={() => navigate('/alerts')}>Criar Alerta</Button>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Configuração do Agente</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">Adicione o detalhamento das fontes para o agente entender o contexto.</p>
-            <Button variant="secondary" onClick={() => navigate('/agent')}>Configurar Agente</Button>
           </CardContent>
         </Card>
       </div>

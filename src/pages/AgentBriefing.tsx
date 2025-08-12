@@ -2,6 +2,7 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { agentClient } from "@/services/agentClient";
 import { useMemo, useState } from "react";
@@ -9,6 +10,7 @@ import { useMemo, useState } from "react";
 const AgentBriefing = () => {
   const sources = agentClient.listSources();
   const [selected, setSelected] = useState<string[]>([]);
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -20,8 +22,8 @@ const AgentBriefing = () => {
 
   function activate() {
     try {
-      const agent = agentClient.createBriefing(selected, description);
-      setMsg(`Agente ativado: ${agent.id}`);
+      const agent = agentClient.createBriefing(selected, description, name);
+      setMsg(`Agente ativado: ${agent.name || agent.id}`);
     } catch (e: any) { setMsg(e.message); }
   }
 
@@ -43,11 +45,15 @@ const AgentBriefing = () => {
             ))}
           </div>
           <div className="space-y-2">
+            <Label>Nome do agente</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Análises de Vendas 2025" />
+          </div>
+          <div className="space-y-2">
             <Label>Descrição dos dados e tabelas (mín. 200 caracteres)</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} placeholder="Ex.: Vendas mensais no dataset analytics, tabelas orders (id, date, amount, region) ..." />
             <p className="text-xs text-muted-foreground">{description.trim().length} / 200</p>
           </div>
-          <Button onClick={activate} disabled={!selected.length || !minExceeded}>Ativar agente</Button>
+          <Button onClick={activate} disabled={!selected.length || !minExceeded || !name.trim().length}>Ativar agente</Button>
           {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
         </CardContent>
       </Card>
