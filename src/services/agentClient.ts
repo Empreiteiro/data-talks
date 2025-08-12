@@ -154,6 +154,15 @@ export const agentClient = {
     return read<Source>(DB.sources).filter(s => s.ownerId === ownerId);
   },
 
+  deleteSource(sourceId: string): void {
+    const ownerId = getCurrentUserId();
+    const sources = read<Source>(DB.sources).filter(s => !(s.id === sourceId && s.ownerId === ownerId));
+    write(DB.sources, sources);
+    // Also remove any agent-source links
+    const links = read<{ agentId: string; sourceId: string }>(DB.agentSources).filter(l => l.sourceId !== sourceId);
+    write(DB.agentSources, links);
+  },
+
   // Agent
   createBriefing(sourceIds: string[], description: string, name?: string): Agent {
     if (description.trim().length < 200) throw new Error('Descrição mínima de 200 caracteres');

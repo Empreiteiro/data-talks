@@ -7,12 +7,13 @@ import { useMemo, useRef, useState } from "react";
 import { agentClient, Source } from "@/services/agentClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 
 const Sources = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [created, setCreated] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const credRef = useRef<HTMLInputElement>(null);
 
   async function handleUpload() {
@@ -43,6 +44,14 @@ const Sources = () => {
     } catch (e: any) { alert(e.message); }
   }
 
+  function handleDelete(sourceId: string) {
+    if (confirm('Tem certeza que deseja deletar esta fonte de dados?')) {
+      agentClient.deleteSource(sourceId);
+      setCreated(prev => prev.filter(s => s.id !== sourceId));
+      setRefreshKey(prev => prev + 1);
+    }
+  }
+
   const existing = agentClient.listSources();
   const displayed = useMemo(() => {
     const map = new Map<string, Source>();
@@ -50,7 +59,7 @@ const Sources = () => {
       if (!map.has(s.id)) map.set(s.id, s);
     });
     return Array.from(map.values());
-  }, [created, existing]);
+  }, [created, existing, refreshKey]);
 
   return (
     <main className="container py-10">
@@ -117,8 +126,16 @@ const Sources = () => {
       <div className="grid gap-6">
         {displayed.map((s) => (
           <Card key={s.id} className="shadow-sm">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>{s.name} <span className="text-sm text-muted-foreground">[{s.type}]</span></CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(s.id)}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </CardHeader>
             <CardContent>
               {s.type === 'file' ? (
