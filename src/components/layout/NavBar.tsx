@@ -13,8 +13,9 @@ const NavBar = () => {
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <nav className="container flex items-center justify-between h-16">
-        <Link to="/" className="font-semibold tracking-tight">
-          Converse com seus dados
+        <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight" aria-label="Página inicial">
+          <span role="img" aria-label="Logo gráfico de crescimento" className="text-xl leading-none">📈</span>
+          <span className="hidden sm:inline">Converse com seus dados</span>
         </Link>
         <div className="flex items-center gap-2">
           {user ? (
