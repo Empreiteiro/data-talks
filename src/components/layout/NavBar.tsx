@@ -20,12 +20,13 @@ const NavBar = () => {
         <div className="flex items-center gap-2">
           {user ? (
             <>
-              <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
-              <Link to="/sources" className="text-sm text-muted-foreground hover:text-foreground">Fontes</Link>
-              <Link to="/questions" className="text-sm text-muted-foreground hover:text-foreground">Perguntas</Link>
-              <Link to="/alerts" className="text-sm text-muted-foreground hover:text-foreground">Alertas</Link>
-              <Link to="/account" className="text-sm text-muted-foreground hover:text-foreground">Conta</Link>
-              <Button variant="secondary" onClick={handleLogout}>Sair</Button>
+              <Button asChild size="sm">
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link to="/account">Conta</Link>
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleLogout}>Sair</Button>
             </>
           ) : (
             <Button asChild>
