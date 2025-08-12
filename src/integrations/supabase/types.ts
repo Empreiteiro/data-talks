@@ -14,7 +14,160 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agents: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          share_password: string | null
+          share_token: string | null
+          source_ids: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          share_password?: string | null
+          share_token?: string | null
+          source_ids?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          share_password?: string | null
+          share_token?: string | null
+          source_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      alerts: {
+        Row: {
+          agent_id: string
+          created_at: string
+          email: string
+          frequency: string
+          id: string
+          name: string
+          next_run: string | null
+          question: string
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          email: string
+          frequency: string
+          id?: string
+          name: string
+          next_run?: string | null
+          question: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          email?: string
+          frequency?: string
+          id?: string
+          name?: string
+          next_run?: string | null
+          question?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qa_sessions: {
+        Row: {
+          agent_id: string
+          answer: string | null
+          created_at: string
+          feedback: string | null
+          id: string
+          latency: number | null
+          question: string
+          sql_query: string | null
+          status: string | null
+          table_data: Json | null
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          answer?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          latency?: number | null
+          question: string
+          sql_query?: string | null
+          status?: string | null
+          table_data?: Json | null
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          answer?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          latency?: number | null
+          question?: string
+          sql_query?: string | null
+          status?: string | null
+          table_data?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_sessions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sources: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          name: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
