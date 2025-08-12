@@ -2,10 +2,20 @@ import NavBar from "@/components/layout/NavBar";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
 import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
+  const { isAuthenticated, initializing } = useAuth();
+  const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!initializing && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, initializing, navigate]);
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;

@@ -2,13 +2,26 @@ import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { agentClient } from "@/services/agentClient";
+import { supabaseClient } from "@/services/supabaseClient";
+import { useQuery } from "@tanstack/react-query";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const sources = agentClient.listSources();
-  const agents = agentClient.listAgents();
-  const alerts = agentClient.listAlerts();
+  
+  const { data: sources = [] } = useQuery({
+    queryKey: ['sources'],
+    queryFn: () => supabaseClient.listSources()
+  });
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => supabaseClient.listAgents()
+  });
+
+  const { data: alerts = [] } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: () => supabaseClient.listAlerts()
+  });
 
   return (
     <main className="container py-10">
