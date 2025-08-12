@@ -223,6 +223,22 @@ export const agentClient = {
     return a;
   },
 
+  deleteAgent(agentId: string): void {
+    const ownerId = getCurrentUserId();
+    // Remove agent
+    const agents = read<Agent>(DB.agents).filter(a => !(a.id === agentId && a.ownerId === ownerId));
+    write(DB.agents, agents);
+    // Remove agent-source links
+    const links = read<{ agentId: string; sourceId: string }>(DB.agentSources).filter(l => l.agentId !== agentId);
+    write(DB.agentSources, links);
+    // Remove QA sessions
+    const qa = read<QASession>(DB.qa).filter(q => q.agentId !== agentId);
+    write(DB.qa, qa);
+    // Remove alerts
+    const alerts = read<Alert>(DB.alerts).filter(a => a.agentId !== agentId);
+    write(DB.alerts, alerts);
+  },
+
   getAgentByShareToken(token: string): Agent | undefined {
     return read<Agent>(DB.agents).find(a => a.shareToken === token);
   },

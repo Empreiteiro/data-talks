@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Trash2 } from "lucide-react";
 import { agentClient } from "@/services/agentClient";
 import { useEffect, useMemo, useState } from "react";
 
@@ -53,6 +54,15 @@ const AgentBriefing = () => {
         setMsg(`Agente atualizado: ${agent.name || agent.id}`);
       }
     } catch (e:any) { setMsg((e as any).message || 'Erro ao salvar'); }
+  }
+
+  function deleteAgent() {
+    if (!agentId) return;
+    if (confirm(`Tem certeza que deseja deletar o agente "${currentAgent?.name || agentId}"? Esta ação não pode ser desfeita.`)) {
+      agentClient.deleteAgent(agentId);
+      setAgentId("");
+      setMsg("Agente deletado com sucesso");
+    }
   }
 
   return (
@@ -109,7 +119,15 @@ const AgentBriefing = () => {
             </div>
           )}
 
-          <Button onClick={save} disabled={!selected.length || !minExceeded || !name.trim().length}>Salvar</Button>
+          <div className="flex items-center gap-3">
+            <Button onClick={save} disabled={!selected.length || !minExceeded || !name.trim().length}>Salvar</Button>
+            {currentAgent && (
+              <Button variant="destructive" onClick={deleteAgent}>
+                <Trash2 />
+                Deletar Agente
+              </Button>
+            )}
+          </div>
           {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
         </CardContent>
       </Card>
