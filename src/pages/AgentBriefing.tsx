@@ -4,17 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Trash2, Save, Plus } from "lucide-react";
 import { supabaseClient } from "@/services/supabaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const AgentBriefing = () => {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [agentId, setAgentId] = useState<string>("");
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { data: sources = [] } = useQuery({
     queryKey: ['sources'],
@@ -28,15 +31,16 @@ const AgentBriefing = () => {
 
   const currentAgent = useMemo(() => agentId ? agents.find(a => a.id === agentId) : undefined, [agentId, agents]);
   const shareLink = useMemo(() => currentAgent ? `${window.location.origin}/share/${currentAgent.share_token}` : "", [currentAgent]);
-  const minExceeded = useMemo(() => description.trim().length >= 200, [description]);
+  const isNewAgent = !agentId;
+  const canSave = name.trim().length > 0 && selectedSources.length > 0;
 
   useEffect(() => {
     if (currentAgent) {
       setName(currentAgent.name || "");
-      setDescription("Agente configurado no Supabase");
+      setSelectedSources(currentAgent.source_ids || []);
     } else {
       setName("");
-      setDescription("");
+      setSelectedSources([]);
     }
   }, [currentAgent]);
 
@@ -44,18 +48,64 @@ const AgentBriefing = () => {
     if (!agentId) return;
     if (confirm(`Tem certeza que deseja deletar o agente "${currentAgent?.name || agentId}"? Esta ação não pode ser desfeita.`)) {
       try {
+        setIsLoading(true);
         await supabaseClient.deleteAgent(agentId);
         queryClient.invalidateQueries({ queryKey: ['agents'] });
         setAgentId("");
-        setMsg("Agente deletado com sucesso");
+        toast({
+          title: "Agente deletado",
+          description: "Agente deletado com sucesso",
+        });
       } catch (e: any) {
-        alert(e.message);
+        toast({
+          title: "Erro",
+          description: e.message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
     }
   }
 
-  function save() {
-    setMsg("Para criar/editar agentes, use o painel do Supabase por enquanto.");
+  async function save() {
+    if (!canSave) return;
+    
+    try {
+      setIsLoading(true);
+      
+      if (isNewAgent) {
+        await supabaseClient.createAgent(name, selectedSources);
+        toast({
+          title: "Agente criado",
+          description: "Agente criado com sucesso",
+        });
+      } else {
+        await supabaseClient.updateAgent(agentId, name, selectedSources);
+        toast({
+          title: "Agente atualizado", 
+          description: "Agente atualizado com sucesso",
+        });
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+    } catch (e: any) {
+      toast({
+        title: "Erro",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function toggleSource(sourceId: string) {
+    setSelectedSources(prev => 
+      prev.includes(sourceId)
+        ? prev.filter(id => id !== sourceId)
+        : [...prev, sourceId]
+    );
   }
 
   return (
@@ -76,10 +126,15 @@ const AgentBriefing = () => {
             </Button>
           )}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>Agente</Label>
-            <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background">
+            <select 
+              value={agentId} 
+              onChange={(e) => setAgentId(e.target.value)} 
+              className="w-full border rounded-md px-3 py-2 bg-background"
+              disabled={isLoading}
+            >
               <option value="">Novo agente</option>
               {agents.map((a) => (
                 <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>
@@ -87,26 +142,51 @@ const AgentBriefing = () => {
             </select>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-2">
-            {sources.length === 0 ? (
-              <p className="text-muted-foreground col-span-2">Nenhuma fonte de dados encontrada. Adicione fontes primeiro.</p>
-            ) : (
-              sources.map((s: any) => (
-                <div key={s.id} className="flex items-center gap-3 bg-secondary rounded-md px-3 py-2">
-                  <span className="text-sm">{s.name} <span className="text-muted-foreground">[{s.type}]</span></span>
-                </div>
-              ))
-            )}
-          </div>
-
           <div className="space-y-2">
             <Label>Nome do agente</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Análises de Vendas 2025" />
+            <Input 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              placeholder="Ex.: Análises de Vendas 2025"
+              disabled={isLoading}
+            />
           </div>
-          <div className="space-y-2">
-            <Label>Descrição dos dados e tabelas</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} placeholder="Configuração gerenciada no Supabase" readOnly />
-            <p className="text-xs text-muted-foreground">Use o painel do Supabase para criar/editar agentes</p>
+
+          <div className="space-y-3">
+            <Label>Fontes de dados</Label>
+            {sources.length === 0 ? (
+              <p className="text-muted-foreground">Nenhuma fonte de dados encontrada. Adicione fontes primeiro.</p>
+            ) : (
+              <div className="grid gap-3">
+                {sources.map((source: any) => (
+                  <div key={source.id} className="flex items-center space-x-3 p-3 rounded-lg border bg-card">
+                    <Checkbox
+                      id={source.id}
+                      checked={selectedSources.includes(source.id)}
+                      onCheckedChange={() => toggleSource(source.id)}
+                      disabled={isLoading}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor={source.id} className="text-sm font-medium cursor-pointer">
+                        {source.name}
+                      </Label>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Tipo: {source.type.toUpperCase()}
+                        {source.metadata?.row_count && (
+                          <span> • {source.metadata.row_count.toLocaleString()} linhas</span>
+                        )}
+                        {source.metadata?.total_tables && (
+                          <span> • {source.metadata.total_tables} tabela(s)</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Selecione as fontes de dados que este agente terá acesso para responder perguntas.
+            </p>
           </div>
 
           {currentAgent && (
@@ -114,13 +194,40 @@ const AgentBriefing = () => {
               <Label>Link compartilhável</Label>
               <div className="flex items-center gap-2">
                 <Input readOnly value={shareLink} aria-label="Link compartilhável do agente" />
-                <Button type="button" variant="secondary" onClick={() => navigator.clipboard.writeText(shareLink)}>Copiar</Button>
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareLink);
+                    toast({
+                      title: "Link copiado",
+                      description: "Link compartilhável copiado para a área de transferência",
+                    });
+                  }}
+                  disabled={isLoading}
+                >
+                  Copiar
+                </Button>
               </div>
             </div>
           )}
 
-          <Button onClick={save}>Informações sobre configuração</Button>
-          {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
+          <div className="flex gap-2">
+            <Button 
+              onClick={save} 
+              disabled={!canSave || isLoading}
+              className="flex items-center gap-2"
+            >
+              {isNewAgent ? <Plus className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {isNewAgent ? "Criar Agente" : "Salvar Alterações"}
+            </Button>
+            
+            {selectedSources.length > 0 && (
+              <div className="text-sm text-muted-foreground flex items-center">
+                {selectedSources.length} fonte(s) selecionada(s)
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </main>

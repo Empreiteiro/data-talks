@@ -32,6 +32,39 @@ export const supabaseClient = {
     return data || [];
   },
 
+  async createAgent(name: string, sourceIds: string[]) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('agents')
+      .insert({
+        user_id: user.id,
+        name,
+        source_ids: sourceIds
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async updateAgent(id: string, name: string, sourceIds: string[]) {
+    const { data, error } = await supabase
+      .from('agents')
+      .update({
+        name,
+        source_ids: sourceIds
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
   async deleteAgent(id: string) {
     const { error } = await supabase
       .from('agents')
