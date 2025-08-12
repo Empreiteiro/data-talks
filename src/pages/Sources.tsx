@@ -32,9 +32,21 @@ const Sources = () => {
     }
   }
 
-  // Temporarily disable file upload until we implement it for Supabase
   async function handleUpload() {
-    alert('Upload de arquivos será implementado em breve. Use o Supabase para dados por enquanto.');
+    if (!files.length) return;
+    
+    setLoading(true);
+    try {
+      for (const file of files) {
+        await supabaseClient.uploadFile(file);
+      }
+      setFiles([]);
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+    } catch (e: any) {
+      alert(`Erro no upload: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleBQ(e: React.FormEvent<HTMLFormElement>) {

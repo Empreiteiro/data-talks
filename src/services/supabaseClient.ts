@@ -91,5 +91,39 @@ export const supabaseClient = {
       .eq('id', id);
     
     if (error) throw error;
+  },
+
+  // File uploads
+  async uploadFile(file: File) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('data-files')
+      .upload(fileName, file);
+    
+    if (error) throw error;
+    
+    // Create source record
+    const { data: source, error: sourceError } = await supabase
+      .from('sources')
+      .insert({
+        user_id: user.id,
+        name: file.name,
+        type: fileExt?.toLowerCase() === 'csv' ? 'csv' : 'xlsx',
+        metadata: {
+          file_path: data.path,
+          file_size: file.size,
+          uploaded_at: new Date().toISOString()
+        }
+      })
+      .select()
+      .single();
+    
+    if (sourceError) throw sourceError;
+    return source;
   }
 };
