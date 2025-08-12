@@ -14,6 +14,7 @@ import AgentBriefing from "@/pages/AgentBriefing";
 import Questions from "@/pages/Questions";
 import Alerts from "@/pages/Alerts";
 import Account from "@/pages/Account";
+import ShareAgent from "@/pages/ShareAgent";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Auth />} />
+              <Route path="/share/:token" element={<ShareAgent />} />
               <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
               <Route path="/agent" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
