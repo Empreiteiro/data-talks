@@ -67,10 +67,6 @@ const Index = () => {
         </div>
       </section>
 
-      <section className="container py-16">
-        <h2 className="text-3xl font-semibold text-center mb-6">Empresas que confiam</h2>
-        <p className="text-center text-muted-foreground">[Provas sociais em breve]</p>
-      </section>
     </div>
   );
 };

@@ -31,20 +31,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <NavBar />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Auth />} />
-          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
-          <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
-          <Route path="/agent" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
-          <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
-          <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
-          <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-          </Routes>
+        <div className="min-h-screen flex flex-col">
+          <NavBar />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Auth />} />
+              <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+              <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
+              <Route path="/agent" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
+              <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
+              <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
+              <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
           <Footer />
+        </div>
         </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
