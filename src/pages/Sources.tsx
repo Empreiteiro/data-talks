@@ -140,8 +140,67 @@ const Sources = () => {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="text-sm text-muted-foreground">
-                  Criado em: {new Date(s.created_at).toLocaleString('pt-BR')}
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    Criado em: {new Date(s.created_at).toLocaleString('pt-BR')}
+                  </div>
+                  
+                  {s.metadata && (
+                    <div className="space-y-3">
+                      {s.metadata.row_count > 0 && (
+                        <div className="text-sm">
+                          <span className="font-medium">Linhas:</span> {s.metadata.row_count.toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                      
+                      {s.metadata.columns && s.metadata.columns.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Colunas ({s.metadata.columns.length}):</div>
+                          <div className="flex flex-wrap gap-1">
+                            {s.metadata.columns.map((col: string, idx: number) => (
+                              <span key={idx} className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                {col}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {s.metadata.preview_rows && s.metadata.preview_rows.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Primeiras linhas:</div>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  {s.metadata.columns?.map((col: string, idx: number) => (
+                                    <TableHead key={idx} className="text-xs">{col}</TableHead>
+                                  ))}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {s.metadata.preview_rows.slice(0, 3).map((row: any, rowIdx: number) => (
+                                  <TableRow key={rowIdx}>
+                                    {s.metadata.columns?.map((col: string, colIdx: number) => (
+                                      <TableCell key={colIdx} className="text-xs max-w-32 truncate">
+                                        {row[col]?.toString() || '-'}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {s.metadata.file_size && (
+                        <div className="text-sm text-muted-foreground">
+                          Tamanho: {(s.metadata.file_size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

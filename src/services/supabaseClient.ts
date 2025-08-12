@@ -98,8 +98,29 @@ export const supabaseClient = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    
+    // Parse file content to extract schema and preview
+    let fileInfo: any = {
+      file_path: '',
+      file_size: file.size,
+      uploaded_at: new Date().toISOString(),
+      row_count: 0,
+      columns: [],
+      preview_rows: []
+    };
+
+    try {
+      if (fileExt === 'csv') {
+        const text = await file.text();
+        fileInfo = await this.parseCSV(text, fileInfo);
+      } else if (['xlsx', 'xls'].includes(fileExt || '')) {
+        fileInfo = await this.parseExcel(file, fileInfo);
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse file content:', parseError);
+    }
     
     const { data, error } = await supabase.storage
       .from('data-files')
@@ -107,23 +128,62 @@ export const supabaseClient = {
     
     if (error) throw error;
     
+    fileInfo.file_path = data.path;
+    
     // Create source record
     const { data: source, error: sourceError } = await supabase
       .from('sources')
       .insert({
         user_id: user.id,
         name: file.name,
-        type: fileExt?.toLowerCase() === 'csv' ? 'csv' : 'xlsx',
-        metadata: {
-          file_path: data.path,
-          file_size: file.size,
-          uploaded_at: new Date().toISOString()
-        }
+        type: fileExt === 'csv' ? 'csv' : 'xlsx',
+        metadata: fileInfo
       })
       .select()
       .single();
     
     if (sourceError) throw sourceError;
     return source;
+  },
+
+  async parseCSV(text: string, fileInfo: any) {
+    const Papa = await import('papaparse');
+    const result = Papa.parse(text, { 
+      header: true, 
+      skipEmptyLines: true,
+      preview: 5 // Get first 5 rows for preview
+    });
+    
+    if (result.data && result.data.length > 0) {
+      fileInfo.columns = Object.keys(result.data[0] as object);
+      fileInfo.preview_rows = result.data.slice(0, 5);
+      
+      // Parse full file to get row count
+      const fullResult = Papa.parse(text, { header: true, skipEmptyLines: true });
+      fileInfo.row_count = fullResult.data.length;
+    }
+    
+    return fileInfo;
+  },
+
+  async parseExcel(file: File, fileInfo: any) {
+    const XLSX = await import('xlsx');
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    
+    // Get first worksheet
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Convert to JSON
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    
+    if (jsonData && jsonData.length > 0) {
+      fileInfo.columns = Object.keys(jsonData[0] as object);
+      fileInfo.preview_rows = jsonData.slice(0, 5);
+      fileInfo.row_count = jsonData.length;
+    }
+    
+    return fileInfo;
   }
 };
