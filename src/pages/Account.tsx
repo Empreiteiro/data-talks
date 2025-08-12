@@ -31,15 +31,14 @@ const Account = () => {
             <CardTitle>Exportação</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button onClick={exportHistory}>Exportar histórico (JSON)</Button>
+            <Button onClick={exportHistory}>Exportar histórico</Button>
           </CardContent>
         </Card>
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Segurança</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>Chaves de API: configure quando integrar um backend seguro (ex.: Supabase).</p>
+          <CardContent>
             <Button variant="destructive" onClick={deleteAll}>Excluir conta e dados</Button>
           </CardContent>
         </Card>
