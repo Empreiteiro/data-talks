@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { agentClient, Source } from "@/services/agentClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -43,6 +43,13 @@ const Sources = () => {
   }
 
   const existing = agentClient.listSources();
+  const displayed = useMemo(() => {
+    const map = new Map<string, Source>();
+    [...created, ...existing].forEach((s) => {
+      if (!map.has(s.id)) map.set(s.id, s);
+    });
+    return Array.from(map.values());
+  }, [created, existing]);
 
   return (
     <main className="container py-10">
@@ -88,7 +95,7 @@ const Sources = () => {
       </Tabs>
 
       <div className="grid gap-6">
-        {[...created, ...existing].map((s) => (
+        {displayed.map((s) => (
           <Card key={s.id} className="shadow-sm">
             <CardHeader>
               <CardTitle>{s.name} <span className="text-sm text-muted-foreground">[{s.type}]</span></CardTitle>
