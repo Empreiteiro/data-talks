@@ -3,22 +3,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { agentClient } from "@/services/agentClient";
+import { supabaseClient } from "@/services/supabaseClient";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 const Alerts = () => {
-  const agents = agentClient.listAgents();
-  const [agentId, setAgentId] = useState(agents[0]?.id || "");
-  const [tableRef, setTableRef] = useState("");
-  const [conditionExpr, setCondition] = useState("");
-  const [frequency, setFrequency] = useState<'minute'|'hour'|'daily'|'weekly'>('daily');
-  const [channel, setChannel] = useState<'in-app'|'email'>('in-app');
+  const [agentId, setAgentId] = useState("");
 
-  const alerts = useMemo(() => agentClient.listAlerts(agentId), [agentId]);
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => supabaseClient.listAgents()
+  });
+
+  const { data: alerts = [] } = useQuery({
+    queryKey: ['alerts', agentId],
+    queryFn: () => supabaseClient.listAlerts(agentId || undefined)
+  });
+
+  // Set default agent when agents load
+  if (agents.length > 0 && !agentId) {
+    setAgentId(agents[0].id);
+  }
 
   function create() {
-    if (!agentId || !tableRef || !conditionExpr) return alert('Preencha todos os campos');
-    agentClient.createAlert({ agentId, tableRef, conditionExpr, frequency, channel });
+    alert('Funcionalidade de alertas será implementada em breve.');
   }
 
   return (
@@ -45,32 +53,28 @@ const Alerts = () => {
               <div>
                 <Label>Agente</Label>
                 <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background">
-                  {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
+                  {agents.map((a: any) => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
                 </select>
               </div>
               <div>
-                <Label>Tabela</Label>
-                <Input value={tableRef} onChange={(e) => setTableRef(e.target.value)} placeholder="analytics.orders" />
+                <Label>Nome do Alerta</Label>
+                <Input placeholder="Nome do alerta" />
               </div>
               <div className="md:col-span-2">
-                <Label>Condição/Consulta</Label>
-                <Input value={conditionExpr} onChange={(e) => setCondition(e.target.value)} placeholder="> 1000, erro != 0, etc." />
+                <Label>Pergunta/Query</Label>
+                <Input placeholder="Qual pergunta ou condição monitorar?" />
               </div>
               <div>
                 <Label>Frequência</Label>
-                <select value={frequency} onChange={(e) => setFrequency(e.target.value as any)} className="w-full border rounded-md px-3 py-2 bg-background">
-                  <option value="minute">Minuto</option>
-                  <option value="hour">Hora</option>
+                <select className="w-full border rounded-md px-3 py-2 bg-background">
                   <option value="daily">Diário</option>
                   <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensal</option>
                 </select>
               </div>
               <div>
-                <Label>Canal</Label>
-                <select value={channel} onChange={(e) => setChannel(e.target.value as any)} className="w-full border rounded-md px-3 py-2 bg-background">
-                  <option value="in-app">In-app</option>
-                  <option value="email">E-mail</option>
-                </select>
+                <Label>E-mail para notificação</Label>
+                <Input type="email" placeholder="seu@email.com" />
               </div>
               <div className="md:col-span-2">
                 <Button onClick={create}>Criar alerta</Button>
@@ -79,21 +83,28 @@ const Alerts = () => {
           </Card>
 
           <div className="grid gap-4">
-            {alerts.map(a => (
-              <Card key={a.id} className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-base">{a.tableRef} · <span className="text-muted-foreground">{a.frequency} · {a.channel}</span></CardTitle>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between gap-4">
-                  <div className="text-sm text-muted-foreground">
-                    Última execução: {a.lastRunAt ? new Date(a.lastRunAt).toLocaleString() : '—'} · Próxima: {a.nextRunAt ? new Date(a.nextRunAt).toLocaleString() : '—'}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="secondary" onClick={() => agentClient.testAlert(a.id)}>Testar</Button>
-                  </div>
+            {alerts.length === 0 ? (
+              <Card className="shadow-sm">
+                <CardContent className="pt-6">
+                  <p className="text-muted-foreground text-center">
+                    Nenhum alerta configurado. Crie seu primeiro alerta acima.
+                  </p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              alerts.map((a: any) => (
+                <Card key={a.id} className="shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base">{a.name} · <span className="text-muted-foreground">{a.frequency}</span></CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Criado em: {new Date(a.created_at).toLocaleString('pt-BR')}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       )}

@@ -3,28 +3,33 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { agentClient } from "@/services/agentClient";
+import { supabaseClient } from "@/services/supabaseClient";
 import { ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const Questions = () => {
-  const agents = agentClient.listAgents();
-  const [agentId, setAgentId] = useState(agents[0]?.id || "");
+  const queryClient = useQueryClient();
+  const [agentId, setAgentId] = useState("");
   const [question, setQuestion] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [version, setVersion] = useState(0);
 
-  const history = useMemo(() => agentClient.listHistory(agentId), [agentId, version]);
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => supabaseClient.listAgents()
+  });
 
-  function ask() {
-    if (!agentId) return alert('Crie e ative um agente primeiro');
-    setLoading(true);
-    setTimeout(() => {
-      agentClient.ask(agentId, question);
-      setQuestion("");
-      setLoading(false);
-      setVersion(v => v + 1);
-    }, 400);
+  const { data: sessions = [] } = useQuery({
+    queryKey: ['qa-sessions', agentId],
+    queryFn: () => supabaseClient.listQASessions(agentId || undefined)
+  });
+
+  // Set default agent when agents load
+  if (agents.length > 0 && !agentId) {
+    setAgentId(agents[0].id);
+  }
+
+  async function ask() {
+    alert('Funcionalidade de perguntas será implementada em breve.');
   }
 
   return (
@@ -52,77 +57,81 @@ const Questions = () => {
             </div>
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
-              <Button onClick={ask} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
+              <Button onClick={ask} disabled={!question}>Perguntar</Button>
             </div>
           </div>
 
           <div className="grid gap-6">
-            {history.map(h => (
-              <Card key={h.id} className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-base">Pergunta: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p>{h.answerText}</p>
-                  {h.answerTableJSON && (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            {Object.keys(h.answerTableJSON[0] || {}).map((c) => <TableHead key={c}>{c}</TableHead>)}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {h.answerTableJSON.map((row, i) => (
-                            <TableRow key={i}>
-                              {Object.keys(h.answerTableJSON![0] || {}).map((c) => <TableCell key={c}>{String((row as any)[c])}</TableCell>)}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={h.feedback === 'up' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        aria-label="Feedback positivo"
-                        onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'up' ? null : 'up'); setVersion(v => v + 1); }}
-                      >
-                        <ThumbsUp />
-                      </Button>
-                      <Button
-                        variant={h.feedback === 'down' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        aria-label="Feedback negativo"
-                        onClick={() => { agentClient.setFeedback(h.id, h.feedback === 'down' ? null : 'down'); setVersion(v => v + 1); }}
-                      >
-                        <ThumbsDown />
-                      </Button>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label="Deletar pergunta"
-                      onClick={() => { 
-                        if (confirm('Tem certeza que deseja deletar esta pergunta?')) {
-                          agentClient.deleteQuestion(h.id); 
-                          setVersion(v => v + 1); 
-                        }
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(h.createdAt).toLocaleString('pt-BR')} · Latency: {h.latencyMs}ms · Status: {h.status}
-                    </p>
-                  </div>
+            {sessions.length === 0 ? (
+              <Card className="shadow-sm">
+                <CardContent className="pt-6">
+                  <p className="text-muted-foreground text-center">
+                    Nenhuma pergunta encontrada. Faça sua primeira pergunta acima.
+                  </p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              sessions.map((h: any) => (
+                <Card key={h.id} className="shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base">Pergunta: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p>{h.answer || 'Resposta não disponível'}</p>
+                    {h.table_data && (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              {Object.keys(h.table_data[0] || {}).map((c) => <TableHead key={c}>{c}</TableHead>)}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {h.table_data.map((row: any, i: number) => (
+                              <TableRow key={i}>
+                                {Object.keys(h.table_data[0] || {}).map((c) => <TableCell key={c}>{String(row[c])}</TableCell>)}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" aria-label="Feedback positivo">
+                          <ThumbsUp />
+                        </Button>
+                        <Button variant="ghost" size="sm" aria-label="Feedback negativo">
+                          <ThumbsDown />
+                        </Button>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Deletar pergunta"
+                        onClick={async () => { 
+                          if (confirm('Tem certeza que deseja deletar esta pergunta?')) {
+                            try {
+                              await supabaseClient.deleteQASession(h.id);
+                              queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
+                            } catch (e: any) {
+                              alert(e.message);
+                            }
+                          }
+                        }}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(h.created_at).toLocaleString('pt-BR')} · Status: {h.status}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       )}

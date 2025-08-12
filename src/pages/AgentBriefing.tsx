@@ -5,64 +5,57 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import { agentClient } from "@/services/agentClient";
+import { supabaseClient } from "@/services/supabaseClient";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const AgentBriefing = () => {
-  const sources = agentClient.listSources();
-  const agents = agentClient.listAgents();
+  const queryClient = useQueryClient();
   const [agentId, setAgentId] = useState<string>("");
-  const [selected, setSelected] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [sharePassword, setSharePassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
-  const currentAgent = useMemo(() => agentId ? agentClient.getAgent(agentId) : undefined, [agentId]);
-  const shareLink = useMemo(() => currentAgent ? `${window.location.origin}/share/${currentAgent.shareToken}` : "", [currentAgent]);
+  const { data: sources = [] } = useQuery({
+    queryKey: ['sources'],
+    queryFn: () => supabaseClient.listSources()
+  });
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => supabaseClient.listAgents()
+  });
+
+  const currentAgent = useMemo(() => agentId ? agents.find(a => a.id === agentId) : undefined, [agentId, agents]);
+  const shareLink = useMemo(() => currentAgent ? `${window.location.origin}/share/${currentAgent.share_token}` : "", [currentAgent]);
   const minExceeded = useMemo(() => description.trim().length >= 200, [description]);
 
   useEffect(() => {
-    if (agentId) {
-      const a = agentClient.getAgent(agentId);
-      setName(a?.name || "");
-      setDescription(a?.description || "");
-      setSelected(agentClient.getAgentSourceIds(agentId));
-      setSharePassword(a?.sharePassword || "");
+    if (currentAgent) {
+      setName(currentAgent.name || "");
+      setDescription("Agente configurado no Supabase");
     } else {
       setName("");
       setDescription("");
-      setSelected([]);
-      setSharePassword("");
     }
-  }, [agentId]);
+  }, [currentAgent]);
 
-  function toggle(id: string) {
-    setSelected((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  async function deleteAgent() {
+    if (!agentId) return;
+    if (confirm(`Tem certeza que deseja deletar o agente "${currentAgent?.name || agentId}"? Esta ação não pode ser desfeita.`)) {
+      try {
+        await supabaseClient.deleteAgent(agentId);
+        queryClient.invalidateQueries({ queryKey: ['agents'] });
+        setAgentId("");
+        setMsg("Agente deletado com sucesso");
+      } catch (e: any) {
+        alert(e.message);
+      }
+    }
   }
 
   function save() {
-    try {
-      if (!agentId) {
-        const agent = agentClient.createBriefing(selected, description, name);
-        if (sharePassword) agentClient.setAgentShare(agent.id, sharePassword);
-        setAgentId(agent.id);
-        setMsg(`Agente criado: ${agent.name || agent.id}`);
-      } else {
-        const agent = agentClient.updateAgent(agentId, { name, description, sourceIds: selected });
-        agentClient.setAgentShare(agentId, sharePassword);
-        setMsg(`Agente atualizado: ${agent.name || agent.id}`);
-      }
-    } catch (e:any) { setMsg((e as any).message || 'Erro ao salvar'); }
-  }
-
-  function deleteAgent() {
-    if (!agentId) return;
-    if (confirm(`Tem certeza que deseja deletar o agente "${currentAgent?.name || agentId}"? Esta ação não pode ser desfeita.`)) {
-      agentClient.deleteAgent(agentId);
-      setAgentId("");
-      setMsg("Agente deletado com sucesso");
-    }
+    setMsg("Para criar/editar agentes, use o painel do Supabase por enquanto.");
   }
 
   return (
@@ -95,12 +88,15 @@ const AgentBriefing = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-2">
-            {sources.map((s) => (
-              <label key={s.id} className="flex items-center gap-3 bg-secondary rounded-md px-3 py-2 cursor-pointer">
-                <input type="checkbox" checked={selected.includes(s.id)} onChange={() => toggle(s.id)} />
-                <span className="text-sm">{s.name} <span className="text-muted-foreground">[{s.type}]</span></span>
-              </label>
-            ))}
+            {sources.length === 0 ? (
+              <p className="text-muted-foreground col-span-2">Nenhuma fonte de dados encontrada. Adicione fontes primeiro.</p>
+            ) : (
+              sources.map((s: any) => (
+                <div key={s.id} className="flex items-center gap-3 bg-secondary rounded-md px-3 py-2">
+                  <span className="text-sm">{s.name} <span className="text-muted-foreground">[{s.type}]</span></span>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="space-y-2">
@@ -108,14 +104,9 @@ const AgentBriefing = () => {
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Análises de Vendas 2025" />
           </div>
           <div className="space-y-2">
-            <Label>Descrição dos dados e tabelas (mín. 200 caracteres)</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} placeholder="Ex.: Vendas mensais no dataset analytics, tabelas orders (id, date, amount, region) ..." />
-            <p className="text-xs text-muted-foreground">{description.trim().length} / 200</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Senha para compartilhamento (opcional)</Label>
-            <Input type="password" value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} placeholder="Defina uma senha para o link compartilhável" />
+            <Label>Descrição dos dados e tabelas</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} placeholder="Configuração gerenciada no Supabase" readOnly />
+            <p className="text-xs text-muted-foreground">Use o painel do Supabase para criar/editar agentes</p>
           </div>
 
           {currentAgent && (
@@ -125,11 +116,10 @@ const AgentBriefing = () => {
                 <Input readOnly value={shareLink} aria-label="Link compartilhável do agente" />
                 <Button type="button" variant="secondary" onClick={() => navigator.clipboard.writeText(shareLink)}>Copiar</Button>
               </div>
-              <p className="text-xs text-muted-foreground">Este link exige a senha para acesso.</p>
             </div>
           )}
 
-          <Button onClick={save} disabled={!selected.length || !minExceeded || !name.trim().length}>Salvar</Button>
+          <Button onClick={save}>Informações sobre configuração</Button>
           {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
         </CardContent>
       </Card>
