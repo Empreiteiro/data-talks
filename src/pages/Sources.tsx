@@ -54,7 +54,8 @@ const Sources = () => {
     setLoading(true);
     
     try {
-      const formData = new FormData(e.currentTarget);
+      const form = e.currentTarget;
+      const formData = new FormData(form);
       const project = formData.get('project') as string;
       const dataset = formData.get('dataset') as string;
       const tablesInput = formData.get('tables') as string;
@@ -75,9 +76,13 @@ const Sources = () => {
       
       const result = await supabaseClient.connectBigQuery(credentials, project, dataset, tables);
       
-      // Clear form
-      e.currentTarget.reset();
-      if (credRef.current) credRef.current.value = '';
+      // Clear form safely
+      if (form) {
+        form.reset();
+      }
+      if (credRef.current) {
+        credRef.current.value = '';
+      }
       
       // Refresh sources list
       queryClient.invalidateQueries({ queryKey: ['sources'] });
