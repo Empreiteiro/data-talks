@@ -51,7 +51,45 @@ const Sources = () => {
 
   async function handleBQ(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    alert('Conexão BigQuery será implementada em breve. Use o Supabase para dados por enquanto.');
+    setLoading(true);
+    
+    try {
+      const formData = new FormData(e.currentTarget);
+      const project = formData.get('project') as string;
+      const dataset = formData.get('dataset') as string;
+      const tablesInput = formData.get('tables') as string;
+      const credentialsFile = credRef.current?.files?.[0];
+      
+      if (!credentialsFile) {
+        alert('Por favor, selecione o arquivo de credenciais JSON');
+        return;
+      }
+      
+      if (!project || !dataset || !tablesInput) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+      }
+      
+      const tables = tablesInput.split(',').map(t => t.trim()).filter(t => t);
+      const credentials = await credentialsFile.text();
+      
+      const result = await supabaseClient.connectBigQuery(credentials, project, dataset, tables);
+      
+      // Clear form
+      e.currentTarget.reset();
+      if (credRef.current) credRef.current.value = '';
+      
+      // Refresh sources list
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+      
+      alert(`BigQuery conectado com sucesso! ${result.availableTables?.length || 0} tabelas disponíveis.`);
+      
+    } catch (error: any) {
+      console.error('BigQuery connection error:', error);
+      alert(`Erro ao conectar BigQuery: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -110,7 +148,9 @@ const Sources = () => {
               <Input name="tables" placeholder="orders, customers" />
             </div>
             <div className="md:col-span-2">
-              <Button type="submit">Conectar BigQuery</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Conectando...' : 'Conectar BigQuery'}
+              </Button>
             </div>
           </form>
         </TabsContent>

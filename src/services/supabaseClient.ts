@@ -185,5 +185,25 @@ export const supabaseClient = {
     }
     
     return fileInfo;
+  },
+
+  // BigQuery connection
+  async connectBigQuery(credentials: string, projectId: string, datasetId: string, tables: string[]) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('bigquery-connect', {
+      body: {
+        credentials,
+        projectId,
+        datasetId,
+        tables
+      }
+    });
+
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    
+    return data;
   }
 };
