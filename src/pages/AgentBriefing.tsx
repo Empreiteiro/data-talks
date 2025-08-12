@@ -70,8 +70,18 @@ const AgentBriefing = () => {
       <SEO title="Agente | Converse com seus dados" description="Defina o contexto e ative o agente" canonical="/agent" />
       <h1 className="text-3xl font-semibold mb-6">Briefing do Agente</h1>
       <Card className="shadow-sm">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Configurar Agente</CardTitle>
+          {currentAgent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={deleteAgent}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -119,15 +129,7 @@ const AgentBriefing = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-3">
-            <Button onClick={save} disabled={!selected.length || !minExceeded || !name.trim().length}>Salvar</Button>
-            {currentAgent && (
-              <Button variant="destructive" onClick={deleteAgent}>
-                <Trash2 />
-                Deletar Agente
-              </Button>
-            )}
-          </div>
+          <Button onClick={save} disabled={!selected.length || !minExceeded || !name.trim().length}>Salvar</Button>
           {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
         </CardContent>
       </Card>
