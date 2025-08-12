@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import NavBar from "@/components/layout/NavBar";
+import Footer from "@/components/layout/Footer";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import Sources from "@/pages/Sources";
@@ -42,8 +43,9 @@ const App = () => (
           <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+          <Footer />
+        </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
