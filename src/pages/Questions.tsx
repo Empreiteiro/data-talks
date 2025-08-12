@@ -42,7 +42,7 @@ const Questions = () => {
         <div className="space-y-6">
           <div className="grid gap-3 md:grid-cols-[240px_1fr_auto]">
             <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="border rounded-md px-3 py-2 bg-background">
-              {agents.map(a => <option key={a.id} value={a.id}>{a.id.slice(0,6)}... </option>)}
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
             </select>
             <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
             <Button onClick={ask} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
