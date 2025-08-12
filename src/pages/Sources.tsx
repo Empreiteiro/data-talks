@@ -201,13 +201,14 @@ const Sources = () => {
                   
                   {s.metadata && (
                     <div className="space-y-3">
-                      {s.metadata.row_count > 0 && (
+                      {/* CSV/Excel file info */}
+                      {s.type !== 'bigquery' && s.metadata.row_count > 0 && (
                         <div className="text-sm">
                           <span className="font-medium">Linhas:</span> {s.metadata.row_count.toLocaleString('pt-BR')}
                         </div>
                       )}
                       
-                      {s.metadata.columns && s.metadata.columns.length > 0 && (
+                      {s.type !== 'bigquery' && s.metadata.columns && s.metadata.columns.length > 0 && (
                         <div className="space-y-2">
                           <div className="text-sm font-medium">Colunas ({s.metadata.columns.length}):</div>
                           <div className="flex flex-wrap gap-1">
@@ -220,7 +221,7 @@ const Sources = () => {
                         </div>
                       )}
                       
-                      {s.metadata.preview_rows && s.metadata.preview_rows.length > 0 && (
+                      {s.type !== 'bigquery' && s.metadata.preview_rows && s.metadata.preview_rows.length > 0 && (
                         <div className="space-y-2">
                           <div className="text-sm font-medium">Primeiras linhas:</div>
                           <div className="overflow-x-auto">
@@ -245,6 +246,75 @@ const Sources = () => {
                               </TableBody>
                             </Table>
                           </div>
+                        </div>
+                      )}
+
+                      {/* BigQuery table info */}
+                      {s.type === 'bigquery' && s.metadata.table_infos && (
+                        <div className="space-y-4">
+                          <div className="text-sm">
+                            <span className="font-medium">Projeto:</span> {s.metadata.project_id}
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-medium">Dataset:</span> {s.metadata.dataset_id}
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-medium">Tabelas conectadas:</span> {s.metadata.total_tables}
+                          </div>
+                          
+                          {s.metadata.table_infos.map((tableInfo: any, tableIdx: number) => (
+                            <div key={tableIdx} className="border rounded-lg p-3 space-y-2">
+                              <div className="text-sm font-medium">
+                                {tableInfo.table_name} 
+                                {tableInfo.row_count > 0 && (
+                                  <span className="text-muted-foreground ml-2">
+                                    ({tableInfo.row_count.toLocaleString('pt-BR')} linhas)
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {tableInfo.columns && tableInfo.columns.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-medium">Colunas ({tableInfo.columns.length}):</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {tableInfo.columns.map((col: string, colIdx: number) => (
+                                      <span key={colIdx} className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                        {col}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {tableInfo.preview_rows && tableInfo.preview_rows.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-medium">Primeiras linhas:</div>
+                                  <div className="overflow-x-auto">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          {tableInfo.columns?.map((col: string, colIdx: number) => (
+                                            <TableHead key={colIdx} className="text-xs">{col}</TableHead>
+                                          ))}
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {tableInfo.preview_rows.slice(0, 3).map((row: any, rowIdx: number) => (
+                                          <TableRow key={rowIdx}>
+                                            {tableInfo.columns?.map((col: string, colIdx: number) => (
+                                              <TableCell key={colIdx} className="text-xs max-w-32 truncate">
+                                                {row[col]?.toString() || '-'}
+                                              </TableCell>
+                                            ))}
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
                       
