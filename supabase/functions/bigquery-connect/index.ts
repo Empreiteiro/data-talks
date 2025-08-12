@@ -85,6 +85,8 @@ serve(async (req) => {
 
     // Get table schemas and preview data
     const tableInfos = []
+    const failedTables = []
+    
     for (const tableName of tables) {
       try {
         console.log(`Getting info for table: ${tableName}`)
@@ -96,7 +98,9 @@ serve(async (req) => {
         })
 
         if (!schemaResponse.ok) {
-          console.error(`Failed to get schema for ${tableName}:`, await schemaResponse.text())
+          const errorText = await schemaResponse.text()
+          console.error(`Failed to get schema for ${tableName}:`, errorText)
+          failedTables.push(`${tableName} (não encontrada)`)
           continue
         }
 
@@ -174,7 +178,8 @@ serve(async (req) => {
           tables: tables,
           connection_tested: true,
           table_infos: tableInfos,
-          total_tables: tableInfos.length
+          total_tables: tableInfos.length,
+          failed_tables: failedTables
         }
       })
       .select()

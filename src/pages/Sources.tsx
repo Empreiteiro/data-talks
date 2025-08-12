@@ -260,6 +260,11 @@ const Sources = () => {
                           </div>
                           <div className="text-sm">
                             <span className="font-medium">Tabelas conectadas:</span> {s.metadata.total_tables}
+                            {s.metadata.failed_tables && s.metadata.failed_tables.length > 0 && (
+                              <div className="text-sm text-destructive mt-1">
+                                <span className="font-medium">Tabelas não encontradas:</span> {s.metadata.failed_tables.join(', ')}
+                              </div>
+                            )}
                           </div>
                           
                           {s.metadata.table_infos.map((tableInfo: any, tableIdx: number) => (
