@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabaseClient } from "@/services/supabaseClient";
-import { ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Trash2, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -12,6 +12,7 @@ const Questions = () => {
   const queryClient = useQueryClient();
   const [agentId, setAgentId] = useState("");
   const [question, setQuestion] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
@@ -36,6 +37,7 @@ const Questions = () => {
     if (!question.trim() || !agentId) return;
 
     try {
+      setIsLoading(true);
       setQuestion('');
       const result = await supabaseClient.askQuestion(agentId, question);
       
@@ -44,6 +46,8 @@ const Questions = () => {
       
     } catch (error: any) {
       alert(`Erro: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -71,8 +75,17 @@ const Questions = () => {
               </select>
             </div>
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
-              <Button onClick={ask} disabled={!question}>Perguntar</Button>
+              <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" disabled={isLoading} />
+              <Button onClick={ask} disabled={!question || isLoading} className="min-w-[120px]">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  'Perguntar'
+                )}
+              </Button>
             </div>
             
             {suggestedQuestions.length > 0 && (
@@ -96,7 +109,17 @@ const Questions = () => {
           </div>
 
           <div className="grid gap-6">
-            {sessions.length === 0 ? (
+            {isLoading && (
+              <Card className="shadow-sm animate-pulse">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Processando sua pergunta...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {sessions.length === 0 && !isLoading ? (
               <Card className="shadow-sm">
                 <CardContent className="pt-6">
                   <p className="text-muted-foreground text-center">
