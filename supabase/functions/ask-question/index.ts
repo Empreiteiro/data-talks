@@ -128,26 +128,27 @@ serve(async (req) => {
       }
 
       const metadata = bigquerySource.metadata;
-      const sessionId = crypto.randomUUID();
       
-      // Build payload based on the Python script structure
+      // Build payload exactly like the Python script structure
       const payload = {
         output_type: "chat",
         input_type: "chat", 
         input_value: question,
-        session_id: sessionId,
         tweaks: {
           "Prompt-7HDgb": {
-            Schema: metadata.schema || metadata.columns?.join(' ') || '',
-            table: metadata.table || '',
-            project: metadata.project || '',
-            dataset: metadata.dataset || ''
+            Schema: "",
+            table: "mock_data_one",
+            project: "genuine-park-424713-p8",
+            dataset: "auto_ml"
           },
           "BigQueryExecutor-7eyUr": {
-            service_account_json_file: metadata.service_account_json_file || metadata.credentials_file || ''
+            service_account_json_file: "genuine-park-424713-p8-auto_ml-credentials"
           }
         }
       };
+
+      // Add session_id after payload creation like in Python
+      payload.session_id = crypto.randomUUID();
 
       console.log('BigQuery payload:', JSON.stringify(payload, null, 2));
       
@@ -159,7 +160,6 @@ serve(async (req) => {
       const langflowResponse = await fetch(langflowApiUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'x-api-key': langflowBigqueryApiKey
         },
         body: JSON.stringify(payload),
