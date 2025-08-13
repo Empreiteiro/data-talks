@@ -23,6 +23,7 @@ export type Database = {
           share_password: string | null
           share_token: string | null
           source_ids: string[]
+          suggested_questions: string[] | null
           updated_at: string
           user_id: string
         }
@@ -34,6 +35,7 @@ export type Database = {
           share_password?: string | null
           share_token?: string | null
           source_ids?: string[]
+          suggested_questions?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -45,6 +47,7 @@ export type Database = {
           share_password?: string | null
           share_token?: string | null
           source_ids?: string[]
+          suggested_questions?: string[] | null
           updated_at?: string
           user_id?: string
         }

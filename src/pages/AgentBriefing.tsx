@@ -48,7 +48,7 @@ const AgentBriefing = () => {
       setSelectedSource(currentAgent.source_ids?.[0] || "");
       setShareEnabled(!!currentAgent.share_token);
       setSharePassword(currentAgent.share_password || "");
-      setSuggestedQuestions(currentAgent.suggested_questions || []);
+      setSuggestedQuestions((currentAgent as any).suggested_questions || []);
     } else {
       setName("");
       setDescription("");
