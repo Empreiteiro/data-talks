@@ -151,16 +151,8 @@ serve(async (req) => {
 
       console.log('BigQuery payload:', JSON.stringify(payload, null, 2));
       
-      // Construct the correct Langflow API URL - remove duplicate /api/v1/run if present
-      let langflowApiUrl = langflowBigqueryUrl;
-      if (!langflowApiUrl.includes('/api/v1/run/')) {
-        langflowApiUrl = `${langflowBigqueryUrl}/api/v1/run/${langflowBigqueryFlowId}?stream=false`;
-      } else {
-        // If it already contains the path, just append the flow ID if needed
-        if (!langflowApiUrl.includes(langflowBigqueryFlowId)) {
-          langflowApiUrl = `${langflowBigqueryUrl}/${langflowBigqueryFlowId}?stream=false`;
-        }
-      }
+      // Construct the complete Langflow API URL as specified
+      const langflowApiUrl = `${langflowBigqueryUrl}/api/v1/run/${langflowBigqueryFlowId}`;
       
       console.log('BigQuery API URL:', langflowApiUrl);
       
