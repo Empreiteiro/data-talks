@@ -113,6 +113,7 @@ export type Database = {
           created_at: string
           feedback: string | null
           id: string
+          is_shared: boolean | null
           latency: number | null
           question: string
           sql_query: string | null
@@ -126,6 +127,7 @@ export type Database = {
           created_at?: string
           feedback?: string | null
           id?: string
+          is_shared?: boolean | null
           latency?: number | null
           question: string
           sql_query?: string | null
@@ -139,6 +141,7 @@ export type Database = {
           created_at?: string
           feedback?: string | null
           id?: string
+          is_shared?: boolean | null
           latency?: number | null
           question?: string
           sql_query?: string | null
