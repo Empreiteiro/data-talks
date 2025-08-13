@@ -16,7 +16,7 @@ const AgentBriefing = () => {
   const queryClient = useQueryClient();
   const [agentId, setAgentId] = useState<string>("");
   const [name, setName] = useState("");
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [selectedSource, setSelectedSource] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
   const { data: sources = [] } = useQuery({
@@ -32,15 +32,15 @@ const AgentBriefing = () => {
   const currentAgent = useMemo(() => agentId ? agents.find(a => a.id === agentId) : undefined, [agentId, agents]);
   const shareLink = useMemo(() => currentAgent ? `${window.location.origin}/share/${currentAgent.share_token}` : "", [currentAgent]);
   const isNewAgent = !agentId;
-  const canSave = name.trim().length > 0 && selectedSources.length > 0;
+  const canSave = name.trim().length > 0 && selectedSource.length > 0;
 
   useEffect(() => {
     if (currentAgent) {
       setName(currentAgent.name || "");
-      setSelectedSources(currentAgent.source_ids || []);
+      setSelectedSource(currentAgent.source_ids?.[0] || "");
     } else {
       setName("");
-      setSelectedSources([]);
+      setSelectedSource("");
     }
   }, [currentAgent]);
 
@@ -75,13 +75,13 @@ const AgentBriefing = () => {
       setIsLoading(true);
       
       if (isNewAgent) {
-        await supabaseClient.createAgent(name, selectedSources);
+        await supabaseClient.createAgent(name, [selectedSource]);
         toast({
           title: "Agente criado",
           description: "Agente criado com sucesso",
         });
       } else {
-        await supabaseClient.updateAgent(agentId, name, selectedSources);
+        await supabaseClient.updateAgent(agentId, name, [selectedSource]);
         toast({
           title: "Agente atualizado", 
           description: "Agente atualizado com sucesso",
@@ -100,12 +100,8 @@ const AgentBriefing = () => {
     }
   }
 
-  function toggleSource(sourceId: string) {
-    setSelectedSources(prev => 
-      prev.includes(sourceId)
-        ? prev.filter(id => id !== sourceId)
-        : [...prev, sourceId]
-    );
+  function selectSource(sourceId: string) {
+    setSelectedSource(sourceId);
   }
 
   return (
@@ -153,21 +149,32 @@ const AgentBriefing = () => {
           </div>
 
           <div className="space-y-3">
-            <Label>Fontes de dados</Label>
+            <Label>Fonte de dados</Label>
             {sources.length === 0 ? (
               <p className="text-muted-foreground">Nenhuma fonte de dados encontrada. Adicione fontes primeiro.</p>
             ) : (
               <div className="grid gap-3">
                 {sources.map((source: any) => (
-                  <div key={source.id} className="flex items-center space-x-3 p-3 rounded-lg border bg-card">
-                    <Checkbox
-                      id={source.id}
-                      checked={selectedSources.includes(source.id)}
-                      onCheckedChange={() => toggleSource(source.id)}
-                      disabled={isLoading}
-                    />
+                  <div 
+                    key={source.id} 
+                    className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedSource === source.id 
+                        ? 'bg-primary/10 border-primary' 
+                        : 'bg-card hover:bg-accent'
+                    }`}
+                    onClick={() => selectSource(source.id)}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      selectedSource === source.id 
+                        ? 'border-primary bg-primary' 
+                        : 'border-muted-foreground'
+                    }`}>
+                      {selectedSource === source.id && (
+                        <div className="w-2 h-2 rounded-full bg-primary-foreground"></div>
+                      )}
+                    </div>
                     <div className="flex-1">
-                      <Label htmlFor={source.id} className="text-sm font-medium cursor-pointer">
+                      <Label className="text-sm font-medium cursor-pointer">
                         {source.name}
                       </Label>
                       <div className="text-xs text-muted-foreground mt-1">
@@ -185,7 +192,7 @@ const AgentBriefing = () => {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Selecione as fontes de dados que este agente terá acesso para responder perguntas.
+              Selecione a fonte de dados que este agente terá acesso para responder perguntas.
             </p>
           </div>
 
@@ -222,9 +229,9 @@ const AgentBriefing = () => {
               {isNewAgent ? "Criar Agente" : "Salvar Alterações"}
             </Button>
             
-            {selectedSources.length > 0 && (
+            {selectedSource && (
               <div className="text-sm text-muted-foreground flex items-center">
-                {selectedSources.length} fonte(s) selecionada(s)
+                1 fonte selecionada
               </div>
             )}
           </div>
