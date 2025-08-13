@@ -129,20 +129,20 @@ serve(async (req) => {
 
       const metadata = bigquerySource.metadata;
       
-      // Build payload exactly like the Python script structure
+      // Build payload using dynamic metadata from the BigQuery source
       const payload = {
         output_type: "chat",
         input_type: "chat", 
         input_value: question,
         tweaks: {
           "Prompt-7HDgb": {
-            Schema: "",
-            table: "mock_data_one",
-            project: "genuine-park-424713-p8",
-            dataset: "auto_ml"
+            Schema: metadata.schema || "",
+            table: metadata.table || "",
+            project: metadata.project || "",
+            dataset: metadata.dataset || ""
           },
           "BigQueryExecutor-7eyUr": {
-            service_account_json_file: "genuine-park-424713-p8-auto_ml-credentials"
+            service_account_json_file: metadata.service_account_json_file || metadata.credentials_file || ""
           }
         }
       };
