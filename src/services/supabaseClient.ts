@@ -336,4 +336,28 @@ export const supabaseClient = {
 
     return response.json();
   },
+
+  // Ask question to shared agent (without authentication)
+  async askQuestionShared(agentId: string, question: string, shareToken: string) {
+    const response = await fetch(`https://ooimkdueuozjfwadrkkh.supabase.co/functions/v1/ask-question`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vaW1rZHVldW96amZ3YWRya2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDU5MTIsImV4cCI6MjA3MDU4MTkxMn0.SAADBflVutyfV_XDJTrPlpwoHE8yqdJ_GkLp9Tt_ras`,
+      },
+      body: JSON.stringify({
+        agentId,
+        question,
+        shareToken,
+        isShared: true
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erro ao processar pergunta');
+    }
+
+    return response.json();
+  },
 };

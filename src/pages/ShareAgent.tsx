@@ -18,8 +18,7 @@ const ShareAgent = () => {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [version, setVersion] = useState(0);
-
-  const history = useMemo(() => [], [agent, version]); // TODO: Implement history for shared agents
+  const [history, setHistory] = useState<any[]>([]);
   
   // Get suggested questions from agent
   const suggestedQuestions = agent?.suggested_questions || [];
@@ -30,6 +29,12 @@ const ShareAgent = () => {
         setAgentLoading(true);
         const agentData = await supabaseClient.getSharedAgent(token);
         setAgent(agentData);
+        
+        // Load history for this agent
+        if (agentData?.id) {
+          const agentHistory = await supabaseClient.listQASessions(agentData.id);
+          setHistory(agentHistory);
+        }
       } catch (error) {
         console.error('Error loading shared agent:', error);
         setAgent(null);
@@ -42,6 +47,22 @@ const ShareAgent = () => {
       loadAgent();
     }
   }, [token]);
+
+  // Reload history when version changes (after new question)
+  useEffect(() => {
+    async function reloadHistory() {
+      if (agent?.id && version > 0) {
+        try {
+          const agentHistory = await supabaseClient.listQASessions(agent.id);
+          setHistory(agentHistory);
+        } catch (error) {
+          console.error('Error reloading history:', error);
+        }
+      }
+    }
+    
+    reloadHistory();
+  }, [agent?.id, version]);
 
   async function access() {
     if (!agent) return;
@@ -64,7 +85,7 @@ const ShareAgent = () => {
     
     try {
       setLoading(true);
-      const result = await supabaseClient.askQuestion(agent.id, question);
+      await supabaseClient.askQuestionShared(agent.id, question, token);
       setQuestion("");
       setVersion(v => v + 1);
     } catch (error: any) {

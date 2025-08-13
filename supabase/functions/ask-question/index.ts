@@ -21,11 +21,26 @@ serve(async (req) => {
   }
 
   try {
-    const { question, agentId, userId } = await req.json();
+    const { question, agentId, userId, shareToken, isShared } = await req.json();
 
-    if (!question || !agentId || !userId) {
+    if (!question || !agentId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // For shared agents, validate share token instead of userId
+    if (isShared && !shareToken) {
+      return new Response(
+        JSON.stringify({ error: 'Share token required for shared agents' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!isShared && !userId) {
+      return new Response(
+        JSON.stringify({ error: 'User ID required for authenticated requests' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -34,17 +49,34 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get agent information
-    const { data: agent, error: agentError } = await supabase
-      .from('agents')
-      .select('*')
-      .eq('id', agentId)
-      .single();
+    let agent;
+    if (isShared) {
+      // For shared agents, verify the share token
+      const { data: sharedAgent, error: sharedError } = await supabase
+        .rpc('get_shared_agent_safe_fields', { token_value: shareToken });
+      
+      if (sharedError || !sharedAgent?.[0]) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid share token or agent not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      agent = sharedAgent[0];
+    } else {
+      // For authenticated users
+      const { data: agentData, error: agentError } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('id', agentId)
+        .single();
 
-    if (agentError || !agent) {
-      return new Response(
-        JSON.stringify({ error: 'Agent not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (agentError || !agentData) {
+        return new Response(
+          JSON.stringify({ error: 'Agent not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      agent = agentData;
     }
 
     // Get source information to determine agent type
@@ -186,13 +218,14 @@ serve(async (req) => {
     const { data: qaSession, error: qaError } = await supabase
       .from('qa_sessions')
       .insert({
-        user_id: userId,
+        user_id: isShared ? null : userId, // For shared agents, user_id can be null
         agent_id: agentId,
         question,
         answer,
         latency,
         table_data: imageUrl ? { image_url: imageUrl } : null,
-        status: 'completed'
+        status: 'completed',
+        is_shared: isShared || false
       })
       .select()
       .single();
