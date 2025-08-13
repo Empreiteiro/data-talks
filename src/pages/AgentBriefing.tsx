@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Save, Plus, Share, Eye, EyeOff } from "lucide-react";
+import { Trash2, Save, Plus, Share, Eye, EyeOff, X } from "lucide-react";
 import { supabaseClient } from "@/services/supabaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +23,8 @@ const AgentBriefing = () => {
   const [shareEnabled, setShareEnabled] = useState(false);
   const [sharePassword, setSharePassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [newQuestion, setNewQuestion] = useState("");
   const {
     data: sources = []
   } = useQuery({
@@ -46,12 +48,14 @@ const AgentBriefing = () => {
       setSelectedSource(currentAgent.source_ids?.[0] || "");
       setShareEnabled(!!currentAgent.share_token);
       setSharePassword(currentAgent.share_password || "");
+      setSuggestedQuestions(currentAgent.suggested_questions || []);
     } else {
       setName("");
       setDescription("");
       setSelectedSource("");
       setShareEnabled(false);
       setSharePassword("");
+      setSuggestedQuestions([]);
     }
   }, [currentAgent]);
   async function deleteAgent() {
@@ -84,13 +88,13 @@ const AgentBriefing = () => {
     try {
       setIsLoading(true);
       if (isNewAgent) {
-        await supabaseClient.createAgent(name, [selectedSource], description);
+        await supabaseClient.createAgent(name, [selectedSource], description, suggestedQuestions);
         toast({
           title: "Agente criado",
           description: "Agente criado com sucesso"
         });
       } else {
-        await supabaseClient.updateAgent(agentId, name, [selectedSource], description);
+        await supabaseClient.updateAgent(agentId, name, [selectedSource], description, suggestedQuestions);
         toast({
           title: "Agente atualizado",
           description: "Agente atualizado com sucesso"
@@ -111,6 +115,17 @@ const AgentBriefing = () => {
   }
   function selectSource(sourceId: string) {
     setSelectedSource(sourceId);
+  }
+
+  function addSuggestedQuestion() {
+    if (newQuestion.trim() && !suggestedQuestions.includes(newQuestion.trim())) {
+      setSuggestedQuestions([...suggestedQuestions, newQuestion.trim()]);
+      setNewQuestion("");
+    }
+  }
+
+  function removeSuggestedQuestion(index: number) {
+    setSuggestedQuestions(suggestedQuestions.filter((_, i) => i !== index));
   }
 
   async function toggleSharing(enabled: boolean) {
@@ -197,7 +212,7 @@ const AgentBriefing = () => {
           <div className="space-y-3">
             <Label>Fonte de dados</Label>
             {sources.length === 0 ? <p className="text-muted-foreground">Nenhuma fonte de dados encontrada. Adicione fontes primeiro.</p> : <div className="grid gap-3">
-                {sources.map((source: any) => <div key={source.id} className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedSource === source.id ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-accent'}`} onClick={() => selectSource(source.id)}>
+                {sources.map((source: any) => <div key={source.id} className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedSource === source.id ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted/50'}`} onClick={() => selectSource(source.id)}>
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedSource === source.id ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
                       {selectedSource === source.id && <div className="w-2 h-2 rounded-full bg-primary-foreground"></div>}
                     </div>
@@ -218,8 +233,54 @@ const AgentBriefing = () => {
             </p>
           </div>
 
+          <div className="space-y-3">
+            <Label>Perguntas sugeridas</Label>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input 
+                  value={newQuestion} 
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  placeholder="Ex.: Qual foi o faturamento do último trimestre?" 
+                  disabled={isLoading}
+                  onKeyPress={(e) => e.key === 'Enter' && addSuggestedQuestion()}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={addSuggestedQuestion}
+                  disabled={!newQuestion.trim() || isLoading}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {suggestedQuestions.length > 0 && (
+                <div className="space-y-2">
+                  {suggestedQuestions.map((question, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+                      <span className="text-sm">{question}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSuggestedQuestion(index)}
+                        disabled={isLoading}
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Adicione perguntas que aparecerão como sugestões quando alguém usar este agente.
+            </p>
+          </div>
+
           {currentAgent && (
-            <Card className="bg-accent/50">
+            <Card className="bg-muted/50">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Share className="h-5 w-5" />
