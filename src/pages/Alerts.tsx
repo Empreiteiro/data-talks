@@ -110,6 +110,15 @@ const Alerts = () => {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
+                <Label htmlFor="alert-name">Nome do Alerta</Label>
+                <Input 
+                  id="alert-name"
+                  placeholder="Nome do alerta" 
+                  value={alertName}
+                  onChange={(e) => setAlertName(e.target.value)}
+                />
+              </div>
+              <div>
                 <Label htmlFor="agent-select">Agente</Label>
                 <Select value={agentId} onValueChange={setAgentId}>
                   <SelectTrigger>
@@ -125,15 +134,16 @@ const Alerts = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="alert-name">Nome do Alerta</Label>
+                <Label htmlFor="email">E-mail para notificação</Label>
                 <Input 
-                  id="alert-name"
-                  placeholder="Nome do alerta" 
-                  value={alertName}
-                  onChange={(e) => setAlertName(e.target.value)}
+                  id="email"
+                  type="email" 
+                  placeholder="seu@email.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <Label htmlFor="question">Pergunta/Query</Label>
                 <Input 
                   id="question"
@@ -200,16 +210,6 @@ const Alerts = () => {
                   </Select>
                 </div>
               )}
-              <div>
-                <Label htmlFor="email">E-mail para notificação</Label>
-                <Input 
-                  id="email"
-                  type="email" 
-                  placeholder="seu@email.com" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
               <div className="md:col-span-2">
                 <Button onClick={createAlert} disabled={isCreating}>
                   {isCreating ? "Criando..." : "Criar alerta"}
