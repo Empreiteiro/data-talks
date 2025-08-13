@@ -33,7 +33,18 @@ const Questions = () => {
   const suggestedQuestions = currentAgent?.suggested_questions || [];
 
   async function ask() {
-    alert('Funcionalidade de perguntas será implementada em breve.');
+    if (!question.trim() || !agentId) return;
+
+    try {
+      setQuestion('');
+      const result = await supabaseClient.askQuestion(agentId, question);
+      
+      // Refresh sessions to show the new question
+      queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
+      
+    } catch (error: any) {
+      alert(`Erro: ${error.message}`);
+    }
   }
 
   return (

@@ -59,15 +59,19 @@ const ShareAgent = () => {
     }
   }
 
-  function ask() {
-    if (!agent) return;
-    // TODO: Implement actual question asking for shared agents
-    setLoading(true);
-    setTimeout(() => {
+  async function ask() {
+    if (!agent || !question.trim()) return;
+    
+    try {
+      setLoading(true);
+      const result = await supabaseClient.askQuestion(agent.id, question);
       setQuestion("");
-      setLoading(false);
       setVersion(v => v + 1);
-    }, 400);
+    } catch (error: any) {
+      alert(`Erro: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (agentLoading) {

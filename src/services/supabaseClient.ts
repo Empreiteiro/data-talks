@@ -299,5 +299,31 @@ export const supabaseClient = {
     if (data.error) throw new Error(data.error);
     
     return data;
-  }
+  },
+
+  // Ask question to agent
+  async askQuestion(agentId: string, question: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const response = await fetch(`https://ooimkdueuozjfwadrkkh.supabase.co/functions/v1/ask-question`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vaW1rZHVldW96amZ3YWRya2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDU5MTIsImV4cCI6MjA3MDU4MTkxMn0.SAADBflVutyfV_XDJTrPlpwoHE8yqdJ_GkLp9Tt_ras`,
+      },
+      body: JSON.stringify({
+        agentId,
+        question,
+        userId: user.id,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erro ao processar pergunta');
+    }
+
+    return response.json();
+  },
 };
