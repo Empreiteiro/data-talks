@@ -135,38 +135,18 @@ serve(async (req) => {
 
       const headers = { 'x-api-key': langflowApiKey };
       
-      // Get CSV sources for file upload
+      // Get CSV sources and use existing Langflow paths
       const csvSources = sources.filter(s => s.type === 'csv');
-      const uploadedFiles = [];
+      const langflowPaths = [];
       
-      // Upload CSV files to Langflow
+      // Use existing Langflow paths instead of uploading again
       for (const csvSource of csvSources) {
-        const filePath = csvSource.metadata?.file_path;
-        if (filePath) {
-          // Download file from Supabase storage
-          const { data: fileData, error: downloadError } = await supabase.storage
-            .from('data-files')
-            .download(filePath);
-          
-          if (downloadError) {
-            console.error('Error downloading file:', downloadError);
-            continue;
-          }
-          
-          // Upload to Langflow
-          const formData = new FormData();
-          formData.append('file', new Blob([fileData]), csvSource.name);
-          
-          const uploadResponse = await fetch(`${langflowBaseUrl}/api/v2/files`, {
-            method: 'POST',
-            headers,
-            body: formData,
-          });
-          
-          if (uploadResponse.ok) {
-            const uploadResult = await uploadResponse.json();
-            uploadedFiles.push(uploadResult.path);
-          }
+        const langflowPath = csvSource.langflow_path;
+        if (langflowPath) {
+          langflowPaths.push(langflowPath);
+          console.log('Using existing Langflow path:', langflowPath);
+        } else {
+          console.warn('No Langflow path found for source:', csvSource.name);
         }
       }
       
@@ -181,10 +161,10 @@ serve(async (req) => {
         session_id: sessionId,
         tweaks: {
           'File-6hxDL': {
-            path: uploadedFiles.slice(0, 1)
+            path: langflowPaths.slice(0, 1)
           },
           'File-7G3zO': {
-            path: uploadedFiles.slice(0, 1)
+            path: langflowPaths.slice(0, 1)
           },
           'Prompt Template-xmZAC': {
             description: agent.description || '',
