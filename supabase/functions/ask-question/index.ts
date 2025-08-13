@@ -129,11 +129,15 @@ serve(async (req) => {
 
       const metadata = bigquerySource.metadata;
       
-      // Build payload using dynamic metadata from the BigQuery source
+      // Generate session ID like in CSV flow
+      const sessionId = crypto.randomUUID();
+      
+      // Build payload using the same structure as CSV flow
       const payload = {
         output_type: "chat",
-        input_type: "chat", 
+        input_type: "text", // Changed from "chat" to "text" like CSV
         input_value: question,
+        session_id: sessionId,
         tweaks: {
           "Prompt-7HDgb": {
             Schema: metadata.schema || "",
@@ -147,9 +151,6 @@ serve(async (req) => {
         }
       };
 
-      // Add session_id after payload creation like in Python
-      payload.session_id = crypto.randomUUID();
-
       console.log('BigQuery payload:', JSON.stringify(payload, null, 2));
       
       // Construct the complete Langflow API URL as specified
@@ -157,11 +158,13 @@ serve(async (req) => {
       
       console.log('BigQuery API URL:', langflowApiUrl);
       
+      const headers = { 'x-api-key': langflowBigqueryApiKey };
+      
       const langflowResponse = await fetch(langflowApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': langflowBigqueryApiKey
+          ...headers
         },
         body: JSON.stringify(payload),
       });
