@@ -78,13 +78,13 @@ const AgentBriefing = () => {
       setIsLoading(true);
       
       if (isNewAgent) {
-        await supabaseClient.createAgent(name, [selectedSource]);
+        await supabaseClient.createAgent(name, [selectedSource], description);
         toast({
           title: "Agente criado",
           description: "Agente criado com sucesso",
         });
       } else {
-        await supabaseClient.updateAgent(agentId, name, [selectedSource]);
+        await supabaseClient.updateAgent(agentId, name, [selectedSource], description);
         toast({
           title: "Agente atualizado", 
           description: "Agente atualizado com sucesso",

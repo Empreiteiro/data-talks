@@ -32,7 +32,7 @@ export const supabaseClient = {
     return data || [];
   },
 
-  async createAgent(name: string, sourceIds: string[]) {
+  async createAgent(name: string, sourceIds: string[], description?: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -41,6 +41,7 @@ export const supabaseClient = {
       .insert({
         user_id: user.id,
         name,
+        description,
         source_ids: sourceIds
       })
       .select()
@@ -50,11 +51,12 @@ export const supabaseClient = {
     return data;
   },
 
-  async updateAgent(id: string, name: string, sourceIds: string[]) {
+  async updateAgent(id: string, name: string, sourceIds: string[], description?: string) {
     const { data, error } = await supabase
       .from('agents')
       .update({
         name,
+        description,
         source_ids: sourceIds
       })
       .eq('id', id)

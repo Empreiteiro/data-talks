@@ -17,6 +17,7 @@ export type Database = {
       agents: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           name: string
           share_password: string | null
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           share_password?: string | null
@@ -37,6 +39,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           share_password?: string | null
