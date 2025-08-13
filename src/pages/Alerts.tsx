@@ -3,12 +3,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabaseClient } from "@/services/supabaseClient";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const Alerts = () => {
   const [agentId, setAgentId] = useState("");
+  const [alertName, setAlertName] = useState("");
+  const [question, setQuestion] = useState("");
+  const [email, setEmail] = useState("");
+  const [frequency, setFrequency] = useState("daily");
+  const [isCreating, setIsCreating] = useState(false);
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
@@ -25,8 +35,42 @@ const Alerts = () => {
     setAgentId(agents[0].id);
   }
 
-  function create() {
-    alert('Funcionalidade de alertas será implementada em breve.');
+  async function createAlert() {
+    if (!agentId || !alertName || !question || !email) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      await supabaseClient.createAlert(agentId, alertName, question, email, frequency);
+      
+      // Clear form
+      setAlertName("");
+      setQuestion("");
+      setEmail("");
+      setFrequency("daily");
+      
+      // Refresh alerts list
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      
+      toast({
+        title: "Sucesso",
+        description: "Alerta criado com sucesso!"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao criar alerta",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   return (
@@ -51,33 +95,65 @@ const Alerts = () => {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label>Agente</Label>
-                <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background">
-                  {agents.map((a: any) => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
-                </select>
+                <Label htmlFor="agent-select">Agente</Label>
+                <Select value={agentId} onValueChange={setAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um agente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name || `${a.id.slice(0,6)}...`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label>Nome do Alerta</Label>
-                <Input placeholder="Nome do alerta" />
+                <Label htmlFor="alert-name">Nome do Alerta</Label>
+                <Input 
+                  id="alert-name"
+                  placeholder="Nome do alerta" 
+                  value={alertName}
+                  onChange={(e) => setAlertName(e.target.value)}
+                />
               </div>
               <div className="md:col-span-2">
-                <Label>Pergunta/Query</Label>
-                <Input placeholder="Qual pergunta ou condição monitorar?" />
+                <Label htmlFor="question">Pergunta/Query</Label>
+                <Input 
+                  id="question"
+                  placeholder="Qual pergunta ou condição monitorar?" 
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                />
               </div>
               <div>
-                <Label>Frequência</Label>
-                <select className="w-full border rounded-md px-3 py-2 bg-background">
-                  <option value="daily">Diário</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="monthly">Mensal</option>
-                </select>
+                <Label htmlFor="frequency">Frequência</Label>
+                <Select value={frequency} onValueChange={setFrequency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Diário</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label>E-mail para notificação</Label>
-                <Input type="email" placeholder="seu@email.com" />
+                <Label htmlFor="email">E-mail para notificação</Label>
+                <Input 
+                  id="email"
+                  type="email" 
+                  placeholder="seu@email.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
               <div className="md:col-span-2">
-                <Button onClick={create}>Criar alerta</Button>
+                <Button onClick={createAlert} disabled={isCreating}>
+                  {isCreating ? "Criando..." : "Criar alerta"}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -95,11 +171,35 @@ const Alerts = () => {
               alerts.map((a: any) => (
                 <Card key={a.id} className="shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base">{a.name} · <span className="text-muted-foreground">{a.frequency}</span></CardTitle>
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <span>{a.name} · <span className="text-muted-foreground">{a.frequency}</span></span>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => supabaseClient.deleteAlert(a.id).then(() => {
+                          queryClient.invalidateQueries({ queryKey: ['alerts'] });
+                          toast({
+                            title: "Sucesso", 
+                            description: "Alerta removido"
+                          });
+                        })}
+                      >
+                        Remover
+                      </Button>
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex items-center justify-between gap-4">
+                  <CardContent className="space-y-2">
+                    <div className="text-sm">
+                      <strong>Pergunta:</strong> {a.question}
+                    </div>
+                    <div className="text-sm">
+                      <strong>Email:</strong> {a.email}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Criado em: {new Date(a.created_at).toLocaleString('pt-BR')}
+                      {a.next_run && (
+                        <span> · Próxima execução: {new Date(a.next_run).toLocaleString('pt-BR')}</span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

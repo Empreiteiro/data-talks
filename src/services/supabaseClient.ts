@@ -197,6 +197,42 @@ export const supabaseClient = {
     if (error) throw error;
   },
 
+  async createAlert(agentId: string, name: string, question: string, email: string, frequency: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Calculate next run date based on frequency
+    const nextRun = new Date();
+    switch (frequency) {
+      case 'daily':
+        nextRun.setDate(nextRun.getDate() + 1);
+        break;
+      case 'weekly':
+        nextRun.setDate(nextRun.getDate() + 7);
+        break;
+      case 'monthly':
+        nextRun.setMonth(nextRun.getMonth() + 1);
+        break;
+    }
+
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert({
+        user_id: user.id,
+        agent_id: agentId,
+        name,
+        question,
+        email,
+        frequency,
+        next_run: nextRun.toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
   // File uploads
   async uploadFile(file: File) {
     const { data: { user } } = await supabase.auth.getUser();
