@@ -2,9 +2,10 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const langflowBigqueryEndpoint = Deno.env.get('LANGFLOW_BIGQUERY_ENDPOINT');
+const langflowCsvEndpoint = Deno.env.get('LANGFLOW_CSV_ENDPOINT');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,7 +45,7 @@ serve(async (req) => {
       );
     }
 
-    // Get source information
+    // Get source information to determine agent type
     const { data: sources, error: sourcesError } = await supabase
       .from('sources')
       .select('*')
@@ -57,86 +58,40 @@ serve(async (req) => {
       );
     }
 
-    // Build context from sources
-    let context = '';
-    let hasTableData = false;
-    let sampleData: any[] = [];
+    // Determine which Langflow endpoint to use based on source types
+    const sourceTypes = sources.map(s => s.type);
+    const isBigquery = sourceTypes.includes('bigquery');
+    const endpoint = isBigquery ? langflowBigqueryEndpoint : langflowCsvEndpoint;
 
-    for (const source of sources) {
-      context += `Fonte: ${source.name}\n`;
-      context += `Tipo: ${source.type}\n`;
-      
-      if (source.metadata) {
-        if (source.type === 'csv' && source.metadata.columns) {
-          context += `Colunas: ${source.metadata.columns.join(', ')}\n`;
-          context += `Total de linhas: ${source.metadata.row_count}\n`;
-          if (source.metadata.preview_rows) {
-            context += `Exemplos de dados:\n${JSON.stringify(source.metadata.preview_rows.slice(0, 3), null, 2)}\n`;
-            sampleData = source.metadata.preview_rows;
-            hasTableData = true;
-          }
-        } else if (source.type === 'bigquery' && source.metadata.table_infos) {
-          for (const tableInfo of source.metadata.table_infos) {
-            context += `Tabela: ${tableInfo.table_name}\n`;
-            context += `Colunas: ${tableInfo.columns.join(', ')}\n`;
-            context += `Total de linhas: ${tableInfo.row_count}\n`;
-            if (tableInfo.preview_rows) {
-              context += `Exemplos de dados:\n${JSON.stringify(tableInfo.preview_rows.slice(0, 3), null, 2)}\n`;
-              sampleData = tableInfo.preview_rows;
-              hasTableData = true;
-            }
-          }
-        }
-      }
-      context += '\n';
+    if (!endpoint) {
+      return new Response(
+        JSON.stringify({ error: 'Langflow endpoint not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Create AI prompt
-    const systemPrompt = `Você é um assistente de análise de dados especializado em responder perguntas sobre conjuntos de dados.
-
-Contexto dos dados disponíveis:
-${context}
-
-INSTRUÇÕES IMPORTANTES:
-- Responda APENAS com base nos dados fornecidos no contexto
-- Se a pergunta não puder ser respondida com os dados disponíveis, informe isso claramente
-- Seja preciso e conciso em suas respostas
-- Se possível, forneça exemplos específicos dos dados
-- Para perguntas numéricas, tente fornecer valores aproximados baseados nos dados de exemplo
-- Use linguagem clara e profissional em português brasileiro`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Send question to Langflow agent
+    const langflowResponse = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question }
-        ],
-        temperature: 0.1,
+        input_value: question,
+        tweaks: {}
       }),
     });
 
-    const aiData = await response.json();
+    const langflowData = await langflowResponse.json();
     
-    if (!response.ok) {
-      console.error('OpenAI API error:', aiData);
-      throw new Error('Erro na API do OpenAI');
+    if (!langflowResponse.ok) {
+      console.error('Langflow API error:', langflowData);
+      throw new Error('Erro na API do Langflow');
     }
 
-    const answer = aiData.choices[0].message.content;
+    const answer = langflowData.outputs?.[0]?.outputs?.[0]?.results?.message?.text || 'Resposta não disponível';
+    const imageUrl = langflowData.outputs?.[0]?.outputs?.[0]?.results?.image_url || null;
     const latency = Date.now() - startTime;
-
-    // Filter sample data based on the question to provide relevant table data
-    let tableData = null;
-    if (hasTableData && sampleData.length > 0) {
-      // Show up to 10 sample rows for context
-      tableData = sampleData.slice(0, 10);
-    }
 
     // Save QA session to database
     const { data: qaSession, error: qaError } = await supabase
@@ -147,7 +102,7 @@ INSTRUÇÕES IMPORTANTES:
         question,
         answer,
         latency,
-        table_data: tableData,
+        table_data: imageUrl ? { image_url: imageUrl } : null,
         status: 'completed'
       })
       .select()
@@ -160,7 +115,7 @@ INSTRUÇÕES IMPORTANTES:
     return new Response(
       JSON.stringify({
         answer,
-        tableData,
+        imageUrl,
         latency,
         sessionId: qaSession?.id
       }),

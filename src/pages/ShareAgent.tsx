@@ -163,6 +163,15 @@ const ShareAgent = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p>{h.answerText}</p>
+                  {h.imageUrl && (
+                    <div className="mt-4">
+                      <img 
+                        src={h.imageUrl} 
+                        alt="Resultado da análise" 
+                        className="max-w-full h-auto rounded-lg shadow-sm"
+                      />
+                    </div>
+                  )}
                   {h.answerTableJSON && (
                     <div className="overflow-x-auto">
                       <Table>

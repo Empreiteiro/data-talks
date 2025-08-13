@@ -112,7 +112,16 @@ const Questions = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p>{h.answer || 'Resposta não disponível'}</p>
-                    {h.table_data && (
+                    {h.table_data?.image_url && (
+                      <div className="mt-4">
+                        <img 
+                          src={h.table_data.image_url} 
+                          alt="Resultado da análise" 
+                          className="max-w-full h-auto rounded-lg shadow-sm"
+                        />
+                      </div>
+                    )}
+                    {h.table_data && !h.table_data.image_url && Array.isArray(h.table_data) && (
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
