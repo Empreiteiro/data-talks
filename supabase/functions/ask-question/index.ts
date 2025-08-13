@@ -160,7 +160,6 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${langflowBigqueryApiKey}`,
           'x-api-key': langflowBigqueryApiKey
         },
         body: JSON.stringify(payload),
