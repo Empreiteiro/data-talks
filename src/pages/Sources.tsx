@@ -201,6 +201,41 @@ const Sources = () => {
                   
                   {s.metadata && (
                     <div className="space-y-3">
+                      {/* Langflow integration info */}
+                      {(s.langflow_path || s.langflow_name) && (
+                        <div className="border rounded-lg p-3 bg-muted/30">
+                          <div className="text-sm font-medium mb-2 text-primary">
+                            Integração Langflow
+                          </div>
+                          {s.langflow_name && (
+                            <div className="text-sm">
+                              <span className="font-medium">Nome no Langflow:</span> {s.langflow_name}
+                            </div>
+                          )}
+                          {s.langflow_path && (
+                            <div className="text-sm">
+                              <span className="font-medium">Caminho:</span> 
+                              <code className="ml-1 px-1 py-0.5 bg-background rounded text-xs">
+                                {s.langflow_path}
+                              </code>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {!s.langflow_path && !s.langflow_name && s.type !== 'bigquery' && (
+                        <div className="border rounded-lg p-3 bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800">
+                          <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                            <span className="font-medium">Aviso:</span> Arquivo não foi carregado no Langflow
+                          </div>
+                        </div>
+                      )}
+                      
+                    </div>
+                  )}
+                  
+                  {s.metadata && (
+                    <div className="space-y-3">
                       {/* CSV/Excel file info */}
                       {s.type !== 'bigquery' && s.metadata.row_count > 0 && (
                         <div className="text-sm">
