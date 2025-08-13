@@ -160,6 +160,7 @@ serve(async (req) => {
       const langflowResponse = await fetch(langflowApiUrl, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'x-api-key': langflowBigqueryApiKey
         },
         body: JSON.stringify(payload),
