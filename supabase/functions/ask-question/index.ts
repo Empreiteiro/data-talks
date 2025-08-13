@@ -2,8 +2,10 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
+const langflowBaseUrl = Deno.env.get('LANGFLOW_BASE_URL');
+const langflowCsvFlowId = Deno.env.get('LANGFLOW_CSV_FLOW_ID');
 const langflowBigqueryEndpoint = Deno.env.get('LANGFLOW_BIGQUERY_ENDPOINT');
-const langflowCsvEndpoint = Deno.env.get('LANGFLOW_CSV_ENDPOINT');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
@@ -58,35 +60,122 @@ serve(async (req) => {
       );
     }
 
-    // Determine which Langflow endpoint to use based on source types
+    // Determine which Langflow flow to use based on source types
     const sourceTypes = sources.map(s => s.type);
     const isBigquery = sourceTypes.includes('bigquery');
-    const endpoint = isBigquery ? langflowBigqueryEndpoint : langflowCsvEndpoint;
-
-    if (!endpoint) {
-      return new Response(
-        JSON.stringify({ error: 'Langflow endpoint not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Send question to Langflow agent
-    const langflowResponse = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        input_value: question,
-        tweaks: {}
-      }),
-    });
-
-    const langflowData = await langflowResponse.json();
     
-    if (!langflowResponse.ok) {
-      console.error('Langflow API error:', langflowData);
-      throw new Error('Erro na API do Langflow');
+    let langflowData;
+    
+    if (isBigquery) {
+      // Handle BigQuery flow
+      if (!langflowBigqueryEndpoint) {
+        return new Response(
+          JSON.stringify({ error: 'Langflow BigQuery endpoint not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const langflowResponse = await fetch(langflowBigqueryEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input_value: question,
+          tweaks: {}
+        }),
+      });
+      
+      langflowData = await langflowResponse.json();
+      
+      if (!langflowResponse.ok) {
+        console.error('Langflow BigQuery API error:', langflowData);
+        throw new Error('Erro na API do Langflow BigQuery');
+      }
+    } else {
+      // Handle CSV flow with file upload
+      if (!langflowApiKey || !langflowBaseUrl || !langflowCsvFlowId) {
+        return new Response(
+          JSON.stringify({ error: 'Langflow CSV configuration not complete' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const headers = { 'x-api-key': langflowApiKey };
+      
+      // Get CSV sources for file upload
+      const csvSources = sources.filter(s => s.type === 'csv');
+      const uploadedFiles = [];
+      
+      // Upload CSV files to Langflow
+      for (const csvSource of csvSources) {
+        const filePath = csvSource.metadata?.file_path;
+        if (filePath) {
+          // Download file from Supabase storage
+          const { data: fileData, error: downloadError } = await supabase.storage
+            .from('data-files')
+            .download(filePath);
+          
+          if (downloadError) {
+            console.error('Error downloading file:', downloadError);
+            continue;
+          }
+          
+          // Upload to Langflow
+          const formData = new FormData();
+          formData.append('file', new Blob([fileData]), csvSource.name);
+          
+          const uploadResponse = await fetch(`${langflowBaseUrl}/api/v2/files`, {
+            method: 'POST',
+            headers,
+            body: formData,
+          });
+          
+          if (uploadResponse.ok) {
+            const uploadResult = await uploadResponse.json();
+            uploadedFiles.push(uploadResult.path);
+          }
+        }
+      }
+      
+      // Generate session ID
+      const sessionId = crypto.randomUUID();
+      
+      // Execute CSV flow
+      const payload = {
+        output_type: 'chat',
+        input_type: 'text',
+        input_value: question,
+        session_id: sessionId,
+        tweaks: {
+          'File-6hxDL': {
+            path: uploadedFiles.slice(0, 1)
+          },
+          'File-7G3zO': {
+            path: uploadedFiles.slice(0, 1)
+          },
+          'Prompt Template-xmZAC': {
+            description: '',
+            question: ''
+          }
+        }
+      };
+      
+      const langflowResponse = await fetch(`${langflowBaseUrl}/api/v1/run/${langflowCsvFlowId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      langflowData = await langflowResponse.json();
+      
+      if (!langflowResponse.ok) {
+        console.error('Langflow CSV API error:', langflowData);
+        throw new Error('Erro na API do Langflow CSV');
+      }
     }
 
     const answer = langflowData.outputs?.[0]?.outputs?.[0]?.results?.message?.text || 'Resposta não disponível';
