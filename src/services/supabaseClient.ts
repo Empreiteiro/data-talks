@@ -161,6 +161,16 @@ export const supabaseClient = {
     if (error) throw error;
   },
 
+  // Update QA session feedback
+  async updateQASessionFeedback(id: string, feedback: 'positive' | 'negative') {
+    const { error } = await supabase
+      .from('qa_sessions')
+      .update({ feedback })
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
   // Alerts
   async listAlerts(agentId?: string) {
     let query = supabase

@@ -51,6 +51,15 @@ const Questions = () => {
     }
   }
 
+  async function updateFeedback(sessionId: string, feedback: 'positive' | 'negative') {
+    try {
+      await supabaseClient.updateQASessionFeedback(sessionId, feedback);
+      queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
+    } catch (error: any) {
+      alert(`Erro ao salvar feedback: ${error.message}`);
+    }
+  }
+
   return (
     <main className="container py-10">
       <SEO title="Perguntas | Converse com seus dados" description="Faça perguntas em linguagem natural" canonical="/questions" />
@@ -164,10 +173,20 @@ const Questions = () => {
                     )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" aria-label="Feedback positivo">
+                        <Button 
+                          variant={h.feedback === 'positive' ? 'default' : 'ghost'} 
+                          size="sm" 
+                          aria-label="Feedback positivo"
+                          onClick={() => updateFeedback(h.id, 'positive')}
+                        >
                           <ThumbsUp />
                         </Button>
-                        <Button variant="ghost" size="sm" aria-label="Feedback negativo">
+                        <Button 
+                          variant={h.feedback === 'negative' ? 'default' : 'ghost'} 
+                          size="sm" 
+                          aria-label="Feedback negativo"
+                          onClick={() => updateFeedback(h.id, 'negative')}
+                        >
                           <ThumbsDown />
                         </Button>
                       </div>
