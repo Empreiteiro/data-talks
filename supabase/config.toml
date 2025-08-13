@@ -1,1 +1,4 @@
 project_id = "ooimkdueuozjfwadrkkh"
+
+[functions.upload-to-langflow]
+verify_jwt = true

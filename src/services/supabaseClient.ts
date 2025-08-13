@@ -295,6 +295,33 @@ export const supabaseClient = {
     
     fileInfo.file_path = data.path;
     
+    // Upload to Langflow
+    let langflowPath = null;
+    let langflowName = null;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
+        'upload-to-langflow',
+        {
+          body: formData,
+        }
+      );
+
+      if (langflowError) {
+        console.error('Langflow upload error:', langflowError);
+      } else if (langflowData) {
+        langflowPath = langflowData.path;
+        langflowName = langflowData.name;
+        console.log('File uploaded to Langflow:', { path: langflowPath, name: langflowName });
+      }
+    } catch (error) {
+      console.error('Error uploading to Langflow:', error);
+      // Continue with source creation even if Langflow upload fails
+    }
+    
     // Create source record
     const { data: source, error: sourceError } = await supabase
       .from('sources')
@@ -302,6 +329,8 @@ export const supabaseClient = {
         user_id: user.id,
         name: file.name,
         type: fileExt === 'csv' ? 'csv' : 'xlsx',
+        langflow_path: langflowPath,
+        langflow_name: langflowName,
         metadata: fileInfo
       })
       .select()
