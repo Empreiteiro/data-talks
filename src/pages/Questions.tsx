@@ -28,6 +28,10 @@ const Questions = () => {
     setAgentId(agents[0].id);
   }
 
+  // Get current agent's suggested questions
+  const currentAgent = agents.find(a => a.id === agentId);
+  const suggestedQuestions = currentAgent?.suggested_questions || [];
+
   async function ask() {
     alert('Funcionalidade de perguntas será implementada em breve.');
   }
@@ -59,6 +63,25 @@ const Questions = () => {
               <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
               <Button onClick={ask} disabled={!question}>Perguntar</Button>
             </div>
+            
+            {suggestedQuestions.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Perguntas sugeridas</label>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedQuestions.map((suggestedQuestion, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuestion(suggestedQuestion)}
+                      className="text-sm"
+                    >
+                      {suggestedQuestion}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-6">

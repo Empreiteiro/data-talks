@@ -20,6 +20,9 @@ const ShareAgent = () => {
   const [version, setVersion] = useState(0);
 
   const history = useMemo(() => [], [agent, version]); // TODO: Implement history for shared agents
+  
+  // Get suggested questions from agent
+  const suggestedQuestions = agent?.suggested_questions || [];
 
   useEffect(() => {
     async function loadAgent() {
@@ -121,9 +124,30 @@ const ShareAgent = () => {
             <CardHeader>
               <CardTitle>Fazer pergunta</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
-              <Button onClick={ask} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
+                <Button onClick={ask} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
+              </div>
+              
+              {suggestedQuestions.length > 0 && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Perguntas sugeridas</label>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedQuestions.map((suggestedQuestion, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setQuestion(suggestedQuestion)}
+                        className="text-sm"
+                      >
+                        {suggestedQuestion}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
