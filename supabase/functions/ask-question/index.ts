@@ -102,7 +102,16 @@ serve(async (req) => {
     
     if (isBigquery) {
       // Handle BigQuery flow
+      console.log('BigQuery API key present:', !!langflowBigqueryApiKey);
+      console.log('BigQuery URL present:', !!langflowBigqueryUrl);
+      console.log('BigQuery Flow ID present:', !!langflowBigqueryFlowId);
+      
       if (!langflowBigqueryApiKey || !langflowBigqueryUrl || !langflowBigqueryFlowId) {
+        console.error('Missing BigQuery configuration:', {
+          hasApiKey: !!langflowBigqueryApiKey,
+          hasUrl: !!langflowBigqueryUrl,
+          hasFlowId: !!langflowBigqueryFlowId
+        });
         return new Response(
           JSON.stringify({ error: 'Langflow BigQuery configuration not complete' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
