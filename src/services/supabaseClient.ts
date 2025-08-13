@@ -386,12 +386,47 @@ export const supabaseClient = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Create a file from the credentials string to upload to Langflow
+    const credentialsBlob = new Blob([credentials], { type: 'application/json' });
+    const credentialsFile = new File([credentialsBlob], `${projectId}-${datasetId}-credentials.json`, {
+      type: 'application/json'
+    });
+
+    // Upload credentials to Langflow
+    let langflowPath = null;
+    let langflowName = null;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', credentialsFile);
+      
+      const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
+        'upload-to-langflow',
+        {
+          body: formData,
+        }
+      );
+
+      if (langflowError) {
+        console.error('Langflow upload error:', langflowError);
+      } else if (langflowData) {
+        langflowPath = langflowData.path;
+        langflowName = langflowData.name;
+        console.log('BigQuery credentials uploaded to Langflow:', { path: langflowPath, name: langflowName });
+      }
+    } catch (error) {
+      console.error('Error uploading BigQuery credentials to Langflow:', error);
+      // Continue with BigQuery connection even if Langflow upload fails
+    }
+
     const { data, error } = await supabase.functions.invoke('bigquery-connect', {
       body: {
         credentials,
         projectId,
         datasetId,
-        tables
+        tables,
+        langflowPath,
+        langflowName
       }
     });
 

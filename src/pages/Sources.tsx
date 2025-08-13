@@ -215,9 +215,9 @@ const Sources = () => {
                           {s.langflow_path && (
                             <div className="text-sm">
                               <span className="font-medium">Caminho:</span> 
-                              <code className="ml-1 px-1 py-0.5 bg-background rounded text-xs">
+                              <span className="ml-1 font-mono text-xs text-muted-foreground">
                                 {s.langflow_path}
-                              </code>
+                              </span>
                             </div>
                           )}
                         </div>

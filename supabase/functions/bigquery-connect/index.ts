@@ -11,6 +11,8 @@ interface BigQueryRequest {
   projectId: string;
   datasetId: string;
   tables: string[];
+  langflowPath?: string;
+  langflowName?: string;
 }
 
 serve(async (req) => {
@@ -40,8 +42,8 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id)
 
-    const { credentials, projectId, datasetId, tables } = await req.json() as BigQueryRequest
-    console.log('Request data:', { projectId, datasetId, tables: tables.length })
+    const { credentials, projectId, datasetId, tables, langflowPath, langflowName } = await req.json() as BigQueryRequest
+    console.log('Request data:', { projectId, datasetId, tables: tables.length, langflowPath, langflowName })
 
     // Parse and validate credentials
     let credentialsObj
@@ -172,6 +174,8 @@ serve(async (req) => {
         user_id: user.id,
         name: `BigQuery: ${projectId}.${datasetId}`,
         type: 'bigquery',
+        langflow_path: langflowPath || null,
+        langflow_name: langflowName || null,
         metadata: {
           project_id: projectId,
           dataset_id: datasetId,
