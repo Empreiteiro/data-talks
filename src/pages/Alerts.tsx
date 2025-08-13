@@ -15,6 +15,9 @@ const Alerts = () => {
   const [question, setQuestion] = useState("");
   const [email, setEmail] = useState("");
   const [frequency, setFrequency] = useState("daily");
+  const [executionTime, setExecutionTime] = useState("09:00");
+  const [dayOfWeek, setDayOfWeek] = useState(1); // Monday
+  const [dayOfMonth, setDayOfMonth] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   
   const { toast } = useToast();
@@ -47,13 +50,25 @@ const Alerts = () => {
     
     try {
       setIsCreating(true);
-      await supabaseClient.createAlert(agentId, alertName, question, email, frequency);
+      await supabaseClient.createAlert(
+        agentId, 
+        alertName, 
+        question, 
+        email, 
+        frequency,
+        executionTime,
+        frequency === 'weekly' ? dayOfWeek : undefined,
+        frequency === 'monthly' ? dayOfMonth : undefined
+      );
       
       // Clear form
       setAlertName("");
       setQuestion("");
       setEmail("");
       setFrequency("daily");
+      setExecutionTime("09:00");
+      setDayOfWeek(1);
+      setDayOfMonth(1);
       
       // Refresh alerts list
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
@@ -141,6 +156,51 @@ const Alerts = () => {
                 </Select>
               </div>
               <div>
+                <Label htmlFor="execution-time">Horário de Execução</Label>
+                <Input 
+                  id="execution-time"
+                  type="time" 
+                  value={executionTime}
+                  onChange={(e) => setExecutionTime(e.target.value)}
+                />
+              </div>
+              {frequency === 'weekly' && (
+                <div>
+                  <Label htmlFor="day-of-week">Dia da Semana</Label>
+                  <Select value={dayOfWeek.toString()} onValueChange={(value) => setDayOfWeek(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Domingo</SelectItem>
+                      <SelectItem value="1">Segunda-feira</SelectItem>
+                      <SelectItem value="2">Terça-feira</SelectItem>
+                      <SelectItem value="3">Quarta-feira</SelectItem>
+                      <SelectItem value="4">Quinta-feira</SelectItem>
+                      <SelectItem value="5">Sexta-feira</SelectItem>
+                      <SelectItem value="6">Sábado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {frequency === 'monthly' && (
+                <div>
+                  <Label htmlFor="day-of-month">Dia do Mês</Label>
+                  <Select value={dayOfMonth.toString()} onValueChange={(value) => setDayOfMonth(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
                 <Label htmlFor="email">E-mail para notificação</Label>
                 <Input 
                   id="email"
@@ -194,6 +254,16 @@ const Alerts = () => {
                     </div>
                     <div className="text-sm">
                       <strong>Email:</strong> {a.email}
+                    </div>
+                    <div className="text-sm">
+                      <strong>Agendamento:</strong> {a.frequency === 'daily' ? 'Diário' : 
+                        a.frequency === 'weekly' ? 'Semanal' : 'Mensal'} às {a.execution_time || '09:00'}
+                      {a.frequency === 'weekly' && a.day_of_week !== null && (
+                        <span> - {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][a.day_of_week]}</span>
+                      )}
+                      {a.frequency === 'monthly' && a.day_of_month && (
+                        <span> - Dia {a.day_of_month}</span>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Criado em: {new Date(a.created_at).toLocaleString('pt-BR')}

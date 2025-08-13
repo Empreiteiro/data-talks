@@ -57,7 +57,10 @@ export type Database = {
         Row: {
           agent_id: string
           created_at: string
+          day_of_month: number | null
+          day_of_week: number | null
           email: string
+          execution_time: string | null
           frequency: string
           id: string
           name: string
@@ -68,7 +71,10 @@ export type Database = {
         Insert: {
           agent_id: string
           created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
           email: string
+          execution_time?: string | null
           frequency: string
           id?: string
           name: string
@@ -79,7 +85,10 @@ export type Database = {
         Update: {
           agent_id?: string
           created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
           email?: string
+          execution_time?: string | null
           frequency?: string
           id?: string
           name?: string

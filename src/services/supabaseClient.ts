@@ -197,21 +197,43 @@ export const supabaseClient = {
     if (error) throw error;
   },
 
-  async createAlert(agentId: string, name: string, question: string, email: string, frequency: string) {
+  async createAlert(
+    agentId: string, 
+    name: string, 
+    question: string, 
+    email: string, 
+    frequency: string,
+    executionTime: string,
+    dayOfWeek?: number,
+    dayOfMonth?: number
+  ) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Calculate next run date based on frequency
+    // Calculate next run date based on frequency and timing
     const nextRun = new Date();
+    const [hours, minutes] = executionTime.split(':').map(Number);
+    
     switch (frequency) {
       case 'daily':
         nextRun.setDate(nextRun.getDate() + 1);
+        nextRun.setHours(hours, minutes, 0, 0);
         break;
       case 'weekly':
-        nextRun.setDate(nextRun.getDate() + 7);
+        // Set to next occurrence of specified day of week
+        const daysUntilTarget = (dayOfWeek! - nextRun.getDay() + 7) % 7;
+        nextRun.setDate(nextRun.getDate() + (daysUntilTarget || 7));
+        nextRun.setHours(hours, minutes, 0, 0);
         break;
       case 'monthly':
-        nextRun.setMonth(nextRun.getMonth() + 1);
+        // Set to next occurrence of specified day of month
+        const currentDay = nextRun.getDate();
+        if (currentDay < dayOfMonth!) {
+          nextRun.setDate(dayOfMonth!);
+        } else {
+          nextRun.setMonth(nextRun.getMonth() + 1, dayOfMonth!);
+        }
+        nextRun.setHours(hours, minutes, 0, 0);
         break;
     }
 
@@ -224,6 +246,9 @@ export const supabaseClient = {
         question,
         email,
         frequency,
+        execution_time: executionTime,
+        day_of_week: dayOfWeek,
+        day_of_month: dayOfMonth,
         next_run: nextRun.toISOString()
       })
       .select()
