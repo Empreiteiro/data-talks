@@ -142,7 +142,7 @@ serve(async (req) => {
 
       console.log('BigQuery payload:', JSON.stringify(payload, null, 2));
       
-      const langflowResponse = await fetch(`${langflowBigqueryUrl}/api/v1/run/${langflowBigqueryFlowId}`, {
+      const langflowResponse = await fetch(`${langflowBigqueryUrl}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
