@@ -161,10 +161,10 @@ serve(async (req) => {
         session_id: sessionId,
         tweaks: {
           'File-6hxDL': {
-            path: langflowPaths.slice(0, 1)
+            path: langflowPaths[0]
           },
           'File-7G3zO': {
-            path: langflowPaths.slice(0, 1)
+            path: langflowPaths[0]
           },
           'Prompt Template-xmZAC': {
             description: agent.description || '',
