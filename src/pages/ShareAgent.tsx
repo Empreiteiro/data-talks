@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { agentClient } from "@/services/agentClient";
-import { useMemo, useState } from "react";
+import { supabaseClient } from "@/services/supabaseClient";
+import { useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 
 const ShareAgent = () => {
   const { token = "" } = useParams();
-  const agent = useMemo(() => agentClient.getAgentByShareToken(token), [token]);
+  const [agent, setAgent] = useState<any>(null);
+  const [agentLoading, setAgentLoading] = useState(true);
   const [password, setPassword] = useState("");
   const [authorized, setAuthorized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,28 +19,65 @@ const ShareAgent = () => {
   const [loading, setLoading] = useState(false);
   const [version, setVersion] = useState(0);
 
-  const history = useMemo(() => agent ? agentClient.listHistory(agent.id) : [], [agent, version]);
+  const history = useMemo(() => [], [agent, version]); // TODO: Implement history for shared agents
 
-  function access() {
+  useEffect(() => {
+    async function loadAgent() {
+      try {
+        setAgentLoading(true);
+        const agentData = await supabaseClient.getSharedAgent(token);
+        setAgent(agentData);
+      } catch (error) {
+        console.error('Error loading shared agent:', error);
+        setAgent(null);
+      } finally {
+        setAgentLoading(false);
+      }
+    }
+
+    if (token) {
+      loadAgent();
+    }
+  }, [token]);
+
+  async function access() {
     if (!agent) return;
-    const ok = agentClient.verifySharePassword(agent.id, password);
-    if (ok) {
-      setAuthorized(true);
+    
+    try {
       setError(null);
-    } else {
-      setError("Senha incorreta. Tente novamente.");
+      const isValid = await supabaseClient.verifyAgentSharePassword(token, password);
+      if (isValid) {
+        setAuthorized(true);
+      } else {
+        setError("Senha incorreta. Tente novamente.");
+      }
+    } catch (error) {
+      setError("Erro ao verificar senha. Tente novamente.");
     }
   }
 
   function ask() {
     if (!agent) return;
+    // TODO: Implement actual question asking for shared agents
     setLoading(true);
     setTimeout(() => {
-      agentClient.ask(agent.id, question);
       setQuestion("");
       setLoading(false);
       setVersion(v => v + 1);
     }, 400);
+  }
+
+  if (agentLoading) {
+    return (
+      <main className="container py-10">
+        <SEO title="Carregando... | Converse com seus dados" description="Carregando agente compartilhado" canonical={`/share/${token}`} />
+        <Card className="shadow-sm">
+          <CardContent className="py-10">
+            <p className="text-center text-muted-foreground">Carregando agente...</p>
+          </CardContent>
+        </Card>
+      </main>
+    );
   }
 
   if (!agent) {
@@ -63,7 +101,7 @@ const ShareAgent = () => {
       <SEO title={`${agent.name || 'Agente compartilhado'} | Converse com seus dados`} description="Acesse um agente compartilhado com senha" canonical={`/share/${token}`} />
       <h1 className="text-3xl font-semibold mb-6">Acesso ao agente: <span className="text-muted-foreground">{agent.name || agent.id.slice(0,6) + '...'}</span></h1>
 
-      {!authorized ? (
+      {agent.has_password && !authorized ? (
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Acesso protegido</CardTitle>

@@ -76,6 +76,63 @@ export const supabaseClient = {
     if (error) throw error;
   },
 
+  async toggleAgentSharing(id: string, enabled: boolean, password?: string) {
+    const updateData: any = {};
+    
+    if (enabled) {
+      // Generate share token if enabling
+      updateData.share_token = crypto.randomUUID();
+      updateData.share_password = password || null;
+    } else {
+      // Clear sharing data if disabling
+      updateData.share_token = null;
+      updateData.share_password = null;
+    }
+
+    const { data, error } = await supabase
+      .from('agents')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async updateAgentSharePassword(id: string, password?: string) {
+    const { data, error } = await supabase
+      .from('agents')
+      .update({
+        share_password: password || null
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async getSharedAgent(token: string) {
+    const { data, error } = await supabase
+      .rpc('get_shared_agent_safe_fields', { token_value: token });
+    
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  async verifyAgentSharePassword(token: string, password: string) {
+    const { data, error } = await supabase
+      .rpc('verify_agent_share_password', { 
+        token_value: token, 
+        password_attempt: password 
+      });
+    
+    if (error) throw error;
+    return data;
+  },
+
   // QA Sessions
   async listQASessions(agentId?: string) {
     let query = supabase

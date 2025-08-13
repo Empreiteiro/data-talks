@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Save, Plus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Trash2, Save, Plus, Share, Eye, EyeOff } from "lucide-react";
 import { supabaseClient } from "@/services/supabaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +20,9 @@ const AgentBriefing = () => {
   const [description, setDescription] = useState("");
   const [selectedSource, setSelectedSource] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [shareEnabled, setShareEnabled] = useState(false);
+  const [sharePassword, setSharePassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const {
     data: sources = []
   } = useQuery({
@@ -33,7 +36,7 @@ const AgentBriefing = () => {
     queryFn: () => supabaseClient.listAgents()
   });
   const currentAgent = useMemo(() => agentId ? agents.find(a => a.id === agentId) : undefined, [agentId, agents]);
-  const shareLink = useMemo(() => currentAgent ? `${window.location.origin}/share/${currentAgent.share_token}` : "", [currentAgent]);
+  const shareLink = useMemo(() => currentAgent?.share_token ? `${window.location.origin}/share/${currentAgent.share_token}` : "", [currentAgent?.share_token]);
   const isNewAgent = !agentId;
   const canSave = name.trim().length > 0 && selectedSource.length > 0;
   useEffect(() => {
@@ -41,10 +44,14 @@ const AgentBriefing = () => {
       setName(currentAgent.name || "");
       setDescription(currentAgent.description || "");
       setSelectedSource(currentAgent.source_ids?.[0] || "");
+      setShareEnabled(!!currentAgent.share_token);
+      setSharePassword(currentAgent.share_password || "");
     } else {
       setName("");
       setDescription("");
       setSelectedSource("");
+      setShareEnabled(false);
+      setSharePassword("");
     }
   }, [currentAgent]);
   async function deleteAgent() {
@@ -105,6 +112,59 @@ const AgentBriefing = () => {
   function selectSource(sourceId: string) {
     setSelectedSource(sourceId);
   }
+
+  async function toggleSharing(enabled: boolean) {
+    if (!currentAgent) return;
+    
+    try {
+      setIsLoading(true);
+      await supabaseClient.toggleAgentSharing(currentAgent.id, enabled, enabled ? sharePassword : undefined);
+      setShareEnabled(enabled);
+      
+      if (!enabled) {
+        setSharePassword("");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      
+      toast({
+        title: enabled ? "Compartilhamento ativado" : "Compartilhamento desativado",
+        description: enabled ? "Link compartilhável criado com sucesso" : "Link compartilhável removido"
+      });
+    } catch (e: any) {
+      toast({
+        title: "Erro",
+        description: e.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function updateSharePassword() {
+    if (!currentAgent) return;
+    
+    try {
+      setIsLoading(true);
+      await supabaseClient.updateAgentSharePassword(currentAgent.id, sharePassword);
+      
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      
+      toast({
+        title: "Senha atualizada",
+        description: "Senha de compartilhamento atualizada com sucesso"
+      });
+    } catch (e: any) {
+      toast({
+        title: "Erro",
+        description: e.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
   return <main className="container py-10">
       <SEO title="Agente | Converse com seus dados" description="Defina o contexto e ative o agente" canonical="/agent" />
       <h1 className="text-3xl font-semibold mb-6">Briefing do Agente</h1>
@@ -158,21 +218,96 @@ const AgentBriefing = () => {
             </p>
           </div>
 
-          {currentAgent && <div className="space-y-2">
-              <Label>Link compartilhável</Label>
-              <div className="flex items-center gap-2">
-                <Input readOnly value={shareLink} aria-label="Link compartilhável do agente" />
-                <Button type="button" variant="secondary" onClick={() => {
-              navigator.clipboard.writeText(shareLink);
-              toast({
-                title: "Link copiado",
-                description: "Link compartilhável copiado para a área de transferência"
-              });
-            }} disabled={isLoading}>
-                  Copiar
-                </Button>
-              </div>
-            </div>}
+          {currentAgent && (
+            <Card className="bg-accent/50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Share className="h-5 w-5" />
+                  Compartilhamento
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Ativar compartilhamento</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Permite que pessoas externas acessem este agente
+                    </p>
+                  </div>
+                  <Switch
+                    checked={shareEnabled}
+                    onCheckedChange={toggleSharing}
+                    disabled={isLoading}
+                  />
+                </div>
+
+                {shareEnabled && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <Label>Link compartilhável</Label>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          readOnly 
+                          value={shareLink} 
+                          aria-label="Link compartilhável do agente"
+                          className="font-mono text-sm" 
+                        />
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            navigator.clipboard.writeText(shareLink);
+                            toast({
+                              title: "Link copiado",
+                              description: "Link compartilhável copiado para a área de transferência"
+                            });
+                          }} 
+                          disabled={isLoading}
+                        >
+                          Copiar
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Senha de acesso (opcional)</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            value={sharePassword}
+                            onChange={(e) => setSharePassword(e.target.value)}
+                            placeholder="Deixe vazio para acesso público"
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-1 top-1 h-8 w-8 p-0"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={updateSharePassword}
+                          disabled={isLoading}
+                        >
+                          Salvar
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {sharePassword ? "Acesso protegido por senha" : "Acesso público - qualquer pessoa com o link pode acessar"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex gap-2">
             <Button onClick={save} disabled={!canSave || isLoading} className="flex items-center gap-2">
