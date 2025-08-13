@@ -5,7 +5,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
 const langflowBaseUrl = Deno.env.get('LANGFLOW_BASE_URL');
 const langflowCsvFlowId = Deno.env.get('LANGFLOW_CSV_FLOW_ID');
-const langflowBigqueryEndpoint = Deno.env.get('LANGFLOW_BIGQUERY_ENDPOINT');
+const langflowBigqueryApiKey = Deno.env.get('LANGFLOW_BIGQUERY_API_KEY');
+const langflowBigqueryUrl = Deno.env.get('LANGFLOW_BIGQUERY_URL');
+const langflowBigqueryFlowId = Deno.env.get('LANGFLOW_BIGQUERY_FLOW_ID');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
@@ -100,22 +102,53 @@ serve(async (req) => {
     
     if (isBigquery) {
       // Handle BigQuery flow
-      if (!langflowBigqueryEndpoint) {
+      if (!langflowBigqueryApiKey || !langflowBigqueryUrl || !langflowBigqueryFlowId) {
         return new Response(
-          JSON.stringify({ error: 'Langflow BigQuery endpoint not configured' }),
+          JSON.stringify({ error: 'Langflow BigQuery configuration not complete' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // Get BigQuery source metadata
+      const bigquerySource = sources.find(s => s.type === 'bigquery');
+      if (!bigquerySource || !bigquerySource.metadata) {
+        return new Response(
+          JSON.stringify({ error: 'BigQuery source metadata not found' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const metadata = bigquerySource.metadata;
+      const sessionId = crypto.randomUUID();
       
-      const langflowResponse = await fetch(langflowBigqueryEndpoint, {
+      // Build payload based on the Python script structure
+      const payload = {
+        output_type: "chat",
+        input_type: "chat", 
+        input_value: question,
+        session_id: sessionId,
+        tweaks: {
+          "Prompt-7HDgb": {
+            Schema: metadata.schema || metadata.columns?.join(' ') || '',
+            table: metadata.table || '',
+            project: metadata.project || '',
+            dataset: metadata.dataset || ''
+          },
+          "BigQueryExecutor-7eyUr": {
+            service_account_json_file: metadata.service_account_json_file || metadata.credentials_file || ''
+          }
+        }
+      };
+
+      console.log('BigQuery payload:', JSON.stringify(payload, null, 2));
+      
+      const langflowResponse = await fetch(`${langflowBigqueryUrl}/api/v1/run/${langflowBigqueryFlowId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-api-key': langflowBigqueryApiKey
         },
-        body: JSON.stringify({
-          input_value: question,
-          tweaks: {}
-        }),
+        body: JSON.stringify(payload),
       });
       
       langflowData = await langflowResponse.json();
