@@ -155,8 +155,8 @@ serve(async (req) => {
             path: uploadedFiles.slice(0, 1)
           },
           'Prompt Template-xmZAC': {
-            description: '',
-            question: ''
+            description: agent.description || '',
+            question: question
           }
         }
       };
