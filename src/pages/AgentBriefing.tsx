@@ -16,6 +16,7 @@ const AgentBriefing = () => {
   const queryClient = useQueryClient();
   const [agentId, setAgentId] = useState<string>("");
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedSource, setSelectedSource] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -37,9 +38,11 @@ const AgentBriefing = () => {
   useEffect(() => {
     if (currentAgent) {
       setName(currentAgent.name || "");
+      setDescription(currentAgent.description || "");
       setSelectedSource(currentAgent.source_ids?.[0] || "");
     } else {
       setName("");
+      setDescription("");
       setSelectedSource("");
     }
   }, [currentAgent]);
@@ -144,6 +147,17 @@ const AgentBriefing = () => {
               value={name} 
               onChange={(e) => setName(e.target.value)} 
               placeholder="Ex.: Análises de Vendas 2025"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Descrição do agente</Label>
+            <Textarea 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Descreva o propósito e contexto deste agente. Ex.: Este agente tem acesso aos dados de vendas e pode responder perguntas sobre performance, métricas e análises de vendas do período."
+              rows={3}
               disabled={isLoading}
             />
           </div>
