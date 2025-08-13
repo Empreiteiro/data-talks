@@ -180,6 +180,16 @@ export type Database = {
         Args: { alert_user_id: string }
         Returns: boolean
       }
+      get_shared_agent_safe_fields: {
+        Args: { token_value: string }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          created_at: string
+          has_password: boolean
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
