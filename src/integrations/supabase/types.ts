@@ -190,6 +190,10 @@ export type Database = {
           has_password: boolean
         }[]
       }
+      verify_agent_share_password: {
+        Args: { token_value: string; password_attempt: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
