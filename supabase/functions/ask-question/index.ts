@@ -162,9 +162,14 @@ serve(async (req) => {
       
       langflowData = await langflowResponse.json();
       
+      console.log('Langflow BigQuery Response status:', langflowResponse.status);
+      console.log('Langflow BigQuery Response:', JSON.stringify(langflowData, null, 2));
+      
       if (!langflowResponse.ok) {
         console.error('Langflow BigQuery API error:', langflowData);
-        throw new Error('Erro na API do Langflow BigQuery');
+        console.error('Response status:', langflowResponse.status);
+        console.error('Response headers:', Object.fromEntries(langflowResponse.headers.entries()));
+        throw new Error(`Erro na API do Langflow BigQuery: ${langflowResponse.status} - ${JSON.stringify(langflowData)}`);
       }
     } else {
       // Handle CSV flow with file upload
