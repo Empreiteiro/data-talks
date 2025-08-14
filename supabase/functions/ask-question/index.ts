@@ -135,7 +135,7 @@ serve(async (req) => {
       // Build payload using the same structure as CSV flow
       const payload = {
         output_type: "chat",
-        input_type: "text", // Changed from "chat" to "text" like CSV
+        input_type: "text",
         input_value: question,
         session_id: sessionId,
         tweaks: {
@@ -147,6 +147,9 @@ serve(async (req) => {
           },
           "BigQueryExecutor-7eyUr": {
             service_account_json_file: metadata.service_account_json_file || metadata.credentials_file || ""
+          },
+          "Prompt Template-br5J3": {
+            question: question
           }
         }
       };
