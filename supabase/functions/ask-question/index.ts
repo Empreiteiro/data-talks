@@ -149,7 +149,8 @@ serve(async (req) => {
             service_account_json_file: metadata.service_account_json_file || metadata.credentials_file || ""
           },
           "Prompt Template-RF5j9": {
-            question: question
+            question: question,
+            schema: metadata.schema || ""
           }
         }
       };
