@@ -201,6 +201,20 @@ export type Database = {
         Args: { alert_user_id: string }
         Returns: boolean
       }
+      get_shared_agent_qa_sessions: {
+        Args: { token_value: string }
+        Returns: {
+          answer: string
+          created_at: string
+          feedback: string
+          id: string
+          latency: number
+          question: string
+          sql_query: string
+          status: string
+          table_data: Json
+        }[]
+      }
       get_shared_agent_safe_fields: {
         Args: { token_value: string }
         Returns: {
