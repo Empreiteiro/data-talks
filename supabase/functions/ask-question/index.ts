@@ -154,7 +154,7 @@ serve(async (req) => {
       console.log('BigQuery payload:', JSON.stringify(payload, null, 2));
       
       // Construct the complete Langflow API URL as specified
-      const langflowApiUrl = `${langflowBigqueryUrl}/api/v1/run/${langflowBigqueryFlowId}`;
+      const langflowApiUrl = `${langflowBigqueryUrl.replace(/\/$/, '')}/api/v1/run/${langflowBigqueryFlowId}`;
       
       console.log('BigQuery API URL:', langflowApiUrl);
       
