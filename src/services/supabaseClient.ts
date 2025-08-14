@@ -135,6 +135,16 @@ export const supabaseClient = {
     return data;
   },
 
+  // Get QA sessions for shared agents
+  async getSharedAgentQASessions(token: string) {
+    const { data, error } = await supabase.rpc('get_shared_agent_qa_sessions', {
+      token_value: token
+    });
+
+    if (error) throw error;
+    return data || [];
+  },
+
   // QA Sessions
   async listQASessions(agentId?: string) {
     let query = supabase

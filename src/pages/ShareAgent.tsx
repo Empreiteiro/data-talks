@@ -30,9 +30,9 @@ const ShareAgent = () => {
         const agentData = await supabaseClient.getSharedAgent(token);
         setAgent(agentData);
         
-        // Load history for this agent
+        // Load history for shared agent
         if (agentData?.id) {
-          const agentHistory = await supabaseClient.listQASessions(agentData.id);
+          const agentHistory = await supabaseClient.getSharedAgentQASessions(token);
           setHistory(agentHistory);
         }
       } catch (error) {
@@ -53,7 +53,7 @@ const ShareAgent = () => {
     async function reloadHistory() {
       if (agent?.id && version > 0) {
         try {
-          const agentHistory = await supabaseClient.listQASessions(agent.id);
+          const agentHistory = await supabaseClient.getSharedAgentQASessions(token);
           setHistory(agentHistory);
         } catch (error) {
           console.error('Error reloading history:', error);
