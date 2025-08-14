@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -204,15 +204,15 @@ export type Database = {
       get_shared_agent_safe_fields: {
         Args: { token_value: string }
         Returns: {
+          created_at: string
+          description: string
+          has_password: boolean
           id: string
           name: string
-          description: string
-          created_at: string
-          has_password: boolean
         }[]
       }
       verify_agent_share_password: {
-        Args: { token_value: string; password_attempt: string }
+        Args: { password_attempt: string; token_value: string }
         Returns: boolean
       }
     }
