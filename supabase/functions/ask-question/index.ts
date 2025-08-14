@@ -130,6 +130,18 @@ serve(async (req) => {
       const metadata = bigquerySource.metadata;
       console.log('BigQuery source metadata:', JSON.stringify(metadata, null, 2));
       
+      // Build schema from table_infos
+      let schemaText = "";
+      if (metadata.table_infos && Array.isArray(metadata.table_infos)) {
+        schemaText = metadata.table_infos.map(tableInfo => {
+          const tableName = tableInfo.table_name || "";
+          const columns = tableInfo.columns || [];
+          return `Tabela: ${tableName}\nColunas: ${columns.join(', ')}`;
+        }).join('\n\n');
+      }
+      
+      console.log('Schema construído:', schemaText);
+      
       // Generate session ID like in CSV flow
       const sessionId = crypto.randomUUID();
       
@@ -141,7 +153,7 @@ serve(async (req) => {
         session_id: sessionId,
         tweaks: {
           "Prompt-7HDgb": {
-            Schema: metadata.schema || "",
+            Schema: schemaText,
             table: metadata.table || "",
             project: metadata.project || "",
             dataset: metadata.dataset || ""
@@ -151,7 +163,7 @@ serve(async (req) => {
           },
           "Prompt Template-RF5j9": {
             question: question,
-            schema: metadata.schema || ""
+            schema: schemaText
           }
         }
       };
