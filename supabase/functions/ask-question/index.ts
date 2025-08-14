@@ -246,8 +246,45 @@ serve(async (req) => {
       }
     }
 
-    const answer = langflowData.outputs?.[0]?.outputs?.[0]?.results?.message?.text || 'Resposta não disponível';
-    const imageUrl = langflowData.outputs?.[0]?.outputs?.[0]?.results?.image_url || null;
+    // For BigQuery responses, extract base64 image and text separately
+    let answer = 'Resposta não disponível';
+    let imageUrl = null;
+    
+    if (isBigquery && langflowData.outputs?.[0]?.outputs) {
+      console.log('Processing BigQuery outputs:', JSON.stringify(langflowData.outputs[0].outputs, null, 2));
+      
+      // Look for base64 and text outputs in BigQuery response
+      const outputs = langflowData.outputs[0].outputs;
+      
+      for (const output of outputs) {
+        if (output.results) {
+          // Check for base64 image data
+          if (output.results.base64 || (typeof output.results.message === 'string' && output.results.message.startsWith('data:image'))) {
+            const base64Data = output.results.base64 || output.results.message;
+            // Convert base64 to a proper data URL if it's not already
+            if (base64Data && !base64Data.startsWith('data:')) {
+              imageUrl = `data:image/png;base64,${base64Data}`;
+            } else {
+              imageUrl = base64Data;
+            }
+            console.log('Found base64 image data');
+          }
+          
+          // Check for text response
+          if (output.results.message?.text) {
+            answer = output.results.message.text;
+            console.log('Found text response:', answer);
+          } else if (typeof output.results.message === 'string' && !output.results.message.startsWith('data:image')) {
+            answer = output.results.message;
+            console.log('Found text response:', answer);
+          }
+        }
+      }
+    } else {
+      // For CSV responses, use the existing logic
+      answer = langflowData.outputs?.[0]?.outputs?.[0]?.results?.message?.text || 'Resposta não disponível';
+      imageUrl = langflowData.outputs?.[0]?.outputs?.[0]?.results?.image_url || null;
+    }
     const latency = Date.now() - startTime;
 
     // Save QA session to database

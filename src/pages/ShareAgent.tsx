@@ -190,6 +190,10 @@ const ShareAgent = () => {
                         src={h.imageUrl} 
                         alt="Resultado da análise" 
                         className="max-w-full h-auto rounded-lg shadow-sm"
+                        onError={(e) => {
+                          console.error('Erro ao carregar imagem:', h.imageUrl);
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                     </div>
                   )}

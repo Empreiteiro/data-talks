@@ -142,7 +142,17 @@ export const supabaseClient = {
     });
 
     if (error) throw error;
-    return data || [];
+    
+    // Process the data to extract imageUrl from table_data and map fields correctly
+    const processedData = (data || []).map((item: any) => ({
+      ...item,
+      answerText: item.answer,
+      imageUrl: item.table_data?.image_url || null,
+      answerTableJSON: item.table_data && item.table_data.table ? item.table_data.table : null,
+      latencyMs: item.latency
+    }));
+    
+    return processedData;
   },
 
   // QA Sessions
