@@ -128,6 +128,7 @@ serve(async (req) => {
       }
 
       const metadata = bigquerySource.metadata;
+      console.log('BigQuery source metadata:', JSON.stringify(metadata, null, 2));
       
       // Generate session ID like in CSV flow
       const sessionId = crypto.randomUUID();
