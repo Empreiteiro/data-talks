@@ -148,7 +148,7 @@ serve(async (req) => {
           "BigQueryExecutor-7eyUr": {
             service_account_json_file: metadata.service_account_json_file || metadata.credentials_file || ""
           },
-          "Prompt Template-br5J3": {
+          "Prompt Template-RF5j9": {
             question: question
           }
         }
