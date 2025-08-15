@@ -228,7 +228,10 @@ serve(async (req) => {
         }
       };
 
-      console.log('BigQuery payload:', JSON.stringify(payload, null, 2));
+      
+      console.log('=== PAYLOAD COMPLETO PARA BIGQUERY ===');
+      console.log(JSON.stringify(payload, null, 2));
+      console.log('=== FIM DO PAYLOAD ===');
       
       // Construct the complete Langflow API URL as specified
       const langflowApiUrl = `${langflowBigqueryUrl.replace(/\/$/, '')}/api/v1/run/${langflowBigqueryFlowId}`;
@@ -251,10 +254,14 @@ serve(async (req) => {
       console.log('Langflow BigQuery Response status:', langflowResponse.status);
       console.log('Langflow BigQuery Response:', JSON.stringify(langflowData, null, 2));
       
+      
       if (!langflowResponse.ok) {
-        console.error('Langflow BigQuery API error:', langflowData);
-        console.error('Response status:', langflowResponse.status);
+        console.error('=== ERRO NA RESPOSTA DO LANGFLOW ===');
+        console.error('Status:', langflowResponse.status);
+        console.error('Status Text:', langflowResponse.statusText);
+        console.error('Response data:', langflowData);
         console.error('Response headers:', Object.fromEntries(langflowResponse.headers.entries()));
+        console.error('=== FIM DO ERRO ===');
         throw new Error(`Erro na API do Langflow BigQuery: ${langflowResponse.status} - ${JSON.stringify(langflowData)}`);
       }
     } else {
