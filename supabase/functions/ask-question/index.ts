@@ -278,7 +278,8 @@ serve(async (req) => {
           },
           'Prompt Template-xmZAC': {
             description: agent.description || '',
-            question: question
+            question: question,
+            file_path: langflowPaths[0] || ''
           }
         }
       };
