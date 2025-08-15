@@ -240,6 +240,7 @@ serve(async (req) => {
       // Get CSV sources and use existing Langflow paths
       const csvSources = sources.filter(s => s.type === 'csv');
       const langflowPaths = [];
+      let csvSchema = "";
       
       // Use existing Langflow paths instead of uploading again
       for (const csvSource of csvSources) {
@@ -249,6 +250,14 @@ serve(async (req) => {
           console.log('Using existing Langflow path:', langflowPath);
         } else {
           console.warn('No Langflow path found for source:', csvSource.name);
+        }
+        
+        // Extract schema from metadata if available
+        if (csvSource.metadata && csvSource.metadata.columns) {
+          const columns = Array.isArray(csvSource.metadata.columns) 
+            ? csvSource.metadata.columns.join(', ')
+            : csvSource.metadata.columns;
+          csvSchema += `Arquivo: ${csvSource.name}\nColunas: ${columns}\n\n`;
         }
       }
       
@@ -279,7 +288,8 @@ serve(async (req) => {
           'Prompt Template-xmZAC': {
             description: agent.description || '',
             question: question,
-            file_path: langflowPaths[0] || ''
+            file_path: langflowPaths[0] || '',
+            schema: csvSchema
           }
         }
       };
