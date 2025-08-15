@@ -188,7 +188,13 @@ serve(async (req) => {
             dataset: metadata.dataset || ""
           },
           "BigQueryExecutor-7eyUr": {
-            service_account_json_file: metadata.service_account_json_file || metadata.credentials_file || ""
+            service_account_json_file: (() => {
+              const filePath = metadata.service_account_json_file || metadata.credentials_file || "";
+              if (!filePath) return "";
+              // Extract filename without extension
+              const fileName = filePath.split('/').pop() || filePath;
+              return fileName.replace(/\.[^/.]+$/, "");
+            })()
           },
           "Prompt Template-RF5j9": {
             question: question,
