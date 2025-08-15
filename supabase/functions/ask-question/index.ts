@@ -157,7 +157,8 @@ serve(async (req) => {
       }
 
       const metadata = bigquerySource.metadata;
-      console.log('BigQuery source metadata:', JSON.stringify(metadata, null, 2));
+      console.log('BigQuery source metadata completo:', JSON.stringify(metadata, null, 2));
+      console.log('Verificando campos disponíveis em metadata:', Object.keys(metadata || {}));
       
       // Build schema from table_infos
       let schemaText = "";
@@ -189,6 +190,13 @@ serve(async (req) => {
           },
           "BigQueryExecutor-7eyUr": {
             service_account_json_file: (() => {
+              console.log('Procurando arquivo de credenciais...');
+              console.log('service_account_json_file:', metadata.service_account_json_file);
+              console.log('credentials_file:', metadata.credentials_file);
+              console.log('service_account:', metadata.service_account);
+              console.log('service_account_filename:', metadata.service_account_filename);
+              console.log('credentials_name:', metadata.credentials_name);
+              
               const filePath =
                 metadata.service_account_json_file ||
                 metadata.credentials_file ||
@@ -196,9 +204,21 @@ serve(async (req) => {
                 metadata.service_account_filename ||
                 metadata.credentials_name ||
                 "";
-              if (!filePath) return "";
+                
+              console.log('Caminho do arquivo encontrado:', filePath);
+              
+              if (!filePath) {
+                console.log('ERRO: Nenhum arquivo de credenciais encontrado!');
+                return "";
+              }
+              
               const fileName = (filePath.split('/').pop() || filePath).toString();
-              return fileName.replace(/\.[^/.]+$/, "");
+              const fileNameWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
+              
+              console.log('Nome do arquivo extraído:', fileName);
+              console.log('Nome sem extensão:', fileNameWithoutExtension);
+              
+              return fileNameWithoutExtension;
             })()
           },
           "Prompt Template-RF5j9": {
