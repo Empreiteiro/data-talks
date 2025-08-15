@@ -223,6 +223,14 @@ serve(async (req) => {
         }
       }
       
+      // Check if we have any valid paths
+      if (langflowPaths.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Nenhum arquivo CSV encontrado ou configurado para este agente' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       // Generate session ID
       const sessionId = crypto.randomUUID();
       
