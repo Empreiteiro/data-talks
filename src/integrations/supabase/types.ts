@@ -104,6 +104,13 @@ export type Database = {
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       qa_sessions: {
@@ -163,6 +170,13 @@ export type Database = {
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "qa_sessions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sources: {
@@ -200,12 +214,58 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      agents_safe: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          has_password: boolean | null
+          has_share_token: boolean | null
+          id: string | null
+          name: string | null
+          source_ids: string[] | null
+          suggested_questions: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          has_password?: never
+          has_share_token?: never
+          id?: string | null
+          name?: string | null
+          source_ids?: string[] | null
+          suggested_questions?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          has_password?: never
+          has_share_token?: never
+          id?: string | null
+          name?: string | null
+          source_ids?: string[] | null
+          suggested_questions?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      block_sensitive_agent_columns: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       can_access_alert_email: {
         Args: { alert_user_id: string }
         Returns: boolean
+      }
+      get_agent_share_token: {
+        Args: { agent_id: string }
+        Returns: string
       }
       get_shared_agent_qa_sessions: {
         Args: { token_value: string }
@@ -229,6 +289,20 @@ export type Database = {
           has_password: boolean
           id: string
           name: string
+        }[]
+      }
+      get_user_agents_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          description: string
+          has_password: boolean
+          has_share_token: boolean
+          id: string
+          name: string
+          source_ids: string[]
+          suggested_questions: string[]
+          updated_at: string
         }[]
       }
       verify_agent_share_password: {
