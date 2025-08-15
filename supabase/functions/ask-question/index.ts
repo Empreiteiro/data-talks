@@ -354,7 +354,8 @@ serve(async (req) => {
         answer,
         imageUrl,
         latency,
-        sessionId: qaSession?.id
+        sessionId: qaSession?.id,
+        followUpQuestions
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

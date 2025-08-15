@@ -201,6 +201,26 @@ const ShareAgent = () => {
                       />
                     </div>
                   )}
+                  
+                  {/* Follow-up Questions */}
+                  {h.followUpQuestions && h.followUpQuestions.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Perguntas de aprofundamento</label>
+                      <div className="flex flex-wrap gap-2">
+                        {h.followUpQuestions.map((followUpQuestion: string, index: number) => (
+                          <Button
+                            key={index}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setQuestion(followUpQuestion)}
+                            className="text-sm"
+                          >
+                            {followUpQuestion}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {h.answerTableJSON && (
                     <div className="overflow-x-auto">
                       <Table>

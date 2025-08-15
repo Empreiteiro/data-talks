@@ -175,6 +175,26 @@ const Questions = () => {
                         </Table>
                       </div>
                     )}
+                    
+                    {/* Follow-up Questions */}
+                    {h.follow_up_questions && h.follow_up_questions.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium">Perguntas de aprofundamento</label>
+                        <div className="flex flex-wrap gap-2">
+                          {h.follow_up_questions.map((followUpQuestion: string, index: number) => (
+                            <Button
+                              key={index}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQuestion(followUpQuestion)}
+                              className="text-sm"
+                            >
+                              {followUpQuestion}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Button 

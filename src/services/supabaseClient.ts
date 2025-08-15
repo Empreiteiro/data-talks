@@ -149,7 +149,8 @@ export const supabaseClient = {
       answerText: item.answer,
       imageUrl: item.table_data?.image_url || null,
       answerTableJSON: item.table_data && item.table_data.table ? item.table_data.table : null,
-      latencyMs: item.latency
+      latencyMs: item.latency,
+      followUpQuestions: item.follow_up_questions || []
     }));
     
     return processedData;

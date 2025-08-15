@@ -112,6 +112,7 @@ export type Database = {
           answer: string | null
           created_at: string
           feedback: string | null
+          follow_up_questions: Json | null
           id: string
           is_shared: boolean | null
           latency: number | null
@@ -126,6 +127,7 @@ export type Database = {
           answer?: string | null
           created_at?: string
           feedback?: string | null
+          follow_up_questions?: Json | null
           id?: string
           is_shared?: boolean | null
           latency?: number | null
@@ -140,6 +142,7 @@ export type Database = {
           answer?: string | null
           created_at?: string
           feedback?: string | null
+          follow_up_questions?: Json | null
           id?: string
           is_shared?: boolean | null
           latency?: number | null
