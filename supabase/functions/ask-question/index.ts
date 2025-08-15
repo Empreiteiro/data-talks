@@ -183,16 +183,21 @@ serve(async (req) => {
         tweaks: {
           "Prompt-7HDgb": {
             Schema: schemaText,
-            table: metadata.table || "",
-            project: metadata.project || "",
-            dataset: metadata.dataset || ""
+            table: metadata.table || (Array.isArray(metadata.tables) && metadata.tables[0]) || (Array.isArray(metadata.table_infos) && metadata.table_infos[0]?.table_name) || "",
+            project: metadata.project || metadata.project_id || "",
+            dataset: metadata.dataset || metadata.dataset_id || ""
           },
           "BigQueryExecutor-7eyUr": {
             service_account_json_file: (() => {
-              const filePath = metadata.service_account_json_file || metadata.credentials_file || "";
+              const filePath =
+                metadata.service_account_json_file ||
+                metadata.credentials_file ||
+                metadata.service_account ||
+                metadata.service_account_filename ||
+                metadata.credentials_name ||
+                "";
               if (!filePath) return "";
-              // Extract filename without extension
-              const fileName = filePath.split('/').pop() || filePath;
+              const fileName = (filePath.split('/').pop() || filePath).toString();
               return fileName.replace(/\.[^/.]+$/, "");
             })()
           },
