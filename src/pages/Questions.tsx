@@ -161,10 +161,10 @@ const Questions = () => {
                       </div>
                     )}
 
-                    {/* Conversation History - Follow-up questions and answers */}
+                    {/* Conversation History - Follow-up questions and answers (skip first if it's the same as main question) */}
                     {h.conversation_history && h.conversation_history.length > 0 && (
                       <div className="mt-6 space-y-4">
-                        {h.conversation_history.map((conversation: any, index: number) => (
+                        {h.conversation_history.slice(1).map((conversation: any, index: number) => (
                           <div key={index} className="space-y-2">
                             <div className="text-sm">
                               <span className="font-medium">Pergunta:</span> {conversation.question}
