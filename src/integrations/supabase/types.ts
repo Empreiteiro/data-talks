@@ -104,13 +104,6 @@ export type Database = {
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "alerts_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "agents_safe"
-            referencedColumns: ["id"]
-          },
         ]
       }
       qa_sessions: {
@@ -170,13 +163,6 @@ export type Database = {
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "qa_sessions_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "agents_safe"
-            referencedColumns: ["id"]
-          },
         ]
       }
       sources: {
@@ -214,45 +200,7 @@ export type Database = {
       }
     }
     Views: {
-      agents_safe: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          has_password: boolean | null
-          has_share_token: boolean | null
-          id: string | null
-          name: string | null
-          source_ids: string[] | null
-          suggested_questions: string[] | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          has_password?: never
-          has_share_token?: never
-          id?: string | null
-          name?: string | null
-          source_ids?: string[] | null
-          suggested_questions?: string[] | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          has_password?: never
-          has_share_token?: never
-          id?: string | null
-          name?: string | null
-          source_ids?: string[] | null
-          suggested_questions?: string[] | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       block_sensitive_agent_columns: {
