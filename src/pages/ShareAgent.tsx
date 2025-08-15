@@ -182,12 +182,14 @@ const ShareAgent = () => {
                 <CardHeader>
                   <CardTitle className="text-base">Pergunta: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
                 </CardHeader>
-                 <CardContent className="space-y-4">
-                   <div className="prose prose-sm max-w-none">
-                     {h.answerText.split('\n').map((line: string, index: number) => (
-                       <p key={index} className="mb-2 last:mb-0">{line}</p>
-                     ))}
-                   </div>
+                <CardContent className="space-y-4">
+                  {/* Main answer */}
+                  <div className="prose prose-sm max-w-none">
+                    {h.answerText.split('\n').map((line: string, index: number) => (
+                      <p key={index} className="mb-2 last:mb-0">{line}</p>
+                    ))}
+                  </div>
+                  
                   {h.imageUrl && (
                     <div className="mt-4">
                       <img 
@@ -199,6 +201,34 @@ const ShareAgent = () => {
                           e.currentTarget.style.display = 'none';
                         }}
                       />
+                    </div>
+                  )}
+
+                  {/* Conversation History - Follow-up questions and answers */}
+                  {h.conversationHistory && h.conversationHistory.length > 0 && (
+                    <div className="mt-6 space-y-4">
+                      <h4 className="text-sm font-medium text-muted-foreground">Histórico da conversa:</h4>
+                      {h.conversationHistory.map((conversation: any, index: number) => (
+                        <div key={index} className="border-l-2 border-border pl-4 space-y-2">
+                          <div className="text-sm">
+                            <span className="font-medium">Pergunta:</span> {conversation.question}
+                          </div>
+                          <div className="prose prose-sm max-w-none">
+                            {conversation.answer.split('\n').map((line: string, lineIndex: number) => (
+                              <p key={lineIndex} className="mb-1 last:mb-0 text-sm">{line}</p>
+                            ))}
+                          </div>
+                          {conversation.imageUrl && (
+                            <div className="mt-2">
+                              <img 
+                                src={conversation.imageUrl} 
+                                alt="Resultado da análise" 
+                                className="max-w-full h-auto rounded-lg shadow-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                   
@@ -224,6 +254,7 @@ const ShareAgent = () => {
                       </div>
                     </div>
                   )}
+                  
                   {h.answerTableJSON && (
                     <div className="overflow-x-auto">
                       <Table>

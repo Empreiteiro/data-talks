@@ -110,6 +110,7 @@ export type Database = {
         Row: {
           agent_id: string
           answer: string | null
+          conversation_history: Json | null
           created_at: string
           feedback: string | null
           follow_up_questions: Json | null
@@ -125,6 +126,7 @@ export type Database = {
         Insert: {
           agent_id: string
           answer?: string | null
+          conversation_history?: Json | null
           created_at?: string
           feedback?: string | null
           follow_up_questions?: Json | null
@@ -140,6 +142,7 @@ export type Database = {
         Update: {
           agent_id?: string
           answer?: string | null
+          conversation_history?: Json | null
           created_at?: string
           feedback?: string | null
           follow_up_questions?: Json | null

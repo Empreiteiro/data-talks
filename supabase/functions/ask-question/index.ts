@@ -413,25 +413,59 @@ serve(async (req) => {
     }
 
     // Update the session with the response
-    const updateData: any = {
-      answer,
-      table_data: imageUrl ? { image_url: imageUrl } : null,
-      latency,
-      follow_up_questions: followUpQuestions
-    };
-    
-    // If this is a follow-up question, append it to the original question
     if (sessionId) {
-      updateData.question = qaSession.question + "\n\n**Pergunta de aprofundamento:** " + question;
-    }
-    
-    const { error: updateError } = await supabase
-      .from('qa_sessions')
-      .update(updateData)
-      .eq('id', qaSession.id);
-
-    if (updateError) {
-      console.error('Error updating QA session:', updateError);
+      // For follow-up questions, append to conversation history
+      const conversationEntry = {
+        question,
+        answer,
+        imageUrl,
+        followUpQuestions,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Get current conversation history and append new entry
+      const currentHistory = qaSession.conversation_history || [];
+      const updatedHistory = [...currentHistory, conversationEntry];
+      
+      const { error: updateError } = await supabase
+        .from('qa_sessions')
+        .update({
+          conversation_history: updatedHistory,
+          latency,
+          // Update main answer to reflect latest response
+          answer: answer,
+          table_data: imageUrl ? { image_url: imageUrl } : null,
+          follow_up_questions: followUpQuestions
+        })
+        .eq('id', qaSession.id);
+        
+      if (updateError) {
+        console.error('Error updating QA session:', updateError);
+      }
+    } else {
+      // For initial questions, create initial conversation entry
+      const initialEntry = {
+        question,
+        answer,
+        imageUrl,
+        followUpQuestions,
+        timestamp: new Date().toISOString()
+      };
+      
+      const { error: updateError } = await supabase
+        .from('qa_sessions')
+        .update({
+          answer,
+          table_data: imageUrl ? { image_url: imageUrl } : null,
+          latency,
+          follow_up_questions: followUpQuestions,
+          conversation_history: [initialEntry]
+        })
+        .eq('id', qaSession.id);
+        
+      if (updateError) {
+        console.error('Error updating QA session:', updateError);
+      }
     }
 
     return new Response(

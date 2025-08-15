@@ -144,11 +144,13 @@ const Questions = () => {
                     <CardTitle className="text-base">Pergunta: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
                   </CardHeader>
                    <CardContent className="space-y-4">
+                     {/* Main answer */}
                      <div className="prose prose-sm max-w-none">
                        {(h.answer || 'Resposta não disponível').split('\n').map((line: string, index: number) => (
                          <p key={index} className="mb-2 last:mb-0">{line}</p>
                        ))}
                      </div>
+                     
                     {h.table_data?.image_url && (
                       <div className="mt-4">
                         <img 
@@ -158,6 +160,35 @@ const Questions = () => {
                         />
                       </div>
                     )}
+
+                    {/* Conversation History - Follow-up questions and answers */}
+                    {h.conversation_history && h.conversation_history.length > 0 && (
+                      <div className="mt-6 space-y-4">
+                        <h4 className="text-sm font-medium text-muted-foreground">Histórico da conversa:</h4>
+                        {h.conversation_history.map((conversation: any, index: number) => (
+                          <div key={index} className="border-l-2 border-border pl-4 space-y-2">
+                            <div className="text-sm">
+                              <span className="font-medium">Pergunta:</span> {conversation.question}
+                            </div>
+                            <div className="prose prose-sm max-w-none">
+                              {conversation.answer.split('\n').map((line: string, lineIndex: number) => (
+                                <p key={lineIndex} className="mb-1 last:mb-0 text-sm">{line}</p>
+                              ))}
+                            </div>
+                            {conversation.imageUrl && (
+                              <div className="mt-2">
+                                <img 
+                                  src={conversation.imageUrl} 
+                                  alt="Resultado da análise" 
+                                  className="max-w-full h-auto rounded-lg shadow-sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {h.table_data && !h.table_data.image_url && Array.isArray(h.table_data) && (
                       <div className="overflow-x-auto">
                         <Table>
