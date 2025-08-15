@@ -274,6 +274,7 @@ serve(async (req) => {
     // For BigQuery responses, extract base64 image and text separately
     let answer = 'Resposta não disponível';
     let imageUrl = null;
+    let followUpQuestions = [];
     
     if (isBigquery && langflowData.outputs?.[0]?.outputs) {
       console.log('Processing BigQuery outputs:', JSON.stringify(langflowData.outputs[0].outputs, null, 2));
@@ -306,9 +307,24 @@ serve(async (req) => {
         }
       }
     } else {
-      // For CSV responses, use the existing logic
-      answer = langflowData.outputs?.[0]?.outputs?.[0]?.results?.message?.text || 'Resposta não disponível';
-      imageUrl = langflowData.outputs?.[0]?.outputs?.[0]?.results?.image_url || null;
+      // For CSV responses, extract main answer and follow-up questions
+      const outputs = langflowData.outputs?.[0]?.outputs || [];
+      
+      // First output contains the main answer
+      answer = outputs[0]?.results?.message?.text || 'Resposta não disponível';
+      imageUrl = outputs[0]?.results?.image_url || null;
+      
+      // Second output contains follow-up questions (if available)
+      if (outputs[1]?.results?.message?.text) {
+        const questionsText = outputs[1].results.message.text;
+        // Parse questions - assuming they are separated by newlines or numbered
+        followUpQuestions = questionsText
+          .split('\n')
+          .filter(line => line.trim() && !line.trim().match(/^\d+\.$/) && line.includes('?'))
+          .map(q => q.replace(/^\d+\.\s*/, '').trim());
+      }
+      
+      console.log('Found follow-up questions:', followUpQuestions);
     }
     const latency = Date.now() - startTime;
 
@@ -322,6 +338,7 @@ serve(async (req) => {
         answer,
         latency,
         table_data: imageUrl ? { image_url: imageUrl } : null,
+        follow_up_questions: followUpQuestions.length > 0 ? followUpQuestions : null,
         status: 'completed',
         is_shared: isShared || false
       })
