@@ -142,8 +142,12 @@ const Questions = () => {
                   <CardHeader>
                     <CardTitle className="text-base">Pergunta: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p>{h.answer || 'Resposta não disponível'}</p>
+                   <CardContent className="space-y-4">
+                     <div className="prose prose-sm max-w-none">
+                       {(h.answer || 'Resposta não disponível').split('\n').map((line: string, index: number) => (
+                         <p key={index} className="mb-2 last:mb-0">{line}</p>
+                       ))}
+                     </div>
                     {h.table_data?.image_url && (
                       <div className="mt-4">
                         <img 
