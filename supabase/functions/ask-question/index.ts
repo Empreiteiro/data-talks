@@ -443,9 +443,7 @@ serve(async (req) => {
         .update({
           conversation_history: updatedHistory,
           latency,
-          // Update main answer to reflect latest response
-          answer: answer,
-          table_data: imageUrl ? { image_url: imageUrl } : null,
+          // Don't update main answer for follow-up questions, keep original
           follow_up_questions: followUpQuestions
         })
         .eq('id', qaSession.id);
