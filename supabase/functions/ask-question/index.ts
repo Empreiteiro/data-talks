@@ -188,8 +188,8 @@ serve(async (req) => {
             project: metadata.project || metadata.project_id || "",
             dataset: metadata.dataset || metadata.dataset_id || ""
           },
-          "BigQueryExecutor-7eyUr": {
-            service_account_json_file: (() => {
+          "File-lER3y": {
+            path: [(() => {
               console.log('Procurando arquivo de credenciais...');
               console.log('service_account_json_file:', metadata.service_account_json_file);
               console.log('credentials_file:', metadata.credentials_file);
@@ -205,21 +205,15 @@ serve(async (req) => {
                 metadata.credentials_name ||
                 "";
                 
-              console.log('Caminho do arquivo encontrado:', filePath);
+              console.log('Caminho completo do arquivo enviado:', filePath);
               
               if (!filePath) {
                 console.log('ERRO: Nenhum arquivo de credenciais encontrado!');
                 return "";
               }
               
-              const fileName = (filePath.split('/').pop() || filePath).toString();
-              const fileNameWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
-              
-              console.log('Nome do arquivo extraído:', fileName);
-              console.log('Nome sem extensão:', fileNameWithoutExtension);
-              
-              return fileNameWithoutExtension;
-            })()
+              return filePath;
+            })()]
           },
           "Prompt Template-RF5j9": {
             question: question,
