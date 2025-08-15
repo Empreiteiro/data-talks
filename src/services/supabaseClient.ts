@@ -21,12 +21,10 @@ export const supabaseClient = {
     if (error) throw error;
   },
 
-  // Agents
+  // Agents - using secure functions to prevent exposure of sensitive fields
   async listAgents() {
     const { data, error } = await supabase
-      .from('agents')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .rpc('get_user_agents_safe');
     
     if (error) throw error;
     return data || [];
@@ -79,38 +77,31 @@ export const supabaseClient = {
   },
 
   async toggleAgentSharing(id: string, enabled: boolean, password?: string) {
-    const updateData: any = {};
-    
-    if (enabled) {
-      // Generate share token if enabling
-      updateData.share_token = crypto.randomUUID();
-      updateData.share_password = password || null;
-    } else {
-      // Clear sharing data if disabling
-      updateData.share_token = null;
-      updateData.share_password = null;
-    }
-
     const { data, error } = await supabase
-      .from('agents')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+      .rpc('update_agent_sharing', {
+        agent_id: id,
+        enabled: enabled,
+        password: password || null
+      });
+    
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  async updateAgentSharePassword(id: string, password?: string) {
+    const { data, error } = await supabase
+      .rpc('update_agent_share_password_only', {
+        agent_id: id,
+        password: password || ''
+      });
     
     if (error) throw error;
     return data;
   },
 
-  async updateAgentSharePassword(id: string, password?: string) {
+  async getAgentShareToken(id: string) {
     const { data, error } = await supabase
-      .from('agents')
-      .update({
-        share_password: password || null
-      })
-      .eq('id', id)
-      .select()
-      .single();
+      .rpc('get_agent_share_token', { agent_id: id });
     
     if (error) throw error;
     return data;

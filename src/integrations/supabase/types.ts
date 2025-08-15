@@ -305,6 +305,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      update_agent_share_password_only: {
+        Args: { agent_id: string; password: string }
+        Returns: boolean
+      }
+      update_agent_sharing: {
+        Args: { agent_id: string; enabled: boolean; password?: string }
+        Returns: {
+          created_at: string
+          description: string
+          has_share_token: boolean
+          id: string
+          name: string
+          share_token: string
+          source_ids: string[]
+          suggested_questions: string[]
+          updated_at: string
+        }[]
+      }
       verify_agent_share_password: {
         Args: { password_attempt: string; token_value: string }
         Returns: boolean

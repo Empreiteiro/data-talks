@@ -38,23 +38,37 @@ const AgentBriefing = () => {
     queryFn: () => supabaseClient.listAgents()
   });
   const currentAgent = useMemo(() => agentId ? agents.find(a => a.id === agentId) : undefined, [agentId, agents]);
-  const shareLink = useMemo(() => currentAgent?.share_token ? `${window.location.origin}/share/${currentAgent.share_token}` : "", [currentAgent?.share_token]);
+  const [shareLink, setShareLink] = useState("");
+  
   const isNewAgent = !agentId;
   const canSave = name.trim().length > 0 && selectedSource.length > 0;
+  
   useEffect(() => {
     if (currentAgent) {
       setName(currentAgent.name || "");
       setDescription(currentAgent.description || "");
       setSelectedSource(currentAgent.source_ids?.[0] || "");
-      setShareEnabled(!!currentAgent.share_token);
-      setSharePassword(currentAgent.share_password || "");
+      setShareEnabled(currentAgent.has_share_token || false);
+      setSharePassword(currentAgent.has_password ? "******" : "");
       setSuggestedQuestions((currentAgent as any).suggested_questions || []);
+      
+      // Get share token if sharing is enabled
+      if (currentAgent.has_share_token) {
+        supabaseClient.getAgentShareToken(currentAgent.id).then(token => {
+          if (token) {
+            setShareLink(`${window.location.origin}/share/${token}`);
+          }
+        });
+      } else {
+        setShareLink("");
+      }
     } else {
       setName("");
       setDescription("");
       setSelectedSource("");
-      setShareEnabled(false);
       setSharePassword("");
+      setShareEnabled(false);
+      setShareLink("");
       setSuggestedQuestions([]);
     }
   }, [currentAgent]);
@@ -133,8 +147,15 @@ const AgentBriefing = () => {
     
     try {
       setIsLoading(true);
-      await supabaseClient.toggleAgentSharing(currentAgent.id, enabled, enabled ? sharePassword : undefined);
+      const result = await supabaseClient.toggleAgentSharing(currentAgent.id, enabled, enabled ? sharePassword : undefined);
       setShareEnabled(enabled);
+      
+      // Update share link if sharing was enabled
+      if (enabled && result?.share_token) {
+        setShareLink(`${window.location.origin}/share/${result.share_token}`);
+      } else {
+        setShareLink("");
+      }
       
       if (!enabled) {
         setSharePassword("");
@@ -376,7 +397,7 @@ const AgentBriefing = () => {
               {isNewAgent ? "Criar Agente" : "Salvar Alterações"}
             </Button>
             
-            {selectedSource}
+            
           </div>
         </CardContent>
       </Card>
