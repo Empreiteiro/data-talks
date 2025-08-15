@@ -458,52 +458,25 @@ export const supabaseClient = {
   },
 
   // Ask question to agent
-  async askQuestion(agentId: string, question: string) {
+  async askQuestion(agentId: string, question: string, sessionId?: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const response = await fetch(`https://ooimkdueuozjfwadrkkh.supabase.co/functions/v1/ask-question`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vaW1rZHVldW96amZ3YWRya2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDU5MTIsImV4cCI6MjA3MDU4MTkxMn0.SAADBflVutyfV_XDJTrPlpwoHE8yqdJ_GkLp9Tt_ras`,
-      },
-      body: JSON.stringify({
-        agentId,
-        question,
-        userId: user.id,
-      }),
+    const { data, error } = await supabase.functions.invoke('ask-question', {
+      body: { question, agentId, userId: user.id, sessionId }
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao processar pergunta');
-    }
-
-    return response.json();
+    if (error) throw error;
+    return data;
   },
 
   // Ask question to shared agent (without authentication)
-  async askQuestionShared(agentId: string, question: string, shareToken: string) {
-    const response = await fetch(`https://ooimkdueuozjfwadrkkh.supabase.co/functions/v1/ask-question`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vaW1rZHVldW96amZ3YWRya2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDU5MTIsImV4cCI6MjA3MDU4MTkxMn0.SAADBflVutyfV_XDJTrPlpwoHE8yqdJ_GkLp9Tt_ras`,
-      },
-      body: JSON.stringify({
-        agentId,
-        question,
-        shareToken,
-        isShared: true
-      }),
+  async askQuestionShared(agentId: string, question: string, shareToken: string, sessionId?: string) {
+    const { data, error } = await supabase.functions.invoke('ask-question', {
+      body: { question, agentId, shareToken, sessionId }
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao processar pergunta');
-    }
-
-    return response.json();
+    if (error) throw error;
+    return data;
   },
 };

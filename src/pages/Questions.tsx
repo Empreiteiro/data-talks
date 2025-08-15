@@ -33,13 +33,14 @@ const Questions = () => {
   const currentAgent = agents.find(a => a.id === agentId);
   const suggestedQuestions = currentAgent?.suggested_questions || [];
 
-  async function ask() {
+  async function ask(sessionId?: string) {
     if (!question.trim() || !agentId) return;
 
     try {
       setIsLoading(true);
+      const currentQuestion = question;
       setQuestion('');
-      const result = await supabaseClient.askQuestion(agentId, question);
+      const result = await supabaseClient.askQuestion(agentId, currentQuestion, sessionId);
       
       // Refresh sessions to show the new question
       queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
@@ -85,7 +86,7 @@ const Questions = () => {
             </div>
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" disabled={isLoading} />
-              <Button onClick={ask} disabled={!question || isLoading} className="min-w-[120px]">
+              <Button onClick={() => ask()} disabled={!question || isLoading} className="min-w-[120px]">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -186,7 +187,10 @@ const Questions = () => {
                               key={index}
                               variant="outline"
                               size="sm"
-                              onClick={() => setQuestion(followUpQuestion)}
+                            onClick={() => {
+                              setQuestion(followUpQuestion);
+                              setTimeout(() => ask(h.id), 0);
+                            }}
                               className="text-sm"
                             >
                               {followUpQuestion}

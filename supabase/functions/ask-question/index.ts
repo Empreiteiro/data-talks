@@ -23,9 +23,9 @@ serve(async (req) => {
   }
 
   try {
-    const { question, agentId, userId, shareToken, isShared } = await req.json();
+    const { question, agentId, userId, shareToken, isShared, sessionId } = await req.json();
 
-    if (!question || !agentId) {
+    if (!question) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -52,7 +52,36 @@ serve(async (req) => {
 
     // Get agent information
     let agent;
-    if (isShared) {
+    if (sessionId) {
+      // For follow-up questions, get agent from existing session
+      const { data: existingSession, error: sessionError } = await supabase
+        .from('qa_sessions')
+        .select('agent_id')
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError || !existingSession) {
+        return new Response(
+          JSON.stringify({ error: 'Session not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Get agent data
+      const { data: agentData, error: agentError } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('id', existingSession.agent_id)
+        .single();
+
+      if (agentError || !agentData) {
+        return new Response(
+          JSON.stringify({ error: 'Agent not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      agent = agentData;
+    } else if (isShared) {
       // For shared agents, verify the share token
       const { data: sharedAgent, error: sharedError } = await supabase
         .rpc('get_shared_agent_safe_fields', { token_value: shareToken });
@@ -328,25 +357,81 @@ serve(async (req) => {
     }
     const latency = Date.now() - startTime;
 
-    // Save QA session to database
-    const { data: qaSession, error: qaError } = await supabase
-      .from('qa_sessions')
-      .insert({
-        user_id: isShared ? null : userId, // For shared agents, user_id can be null
-        agent_id: agentId,
-        question,
-        answer,
-        latency,
-        table_data: imageUrl ? { image_url: imageUrl } : null,
-        follow_up_questions: followUpQuestions.length > 0 ? followUpQuestions : null,
-        status: 'completed',
-        is_shared: isShared || false
-      })
-      .select()
-      .single();
+    // Create or get QA session
+    let qaSession;
+    if (sessionId) {
+      // Use existing session for follow-up questions
+      const { data: existingSession, error: sessionError } = await supabase
+        .from('qa_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
 
-    if (qaError) {
-      console.error('Error saving QA session:', qaError);
+      if (sessionError || !existingSession) {
+        console.error('Error finding existing session:', sessionError);
+        throw new Error('Failed to find existing session');
+      }
+      
+      qaSession = existingSession;
+    } else if (isShared) {
+      // For shared questions, create session with agent_id and share_token
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('qa_sessions')
+        .insert({
+          question,
+          agent_id: agentId,
+          share_token: shareToken,
+          is_shared: true
+        })
+        .select()
+        .single();
+
+      if (sessionError) {
+        console.error('Error creating shared session:', sessionError);
+        throw new Error('Failed to create shared session');
+      }
+      
+      qaSession = sessionData;
+    } else {
+      // For regular questions, create session with user_id
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('qa_sessions')
+        .insert({
+          question,
+          user_id: userId,
+          agent_id: agent.id
+        })
+        .select()
+        .single();
+
+      if (sessionError) {
+        console.error('Error creating session:', sessionError);
+        throw new Error('Failed to create session');
+      }
+      
+      qaSession = sessionData;
+    }
+
+    // Update the session with the response
+    const updateData: any = {
+      answer,
+      table_data: imageUrl ? { image_url: imageUrl } : null,
+      latency,
+      follow_up_questions: followUpQuestions
+    };
+    
+    // If this is a follow-up question, append it to the original question
+    if (sessionId) {
+      updateData.question = qaSession.question + "\n\n**Pergunta de aprofundamento:** " + question;
+    }
+    
+    const { error: updateError } = await supabase
+      .from('qa_sessions')
+      .update(updateData)
+      .eq('id', qaSession.id);
+
+    if (updateError) {
+      console.error('Error updating QA session:', updateError);
     }
 
     return new Response(

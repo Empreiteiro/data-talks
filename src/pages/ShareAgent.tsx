@@ -80,12 +80,12 @@ const ShareAgent = () => {
     }
   }
 
-  async function ask() {
+  async function ask(sessionId?: string) {
     if (!agent || !question.trim()) return;
     
     try {
       setLoading(true);
-      await supabaseClient.askQuestionShared(agent.id, question, token);
+      await supabaseClient.askQuestionShared(agent.id, question, token, sessionId);
       setQuestion("");
       setVersion(v => v + 1);
     } catch (error: any) {
@@ -152,7 +152,7 @@ const ShareAgent = () => {
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" />
-                <Button onClick={ask} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
+                <Button onClick={() => ask()} disabled={!question || loading}>{loading ? 'Perguntando...' : 'Perguntar'}</Button>
               </div>
               
               {suggestedQuestions.length > 0 && (
@@ -212,7 +212,10 @@ const ShareAgent = () => {
                             key={index}
                             variant="outline"
                             size="sm"
-                            onClick={() => setQuestion(followUpQuestion)}
+                            onClick={() => {
+                              setQuestion(followUpQuestion);
+                              setTimeout(() => ask(h.id), 0);
+                            }}
                             className="text-sm"
                           >
                             {followUpQuestion}
