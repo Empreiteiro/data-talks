@@ -207,9 +207,8 @@ const ShareAgent = () => {
                   {/* Conversation History - Follow-up questions and answers */}
                   {h.conversationHistory && h.conversationHistory.length > 0 && (
                     <div className="mt-6 space-y-4">
-                      <h4 className="text-sm font-medium text-muted-foreground">Histórico da conversa:</h4>
                       {h.conversationHistory.map((conversation: any, index: number) => (
-                        <div key={index} className="border-l-2 border-border pl-4 space-y-2">
+                        <div key={index} className="space-y-2">
                           <div className="text-sm">
                             <span className="font-medium">Pergunta:</span> {conversation.question}
                           </div>
