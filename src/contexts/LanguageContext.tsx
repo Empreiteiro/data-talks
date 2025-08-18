@@ -62,7 +62,7 @@ const translations = {
     'dashboard.title': 'Dashboard',
     'dashboard.dataSources': 'Data Sources',
     'dashboard.connectedSources': 'connected source(s)',
-    'dashboard.addSource': 'Add Source',
+    'dashboard.addSource': 'Configure Sources',
     'dashboard.agentConfig': 'Agent Configuration',
     'dashboard.agentConfigDesc': 'Add source details for the agent to understand the context.',
     'dashboard.configureAgent': 'Configure Agent',
@@ -225,14 +225,19 @@ const translations = {
     'alerts.questionField': 'Question:',
     'alerts.emailField': 'Email:',
     'alerts.scheduleField': 'Schedule:',
-    'alerts.daily': 'Daily',
-    'alerts.weekly': 'Weekly',
-    'alerts.monthly': 'Monthly',
     'alerts.at': 'at',
     'alerts.day': 'Day',
     'alerts.createdAt': 'Created at:',
     'alerts.nextExecution': 'Next execution:',
     'alerts.alertRemoved': 'Alert removed',
+    
+    // Account
+    'account.title': 'Account',
+    'account.export': 'Export',
+    'account.exportHistory': 'Export History',
+    'account.security': 'Security',
+    'account.deleteAccount': 'Delete Account and Data',
+    'account.deleteConfirm': 'Are you sure you want to delete your account and local data?',
     
     // Footer
     'footer.copyright': '© {year} Talk to your data. All rights reserved.',
@@ -288,7 +293,7 @@ const translations = {
     'dashboard.title': 'Dashboard',
     'dashboard.dataSources': 'Fontes de Dados',
     'dashboard.connectedSources': 'fonte(s) conectada(s)',
-    'dashboard.addSource': 'Adicionar Fonte',
+    'dashboard.addSource': 'Configurar Fontes',
     'dashboard.agentConfig': 'Configuração do Agente',
     'dashboard.agentConfigDesc': 'Adicione o detalhamento das fontes para o agente entender o contexto.',
     'dashboard.configureAgent': 'Configurar Agente',
@@ -457,13 +462,25 @@ const translations = {
     'alerts.nextExecution': 'Próxima execução:',
     'alerts.alertRemoved': 'Alerta removido',
     
+    // Account
+    'account.title': 'Conta',
+    'account.export': 'Exportação',
+    'account.exportHistory': 'Exportar histórico',
+    'account.security': 'Segurança',
+    'account.deleteAccount': 'Excluir conta e dados',
+    'account.deleteConfirm': 'Tem certeza que deseja excluir sua conta e dados locais?',
+    
     // Footer
     'footer.copyright': '© {year} Converse com seus dados. Todos os direitos reservados.',
   }
 };
 
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(() => {
+    // Try to get the saved language from localStorage
+    const savedLanguage = localStorage.getItem('language') as Language;
+    return savedLanguage && (savedLanguage === 'en' || savedLanguage === 'pt') ? savedLanguage : 'en';
+  });
 
   const t = (key: string, params?: Record<string, any>): string => {
     let text = translations[language][key] || key;
@@ -477,8 +494,13 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     return text;
   };
 
+  const handleSetLanguage = (lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('language', lang);
+  };
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
