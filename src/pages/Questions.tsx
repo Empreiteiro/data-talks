@@ -148,20 +148,50 @@ const Questions = () => {
                    <CardContent className="space-y-4">
                      {/* Main answer */}
                      <div className="prose prose-sm max-w-none">
-                       {(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => (
-                         <p key={index} className="mb-2 last:mb-0">{line}</p>
-                       ))}
+                       <div className="space-y-2">
+                         {(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
+                           if (line.trim() === '') return <br key={index} />;
+                           
+                           // Check if line contains bullet points and format accordingly
+                           if (line.startsWith('- ')) {
+                             return (
+                               <div key={index} className="flex items-start space-x-2">
+                                 <span className="text-primary font-bold">•</span>
+                                 <span className="flex-1">{line.substring(2)}</span>
+                               </div>
+                             );
+                           }
+                           
+                           // Check if line contains bold text markers
+                           if (line.includes('**')) {
+                             const parts = line.split('**');
+                             return (
+                               <p key={index} className="mb-2 last:mb-0">
+                                 {parts.map((part, partIndex) => 
+                                   partIndex % 2 === 1 ? 
+                                     <strong key={partIndex} className="font-semibold text-primary">{part}</strong> : 
+                                     part
+                                 )}
+                               </p>
+                             );
+                           }
+                           
+                           return <p key={index} className="mb-2 last:mb-0">{line}</p>;
+                         })}
+                       </div>
                      </div>
                      
-                    {h.table_data?.image_url && (
-                      <div className="mt-4">
-                        <img 
-                          src={h.table_data.image_url} 
-                          alt={t('questions.analysisResult')} 
-                          className="max-w-full h-auto rounded-lg shadow-sm"
-                        />
-                      </div>
-                    )}
+                     {/* Display base64 image if present in answer or table_data */}
+                     {h.table_data?.image_url && (
+                       <div className="mt-4 space-y-2">
+                         <h4 className="text-sm font-medium">{t('questions.analysisResult')}</h4>
+                         <img 
+                           src={h.table_data.image_url} 
+                           alt={t('questions.analysisResult')} 
+                           className="max-w-full h-auto rounded-lg shadow-md border bg-white p-2"
+                         />
+                       </div>
+                     )}
 
                     {/* Conversation History - Follow-up questions and answers (skip first if it's the same as main question) */}
                     {h.conversation_history && h.conversation_history.length > 0 && (
