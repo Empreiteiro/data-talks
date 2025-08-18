@@ -191,7 +191,58 @@ serve(async (req) => {
       const outputs = langflowData.outputs[0].outputs;
       
       for (const output of outputs) {
-        if (output.results) {
+        if (output.results?.message?.data?.text) {
+          let textResponse = output.results.message.data.text;
+          console.log('Found text response:', textResponse);
+          
+          // Check if the text contains JSON that needs to be parsed
+          if (textResponse.includes('```json') || textResponse.startsWith('{')) {
+            try {
+              // Try to extract JSON from the response
+              let jsonString = textResponse;
+              
+              // Remove code blocks if present
+              if (textResponse.includes('```json')) {
+                const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/);
+                if (jsonMatch) {
+                  jsonString = jsonMatch[1];
+                }
+              }
+              
+              // Parse the JSON and extract text and image
+              const parsedResponse = JSON.parse(jsonString);
+              
+              if (parsedResponse.text) {
+                answer = parsedResponse.text;
+                console.log('Extracted text from JSON:', answer);
+              }
+              
+              if (parsedResponse.image) {
+                let imageData = parsedResponse.image;
+                
+                // Clean up image data - remove ANSI codes and other artifacts
+                imageData = imageData.replace(/\u001b\[[0-9;]*m/g, ''); // Remove ANSI codes
+                imageData = imageData.replace(/^> Entering new.*?\r?\n/g, ''); // Remove chain logs
+                imageData = imageData.trim();
+                
+                // If image doesn't start with data:image, add the prefix
+                if (imageData && !imageData.startsWith('data:image/')) {
+                  imageUrl = `data:image/png;base64,${imageData}`;
+                } else {
+                  imageUrl = imageData;
+                }
+                console.log('Extracted image from JSON');
+              }
+            } catch (parseError) {
+              console.error('Failed to parse JSON response:', parseError);
+              answer = textResponse; // Use original text as fallback
+            }
+          } else {
+            answer = textResponse;
+          }
+        }
+        // Legacy fallback for old format
+        else if (output.results) {
           // Check for base64 image data
           if (output.results.base64 || (typeof output.results.message === 'string' && output.results.message.startsWith('data:image'))) {
             const base64Data = output.results.base64 || output.results.message;
@@ -201,16 +252,16 @@ serve(async (req) => {
             } else {
               imageUrl = base64Data;
             }
-            console.log('Found base64 image data');
+            console.log('Found base64 image data (legacy)');
           }
           
           // Check for text response
           if (output.results.message?.text) {
             answer = output.results.message.text;
-            console.log('Found text response:', answer);
+            console.log('Found text response (legacy):', answer);
           } else if (typeof output.results.message === 'string' && !output.results.message.startsWith('data:image')) {
             answer = output.results.message;
-            console.log('Found text response:', answer);
+            console.log('Found text response (legacy):', answer);
           }
         }
       }
