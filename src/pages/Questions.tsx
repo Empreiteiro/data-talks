@@ -148,41 +148,37 @@ const Questions = () => {
                    <CardContent className="space-y-4">
                      {/* Main answer */}
                      <div className="prose prose-sm max-w-none">
-                        <div className="space-y-2">
-                          {(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
-                            if (line.trim() === '') return <br key={index} />;
-                            
-                            // Function to format text with bold markers
-                            const formatText = (text: string) => {
-                              if (!text.includes('**')) return text;
-                              
-                              const parts = text.split('**');
-                              return parts.map((part, partIndex) => 
-                                partIndex % 2 === 1 ? 
-                                  <strong key={partIndex} className="font-bold text-primary">{part}</strong> : 
-                                  part
-                              );
-                            };
-                            
-                            // Check if line contains bullet points and format accordingly
-                            if (line.startsWith('- ')) {
-                              const bulletText = line.substring(2);
-                              return (
-                                <div key={index} className="flex items-start space-x-2">
-                                  <span className="text-primary font-bold mt-0.5">•</span>
-                                  <span className="flex-1">{formatText(bulletText)}</span>
-                                </div>
-                              );
-                            }
-                            
-                            // For regular lines, format and return as paragraph
-                            return (
-                              <p key={index} className="mb-2 last:mb-0">
-                                {formatText(line)}
-                              </p>
-                            );
-                          })}
-                        </div>
+                       <div className="space-y-2">
+                         {(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
+                           if (line.trim() === '') return <br key={index} />;
+                           
+                           // Check if line contains bullet points and format accordingly
+                           if (line.startsWith('- ')) {
+                             return (
+                               <div key={index} className="flex items-start space-x-2">
+                                 <span className="text-primary font-bold">•</span>
+                                 <span className="flex-1">{line.substring(2)}</span>
+                               </div>
+                             );
+                           }
+                           
+                           // Check if line contains bold text markers
+                           if (line.includes('**')) {
+                             const parts = line.split('**');
+                             return (
+                               <p key={index} className="mb-2 last:mb-0">
+                                 {parts.map((part, partIndex) => 
+                                   partIndex % 2 === 1 ? 
+                                     <strong key={partIndex} className="font-semibold text-primary">{part}</strong> : 
+                                     part
+                                 )}
+                               </p>
+                             );
+                           }
+                           
+                           return <p key={index} className="mb-2 last:mb-0">{line}</p>;
+                         })}
+                       </div>
                      </div>
                      
                      {/* Display base64 image if present in answer or table_data */}

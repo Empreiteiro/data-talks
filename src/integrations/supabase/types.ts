@@ -253,10 +253,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      hash_password: {
-        Args: { password_text: string }
-        Returns: string
-      }
       update_agent_share_password_only: {
         Args: { agent_id: string; password: string }
         Returns: boolean
@@ -277,10 +273,6 @@ export type Database = {
       }
       verify_agent_share_password: {
         Args: { password_attempt: string; token_value: string }
-        Returns: boolean
-      }
-      verify_password: {
-        Args: { password_hash: string; password_text: string }
         Returns: boolean
       }
     }

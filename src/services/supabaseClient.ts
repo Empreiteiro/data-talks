@@ -465,7 +465,7 @@ export const supabaseClient = {
   // Ask question to shared agent (without authentication)
   async askQuestionShared(agentId: string, question: string, shareToken: string, sessionId?: string) {
     const { data, error } = await supabase.functions.invoke('ask-question', {
-      body: { question, agentId, shareToken, sessionId, isShared: true }
+      body: { question, agentId, shareToken, sessionId }
     });
 
     if (error) throw error;
