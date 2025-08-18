@@ -149,16 +149,32 @@ serve(async (req) => {
 
       // Get BigQuery source metadata
       const bigquerySource = sources.find(s => s.type === 'bigquery');
-      if (!bigquerySource || !bigquerySource.metadata) {
+      if (!bigquerySource) {
         return new Response(
-          JSON.stringify({ error: 'BigQuery source metadata not found' }),
+          JSON.stringify({ error: 'BigQuery source not found' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const metadata = bigquerySource.metadata;
-      console.log('BigQuery source metadata completo:', JSON.stringify(metadata, null, 2));
-      console.log('Verificando campos disponíveis em metadata:', Object.keys(metadata || {}));
+      const metadata = bigquerySource.metadata || {};
+      console.log('BigQuery source metadata:', JSON.stringify(metadata, null, 2));
+      console.log('BigQuery source langflow_path:', bigquerySource.langflow_path);
+      
+      // Check credentials path availability early
+      const credentialsPath = bigquerySource.langflow_path ||
+        metadata.service_account_json_file ||
+        metadata.credentials_file ||
+        metadata.service_account ||
+        metadata.service_account_filename ||
+        metadata.credentials_name;
+        
+      if (!credentialsPath) {
+        console.error('No credentials file path found for BigQuery source:', bigquerySource.name);
+        return new Response(
+          JSON.stringify({ error: 'BigQuery credentials file not configured. Please upload a service account JSON file.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       // Build schema from table_infos
       let schemaText = "";
@@ -190,29 +206,33 @@ serve(async (req) => {
           },
           "File-lER3y": {
             path: [(() => {
-              console.log('Procurando arquivo de credenciais...');
-              console.log('service_account_json_file:', metadata.service_account_json_file);
-              console.log('credentials_file:', metadata.credentials_file);
-              console.log('service_account:', metadata.service_account);
-              console.log('service_account_filename:', metadata.service_account_filename);
-              console.log('credentials_name:', metadata.credentials_name);
+              console.log('Looking for credentials file...');
+              console.log('BigQuery source langflow_path:', bigquerySource.langflow_path);
+              console.log('BigQuery source metadata fields:', Object.keys(metadata));
               
-              const filePath =
-                metadata.service_account_json_file ||
-                metadata.credentials_file ||
-                metadata.service_account ||
-                metadata.service_account_filename ||
-                metadata.credentials_name ||
-                "";
-                
-              console.log('Caminho completo do arquivo enviado:', filePath);
+              // Primary: Use langflow_path like CSV agent does
+              let credentialsPath = bigquerySource.langflow_path;
               
-              if (!filePath) {
-                console.log('ERRO: Nenhum arquivo de credenciais encontrado!');
+              // Fallback: Try metadata fields if langflow_path is empty
+              if (!credentialsPath) {
+                credentialsPath = metadata.service_account_json_file ||
+                  metadata.credentials_file ||
+                  metadata.service_account ||
+                  metadata.service_account_filename ||
+                  metadata.credentials_name ||
+                  "";
+                console.log('Using fallback metadata path:', credentialsPath);
+              } else {
+                console.log('Using primary langflow_path:', credentialsPath);
+              }
+              
+              if (!credentialsPath) {
+                console.error('ERROR: No credentials file path found! Check BigQuery source configuration.');
                 return "";
               }
               
-              return filePath;
+              console.log('Final credentials path sent to Langflow:', credentialsPath);
+              return credentialsPath;
             })()]
           },
           "Prompt Template-RF5j9": {
