@@ -140,6 +140,9 @@ serve(async (req) => {
         "Prompt Template-RF5j9": {
           question: question,
           schema: schemaText
+        },
+        "Python REPL Tool-eYPvH": {
+          chart_without_border: "true"
         }
       }
     };
