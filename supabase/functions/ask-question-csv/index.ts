@@ -5,12 +5,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
 const langflowBaseUrl = Deno.env.get('LANGFLOW_BASE_URL');
 const langflowCsvFlowId = Deno.env.get('LANGFLOW_CSV_FLOW_ID');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://ooimkdueuozjfwadrkkh.supabase.co',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -20,7 +19,8 @@ serve(async (req) => {
   }
 
   try {
-    const { question, agent, sources, sessionId, isShared, shareToken, userId } = await req.json();
+    const body = await req.json();
+    const { question, agent, sources, sessionId, isShared, shareToken, userId } = body;
 
     if (!question || !agent || !sources) {
       return new Response(
@@ -37,8 +37,53 @@ serve(async (req) => {
       );
     }
 
+    // Validate user authentication for non-shared requests
+    let validatedUserId = userId;
+    if (!isShared) {
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required for non-shared requests' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Create authenticated Supabase client to validate user
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+          global: {
+            headers: {
+              authorization: authHeader,
+            },
+          },
+        }
+      );
+      
+      // Verify the user exists and get their ID
+      const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+      if (userError || !userData.user) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid authentication token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      validatedUserId = userData.user.id;
+    }
+
     const startTime = Date.now();
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Create Supabase client with anon key for data operations
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+    
     const headers = { 'x-api-key': langflowApiKey };
     
     // Get CSV sources and use existing Langflow paths
@@ -139,19 +184,25 @@ serve(async (req) => {
     
     const latency = Date.now() - startTime;
 
-    // Create or get QA session
+    // Create or get QA session with proper security checks
     let qaSession;
     if (sessionId) {
-      // Use existing session for follow-up questions
+      // Get existing session with security validation
       const { data: existingSession, error: sessionError } = await supabase
         .from('qa_sessions')
         .select('*')
         .eq('id', sessionId)
+        .eq('agent_id', agent.id)
         .single();
 
       if (sessionError || !existingSession) {
         console.error('Error finding existing session:', sessionError);
         throw new Error('Failed to find existing session');
+      }
+      
+      // Security check for non-shared sessions
+      if (!isShared && existingSession.user_id !== validatedUserId) {
+        throw new Error('Access denied to this session');
       }
       
       qaSession = existingSession;
@@ -175,12 +226,12 @@ serve(async (req) => {
       
       qaSession = sessionData;
     } else {
-      // For regular questions, create session with user_id
+      // For regular questions, create session with validated user_id
       const { data: sessionData, error: sessionError } = await supabase
         .from('qa_sessions')
         .insert({
           question,
-          user_id: userId,
+          user_id: validatedUserId,
           agent_id: agent.id
         })
         .select()

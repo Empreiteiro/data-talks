@@ -2,12 +2,10 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://ooimkdueuozjfwadrkkh.supabase.co',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -41,22 +39,73 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Validate user authentication for non-shared requests
+    let validatedUserId = userId;
+    if (!isShared) {
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required for non-shared requests' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Set auth header for the client
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+          global: {
+            headers: {
+              authorization: authHeader,
+            },
+          },
+        }
+      );
+      
+      // Verify the user exists and get their ID
+      const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+      if (userError || !userData.user) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid authentication token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      validatedUserId = userData.user.id;
+    }
+
+    // Initialize Supabase client with anon key for security
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
 
     // Get agent information
     let agent;
     if (sessionId) {
-      // For follow-up questions, get agent from existing session
-      const { data: existingSession, error: sessionError } = await supabase
+      // For follow-up questions, get agent from existing session with security checks
+      const { data: sessionData, error: sessionError } = await supabase
         .from('qa_sessions')
-        .select('agent_id')
+        .select('agent_id, user_id')
         .eq('id', sessionId)
         .single();
 
-      if (sessionError || !existingSession) {
+      if (sessionError || !sessionData) {
         return new Response(
           JSON.stringify({ error: 'Session not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Security check: verify session ownership for non-shared sessions
+      if (!isShared && sessionData.user_id !== validatedUserId) {
+        return new Response(
+          JSON.stringify({ error: 'Access denied to this session' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
@@ -64,7 +113,7 @@ serve(async (req) => {
       const { data: agentData, error: agentError } = await supabase
         .from('agents')
         .select('*')
-        .eq('id', existingSession.agent_id)
+        .eq('id', sessionData.agent_id)
         .single();
 
       if (agentError || !agentData) {
@@ -130,7 +179,7 @@ serve(async (req) => {
       sessionId,
       isShared,
       shareToken,
-      userId
+      userId: validatedUserId
     };
 
     let targetFunction;
@@ -144,7 +193,10 @@ serve(async (req) => {
     
     // Call the appropriate specialized function
     const functionResponse = await supabase.functions.invoke(targetFunction, {
-      body: payload
+      body: payload,
+      headers: {
+        authorization: req.headers.get('authorization') || '',
+      }
     });
 
     if (functionResponse.error) {
