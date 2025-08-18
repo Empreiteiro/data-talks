@@ -181,6 +181,9 @@ const translations = {
     'questions.deleteQuestionLabel': 'Delete question',
     'questions.deleteQuestionConfirm': 'Are you sure you want to delete this question?',
     'questions.status': 'Status',
+    'questions.availableColumns': 'Available Columns',
+    'questions.seoDescription': 'Ask questions in natural language',
+    'questions.dateFormat': 'en-US',
     
     // Alerts
     'alerts.title': 'Alerts',
@@ -420,6 +423,9 @@ const translations = {
     'questions.deleteQuestionLabel': 'Deletar pergunta',
     'questions.deleteQuestionConfirm': 'Tem certeza que deseja deletar esta pergunta?',
     'questions.status': 'Status',
+    'questions.availableColumns': 'Colunas disponíveis',
+    'questions.seoDescription': 'Faça perguntas em linguagem natural',
+    'questions.dateFormat': 'pt-BR',
     
     // Alerts
     'alerts.title': 'Alertas',

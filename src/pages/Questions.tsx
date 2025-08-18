@@ -174,7 +174,7 @@ const Questions = () => {
 
   return (
     <main className="container py-10">
-      <SEO title={`${t('questions.title')} | ${t('nav.tagline')}`} description="Faça perguntas em linguagem natural" canonical="/questions" />
+      <SEO title={`${t('questions.title')} | ${t('nav.tagline')}`} description={t('questions.seoDescription')} canonical="/questions" />
       <h1 className="text-3xl font-semibold mb-6">{t('questions.title')}</h1>
 
       {agents.length === 0 ? (
@@ -230,7 +230,7 @@ const Questions = () => {
 
             {availableColumns.length > 0 && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium">Colunas disponíveis</label>
+                <label className="block text-sm font-medium">{t('questions.availableColumns')}</label>
                 <div className="flex flex-wrap gap-2">
                   {availableColumns.map((column, index) => (
                     <Button
@@ -315,12 +315,11 @@ const Questions = () => {
                       {(() => {
                         const img = extractBase64Image(h.answer || '');
                         return (!h.table_data?.image_url && img) ? (
-                          <div className="mt-4 space-y-2">
-                            <h4 className="text-sm font-medium">{t('questions.analysisResult')}</h4>
+                          <div className="mt-4">
                             <img 
                               src={img} 
                               alt={t('questions.analysisResult')} 
-                              className="max-w-full h-auto rounded-lg shadow-md border bg-white p-2"
+                              className="max-w-full h-auto rounded-lg"
                               loading="lazy"
                             />
                           </div>
@@ -329,12 +328,11 @@ const Questions = () => {
                       
                       {/* Display base64 image if present in answer or table_data */}
                      {h.table_data?.image_url && (
-                       <div className="mt-4 space-y-2">
-                         <h4 className="text-sm font-medium">{t('questions.analysisResult')}</h4>
+                       <div className="mt-4">
                          <img 
                            src={h.table_data.image_url} 
                            alt={t('questions.analysisResult')} 
-                           className="max-w-full h-auto rounded-lg shadow-md border bg-white p-2"
+                           className="max-w-full h-auto rounded-lg"
                          />
                        </div>
                      )}
@@ -357,7 +355,7 @@ const Questions = () => {
                                 <img 
                                   src={conversation.imageUrl} 
                                   alt={t('questions.analysisResult')} 
-                                  className="max-w-full h-auto rounded-lg shadow-sm"
+                                  className="max-w-full h-auto rounded-lg"
                                 />
                               </div>
                             )}
@@ -445,9 +443,9 @@ const Questions = () => {
                       </Button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(h.created_at).toLocaleString('pt-BR')} · {t('questions.status')}: {h.status}
-                      </p>
+                                          <p className="text-xs text-muted-foreground">
+                      {new Date(h.created_at).toLocaleString(t('questions.dateFormat'))} · {t('questions.status')}: {h.status}
+                    </p>
                     </div>
                   </CardContent>
                 </Card>
