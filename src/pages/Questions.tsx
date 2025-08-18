@@ -83,6 +83,11 @@ const Questions = () => {
     queryFn: () => supabaseClient.listAgents()
   });
 
+  const { data: sources = [] } = useQuery({
+    queryKey: ['sources'],
+    queryFn: () => supabaseClient.listSources()
+  });
+
   const { data: sessions = [] } = useQuery({
     queryKey: ['qa-sessions', agentId],
     queryFn: () => supabaseClient.listQASessions(agentId || undefined)
@@ -96,6 +101,48 @@ const Questions = () => {
   // Get current agent's suggested questions
   const currentAgent = agents.find(a => a.id === agentId);
   const suggestedQuestions = currentAgent?.suggested_questions || [];
+
+  // Get columns from connected sources
+  const getConnectedSourcesColumns = () => {
+    if (!currentAgent || !currentAgent.source_ids) return [];
+    
+    const connectedSources = sources.filter(source => 
+      currentAgent.source_ids.includes(source.id)
+    );
+    
+    const columns: string[] = [];
+    connectedSources.forEach(source => {
+      if (source.type === 'bigquery' && source.metadata) {
+        // For BigQuery sources
+        const metadata = source.metadata as any;
+        if (metadata.table_infos && Array.isArray(metadata.table_infos)) {
+          metadata.table_infos.forEach((tableInfo: any) => {
+            if (tableInfo.columns && Array.isArray(tableInfo.columns)) {
+              tableInfo.columns.forEach((col: string) => {
+                if (!columns.includes(col)) {
+                  columns.push(col);
+                }
+              });
+            }
+          });
+        }
+      } else if (source.metadata) {
+        // For CSV/JSON sources
+        const metadata = source.metadata as any;
+        if (metadata.columns && Array.isArray(metadata.columns)) {
+          metadata.columns.forEach((col: string) => {
+            if (!columns.includes(col)) {
+              columns.push(col);
+            }
+          });
+        }
+      }
+    });
+    
+    return columns.sort(); // Sort alphabetically
+  };
+
+  const availableColumns = getConnectedSourcesColumns();
 
   async function ask(sessionId?: string) {
     if (!question.trim() || !agentId) return;
@@ -175,6 +222,29 @@ const Questions = () => {
                       className="text-sm"
                     >
                       {suggestedQuestion}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {availableColumns.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Colunas disponíveis</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableColumns.map((column, index) => (
+                    <Button
+                      key={index}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        const currentValue = question.trim();
+                        const newValue = currentValue ? `${currentValue} ${column}` : column;
+                        setQuestion(newValue);
+                      }}
+                      className="text-sm bg-muted hover:bg-muted/80 text-muted-foreground"
+                    >
+                      {column}
                     </Button>
                   ))}
                 </div>
