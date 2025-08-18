@@ -18,13 +18,45 @@ const Questions = () => {
 
   function extractBase64Image(text: string): string | null {
     if (!text) return null;
-    const dataUrlMatch = text.match(/data:image\/(png|jpeg|jpg);base64,([A-Za-z0-9+/=]+)/);
-    if (dataUrlMatch) return dataUrlMatch[0];
-    const clean = text.replace(/[\s\n\r]/g, '');
-    const pngMatch = clean.match(/iVBORw0KGgo[A-Za-z0-9+/=]+/);
-    if (pngMatch) return `data:image/png;base64,${pngMatch[0]}`;
-    const jpgMatch = clean.match(/\/9j\/[A-Za-z0-9+/=]+/);
-    if (jpgMatch) return `data:image/jpeg;base64,${jpgMatch[0]}`;
+
+    // 1) Try explicit data URLs (with possible whitespace breaks)
+    const dataUrlRegex = /data:image\/(png|jpeg|jpg);base64,([A-Za-z0-9+\/=_\s\r\n]+)/i;
+    const dataUrlMatch = text.match(dataUrlRegex);
+    if (dataUrlMatch) {
+      const cleaned = dataUrlMatch[0].replace(/[\s\r\n]+/g, '');
+      return cleaned;
+    }
+
+    // 2) Remove code fences (```json ... ```), keep inner content
+    const withoutFences = text.replace(/```[\s\S]*?```/g, (block) =>
+      block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '')
+    );
+
+    // 3) Remove whitespace/newlines to capture long base64 spans
+    const clean = withoutFences.replace(/[\s\r\n]+/g, '');
+    const isB64Char = (ch: string) => /[A-Za-z0-9+/=]/.test(ch);
+
+    // Helper to extract continuous base64 starting at index
+    const takeWhileB64 = (s: string, start: number) => {
+      let end = start;
+      while (end < s.length && isB64Char(s[end])) end++;
+      return s.slice(start, end);
+    };
+
+    // 4) PNG magic header
+    const pngStart = clean.indexOf('iVBORw0KGgo');
+    if (pngStart >= 0) {
+      const b64 = takeWhileB64(clean, pngStart);
+      if (b64.length > 500) return `data:image/png;base64,${b64}`;
+    }
+
+    // 5) JPEG magic header
+    const jpgStart = clean.indexOf('/9j/');
+    if (jpgStart >= 0) {
+      const b64 = takeWhileB64(clean, jpgStart);
+      if (b64.length > 500) return `data:image/jpeg;base64,${b64}`;
+    }
+
     return null;
   }
 
