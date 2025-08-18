@@ -1,16 +1,18 @@
 import { SEO } from "@/components/SEO";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMemo, useRef, useState } from "react";
-import { supabaseClient } from "@/services/supabaseClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { X, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { supabaseClient } from "@/services/supabaseClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Trash2, X } from "lucide-react";
+import { useRef, useState } from "react";
 
 const Sources = () => {
+  const { t } = useLanguage();
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const credRef = useRef<HTMLInputElement>(null);
@@ -22,7 +24,7 @@ const Sources = () => {
   });
 
   async function handleDelete(sourceId: string) {
-    if (confirm('Tem certeza que deseja deletar esta fonte de dados?')) {
+    if (confirm(t('sources.deleteConfirm'))) {
       try {
         await supabaseClient.deleteSource(sourceId);
         queryClient.invalidateQueries({ queryKey: ['sources'] });
@@ -43,7 +45,7 @@ const Sources = () => {
       setFiles([]);
       queryClient.invalidateQueries({ queryKey: ['sources'] });
     } catch (e: any) {
-      alert(`Erro no upload: ${e.message}`);
+      alert(`${t('sources.uploadError')} ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -62,12 +64,12 @@ const Sources = () => {
       const credentialsFile = credRef.current?.files?.[0];
       
       if (!credentialsFile) {
-        alert('Por favor, selecione o arquivo de credenciais JSON');
+        alert(t('sources.selectCredentialsFile'));
         return;
       }
       
       if (!project || !dataset || !tablesInput) {
-        alert('Por favor, preencha todos os campos obrigatórios');
+        alert(t('sources.fillRequiredFields'));
         return;
       }
       
@@ -87,20 +89,20 @@ const Sources = () => {
       // Refresh sources list
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       
-      alert(`BigQuery conectado com sucesso! Fonte: ${result.source?.name}`);
+      alert(`${t('sources.bigQueryConnected')} ${result.source?.name}`);
       
     } catch (error: any) {
       console.error('BigQuery connection error:', error);
       
       // Extract more specific error information
-      let errorMessage = 'Erro desconhecido';
+      let errorMessage = t('sources.unknownError');
       if (error.message) {
         errorMessage = error.message;
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
       
-      alert(`Erro ao conectar BigQuery: ${errorMessage}`);
+      alert(`${t('sources.bigQueryError')} ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -108,17 +110,17 @@ const Sources = () => {
 
   return (
     <main className="container py-10">
-      <SEO title="Fontes | Converse com seus dados" description="Envie CSV/XLSX ou conecte seu BigQuery" canonical="/sources" />
-      <h1 className="text-3xl font-semibold mb-6">Fontes de Dados</h1>
+      <SEO title={`${t('sources.title')} | ${t('nav.tagline')}`} description="Envie CSV/XLSX ou conecte seu BigQuery" canonical="/sources" />
+      <h1 className="text-3xl font-semibold mb-6">{t('sources.title')}</h1>
       <Tabs defaultValue="files" className="mb-8">
         <TabsList>
-          <TabsTrigger value="files">Arquivos (CSV/XLSX)</TabsTrigger>
-          <TabsTrigger value="bq">Google BigQuery</TabsTrigger>
+          <TabsTrigger value="files">{t('sources.filesTab')}</TabsTrigger>
+          <TabsTrigger value="bq">{t('sources.bigQueryTab')}</TabsTrigger>
         </TabsList>
         <TabsContent value="files" className="mt-6">
           <div className="grid gap-4 md:grid-cols-[1fr_auto]">
             <Input type="file" accept=".csv,.xlsx,.xls" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-            <Button onClick={handleUpload} disabled={!files.length || loading}>{loading ? 'Enviando...' : 'Fazer upload'}</Button>
+            <Button onClick={handleUpload} disabled={!files.length || loading}>{loading ? t('sources.uploading') : t('sources.uploadButton')}</Button>
           </div>
           {files.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -133,7 +135,7 @@ const Sources = () => {
                     variant="ghost"
                     size="sm"
                     className="h-6 px-1"
-                    aria-label={`Remover ${f.name}`}
+                    aria-label={`${t('sources.removeFile')} ${f.name}`}
                     onClick={() => setFiles(prev => prev.filter((_, i) => i !== idx))}
                   >
                     <X className="h-3 w-3" />
@@ -146,24 +148,24 @@ const Sources = () => {
         <TabsContent value="bq" className="mt-6">
           <form onSubmit={handleBQ} className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Credenciais (JSON)</Label>
+              <Label>{t('sources.credentials')}</Label>
               <Input type="file" accept="application/json" ref={credRef} />
             </div>
             <div className="space-y-2">
-              <Label>Projeto</Label>
-              <Input name="project" placeholder="meu-projeto" />
+              <Label>{t('sources.project')}</Label>
+              <Input name="project" placeholder={t('sources.projectPlaceholder')} />
             </div>
             <div className="space-y-2">
-              <Label>Dataset</Label>
-              <Input name="dataset" placeholder="analytics" />
+              <Label>{t('sources.dataset')}</Label>
+              <Input name="dataset" placeholder={t('sources.datasetPlaceholder')} />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label>Tabelas permitidas (separadas por vírgula)</Label>
-              <Input name="tables" placeholder="orders, customers" />
+              <Label>{t('sources.allowedTables')}</Label>
+              <Input name="tables" placeholder={t('sources.tablesPlaceholder')} />
             </div>
             <div className="md:col-span-2">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Conectando...' : 'Conectar BigQuery'}
+                {loading ? t('sources.connecting') : t('sources.connectBigQuery')}
               </Button>
             </div>
           </form>
@@ -175,7 +177,7 @@ const Sources = () => {
           <Card className="shadow-sm">
             <CardContent className="pt-6">
               <p className="text-muted-foreground text-center">
-                Nenhuma fonte de dados encontrada. Faça upload de arquivos CSV ou XLSX acima.
+                {t('sources.noSourcesFound')}
               </p>
             </CardContent>
           </Card>
@@ -196,7 +198,7 @@ const Sources = () => {
               <CardContent>
                 <div className="space-y-4">
                   <div className="text-sm text-muted-foreground">
-                    Criado em: {new Date(s.created_at).toLocaleString('pt-BR')}
+                    {t('sources.createdAt')} {new Date(s.created_at).toLocaleString('pt-BR')}
                   </div>
                   
                   {s.metadata && (
@@ -205,16 +207,16 @@ const Sources = () => {
                       {(s.langflow_path || s.langflow_name) && (
                         <div className="border rounded-lg p-3 bg-muted/30">
                           <div className="text-sm font-medium mb-2 text-primary">
-                            Integração Langflow
+                            {t('sources.langflowIntegration')}
                           </div>
                           {s.langflow_name && (
                             <div className="text-sm">
-                              <span className="font-medium">Nome no Langflow:</span> {s.langflow_name}
+                              <span className="font-medium">{t('sources.langflowName')}</span> {s.langflow_name}
                             </div>
                           )}
                           {s.langflow_path && (
                             <div className="text-sm">
-                              <span className="font-medium">Caminho:</span> 
+                              <span className="font-medium">{t('sources.langflowPath')}</span> 
                               <span className="ml-1 font-mono text-xs text-muted-foreground">
                                 {s.langflow_path}
                               </span>
@@ -226,7 +228,7 @@ const Sources = () => {
                       {!s.langflow_path && !s.langflow_name && s.type !== 'bigquery' && (
                         <div className="border rounded-lg p-3 bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800">
                           <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                            <span className="font-medium">Aviso:</span> Arquivo não foi carregado no Langflow
+                            <span className="font-medium">{t('sources.warning')}</span> {t('sources.fileNotUploaded')}
                           </div>
                         </div>
                       )}
@@ -239,13 +241,13 @@ const Sources = () => {
                       {/* CSV/Excel file info */}
                       {s.type !== 'bigquery' && s.metadata.row_count > 0 && (
                         <div className="text-sm">
-                          <span className="font-medium">Linhas:</span> {s.metadata.row_count.toLocaleString('pt-BR')}
+                          <span className="font-medium">{t('sources.rows')}</span> {s.metadata.row_count.toLocaleString('pt-BR')}
                         </div>
                       )}
                       
                       {s.type !== 'bigquery' && s.metadata.columns && s.metadata.columns.length > 0 && (
                         <div className="space-y-2">
-                          <div className="text-sm font-medium">Colunas ({s.metadata.columns.length}):</div>
+                          <div className="text-sm font-medium">{t('sources.columns')} ({s.metadata.columns.length}):</div>
                           <div className="flex flex-wrap gap-1">
                             {s.metadata.columns.map((col: string, idx: number) => (
                               <span key={idx} className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
@@ -258,7 +260,7 @@ const Sources = () => {
                       
                       {s.type !== 'bigquery' && s.metadata.preview_rows && s.metadata.preview_rows.length > 0 && (
                         <div className="space-y-2">
-                          <div className="text-sm font-medium">Primeiras linhas:</div>
+                          <div className="text-sm font-medium">{t('sources.firstRows')}</div>
                           <div className="overflow-x-auto">
                             <Table>
                               <TableHeader>
@@ -288,16 +290,16 @@ const Sources = () => {
                       {s.type === 'bigquery' && s.metadata.table_infos && (
                         <div className="space-y-4">
                           <div className="text-sm">
-                            <span className="font-medium">Projeto:</span> {s.metadata.project_id}
+                            <span className="font-medium">{t('sources.project')}:</span> {s.metadata.project_id}
                           </div>
                           <div className="text-sm">
-                            <span className="font-medium">Dataset:</span> {s.metadata.dataset_id}
+                            <span className="font-medium">{t('sources.dataset')}:</span> {s.metadata.dataset_id}
                           </div>
                           <div className="text-sm">
-                            <span className="font-medium">Tabelas conectadas:</span> {s.metadata.total_tables}
+                            <span className="font-medium">{t('sources.connectedTables')}</span> {s.metadata.total_tables}
                             {s.metadata.failed_tables && s.metadata.failed_tables.length > 0 && (
                               <div className="text-sm text-destructive mt-1">
-                                <span className="font-medium">Tabelas não encontradas:</span> {s.metadata.failed_tables.join(', ')}
+                                <span className="font-medium">{t('sources.tablesNotFound')}</span> {s.metadata.failed_tables.join(', ')}
                               </div>
                             )}
                           </div>
@@ -308,14 +310,14 @@ const Sources = () => {
                                 {tableInfo.table_name} 
                                 {tableInfo.row_count > 0 && (
                                   <span className="text-muted-foreground ml-2">
-                                    ({tableInfo.row_count.toLocaleString('pt-BR')} linhas)
+                                    ({tableInfo.row_count.toLocaleString('pt-BR')} {t('sources.rows').toLowerCase()})
                                   </span>
                                 )}
                               </div>
                               
                               {tableInfo.columns && tableInfo.columns.length > 0 && (
                                 <div className="space-y-2">
-                                  <div className="text-xs font-medium">Colunas ({tableInfo.columns.length}):</div>
+                                  <div className="text-xs font-medium">{t('sources.columns')} ({tableInfo.columns.length}):</div>
                                   <div className="flex flex-wrap gap-1">
                                     {tableInfo.columns.map((col: string, colIdx: number) => (
                                       <span key={colIdx} className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
@@ -328,7 +330,7 @@ const Sources = () => {
                               
                               {tableInfo.preview_rows && tableInfo.preview_rows.length > 0 && (
                                 <div className="space-y-2">
-                                  <div className="text-xs font-medium">Primeiras linhas:</div>
+                                  <div className="text-xs font-medium">{t('sources.firstRows')}</div>
                                   <div className="overflow-x-auto">
                                     <Table>
                                       <TableHeader>
@@ -360,7 +362,7 @@ const Sources = () => {
                       
                       {s.metadata.file_size && (
                         <div className="text-sm text-muted-foreground">
-                          Tamanho: {(s.metadata.file_size / 1024 / 1024).toFixed(2)} MB
+                          {t('sources.size')} {(s.metadata.file_size / 1024 / 1024).toFixed(2)} MB
                         </div>
                       )}
                     </div>

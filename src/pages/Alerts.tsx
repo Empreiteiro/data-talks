@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabaseClient } from "@/services/supabaseClient";
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabaseClient } from "@/services/supabaseClient";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 const Alerts = () => {
+  const { t } = useLanguage();
   const [agentId, setAgentId] = useState("");
   const [alertName, setAlertName] = useState("");
   const [question, setQuestion] = useState("");
@@ -41,8 +43,8 @@ const Alerts = () => {
   async function createAlert() {
     if (!agentId || !alertName || !question || !email) {
       toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios",
+        title: t('alerts.error'),
+        description: t('alerts.fillRequiredFields'),
         variant: "destructive"
       });
       return;
@@ -74,13 +76,13 @@ const Alerts = () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
       
       toast({
-        title: "Sucesso",
-        description: "Alerta criado com sucesso!"
+        title: t('alerts.success'),
+        description: t('alerts.alertCreated')
       });
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao criar alerta",
+        title: t('alerts.error'),
+        description: error.message || t('alerts.errorCreatingAlert'),
         variant: "destructive"
       });
     } finally {
@@ -90,16 +92,16 @@ const Alerts = () => {
 
   return (
     <main className="container py-10">
-      <SEO title="Alertas | Converse com seus dados" description="Crie alertas recorrentes" canonical="/alerts" />
-      <h1 className="text-3xl font-semibold mb-6">Alertas</h1>
+      <SEO title={`${t('alerts.title')} | ${t('nav.tagline')}`} description="Crie alertas recorrentes" canonical="/alerts" />
+      <h1 className="text-3xl font-semibold mb-6">{t('alerts.title')}</h1>
 
       {agents.length === 0 ? (
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Antes de começar</CardTitle>
+            <CardTitle>{t('alerts.beforeStart')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Crie um agente para vincular os alertas.</p>
+            <p className="text-muted-foreground">{t('alerts.createAgentFirst')}</p>
           </CardContent>
         </Card>
       ) : (

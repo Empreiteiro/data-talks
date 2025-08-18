@@ -1,10 +1,9 @@
-import NavBar from "@/components/layout/NavBar";
-import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 const Index = () => {
   const { isAuthenticated, initializing } = useAuth();
@@ -59,7 +58,7 @@ const Index = () => {
             { title: t('howItWorks.step1.title'), description: t('howItWorks.step1.description') },
             { title: t('howItWorks.step2.title'), description: t('howItWorks.step2.description') },
             { title: t('howItWorks.step3.title'), description: t('howItWorks.step3.description') },
-            { title: 'Alertas', description: 'Crie alertas para monitorar métricas e receber notificações.' }
+            { title: t('howItWorks.step4.title'), description: t('howItWorks.step4.description') }
           ].map((step, i) => (
             <div key={i} className="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-sm text-primary font-semibold mb-2">Passo {i+1}</div>

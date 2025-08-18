@@ -1,16 +1,18 @@
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Save, Plus, Share, Eye, EyeOff, X } from "lucide-react";
-import { supabaseClient } from "@/services/supabaseClient";
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabaseClient } from "@/services/supabaseClient";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff, Plus, Save, Share, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 const AgentBriefing = () => {
+  const { t } = useLanguage();
   const {
     toast
   } = useToast();
@@ -74,7 +76,7 @@ const AgentBriefing = () => {
   }, [currentAgent]);
   async function deleteAgent() {
     if (!agentId) return;
-    if (confirm(`Tem certeza que deseja deletar o agente "${currentAgent?.name || agentId}"? Esta ação não pode ser desfeita.`)) {
+    if (confirm(t('agent.deleteConfirm', { name: currentAgent?.name || agentId }))) {
       try {
         setIsLoading(true);
         await supabaseClient.deleteAgent(agentId);
@@ -83,12 +85,12 @@ const AgentBriefing = () => {
         });
         setAgentId("");
         toast({
-          title: "Agente deletado",
-          description: "Agente deletado com sucesso"
+          title: t('agent.deleted'),
+          description: t('agent.deletedSuccess')
         });
       } catch (e: any) {
         toast({
-          title: "Erro",
+          title: t('agent.error'),
           description: e.message,
           variant: "destructive"
         });
@@ -104,14 +106,14 @@ const AgentBriefing = () => {
       if (isNewAgent) {
         await supabaseClient.createAgent(name, [selectedSource], description, suggestedQuestions);
         toast({
-          title: "Agente criado",
-          description: "Agente criado com sucesso"
+          title: t('agent.saved'),
+          description: t('agent.savedSuccess')
         });
       } else {
         await supabaseClient.updateAgent(agentId, name, [selectedSource], description, suggestedQuestions);
         toast({
-          title: "Agente atualizado",
-          description: "Agente atualizado com sucesso"
+          title: t('agent.saved'),
+          description: t('agent.savedSuccess')
         });
       }
       queryClient.invalidateQueries({
@@ -119,7 +121,7 @@ const AgentBriefing = () => {
       });
     } catch (e: any) {
       toast({
-        title: "Erro",
+        title: t('agent.error'),
         description: e.message,
         variant: "destructive"
       });
@@ -164,12 +166,12 @@ const AgentBriefing = () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       
       toast({
-        title: enabled ? "Compartilhamento ativado" : "Compartilhamento desativado",
-        description: enabled ? "Link compartilhável criado com sucesso" : "Link compartilhável removido"
+        title: enabled ? t('agent.sharingEnabled') : t('agent.sharingDisabled'),
+        description: enabled ? t('agent.sharingEnabledSuccess') : t('agent.sharingDisabledSuccess')
       });
     } catch (e: any) {
       toast({
-        title: "Erro",
+        title: t('agent.error'),
         description: e.message,
         variant: "destructive"
       });
@@ -188,12 +190,12 @@ const AgentBriefing = () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       
       toast({
-        title: "Senha atualizada",
-        description: "Senha de compartilhamento atualizada com sucesso"
+        title: t('agent.passwordUpdated'),
+        description: t('agent.passwordUpdatedSuccess')
       });
     } catch (e: any) {
       toast({
-        title: "Erro",
+        title: t('agent.error'),
         description: e.message,
         variant: "destructive"
       });
@@ -202,37 +204,37 @@ const AgentBriefing = () => {
     }
   }
   return <main className="container py-10">
-      <SEO title="Agente | Converse com seus dados" description="Defina o contexto e ative o agente" canonical="/agent" />
-      <h1 className="text-3xl font-semibold mb-6">Briefing do Agente</h1>
+      <SEO title={`${t('agent.title')} | ${t('nav.tagline')}`} description="Defina o contexto e ative o agente" canonical="/agent" />
+      <h1 className="text-3xl font-semibold mb-6">{t('agent.title')}</h1>
       <Card className="shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Configurar Agente</CardTitle>
+          <CardTitle>{t('agent.title')}</CardTitle>
           {currentAgent && <Button variant="ghost" size="sm" onClick={deleteAgent} className="text-destructive hover:text-destructive">
               <Trash2 className="h-4 w-4" />
             </Button>}
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label>Agente</Label>
+            <Label>{t('agent.name')}</Label>
             <select value={agentId} onChange={e => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background" disabled={isLoading}>
-              <option value="">Novo agente</option>
+              <option value="">{t('agent.newAgent')}</option>
               {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0, 6)}...`}</option>)}
             </select>
           </div>
 
           <div className="space-y-2">
-            <Label>Nome do agente</Label>
+            <Label>{t('agent.name')}</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Análises de Vendas 2025" disabled={isLoading} />
           </div>
 
           <div className="space-y-2">
-            <Label>Descrição do agente</Label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Descreva o propósito e contexto deste agente. Ex.: Este agente tem acesso aos dados de vendas e pode responder perguntas sobre performance, métricas e análises de vendas do período." rows={3} disabled={isLoading} />
+            <Label>{t('agent.description')}</Label>
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('agent.descriptionPlaceholder')} rows={3} disabled={isLoading} />
           </div>
 
           <div className="space-y-3">
-            <Label>Fonte de dados</Label>
-            {sources.length === 0 ? <p className="text-muted-foreground">Nenhuma fonte de dados encontrada. Adicione fontes primeiro.</p> : <div className="grid gap-3">
+            <Label>{t('agent.dataSource')}</Label>
+            {sources.length === 0 ? <p className="text-muted-foreground">{t('agent.noDataSourcesFound')}</p> : <div className="grid gap-3">
                 {sources.map((source: any) => <div key={source.id} className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedSource === source.id ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted/50'}`} onClick={() => selectSource(source.id)}>
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedSource === source.id ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
                       {selectedSource === source.id && <div className="w-2 h-2 rounded-full bg-primary-foreground"></div>}
@@ -250,18 +252,18 @@ const AgentBriefing = () => {
                   </div>)}
               </div>}
             <p className="text-xs text-muted-foreground">
-              Selecione a fonte de dados que este agente terá acesso para responder perguntas.
+              {t('agent.selectDataSourceHelp')}
             </p>
           </div>
 
           <div className="space-y-3">
-            <Label>Perguntas sugeridas</Label>
+            <Label>{t('agent.suggestedQuestions')}</Label>
             <div className="space-y-3">
               <div className="flex gap-2">
                 <Input 
                   value={newQuestion} 
                   onChange={(e) => setNewQuestion(e.target.value)}
-                  placeholder="Ex.: Qual foi o faturamento do último trimestre?" 
+                  placeholder={t('agent.questionPlaceholder')}
                   disabled={isLoading}
                   onKeyPress={(e) => e.key === 'Enter' && addSuggestedQuestion()}
                 />
@@ -296,7 +298,7 @@ const AgentBriefing = () => {
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Adicione perguntas que aparecerão como sugestões quando alguém usar este agente.
+              {t('agent.addSuggestedQuestionsHelp')}
             </p>
           </div>
 
@@ -305,15 +307,15 @@ const AgentBriefing = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Share className="h-5 w-5" />
-                  Compartilhamento
+                  {t('agent.sharing')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-sm font-medium">Ativar compartilhamento</Label>
+                    <Label className="text-sm font-medium">{t('agent.enableSharing')}</Label>
                     <p className="text-xs text-muted-foreground">
-                      Permite que pessoas externas acessem este agente
+                      {t('agent.enableSharingHelp')}
                     </p>
                   </div>
                   <Switch
@@ -326,7 +328,7 @@ const AgentBriefing = () => {
                 {shareEnabled && (
                   <div className="space-y-4 pt-4 border-t">
                     <div className="space-y-2">
-                      <Label>Link compartilhável</Label>
+                      <Label>{t('agent.shareLink')}</Label>
                       <div className="flex items-center gap-2">
                         <Input 
                           readOnly 
@@ -340,26 +342,26 @@ const AgentBriefing = () => {
                           onClick={() => {
                             navigator.clipboard.writeText(shareLink);
                             toast({
-                              title: "Link copiado",
-                              description: "Link compartilhável copiado para a área de transferência"
+                              title: t('agent.linkCopied'),
+                              description: t('agent.linkCopiedDescription')
                             });
                           }} 
                           disabled={isLoading}
                         >
-                          Copiar
+                          {t('agent.copyLink')}
                         </Button>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Senha de acesso (opcional)</Label>
+                      <Label>{t('agent.sharePassword')}</Label>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
                           <Input
                             type={showPassword ? "text" : "password"}
                             value={sharePassword}
                             onChange={(e) => setSharePassword(e.target.value)}
-                            placeholder="Deixe vazio para acesso público"
+                            placeholder={t('agent.sharePasswordPlaceholder')}
                             disabled={isLoading}
                           />
                           <Button
@@ -378,11 +380,11 @@ const AgentBriefing = () => {
                           onClick={updateSharePassword}
                           disabled={isLoading}
                         >
-                          Salvar
+                          {t('agent.save')}
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {sharePassword ? "Acesso protegido por senha" : "Acesso público - qualquer pessoa com o link pode acessar"}
+                        {sharePassword ? t('agent.passwordProtected') : t('agent.publicAccess')}
                       </p>
                     </div>
                   </div>
@@ -394,7 +396,7 @@ const AgentBriefing = () => {
           <div className="flex gap-2">
             <Button onClick={save} disabled={!canSave || isLoading} className="flex items-center gap-2">
               {isNewAgent ? <Plus className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {isNewAgent ? "Criar Agente" : "Salvar Alterações"}
+              {isNewAgent ? t('agent.createAgent') : t('agent.saveChanges')}
             </Button>
             
             

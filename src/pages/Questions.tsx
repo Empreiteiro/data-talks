@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { supabaseClient } from "@/services/supabaseClient";
-import { ThumbsDown, ThumbsUp, Trash2, Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 const Questions = () => {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [agentId, setAgentId] = useState("");
   const [question, setQuestion] = useState("");
@@ -46,7 +48,7 @@ const Questions = () => {
       queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
       
     } catch (error: any) {
-      alert(`Erro: ${error.message}`);
+      alert(`${t('questions.error')} ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -57,43 +59,43 @@ const Questions = () => {
       await supabaseClient.updateQASessionFeedback(sessionId, feedback);
       queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
     } catch (error: any) {
-      alert(`Erro ao salvar feedback: ${error.message}`);
+      alert(`${t('questions.feedbackError')} ${error.message}`);
     }
   }
 
   return (
     <main className="container py-10">
-      <SEO title="Perguntas | Converse com seus dados" description="Faça perguntas em linguagem natural" canonical="/questions" />
-      <h1 className="text-3xl font-semibold mb-6">Perguntas</h1>
+      <SEO title={`${t('questions.title')} | ${t('nav.tagline')}`} description="Faça perguntas em linguagem natural" canonical="/questions" />
+      <h1 className="text-3xl font-semibold mb-6">{t('questions.title')}</h1>
 
       {agents.length === 0 ? (
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Antes de começar</CardTitle>
+            <CardTitle>{t('questions.beforeStart')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Crie um agente em "Briefing" para começar a perguntar.</p>
+            <p className="text-muted-foreground">{t('questions.createAgentFirst')}</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium mb-2">Agente</label>
+              <label className="block text-sm font-medium mb-2">{t('questions.agent')}</label>
               <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background">
                 {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
               </select>
             </div>
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ex.: Qual a receita dos últimos 3 meses por região?" disabled={isLoading} />
+              <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t('questions.questionPlaceholder')} disabled={isLoading} />
               <Button onClick={() => ask()} disabled={!question || isLoading} className="min-w-[120px]">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processando...
+                    {t('questions.processing')}
                   </>
                 ) : (
-                  'Perguntar'
+                  t('questions.ask')
                 )}
               </Button>
             </div>
