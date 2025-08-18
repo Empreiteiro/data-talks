@@ -73,8 +73,8 @@ serve(async (req) => {
       );
     }
     
-    // Generate session ID
-    const langflowSessionId = crypto.randomUUID();
+    // Generate session ID with agent prefix to avoid cross-contamination
+    const langflowSessionId = `csv-${agent.id}-${crypto.randomUUID()}`;
     
     // Execute CSV flow
     const payload = {

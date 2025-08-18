@@ -90,8 +90,8 @@ serve(async (req) => {
     
     console.log('Schema construído:', schemaText);
     
-    // Generate session ID like in CSV flow
-    const langflowSessionId = crypto.randomUUID();
+    // Generate session ID with agent prefix to avoid cross-contamination
+    const langflowSessionId = `bigquery-${agent.id}-${crypto.randomUUID()}`;
     
     // Build payload using the same structure as CSV flow
     const payload = {
