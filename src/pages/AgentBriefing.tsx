@@ -214,17 +214,17 @@ const AgentBriefing = () => {
             </Button>}
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>{t('agent.name')}</Label>
-            <select value={agentId} onChange={e => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background" disabled={isLoading}>
-              <option value="">{t('agent.newAgent')}</option>
-              {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0, 6)}...`}</option>)}
-            </select>
-          </div>
+                     <div className="space-y-2">
+             <Label>{t('agent.selectAgent')}</Label>
+             <select value={agentId} onChange={e => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background" disabled={isLoading}>
+               <option value="">{t('agent.newAgent')}</option>
+               {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0, 6)}...`}</option>)}
+             </select>
+           </div>
 
           <div className="space-y-2">
             <Label>{t('agent.name')}</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Análises de Vendas 2025" disabled={isLoading} />
+                              <Input value={name} onChange={e => setName(e.target.value)} placeholder={t('agent.namePlaceholder')} disabled={isLoading} />
           </div>
 
           <div className="space-y-2">

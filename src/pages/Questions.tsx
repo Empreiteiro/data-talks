@@ -102,7 +102,7 @@ const Questions = () => {
             
             {suggestedQuestions.length > 0 && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium">Perguntas sugeridas</label>
+                <label className="block text-sm font-medium">{t('questions.suggestedQuestionsLabel')}</label>
                 <div className="flex flex-wrap gap-2">
                   {suggestedQuestions.map((suggestedQuestion, index) => (
                     <Button
@@ -126,7 +126,7 @@ const Questions = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-center space-x-2">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Processando sua pergunta...</p>
+                    <p className="text-muted-foreground">{t('questions.processingQuestion')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -135,7 +135,7 @@ const Questions = () => {
               <Card className="shadow-sm">
                 <CardContent className="pt-6">
                   <p className="text-muted-foreground text-center">
-                    Nenhuma pergunta encontrada. Faça sua primeira pergunta acima.
+                    {t('questions.noQuestionsFound')}
                   </p>
                 </CardContent>
               </Card>
@@ -143,12 +143,12 @@ const Questions = () => {
               sessions.map((h: any) => (
                 <Card key={h.id} className="shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base">Pergunta: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
+                    <CardTitle className="text-base">{t('questions.question')}: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
                   </CardHeader>
                    <CardContent className="space-y-4">
                      {/* Main answer */}
                      <div className="prose prose-sm max-w-none">
-                       {(h.answer || 'Resposta não disponível').split('\n').map((line: string, index: number) => (
+                       {(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => (
                          <p key={index} className="mb-2 last:mb-0">{line}</p>
                        ))}
                      </div>
@@ -157,7 +157,7 @@ const Questions = () => {
                       <div className="mt-4">
                         <img 
                           src={h.table_data.image_url} 
-                          alt="Resultado da análise" 
+                          alt={t('questions.analysisResult')} 
                           className="max-w-full h-auto rounded-lg shadow-sm"
                         />
                       </div>
@@ -169,7 +169,7 @@ const Questions = () => {
                         {h.conversation_history.slice(1).map((conversation: any, index: number) => (
                           <div key={index} className="space-y-2">
                             <div className="text-sm">
-                              <span className="font-medium">Pergunta:</span> {conversation.question}
+                              <span className="font-medium">{t('questions.question')}:</span> {conversation.question}
                             </div>
                             <div className="prose prose-sm max-w-none">
                               {conversation.answer.split('\n').map((line: string, lineIndex: number) => (
@@ -180,7 +180,7 @@ const Questions = () => {
                               <div className="mt-2">
                                 <img 
                                   src={conversation.imageUrl} 
-                                  alt="Resultado da análise" 
+                                  alt={t('questions.analysisResult')} 
                                   className="max-w-full h-auto rounded-lg shadow-sm"
                                 />
                               </div>
@@ -212,7 +212,7 @@ const Questions = () => {
                     {/* Follow-up Questions */}
                     {h.follow_up_questions && h.follow_up_questions.length > 0 && (
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium">Perguntas de aprofundamento</label>
+                        <label className="block text-sm font-medium">{t('questions.followUpQuestions')}</label>
                         <div className="flex flex-wrap gap-2">
                           {h.follow_up_questions.map((followUpQuestion: string, index: number) => (
                             <Button
@@ -236,7 +236,7 @@ const Questions = () => {
                         <Button 
                           variant={h.feedback === 'positive' ? 'default' : 'ghost'} 
                           size="sm" 
-                          aria-label="Feedback positivo"
+                          aria-label={t('questions.positiveFeedbackLabel')}
                           onClick={() => updateFeedback(h.id, 'positive')}
                         >
                           <ThumbsUp />
@@ -244,7 +244,7 @@ const Questions = () => {
                         <Button 
                           variant={h.feedback === 'negative' ? 'default' : 'ghost'} 
                           size="sm" 
-                          aria-label="Feedback negativo"
+                          aria-label={t('questions.negativeFeedbackLabel')}
                           onClick={() => updateFeedback(h.id, 'negative')}
                         >
                           <ThumbsDown />
@@ -253,9 +253,9 @@ const Questions = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Deletar pergunta"
+                        aria-label={t('questions.deleteQuestionLabel')}
                         onClick={async () => { 
-                          if (confirm('Tem certeza que deseja deletar esta pergunta?')) {
+                          if (confirm(t('questions.deleteQuestionConfirm'))) {
                             try {
                               await supabaseClient.deleteQASession(h.id);
                               queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
@@ -270,7 +270,7 @@ const Questions = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-muted-foreground">
-                        {new Date(h.created_at).toLocaleString('pt-BR')} · Status: {h.status}
+                        {new Date(h.created_at).toLocaleString('pt-BR')} · {t('questions.status')}: {h.status}
                       </p>
                     </div>
                   </CardContent>

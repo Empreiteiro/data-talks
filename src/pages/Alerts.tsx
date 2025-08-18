@@ -108,23 +108,23 @@ const Alerts = () => {
         <div className="space-y-8">
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Novo Alerta</CardTitle>
+              <CardTitle>{t('alerts.newAlert')}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label htmlFor="alert-name">Nome do Alerta</Label>
+                <Label htmlFor="alert-name">{t('alerts.alertName')}</Label>
                 <Input 
                   id="alert-name"
-                  placeholder="Nome do alerta" 
+                  placeholder={t('alerts.alertNamePlaceholder')} 
                   value={alertName}
                   onChange={(e) => setAlertName(e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="agent-select">Agente</Label>
+                <Label htmlFor="agent-select">{t('alerts.agent')}</Label>
                 <Select value={agentId} onValueChange={setAgentId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um agente" />
+                    <SelectValue placeholder={t('alerts.selectAgentPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {agents.map((a: any) => (
@@ -136,39 +136,39 @@ const Alerts = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="email">E-mail para notificação</Label>
+                <Label htmlFor="email">{t('alerts.email')}</Label>
                 <Input 
                   id="email"
                   type="email" 
-                  placeholder="seu@email.com" 
+                  placeholder={t('alerts.emailPlaceholder')} 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="question">Pergunta/Query</Label>
+                <Label htmlFor="question">{t('alerts.question')}</Label>
                 <Input 
                   id="question"
-                  placeholder="Qual pergunta ou condição monitorar?" 
+                  placeholder={t('alerts.questionPlaceholder')} 
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="frequency">Frequência</Label>
+                <Label htmlFor="frequency">{t('alerts.frequency')}</Label>
                 <Select value={frequency} onValueChange={setFrequency}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Diário</SelectItem>
-                    <SelectItem value="weekly">Semanal</SelectItem>
-                    <SelectItem value="monthly">Mensal</SelectItem>
+                    <SelectItem value="daily">{t('alerts.daily')}</SelectItem>
+                    <SelectItem value="weekly">{t('alerts.weekly')}</SelectItem>
+                    <SelectItem value="monthly">{t('alerts.monthly')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="execution-time">Horário de Execução</Label>
+                <Label htmlFor="execution-time">{t('alerts.executionTime')}</Label>
                 <Input 
                   id="execution-time"
                   type="time" 
@@ -178,26 +178,26 @@ const Alerts = () => {
               </div>
               {frequency === 'weekly' && (
                 <div>
-                  <Label htmlFor="day-of-week">Dia da Semana</Label>
+                  <Label htmlFor="day-of-week">{t('alerts.dayOfWeek')}</Label>
                   <Select value={dayOfWeek.toString()} onValueChange={(value) => setDayOfWeek(parseInt(value))}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="0">Domingo</SelectItem>
-                      <SelectItem value="1">Segunda-feira</SelectItem>
-                      <SelectItem value="2">Terça-feira</SelectItem>
-                      <SelectItem value="3">Quarta-feira</SelectItem>
-                      <SelectItem value="4">Quinta-feira</SelectItem>
-                      <SelectItem value="5">Sexta-feira</SelectItem>
-                      <SelectItem value="6">Sábado</SelectItem>
+                      <SelectItem value="0">{t('alerts.sunday')}</SelectItem>
+                      <SelectItem value="1">{t('alerts.monday')}</SelectItem>
+                      <SelectItem value="2">{t('alerts.tuesday')}</SelectItem>
+                      <SelectItem value="3">{t('alerts.wednesday')}</SelectItem>
+                      <SelectItem value="4">{t('alerts.thursday')}</SelectItem>
+                      <SelectItem value="5">{t('alerts.friday')}</SelectItem>
+                      <SelectItem value="6">{t('alerts.saturday')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
               {frequency === 'monthly' && (
                 <div>
-                  <Label htmlFor="day-of-month">Dia do Mês</Label>
+                  <Label htmlFor="day-of-month">{t('alerts.dayOfMonth')}</Label>
                   <Select value={dayOfMonth.toString()} onValueChange={(value) => setDayOfMonth(parseInt(value))}>
                     <SelectTrigger>
                       <SelectValue />
@@ -214,7 +214,7 @@ const Alerts = () => {
               )}
               <div className="md:col-span-2">
                 <Button onClick={createAlert} disabled={isCreating}>
-                  {isCreating ? "Criando..." : "Criar alerta"}
+                  {isCreating ? t('alerts.creating') : t('alerts.createAlert')}
                 </Button>
               </div>
             </CardContent>
@@ -225,7 +225,7 @@ const Alerts = () => {
               <Card className="shadow-sm">
                 <CardContent className="pt-6">
                   <p className="text-muted-foreground text-center">
-                    Nenhum alerta configurado. Crie seu primeiro alerta acima.
+                    {t('alerts.noAlerts')}
                   </p>
                 </CardContent>
               </Card>
@@ -241,36 +241,36 @@ const Alerts = () => {
                         onClick={() => supabaseClient.deleteAlert(a.id).then(() => {
                           queryClient.invalidateQueries({ queryKey: ['alerts'] });
                           toast({
-                            title: "Sucesso", 
-                            description: "Alerta removido"
+                            title: t('alerts.success'), 
+                            description: t('alerts.alertRemoved')
                           });
                         })}
                       >
-                        Remover
+                        {t('alerts.remove')}
                       </Button>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="text-sm">
-                      <strong>Pergunta:</strong> {a.question}
+                      <strong>{t('alerts.question')}:</strong> {a.question}
                     </div>
                     <div className="text-sm">
-                      <strong>Email:</strong> {a.email}
+                      <strong>{t('alerts.email')}:</strong> {a.email}
                     </div>
                     <div className="text-sm">
-                      <strong>Agendamento:</strong> {a.frequency === 'daily' ? 'Diário' : 
-                        a.frequency === 'weekly' ? 'Semanal' : 'Mensal'} às {a.execution_time || '09:00'}
+                      <strong>{t('alerts.scheduleField')}</strong> {a.frequency === 'daily' ? t('alerts.daily') : 
+                        a.frequency === 'weekly' ? t('alerts.weekly') : t('alerts.monthly')} {t('alerts.at')} {a.execution_time || '09:00'}
                       {a.frequency === 'weekly' && a.day_of_week !== null && (
-                        <span> - {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][a.day_of_week]}</span>
+                        <span> - {[t('alerts.sunday'), t('alerts.monday'), t('alerts.tuesday'), t('alerts.wednesday'), t('alerts.thursday'), t('alerts.friday'), t('alerts.saturday')][a.day_of_week]}</span>
                       )}
                       {a.frequency === 'monthly' && a.day_of_month && (
-                        <span> - Dia {a.day_of_month}</span>
+                        <span> - {t('alerts.day')} {a.day_of_month}</span>
                       )}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Criado em: {new Date(a.created_at).toLocaleString('pt-BR')}
+                      {t('alerts.createdAt')} {new Date(a.created_at).toLocaleString('pt-BR')}
                       {a.next_run && (
-                        <span> · Próxima execução: {new Date(a.next_run).toLocaleString('pt-BR')}</span>
+                        <span> · {t('alerts.nextExecution')} {new Date(a.next_run).toLocaleString('pt-BR')}</span>
                       )}
                     </div>
                   </CardContent>
