@@ -63,19 +63,33 @@ const Questions = () => {
   // Remove any base64-encoded image data from text answers so it doesn't render as plain text
   function stripBase64FromText(text: string): string {
     if (!text) return '';
-    // Remove explicit data URLs (with whitespace)
-    let result = text.replace(/data:image\/(png|jpeg|jpg);base64,[A-Za-z0-9+\/=_\s\r\n]+/gi, '');
-    // Remove long base64 sequences that look like PNG/JPEG blobs
-    result = result.replace(/iVBORw0KGgo[A-Za-z0-9+\/=\s\r\n]+/g, '');
-    result = result.replace(/\/9j\/[A-Za-z0-9+\/=\s\r\n]+/g, '');
-    // If a fenced code block mostly contains base64, drop it
-    result = result.replace(/```[\s\S]*?```/g, (block) => {
-      const inner = block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '');
-      return /^(data:image\/(png|jpeg|jpg);base64,)?[A-Za-z0-9+\/=\s\r\n]{200,}$/.test(inner) ? '' : inner;
-    });
+    // 1) Drop fences but keep inner content
+    let raw = text.replace(/```[\s\S]*?```/g, (block) => block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, ''));
+    // 2) Remove explicit data URLs when they appear on their own lines
+    raw = raw.replace(/^\s*data:image\/(png|jpe?g);base64,[A-Za-z0-9+/=\r\n]+\s*$/gmi, '');
+    // 3) Remove base64-only lines starting with PNG/JPEG magic headers
+    raw = raw.replace(/^\s*iVBORw0KGgo[0-9A-Za-z+/=\r\n]+\s*$/gmi, '');
+    raw = raw.replace(/^\s*\/9j\/[0-9A-Za-z+/=\r\n]+\s*$/gmi, '');
+    // 4) Remove common JSON fields that hold base64 blobs
+    raw = raw.replace(/"(image|image_base64|imageUrl|image_url)"\s*:\s*"(?:data:image\/(?:png|jpe?g);base64,)?[0-9A-Za-z+/=\r\n]+"/gmi, '');
     // Normalize extra blank lines
-    result = result.replace(/\n{3,}/g, '\n\n').trim();
-    return result;
+    raw = raw.replace(/\n{3,}/g, '\n\n').trim();
+    return raw;
+  }
+
+  // Extract human-readable text if answer comes as JSON
+  function getDisplayText(answer: string, fallback: string): string {
+    const cleaned = stripBase64FromText(answer);
+    if (cleaned) return cleaned;
+    try {
+      const withoutFences = answer.replace(/```[\s\S]*?```/g, (block) => block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, ''));
+      const obj = JSON.parse(withoutFences);
+      const keys = ['text', 'answer', 'summary', 'content', 'message', 'description'];
+      for (const k of keys) {
+        if (typeof obj[k] === 'string' && obj[k].trim()) return obj[k];
+      }
+    } catch {}
+    return fallback;
   }
 
   const { data: agents = [] } = useQuery({
@@ -211,7 +225,7 @@ const Questions = () => {
                      {/* Main answer */}
                      <div className="prose prose-sm max-w-none">
                        <div className="space-y-2">
-        {stripBase64FromText(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
+        {getDisplayText(h.answer || '', t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
           if (line.trim() === '') return <br key={index} />;
           
           // Check if line contains bullet points and format accordingly
@@ -278,7 +292,7 @@ const Questions = () => {
                               <span className="font-medium">{t('questions.question')}:</span> {conversation.question}
                             </div>
                             <div className="prose prose-sm max-w-none">
-                              {stripBase64FromText(conversation.answer).split('\n').map((line: string, lineIndex: number) => (
+                              {getDisplayText(conversation.answer, '').split('\n').map((line: string, lineIndex: number) => (
                                 <p key={lineIndex} className="mb-1 last:mb-0 text-sm">{line}</p>
                               ))}
                             </div>
