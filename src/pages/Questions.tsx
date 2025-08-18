@@ -60,6 +60,24 @@ const Questions = () => {
     return null;
   }
 
+  // Remove any base64-encoded image data from text answers so it doesn't render as plain text
+  function stripBase64FromText(text: string): string {
+    if (!text) return '';
+    // Remove explicit data URLs (with whitespace)
+    let result = text.replace(/data:image\/(png|jpeg|jpg);base64,[A-Za-z0-9+\/=_\s\r\n]+/gi, '');
+    // Remove long base64 sequences that look like PNG/JPEG blobs
+    result = result.replace(/iVBORw0KGgo[A-Za-z0-9+\/=\s\r\n]+/g, '');
+    result = result.replace(/\/9j\/[A-Za-z0-9+\/=\s\r\n]+/g, '');
+    // If a fenced code block mostly contains base64, drop it
+    result = result.replace(/```[\s\S]*?```/g, (block) => {
+      const inner = block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '');
+      return /^(data:image\/(png|jpeg|jpg);base64,)?[A-Za-z0-9+\/=\s\r\n]{200,}$/.test(inner) ? '' : inner;
+    });
+    // Normalize extra blank lines
+    result = result.replace(/\n{3,}/g, '\n\n').trim();
+    return result;
+  }
+
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
     queryFn: () => supabaseClient.listAgents()
@@ -193,35 +211,35 @@ const Questions = () => {
                      {/* Main answer */}
                      <div className="prose prose-sm max-w-none">
                        <div className="space-y-2">
-                         {(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
-                           if (line.trim() === '') return <br key={index} />;
-                           
-                           // Check if line contains bullet points and format accordingly
-                           if (line.startsWith('- ')) {
-                             return (
-                               <div key={index} className="flex items-start space-x-2">
-                                 <span className="text-primary font-bold">•</span>
-                                 <span className="flex-1">{line.substring(2)}</span>
-                               </div>
-                             );
-                           }
-                           
-                           // Check if line contains bold text markers
-                           if (line.includes('**')) {
-                             const parts = line.split('**');
-                             return (
-                               <p key={index} className="mb-2 last:mb-0">
-                                 {parts.map((part, partIndex) => 
-                                   partIndex % 2 === 1 ? 
-                                     <strong key={partIndex} className="font-semibold text-primary">{part}</strong> : 
-                                     part
-                                 )}
-                               </p>
-                             );
-                           }
-                           
-                           return <p key={index} className="mb-2 last:mb-0">{line}</p>;
-                         })}
+        {stripBase64FromText(h.answer || t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
+          if (line.trim() === '') return <br key={index} />;
+          
+          // Check if line contains bullet points and format accordingly
+          if (line.startsWith('- ')) {
+            return (
+              <div key={index} className="flex items-start space-x-2">
+                <span className="text-primary font-bold">•</span>
+                <span className="flex-1">{line.substring(2)}</span>
+              </div>
+            );
+          }
+          
+          // Check if line contains bold text markers
+          if (line.includes('**')) {
+            const parts = line.split('**');
+            return (
+              <p key={index} className="mb-2 last:mb-0">
+                {parts.map((part, partIndex) => 
+                  partIndex % 2 === 1 ? 
+                    <strong key={partIndex} className="font-semibold text-primary">{part}</strong> : 
+                    part
+                )}
+              </p>
+            );
+          }
+          
+          return <p key={index} className="mb-2 last:mb-0">{line}</p>;
+        })}
                        </div>
                      </div>
                       {(() => {
@@ -260,7 +278,7 @@ const Questions = () => {
                               <span className="font-medium">{t('questions.question')}:</span> {conversation.question}
                             </div>
                             <div className="prose prose-sm max-w-none">
-                              {conversation.answer.split('\n').map((line: string, lineIndex: number) => (
+                              {stripBase64FromText(conversation.answer).split('\n').map((line: string, lineIndex: number) => (
                                 <p key={lineIndex} className="mb-1 last:mb-0 text-sm">{line}</p>
                               ))}
                             </div>
