@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
+import LanguageSelector from "@/components/ui/language-selector";
 
 const NavBar = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   
 
   const handleLogout = async () => {
@@ -13,24 +16,27 @@ const NavBar = () => {
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <nav className="container flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight" aria-label="Página inicial">
-          <span role="img" aria-label="Logo gráfico de crescimento" className="text-xl leading-none">📈</span>
-          <span className="hidden sm:inline">Converse com seus dados</span>
-        </Link>
+        <div className="flex items-center gap-4">
+          <LanguageSelector />
+          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight" aria-label={t('nav.tagline')}>
+            <span role="img" aria-label="Logo gráfico de crescimento" className="text-xl leading-none">📈</span>
+            <span className="hidden sm:inline">{t('nav.tagline')}</span>
+          </Link>
+        </div>
         <div className="flex items-center gap-2">
           {user ? (
             <>
               <Button asChild size="sm">
-                <Link to="/dashboard">Dashboard</Link>
+                <Link to="/dashboard">{t('nav.dashboard')}</Link>
               </Button>
               <Button asChild size="sm">
-                <Link to="/account">Conta</Link>
+                <Link to="/account">{t('nav.account')}</Link>
               </Button>
-              <Button variant="secondary" size="sm" onClick={handleLogout}>Sair</Button>
+              <Button variant="secondary" size="sm" onClick={handleLogout}>{t('nav.logout')}</Button>
             </>
           ) : (
             <Button asChild>
-              <Link to="/login">Começar agora</Link>
+              <Link to="/login">{t('nav.getStarted')}</Link>
             </Button>
           )}
         </div>
