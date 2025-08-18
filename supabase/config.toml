@@ -6,11 +6,5 @@ verify_jwt = true
 [functions.ask-question]
 verify_jwt = false
 
-[functions.ask-question-csv]
-verify_jwt = false
-
-[functions.ask-question-bigquery]
-verify_jwt = false
-
 [functions.bigquery-connect]
 verify_jwt = true
