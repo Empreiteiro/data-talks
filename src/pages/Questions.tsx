@@ -16,45 +16,28 @@ const Questions = () => {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  function extractBase64Image(text: string): string | null {
-    if (!text) return null;
+  function extractBase64Image(answer: string): string | null {
+    if (!answer) return null;
 
-    // 1) Try explicit data URLs (with possible whitespace breaks)
-    const dataUrlRegex = /data:image\/(png|jpeg|jpg);base64,([A-Za-z0-9+\/=_\s\r\n]+)/i;
-    const dataUrlMatch = text.match(dataUrlRegex);
-    if (dataUrlMatch) {
-      const cleaned = dataUrlMatch[0].replace(/[\s\r\n]+/g, '');
-      return cleaned;
-    }
-
-    // 2) Remove code fences (```json ... ```), keep inner content
-    const withoutFences = text.replace(/```[\s\S]*?```/g, (block) =>
-      block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '')
-    );
-
-    // 3) Remove whitespace/newlines to capture long base64 spans
-    const clean = withoutFences.replace(/[\s\r\n]+/g, '');
-    const isB64Char = (ch: string) => /[A-Za-z0-9+/=]/.test(ch);
-
-    // Helper to extract continuous base64 starting at index
-    const takeWhileB64 = (s: string, start: number) => {
-      let end = start;
-      while (end < s.length && isB64Char(s[end])) end++;
-      return s.slice(start, end);
-    };
-
-    // 4) PNG magic header
-    const pngStart = clean.indexOf('iVBORw0KGgo');
-    if (pngStart >= 0) {
-      const b64 = takeWhileB64(clean, pngStart);
-      if (b64.length > 500) return `data:image/png;base64,${b64}`;
-    }
-
-    // 5) JPEG magic header
-    const jpgStart = clean.indexOf('/9j/');
-    if (jpgStart >= 0) {
-      const b64 = takeWhileB64(clean, jpgStart);
-      if (b64.length > 500) return `data:image/jpeg;base64,${b64}`;
+    try {
+      // Try to parse as JSON first
+      const parsed = JSON.parse(answer);
+      if (parsed.image && typeof parsed.image === 'string') {
+        // If image doesn't start with data:image, add the prefix
+        if (parsed.image.startsWith('data:image/')) {
+          return parsed.image;
+        } else {
+          // Assume PNG by default, could be enhanced to detect format
+          return `data:image/png;base64,${parsed.image}`;
+        }
+      }
+    } catch {
+      // If not JSON, fall back to old logic for backwards compatibility
+      const dataUrlRegex = /data:image\/(png|jpeg|jpg);base64,([A-Za-z0-9+\/=_\s\r\n]+)/i;
+      const dataUrlMatch = answer.match(dataUrlRegex);
+      if (dataUrlMatch) {
+        return dataUrlMatch[0].replace(/[\s\r\n]+/g, '');
+      }
     }
 
     return null;
@@ -77,18 +60,22 @@ const Questions = () => {
     return raw;
   }
 
-  // Extract human-readable text if answer comes as JSON
+  // Extract human-readable text from JSON response
   function getDisplayText(answer: string, fallback: string): string {
-    const cleaned = stripBase64FromText(answer);
-    if (cleaned) return cleaned;
+    if (!answer) return fallback;
+
     try {
-      const withoutFences = answer.replace(/```[\s\S]*?```/g, (block) => block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, ''));
-      const obj = JSON.parse(withoutFences);
-      const keys = ['text', 'answer', 'summary', 'content', 'message', 'description'];
-      for (const k of keys) {
-        if (typeof obj[k] === 'string' && obj[k].trim()) return obj[k];
+      // Try to parse as JSON and get the text field
+      const parsed = JSON.parse(answer);
+      if (parsed.text && typeof parsed.text === 'string') {
+        return parsed.text.trim();
       }
-    } catch {}
+    } catch {
+      // If not JSON, return the original answer (for backwards compatibility)
+      const cleaned = stripBase64FromText(answer);
+      return cleaned || fallback;
+    }
+
     return fallback;
   }
 
