@@ -70,13 +70,12 @@ const Questions = () => {
       if (parsed.text && typeof parsed.text === 'string') {
         return parsed.text.trim();
       }
+      // If no text field but is valid JSON, return fallback
+      return fallback;
     } catch {
-      // If not JSON, return the original answer (for backwards compatibility)
-      const cleaned = stripBase64FromText(answer);
-      return cleaned || fallback;
+      // If not JSON, return the original answer as-is (for backwards compatibility)
+      return answer.trim() || fallback;
     }
-
-    return fallback;
   }
 
   const { data: agents = [] } = useQuery({
