@@ -15,7 +15,8 @@ serve(async (req) => {
   }
 
   try {
-    const { question, agentId, userId, shareToken, isShared, sessionId } = await req.json();
+    const { question, agentId: reqAgentId, userId, shareToken, isShared, sessionId } = await req.json();
+    let resolvedAgentId = reqAgentId;
 
     if (!question) {
       return new Response(
@@ -117,7 +118,7 @@ serve(async (req) => {
       }
       
       agentData = sessionData.agents;
-      agentId = agentData.id;
+      resolvedAgentId = agentData.id;
     } else if (shareToken) {
       // Get agent by share token for shared agents
       const { data: sharedAgent, error: agentError } = await supabase
@@ -132,13 +133,13 @@ serve(async (req) => {
       }
       
       agentData = sharedAgent[0];
-      agentId = agentData.id;
+      resolvedAgentId = agentData.id;
       
       // Get agent's source_ids - we need a separate query for this
       const { data: fullAgentData, error: fullAgentError } = await supabase
         .from('agents')
         .select('source_ids')
-        .eq('id', agentId)
+         .eq('id', resolvedAgentId)
         .single();
       
       if (fullAgentError) {
@@ -155,7 +156,7 @@ serve(async (req) => {
       const { data: userAgent, error: agentError } = await supabase
         .from('agents')
         .select('id, name, description, source_ids')
-        .eq('id', agentId)
+        .eq('id', resolvedAgentId)
         .eq('user_id', validatedUserId)
         .single();
       
