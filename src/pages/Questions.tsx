@@ -16,6 +16,18 @@ const Questions = () => {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  function extractBase64Image(text: string): string | null {
+    if (!text) return null;
+    const dataUrlMatch = text.match(/data:image\/(png|jpeg|jpg);base64,([A-Za-z0-9+/=]+)/);
+    if (dataUrlMatch) return dataUrlMatch[0];
+    const clean = text.replace(/[\s\n\r]/g, '');
+    const pngMatch = clean.match(/iVBORw0KGgo[A-Za-z0-9+/=]+/);
+    if (pngMatch) return `data:image/png;base64,${pngMatch[0]}`;
+    const jpgMatch = clean.match(/\/9j\/[A-Za-z0-9+/=]+/);
+    if (jpgMatch) return `data:image/jpeg;base64,${jpgMatch[0]}`;
+    return null;
+  }
+
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
     queryFn: () => supabaseClient.listAgents()
@@ -180,8 +192,22 @@ const Questions = () => {
                          })}
                        </div>
                      </div>
-                     
-                     {/* Display base64 image if present in answer or table_data */}
+                      {(() => {
+                        const img = extractBase64Image(h.answer || '');
+                        return (!h.table_data?.image_url && img) ? (
+                          <div className="mt-4 space-y-2">
+                            <h4 className="text-sm font-medium">{t('questions.analysisResult')}</h4>
+                            <img 
+                              src={img} 
+                              alt={t('questions.analysisResult')} 
+                              className="max-w-full h-auto rounded-lg shadow-md border bg-white p-2"
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : null;
+                      })()}
+                      
+                      {/* Display base64 image if present in answer or table_data */}
                      {h.table_data?.image_url && (
                        <div className="mt-4 space-y-2">
                          <h4 className="text-sm font-medium">{t('questions.analysisResult')}</h4>
