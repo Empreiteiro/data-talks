@@ -7,7 +7,7 @@ const langflowBaseUrl = Deno.env.get('LANGFLOW_BASE_URL');
 const langflowCsvFlowId = Deno.env.get('LANGFLOW_CSV_FLOW_ID');
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://ooimkdueuozjfwadrkkh.supabase.co',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -37,36 +37,34 @@ serve(async (req) => {
       );
     }
 
+    const authHeader = req.headers.get('authorization') || '';
+
     // Validate user authentication for non-shared requests
     let validatedUserId = userId;
     if (!isShared) {
-      const authHeader = req.headers.get('authorization');
       if (!authHeader) {
         return new Response(
           JSON.stringify({ error: 'Authentication required for non-shared requests' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      // Create authenticated Supabase client to validate user
-      const supabaseAuth = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-          global: {
-            headers: {
-              authorization: authHeader,
-            },
-          },
-        }
-      );
-      
-      // Verify the user exists and get their ID
-      const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    }
+
+    const startTime = Date.now();
+    
+    // Create a single Supabase client with anon key and forward Authorization (if any)
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: { autoRefreshToken: false, persistSession: false },
+        global: { headers: { authorization: authHeader } },
+      }
+    );
+
+    // If non-shared, verify the user exists and get their ID from token
+    if (!isShared) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
         return new Response(
           JSON.stringify({ error: 'Invalid authentication token' }),
@@ -75,20 +73,12 @@ serve(async (req) => {
       }
       validatedUserId = userData.user.id;
     }
-
-    const startTime = Date.now();
-    
-    // Create Supabase client with anon key for data operations
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
     
     const headers = { 'x-api-key': langflowApiKey };
     
     // Get CSV sources and use existing Langflow paths
-    const csvSources = sources.filter(s => s.type === 'csv');
-    const langflowPaths = [];
+    const csvSources = sources.filter((s: any) => s.type === 'csv');
+    const langflowPaths: string[] = [];
     let csvSchema = "";
     
     // Use existing Langflow paths instead of uploading again
@@ -170,14 +160,14 @@ serve(async (req) => {
     const imageUrl = outputs[0]?.results?.image_url || null;
     
     // Second output contains follow-up questions (if available)
-    let followUpQuestions = [];
+    let followUpQuestions: string[] = [];
     if (outputs[1]?.results?.message?.text) {
       const questionsText = outputs[1].results.message.text;
       // Parse questions - assuming they are separated by newlines or numbered
       followUpQuestions = questionsText
         .split('\n')
-        .filter(line => line.trim() && !line.trim().match(/^\\d+\.\s*$/) && line.includes('?'))
-        .map(q => q.replace(/^\\d+\.\s*/, '').trim());
+        .filter((line: string) => line.trim() && !line.trim().match(/^\d+\.\s*$/) && line.includes('?'))
+        .map((q: string) => q.replace(/^\d+\.\s*/, '').trim());
     }
     
     console.log('Found follow-up questions:', followUpQuestions);
@@ -185,7 +175,7 @@ serve(async (req) => {
     const latency = Date.now() - startTime;
 
     // Create or get QA session with proper security checks
-    let qaSession;
+    let qaSession: any;
     if (sessionId) {
       // Get existing session with security validation
       const { data: existingSession, error: sessionError } = await supabase
@@ -315,7 +305,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in ask-question-csv function:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Erro interno do servidor' }),
+      JSON.stringify({ error: (error as Error).message || 'Erro interno do servidor' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

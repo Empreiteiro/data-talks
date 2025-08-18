@@ -7,7 +7,7 @@ const langflowBigqueryUrl = Deno.env.get('LANGFLOW_BIGQUERY_URL');
 const langflowBigqueryFlowId = Deno.env.get('LANGFLOW_BIGQUERY_FLOW_ID');
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://ooimkdueuozjfwadrkkh.supabase.co',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -46,36 +46,34 @@ serve(async (req) => {
       );
     }
 
+    const authHeader = req.headers.get('authorization') || '';
+
     // Validate user authentication for non-shared requests
     let validatedUserId = userId;
     if (!isShared) {
-      const authHeader = req.headers.get('authorization');
       if (!authHeader) {
         return new Response(
           JSON.stringify({ error: 'Authentication required for non-shared requests' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      // Create authenticated Supabase client to validate user
-      const supabaseAuth = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-          global: {
-            headers: {
-              authorization: authHeader,
-            },
-          },
-        }
-      );
-      
-      // Verify the user exists and get their ID
-      const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    }
+
+    const startTime = Date.now();
+    
+    // Create Supabase client with anon key and forward Authorization
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: { autoRefreshToken: false, persistSession: false },
+        global: { headers: { authorization: authHeader } },
+      }
+    );
+
+    // If non-shared, verify the user exists and get their ID
+    if (!isShared) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
         return new Response(
           JSON.stringify({ error: 'Invalid authentication token' }),
@@ -85,16 +83,8 @@ serve(async (req) => {
       validatedUserId = userData.user.id;
     }
 
-    const startTime = Date.now();
-    
-    // Create Supabase client with anon key for data operations
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
-
     // Get BigQuery source metadata
-    const bigquerySource = sources.find(s => s.type === 'bigquery');
+    const bigquerySource = sources.find((s: any) => s.type === 'bigquery');
     if (!bigquerySource) {
       return new Response(
         JSON.stringify({ error: 'BigQuery source not found' }),
@@ -125,7 +115,7 @@ serve(async (req) => {
     // Build schema from table_infos
     let schemaText = "";
     if (metadata.table_infos && Array.isArray(metadata.table_infos)) {
-      schemaText = metadata.table_infos.map(tableInfo => {
+      schemaText = metadata.table_infos.map((tableInfo: any) => {
         const tableName = tableInfo.table_name || "";
         const columns = tableInfo.columns || [];
         return `Tabela: ${tableName}\nColunas: ${columns.join(', ')}`;
@@ -225,8 +215,8 @@ serve(async (req) => {
 
     // For BigQuery responses, extract base64 image and text separately
     let answer = 'Resposta não disponível';
-    let imageUrl = null;
-    let followUpQuestions = [];
+    let imageUrl: string | null = null;
+    let followUpQuestions: string[] = [];
     
     if (langflowData.outputs?.[0]?.outputs) {
       console.log('Processing BigQuery outputs:', JSON.stringify(langflowData.outputs[0].outputs, null, 2));
@@ -263,7 +253,7 @@ serve(async (req) => {
     const latency = Date.now() - startTime;
 
     // Create or get QA session with proper security checks
-    let qaSession;
+    let qaSession: any;
     if (sessionId) {
       // Get existing session with security validation
       const { data: existingSession, error: sessionError } = await supabase
@@ -393,7 +383,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in ask-question-bigquery function:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Erro interno do servidor' }),
+      JSON.stringify({ error: (error as Error).message || 'Erro interno do servidor' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

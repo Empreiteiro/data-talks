@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://ooimkdueuozjfwadrkkh.supabase.co',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -32,12 +32,6 @@ serve(async (req) => {
       );
     }
 
-    if (!isShared && !userId) {
-      return new Response(
-        JSON.stringify({ error: 'User ID required for authenticated requests' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Validate user authentication for non-shared requests
     let validatedUserId = userId;
