@@ -1,73 +1,203 @@
-# Welcome to your Lovable project
+# T2D - Table to Data
 
-## Project info
+Uma plataforma inteligente para análise de dados que permite conectar fontes de dados, configurar agentes de IA e obter insights através de perguntas em linguagem natural.
 
-**URL**: https://lovable.dev/projects/2dd880c5-0c69-4f0d-9f15-e15fec7986a3
+## 🚀 Visão Geral
 
-## How can I edit this code?
+O T2D é uma aplicação web que transforma a forma como você interage com seus dados. Através de uma interface intuitiva, você pode:
 
-There are several ways of editing your application.
+- **Conectar fontes de dados** (CSV, XLSX, BigQuery)
+- **Configurar agentes de IA** personalizados
+- **Fazer perguntas** em linguagem natural sobre seus dados
+- **Receber respostas visuais** com gráficos e tabelas
+- **Configurar alertas** para monitoramento contínuo
 
-**Use Lovable**
+## ✨ Funcionalidades Principais
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2dd880c5-0c69-4f0d-9f15-e15fec7986a3) and start prompting.
+### 🔗 Gerenciamento de Fontes de Dados
+- **Upload de arquivos**: Suporte para CSV e XLSX
+- **Conexão BigQuery**: Integração direta com Google BigQuery
+- **Metadados automáticos**: Detecção automática de colunas e tipos de dados
+- **Visualização de dados**: Preview das primeiras linhas dos dados
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🤖 Agentes de IA
+- **Configuração personalizada**: Nome, descrição e fontes de dados
+- **Perguntas sugeridas**: Sugestões automáticas baseadas nos dados
+- **Histórico de conversas**: Rastreamento completo das interações
+- **Compartilhamento**: Opção de tornar agentes públicos ou privados
 
-**Use your preferred IDE**
+### 💬 Sistema de Perguntas e Respostas
+- **Interface conversacional**: Faça perguntas em português ou inglês
+- **Respostas visuais**: Gráficos e tabelas gerados automaticamente
+- **Perguntas de acompanhamento**: Sugestões para aprofundar a análise
+- **Feedback do usuário**: Sistema de avaliação das respostas
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🔔 Sistema de Alertas
+- **Monitoramento contínuo**: Configure alertas recorrentes
+- **Frequência personalizável**: Diário, semanal ou mensal
+- **Notificações**: Receba alertas sobre mudanças nos dados
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 🌐 Internacionalização
+- **Suporte multilíngue**: Português e Inglês
+- **Persistência de idioma**: Lembra sua preferência entre sessões
+- **Interface adaptativa**: Todos os textos são traduzidos dinamicamente
 
-Follow these steps:
+## 🛠️ Tecnologias Utilizadas
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Frontend
+- **React 18**: Biblioteca para construção de interfaces
+- **TypeScript**: Tipagem estática para maior confiabilidade
+- **Vite**: Build tool rápido para desenvolvimento
+- **Tailwind CSS**: Framework CSS utilitário
+- **shadcn/ui**: Componentes de UI modernos e acessíveis
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Backend & Infraestrutura
+- **Supabase**: Backend-as-a-Service com PostgreSQL
+- **Edge Functions**: Funções serverless para processamento
+- **BigQuery**: Integração com Google Cloud para análise de dados
+- **LangFlow**: Integração para processamento de linguagem natural
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Estado & Gerenciamento
+- **React Context API**: Gerenciamento de estado global
+- **React Query**: Gerenciamento de estado do servidor
+- **Local Storage**: Persistência de preferências do usuário
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## 📁 Estrutura do Projeto
+
+```
+t2d/
+├── src/
+│   ├── components/          # Componentes reutilizáveis
+│   │   ├── layout/         # Componentes de layout (NavBar, Footer)
+│   │   └── ui/            # Componentes de UI (botões, formulários, etc.)
+│   ├── contexts/           # Contextos React (LanguageContext)
+│   ├── hooks/              # Hooks customizados
+│   ├── integrations/       # Integrações externas (Supabase)
+│   ├── lib/                # Utilitários e helpers
+│   ├── pages/              # Páginas da aplicação
+│   └── services/           # Serviços e clientes de API
+├── supabase/               # Configurações e funções Supabase
+│   ├── functions/          # Edge Functions
+│   └── migrations/         # Migrações do banco de dados
+└── public/                 # Arquivos estáticos
 ```
 
-**Edit a file directly in GitHub**
+## 🚀 Como Executar
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Pré-requisitos
+- Node.js 18+ e npm
+- Conta Supabase
+- (Opcional) Projeto Google Cloud com BigQuery habilitado
 
-**Use GitHub Codespaces**
+### Instalação
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. **Clone o repositório**
+   ```bash
+   git clone <URL_DO_REPOSITORIO>
+   cd t2d
+   ```
 
-## What technologies are used for this project?
+2. **Instale as dependências**
+   ```bash
+   npm install
+   ```
 
-This project is built with:
+3. **Configure as variáveis de ambiente**
+   Crie um arquivo `.env.local` na raiz do projeto:
+   ```env
+   VITE_SUPABASE_URL=sua_url_supabase
+   VITE_SUPABASE_ANON_KEY=sua_chave_anonima_supabase
+   ```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+4. **Execute o projeto**
+   ```bash
+   npm run dev
+   ```
 
-## How can I deploy this project?
+5. **Acesse a aplicação**
+   Abra [http://localhost:8080](http://localhost:8080) no seu navegador
 
-Simply open [Lovable](https://lovable.dev/projects/2dd880c5-0c69-4f0d-9f15-e15fec7986a3) and click on Share -> Publish.
+## 📖 Como Usar
 
-## Can I connect a custom domain to my Lovable project?
+### 1. Primeiro Acesso
+- Crie uma conta ou faça login
+- Selecione seu idioma preferido (PT/EN)
 
-Yes, you can!
+### 2. Configurar Fontes de Dados
+- Vá para a página "Sources" (/sources)
+- Faça upload de arquivos CSV/XLSX ou conecte ao BigQuery
+- Verifique se os metadados foram detectados corretamente
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 3. Criar um Agente
+- Acesse a página "Agent" (/agent)
+- Configure o nome, descrição e selecione as fontes de dados
+- Adicione perguntas sugeridas para facilitar o uso
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### 4. Fazer Perguntas
+- Vá para a página "Questions" (/questions)
+- Selecione o agente desejado
+- Digite sua pergunta em linguagem natural
+- Receba respostas com visualizações automáticas
+
+### 5. Configurar Alertas (Opcional)
+- Acesse a página "Alerts" (/alerts)
+- Configure alertas recorrentes para monitoramento
+- Defina frequência e condições
+
+## 🔧 Scripts Disponíveis
+
+```bash
+npm run dev          # Inicia o servidor de desenvolvimento
+npm run build        # Gera build de produção
+npm run preview      # Preview do build de produção
+npm run lint         # Executa o linter
+```
+
+## 🌍 Internacionalização
+
+O projeto suporta português e inglês através de um sistema de traduções centralizado:
+
+- **Contexto**: `src/contexts/LanguageContext.tsx`
+- **Hook**: `useLanguage()` para acessar traduções
+- **Função**: `t('chave.traducao')` para traduzir textos
+- **Persistência**: Idioma salvo no localStorage
+
+### Adicionando Novas Traduções
+
+1. Adicione as chaves em `LanguageContext.tsx`
+2. Use `t('chave.nova')` nos componentes
+3. As traduções são aplicadas automaticamente
+
+## 🚀 Deploy
+
+### Via Lovable
+1. Acesse [Lovable](https://lovable.dev)
+2. Conecte seu repositório
+3. Clique em "Share → Publish"
+
+### Via Vercel/Netlify
+1. Conecte o repositório ao serviço de deploy
+2. Configure as variáveis de ambiente
+3. Deploy automático a cada push
+
+## 🤝 Contribuindo
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+## 🆘 Suporte
+
+- **Issues**: Use o sistema de issues do GitHub
+- **Documentação**: Consulte os comentários no código
+- **Comunidade**: Participe das discussões no repositório
+
+---
+
+**T2D** - Transformando dados em insights através de IA conversacional 🚀
