@@ -29,43 +29,63 @@ const Dashboard = () => {
     <main className="container py-10">
       <SEO title={`${t('dashboard.title')} | ${t('nav.tagline')}`} description="Visão geral das fontes, perguntas e alertas" canonical="/dashboard" />
       <h1 className="text-3xl font-semibold mb-6">{t('dashboard.title')}</h1>
-      <div className="grid gap-6 md:grid-cols-4">
-        <Card className="shadow-sm h-full flex flex-col">
-          <CardHeader>
-            <CardTitle>{t('dashboard.dataSources')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col gap-4">
-            <p className="text-muted-foreground">{sources.length} {t('dashboard.connectedSources')}</p>
-            <Button className="mt-auto self-start" onClick={() => navigate('/sources')}>{t('dashboard.addSource')}</Button>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm h-full flex flex-col">
-          <CardHeader>
-            <CardTitle>{t('dashboard.agentConfig')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col gap-4">
-            <p className="text-muted-foreground">{t('dashboard.agentConfigDesc')}</p>
-            <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/agent')}>{t('dashboard.configureAgent')}</Button>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm h-full flex flex-col">
-          <CardHeader>
-            <CardTitle>{t('dashboard.questionsAnswers')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col gap-4">
-            <p className="text-muted-foreground">{agents.length} {t('dashboard.activeAgents')}</p>
-            <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/questions')}>{t('dashboard.newQuestion')}</Button>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm h-full flex flex-col">
-          <CardHeader>
-            <CardTitle>{t('dashboard.alerts')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col gap-4">
-            <p className="text-muted-foreground">{alerts.length} {t('dashboard.configuredAlerts')}</p>
-            <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/alerts')}>{t('dashboard.createAlert')}</Button>
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        {/* Primeira linha - 4 blocos */}
+        <div className="grid gap-6 md:grid-cols-4">
+          <Card className="shadow-sm h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>{t('dashboard.dataSources')}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4">
+              <p className="text-muted-foreground">{sources.length} {t('dashboard.connectedSources')}</p>
+              <Button className="mt-auto self-start" onClick={() => navigate('/sources')}>{t('dashboard.addSource')}</Button>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>{t('dashboard.agentConfig')}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4">
+              <p className="text-muted-foreground">{t('dashboard.agentConfigDesc')}</p>
+              <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/agent')}>{t('dashboard.configureAgent')}</Button>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>{t('dashboard.questionsAnswers')}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4">
+              <p className="text-muted-foreground">{agents.length} {t('dashboard.activeAgents')}</p>
+              <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/questions')}>{t('dashboard.newQuestion')}</Button>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>{t('dashboard.alerts')}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4">
+              <p className="text-muted-foreground">{alerts.length} {t('dashboard.configuredAlerts')}</p>
+              <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/alerts')}>{t('dashboard.createAlert')}</Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Segunda linha - 1 bloco + 3 blocos invisíveis */}
+        <div className="grid gap-6 md:grid-cols-4">
+          <Card className="shadow-sm h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>{t('dashboard.channelConfig')}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4">
+              <p className="text-muted-foreground">{t('dashboard.channelConfigDesc')}</p>
+              <Button className="mt-auto self-start" variant="outline" onClick={() => navigate('/channels')}>{t('dashboard.configureChannels')}</Button>
+            </CardContent>
+          </Card>
+          {/* Blocos invisíveis para manter o grid */}
+          <div className="hidden md:block"></div>
+          <div className="hidden md:block"></div>
+          <div className="hidden md:block"></div>
+        </div>
       </div>
     </main>
   );

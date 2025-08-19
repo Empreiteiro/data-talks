@@ -146,6 +146,31 @@ const Sources = () => {
           )}
         </TabsContent>
         <TabsContent value="bq" className="mt-6">
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-3">
+              {t('sources.bigQueryInstructions')}
+            </h3>
+            <div className="grid gap-2 text-sm text-blue-700 dark:text-blue-300">
+              <div>{t('sources.bigQueryStep1')}</div>
+              <div>{t('sources.bigQueryStep2')}</div>
+              <div>{t('sources.bigQueryStep3')}</div>
+              <div>{t('sources.bigQueryStep4')}</div>
+              <div>{t('sources.bigQueryStep5')}</div>
+              <div>{t('sources.bigQueryStep6')}</div>
+              <div>{t('sources.bigQueryStep7')}</div>
+              <div>{t('sources.bigQueryStep8')}</div>
+            </div>
+            <div className="mt-3">
+              <a 
+                href="https://cloud.google.com/docs/authentication/getting-started" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {t('sources.bigQueryDocsLink')} →
+              </a>
+            </div>
+          </div>
           <form onSubmit={handleBQ} className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>{t('sources.credentials')}</Label>

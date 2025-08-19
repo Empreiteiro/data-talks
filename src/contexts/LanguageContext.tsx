@@ -72,6 +72,9 @@ const translations = {
     'dashboard.alerts': 'Alerts',
     'dashboard.configuredAlerts': 'configured alert(s)',
     'dashboard.createAlert': 'Create Alert',
+    'dashboard.channelConfig': 'Channel Configuration',
+    'dashboard.channelConfigDesc': 'Configure which channels your agents will be available on.',
+    'dashboard.configureChannels': 'Configure Channels',
     
     // Sources
     'sources.title': 'Data Sources',
@@ -109,6 +112,16 @@ const translations = {
     'sources.connectedTables': 'Connected tables:',
     'sources.tablesNotFound': 'Tables not found:',
     'sources.removeFile': 'Remove',
+    'sources.bigQueryInstructions': 'How to get your BigQuery credentials JSON file:',
+    'sources.bigQueryStep1': '1. Go to Google Cloud Console',
+    'sources.bigQueryStep2': '2. Navigate to APIs & Services > Credentials',
+    'sources.bigQueryStep3': '3. Click "Create Credentials" > "Service Account"',
+    'sources.bigQueryStep4': '4. Fill in the service account details and click "Create"',
+    'sources.bigQueryStep5': '5. Click on the created service account',
+    'sources.bigQueryStep6': '6. Go to "Keys" tab and click "Add Key" > "Create new key"',
+    'sources.bigQueryStep7': '7. Select "JSON" format and download the file',
+    'sources.bigQueryStep8': '8. Upload the downloaded JSON file above',
+    'sources.bigQueryDocsLink': 'View official documentation',
     
     // Agent
     'agent.title': 'Agent Configuration',
@@ -314,6 +327,9 @@ const translations = {
     'dashboard.alerts': 'Alertas',
     'dashboard.configuredAlerts': 'alerta(s) configurado(s)',
     'dashboard.createAlert': 'Criar Alerta',
+    'dashboard.channelConfig': 'Configuração de Canais',
+    'dashboard.channelConfigDesc': 'Configure em quais canais seus agentes estarão disponíveis.',
+    'dashboard.configureChannels': 'Configurar Canais',
     
     // Sources
     'sources.title': 'Fontes de Dados',
@@ -351,6 +367,16 @@ const translations = {
     'sources.connectedTables': 'Tabelas conectadas:',
     'sources.tablesNotFound': 'Tabelas não encontradas:',
     'sources.removeFile': 'Remover',
+    'sources.bigQueryInstructions': 'Como obter seu arquivo JSON de credenciais do BigQuery:',
+    'sources.bigQueryStep1': '1. Acesse o Google Cloud Console',
+    'sources.bigQueryStep2': '2. Navegue para APIs e Serviços > Credenciais',
+    'sources.bigQueryStep3': '3. Clique em "Criar Credenciais" > "Conta de Serviço"',
+    'sources.bigQueryStep4': '4. Preencha os detalhes da conta de serviço e clique em "Criar"',
+    'sources.bigQueryStep5': '5. Clique na conta de serviço criada',
+    'sources.bigQueryStep6': '6. Vá para a aba "Chaves" e clique em "Adicionar Chave" > "Criar nova chave"',
+    'sources.bigQueryStep7': '7. Selecione o formato "JSON" e baixe o arquivo',
+    'sources.bigQueryStep8': '8. Faça upload do arquivo JSON baixado acima',
+    'sources.bigQueryDocsLink': 'Ver documentação oficial',
     
     // Agent
     'agent.title': 'Configuração do Agente',
