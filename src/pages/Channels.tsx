@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { SEO } from "@/components/SEO";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { SEO } from "@/components/SEO";
-import { MessageSquare, Slack, Smartphone, Settings } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { MessageSquare, Settings, Slack, Smartphone } from "lucide-react";
+import { useState } from "react";
 
 const Channels = () => {
   const { toast } = useToast();
@@ -73,7 +73,7 @@ const Channels = () => {
             const isConnecting = connecting === channel.id;
             
             return (
-              <Card key={channel.id} className="relative overflow-hidden">
+              <Card key={channel.id} className="relative overflow-hidden flex flex-col h-full">
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -91,15 +91,15 @@ const Channels = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="space-y-4">
-                  <CardDescription className="text-sm leading-relaxed">
+                <CardContent className="flex-1 flex flex-col space-y-4">
+                  <CardDescription className="text-sm leading-relaxed flex-1">
                     {channel.description}
                   </CardDescription>
                   
                   <Button 
                     onClick={() => handleConnect(channel.id)}
                     disabled={isConnecting}
-                    className="w-full"
+                    className="w-full mt-auto"
                     variant={channel.status === "connected" ? "secondary" : "default"}
                   >
                     {isConnecting ? (
