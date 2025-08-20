@@ -49,11 +49,11 @@ const Pricing = () => {
       ],
       button: t('pricing.pro.button')
     },
-    {
-      name: t('pricing.enterprise.title'),
-      price: t('pricing.enterprise.price'),
-      period: t('pricing.enterprise.period'),
-      description: t('pricing.enterprise.description'),
+         {
+       name: t('pricing.enterprise.title'),
+       price: t('pricing.enterprise.price'),
+       period: '',
+       description: t('pricing.enterprise.description'),
       badge: null as string | null,
       features: language === 'pt' ? [
         'Fontes de dados ilimitadas',
