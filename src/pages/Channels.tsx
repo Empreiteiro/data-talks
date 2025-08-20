@@ -28,24 +28,24 @@ const Channels = () => {
   const channels = [
     {
       id: "whatsapp",
-      name: "WhatsApp",
-      description: "Connect your WhatsApp Business API to receive and respond to messages",
+      name: t('channels.whatsapp.name'),
+      description: t('channels.whatsapp.description'),
       icon: MessageSquare,
       status: "coming-soon",
       color: "bg-green-500"
     },
     {
       id: "slack",
-      name: "Slack", 
-      description: "Integrate with Slack to manage conversations and notifications",
+      name: t('channels.slack.name'), 
+      description: t('channels.slack.description'),
       icon: Slack,
       status: "coming-soon",
       color: "bg-purple-500"
     },
     {
       id: "telegram",
-      name: "Telegram",
-      description: "Connect Telegram bot for automated customer support",
+      name: t('channels.telegram.name'),
+      description: t('channels.telegram.description'),
       icon: Smartphone,
       status: "coming-soon", 
       color: "bg-blue-500"
@@ -61,9 +61,9 @@ const Channels = () => {
       
       <div className="container mx-auto p-6 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Channels</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('channels.title')}</h1>
           <p className="text-muted-foreground">
-            Connect and manage your communication channels to streamline customer interactions
+            {t('channels.subtitle')}
           </p>
         </div>
 
@@ -83,7 +83,7 @@ const Channels = () => {
                       <div>
                         <CardTitle className="text-lg">{channel.name}</CardTitle>
                         <Badge variant="secondary" className="mt-1">
-                          {channel.status === "coming-soon" ? "Coming Soon" : "Available"}
+                          {channel.status === "coming-soon" ? t('channels.comingSoon') : t('channels.available')}
                         </Badge>
                       </div>
                     </div>
@@ -105,11 +105,14 @@ const Channels = () => {
                     {isConnecting ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Connecting...
+                        {t('channels.connecting')}
                       </>
                     ) : channel.status === "connected" ? (
-                      "Connected"
+                      t('channels.connected')
                     ) : (
+                      channel.id === "whatsapp" ? t('channels.connectWhatsApp') :
+                      channel.id === "slack" ? t('channels.connectSlack') :
+                      channel.id === "telegram" ? t('channels.connectTelegram') :
                       `Connect ${channel.name}`
                     )}
                   </Button>
@@ -121,14 +124,14 @@ const Channels = () => {
 
         <Card className="bg-muted/50">
           <CardHeader>
-            <CardTitle className="text-lg">Need More Integrations?</CardTitle>
+            <CardTitle className="text-lg">{t('channels.needMoreIntegrations.title')}</CardTitle>
             <CardDescription>
-              We're constantly adding new channel integrations. Contact our support team to request specific platforms.
+              {t('channels.needMoreIntegrations.description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="outline">
-              Request Integration
+              {t('channels.requestIntegration')}
             </Button>
           </CardContent>
         </Card>

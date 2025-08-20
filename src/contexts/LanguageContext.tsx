@@ -75,6 +75,11 @@ const translations = {
     'dashboard.channelConfig': 'Channel Configuration',
     'dashboard.channelConfigDesc': 'Configure which channels your agents will be available on.',
     'dashboard.configureChannels': 'Configure Channels',
+    'dashboard.dataExplore': 'Data Explore',
+    'dashboard.dataExploreDesc': 'Explore and analyze your data with interactive visualizations and insights.',
+    'dashboard.autoML': 'Auto ML',
+    'dashboard.autoMLDesc': 'Automatically build and deploy machine learning models from your data.',
+    'dashboard.comingSoon': 'Coming Soon',
     
     // Sources
     'sources.title': 'Data Sources',
@@ -265,6 +270,26 @@ const translations = {
     
     // Footer
     'footer.copyright': '© {year} Talk to your data. All rights reserved.',
+    
+    // Channels
+    'channels.title': 'Channels',
+    'channels.subtitle': 'Connect and manage your communication channels to streamline customer interactions',
+    'channels.whatsapp.name': 'WhatsApp',
+    'channels.whatsapp.description': 'Connect your WhatsApp Business API to receive and respond to messages',
+    'channels.slack.name': 'Slack',
+    'channels.slack.description': 'Integrate with Slack to manage conversations and notifications',
+    'channels.telegram.name': 'Telegram',
+    'channels.telegram.description': 'Connect Telegram bot for automated customer support',
+    'channels.comingSoon': 'Coming Soon',
+    'channels.available': 'Available',
+    'channels.connectWhatsApp': 'Connect WhatsApp',
+    'channels.connectSlack': 'Connect Slack',
+    'channels.connectTelegram': 'Connect Telegram',
+    'channels.connecting': 'Connecting...',
+    'channels.connected': 'Connected',
+    'channels.needMoreIntegrations.title': 'Need More Integrations?',
+    'channels.needMoreIntegrations.description': 'We\'re constantly adding new channel integrations. Contact our support team to request specific platforms.',
+    'channels.requestIntegration': 'Request Integration',
   },
   pt: {
     // Navigation
@@ -330,6 +355,11 @@ const translations = {
     'dashboard.channelConfig': 'Configuração de Canais',
     'dashboard.channelConfigDesc': 'Configure em quais canais seus agentes estarão disponíveis.',
     'dashboard.configureChannels': 'Configurar Canais',
+    'dashboard.dataExplore': 'Exploração de Dados',
+    'dashboard.dataExploreDesc': 'Explore e analise seus dados com visualizações interativas e insights.',
+    'dashboard.autoML': 'Auto ML',
+    'dashboard.autoMLDesc': 'Construa e implante automaticamente modelos de machine learning a partir dos seus dados.',
+    'dashboard.comingSoon': 'Em Breve',
     
     // Sources
     'sources.title': 'Fontes de Dados',
@@ -520,6 +550,26 @@ const translations = {
     
     // Footer
     'footer.copyright': '© {year} Converse com seus dados. Todos os direitos reservados.',
+    
+    // Channels
+    'channels.title': 'Canais',
+    'channels.subtitle': 'Conecte e gerencie seus canais de comunicação para otimizar as interações com clientes',
+    'channels.whatsapp.name': 'WhatsApp',
+    'channels.whatsapp.description': 'Conecte sua API do WhatsApp Business para receber e responder mensagens',
+    'channels.slack.name': 'Slack',
+    'channels.slack.description': 'Integre com o Slack para gerenciar conversas e notificações',
+    'channels.telegram.name': 'Telegram',
+    'channels.telegram.description': 'Conecte bot do Telegram para suporte automatizado ao cliente',
+    'channels.comingSoon': 'Em Breve',
+    'channels.available': 'Disponível',
+    'channels.connectWhatsApp': 'Conectar WhatsApp',
+    'channels.connectSlack': 'Conectar Slack',
+    'channels.connectTelegram': 'Conectar Telegram',
+    'channels.connecting': 'Conectando...',
+    'channels.connected': 'Conectado',
+    'channels.needMoreIntegrations.title': 'Precisa de Mais Integrações?',
+    'channels.needMoreIntegrations.description': 'Estamos constantemente adicionando novas integrações de canais. Entre em contato com nossa equipe de suporte para solicitar plataformas específicas.',
+    'channels.requestIntegration': 'Solicitar Integração',
   }
 };
 
