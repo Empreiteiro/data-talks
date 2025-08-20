@@ -289,12 +289,34 @@ export const supabaseClient = {
       preview_rows: []
     };
 
+    let fileToUpload: File = file;
+    let finalFileExt = fileExt;
+    let finalFileName = fileName;
+
     try {
       if (fileExt === 'csv') {
         const text = await file.text();
         fileInfo = await this.parseCSV(text, fileInfo);
       } else if (['xlsx', 'xls'].includes(fileExt || '')) {
         fileInfo = await this.parseExcel(file, fileInfo, selectedSheet);
+        
+        // Convert selected sheet to CSV
+        if (selectedSheet) {
+          const XLSX = await import('xlsx');
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const worksheet = workbook.Sheets[selectedSheet];
+          const csvContent = XLSX.utils.sheet_to_csv(worksheet);
+          
+          // Create CSV file
+          const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+          fileToUpload = new File([csvBlob], file.name.replace(/\.(xlsx|xls)$/i, '.csv'), {
+            type: 'text/csv'
+          });
+          
+          finalFileExt = 'csv';
+          finalFileName = `${user.id}/${Date.now()}.csv`;
+        }
       }
     } catch (parseError) {
       console.warn('Failed to parse file content:', parseError);
@@ -302,7 +324,7 @@ export const supabaseClient = {
     
     const { data, error } = await supabase.storage
       .from('data-files')
-      .upload(fileName, file);
+      .upload(finalFileName, fileToUpload);
     
     if (error) throw error;
     
@@ -314,12 +336,7 @@ export const supabaseClient = {
     
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      
-      // If it's Excel with selected sheet, pass the sheet name
-      if (['xlsx', 'xls'].includes(fileExt || '') && selectedSheet) {
-        formData.append('selectedSheet', selectedSheet);
-      }
+      formData.append('file', fileToUpload);
       
       const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
         'upload-to-langflow',
@@ -346,7 +363,7 @@ export const supabaseClient = {
       .insert({
         user_id: user.id,
         name: file.name,
-        type: fileExt === 'csv' ? 'csv' : 'xlsx',
+        type: finalFileExt === 'csv' ? 'csv' : 'xlsx',
         langflow_path: langflowPath,
         langflow_name: langflowName,
         metadata: fileInfo
