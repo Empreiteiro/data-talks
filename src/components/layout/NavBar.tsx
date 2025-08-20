@@ -31,6 +31,7 @@ const NavBar = () => {
         )}
         
         <div className="flex items-center gap-2">
+          <LanguageSelector />
           {user ? (
             <>
               <Button asChild size="sm">
@@ -48,7 +49,6 @@ const NavBar = () => {
               </Button>
             </>
           )}
-          <LanguageSelector />
         </div>
       </nav>
     </header>
