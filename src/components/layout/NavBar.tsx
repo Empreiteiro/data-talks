@@ -32,9 +32,14 @@ const NavBar = () => {
               <Button variant="secondary" size="sm" onClick={handleLogout}>{t('nav.logout')}</Button>
             </>
           ) : (
-            <Button asChild>
-              <Link to="/login">{t('nav.getStarted')}</Link>
-            </Button>
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/pricing">Preços</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/login">{t('nav.getStarted')}</Link>
+              </Button>
+            </>
           )}
           <LanguageSelector />
         </div>
