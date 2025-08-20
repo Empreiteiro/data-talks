@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useLanguage } from "@/contexts/LanguageContext";
 import LanguageSelector from "@/components/ui/language-selector";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
 
 const NavBar = () => {
   const { user, logout } = useAuth();
@@ -20,6 +20,16 @@ const NavBar = () => {
           <span role="img" aria-label="Logo gráfico de crescimento" className="text-xl leading-none">📈</span>
           <span className="hidden sm:inline">{t('nav.tagline')}</span>
         </Link>
+        
+        {/* Link de Preços no Centro */}
+        {!user && (
+          <div className="hidden md:flex items-center">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/pricing">{t('pricing.title')}</Link>
+            </Button>
+          </div>
+        )}
+        
         <div className="flex items-center gap-2">
           {user ? (
             <>
@@ -33,9 +43,6 @@ const NavBar = () => {
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/pricing">Preços</Link>
-              </Button>
               <Button asChild>
                 <Link to="/login">{t('nav.getStarted')}</Link>
               </Button>
