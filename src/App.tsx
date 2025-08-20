@@ -16,6 +16,7 @@ import Questions from "@/pages/Questions";
 import Alerts from "@/pages/Alerts";
 import Account from "@/pages/Account";
 import ShareAgent from "@/pages/ShareAgent";
+import Channels from "@/pages/Channels";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/agent" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
               <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
               <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
+              <Route path="/channels" element={<RequireAuth><Channels /></RequireAuth>} />
               <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
