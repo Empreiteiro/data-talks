@@ -126,7 +126,7 @@ serve(async (req) => {
     // If it's an Excel file with a selected sheet, convert to CSV
     const fileExt = file.name.split('.').pop()?.toLowerCase();
     if (['xlsx', 'xls'].includes(fileExt || '') && selectedSheet) {
-      const XLSX = await import('https://cdn.skypack.dev/xlsx@0.18.5');
+      const XLSX = await import('https://esm.sh/xlsx@0.18.5');
       
       try {
         const arrayBuffer = await file.arrayBuffer();
