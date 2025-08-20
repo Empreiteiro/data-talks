@@ -10,11 +10,14 @@ import { supabaseClient } from "@/services/supabaseClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Sources = () => {
   const { t } = useLanguage();
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [excelSheets, setExcelSheets] = useState<Record<string, string[]>>({});
+  const [selectedSheets, setSelectedSheets] = useState<Record<string, string>>({});
   const credRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -40,15 +43,47 @@ const Sources = () => {
     setLoading(true);
     try {
       for (const file of files) {
-        await supabaseClient.uploadFile(file);
+        const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+        const selectedSheet = selectedSheets[fileKey];
+        await supabaseClient.uploadFile(file, selectedSheet);
       }
       setFiles([]);
+      setExcelSheets({});
+      setSelectedSheets({});
       queryClient.invalidateQueries({ queryKey: ['sources'] });
     } catch (e: any) {
       alert(`${t('sources.uploadError')} ${e.message}`);
     } finally {
       setLoading(false);
     }
+  }
+
+  // Handle file selection and analyze Excel sheets
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles(selectedFiles);
+    
+    // Analyze Excel files to get sheet names
+    const newExcelSheets: Record<string, string[]> = {};
+    const newSelectedSheets: Record<string, string> = {};
+    
+    for (const file of selectedFiles) {
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      if (['xlsx', 'xls'].includes(fileExt || '')) {
+        const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+        try {
+          const sheets = await supabaseClient.getExcelSheets(file);
+          newExcelSheets[fileKey] = sheets;
+          newSelectedSheets[fileKey] = sheets[0]; // Default to first sheet
+        } catch (error) {
+          console.error('Error reading Excel sheets:', error);
+          newExcelSheets[fileKey] = [];
+        }
+      }
+    }
+    
+    setExcelSheets(newExcelSheets);
+    setSelectedSheets(newSelectedSheets);
   }
 
   async function handleBQ(e: React.FormEvent<HTMLFormElement>) {
@@ -119,29 +154,63 @@ const Sources = () => {
         </TabsList>
         <TabsContent value="files" className="mt-6">
           <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-            <Input type="file" accept=".csv,.xlsx,.xls" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+            <Input type="file" accept=".csv,.xlsx,.xls" multiple onChange={handleFileChange} />
             <Button onClick={handleUpload} disabled={!files.length || loading}>{loading ? t('sources.uploading') : t('sources.uploadButton')}</Button>
           </div>
           {files.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {files.map((f, idx) => (
-                <span
-                  key={`${f.name}-${f.size}-${f.lastModified}`}
-                  className="inline-flex items-center gap-2 rounded-md bg-secondary text-secondary-foreground px-2.5 py-1 text-xs"
-                >
-                  <span className="font-medium">{f.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-1"
-                    aria-label={`${t('sources.removeFile')} ${f.name}`}
-                    onClick={() => setFiles(prev => prev.filter((_, i) => i !== idx))}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </span>
-              ))}
+            <div className="space-y-3 mt-4">
+              {files.map((f, idx) => {
+                const fileKey = `${f.name}-${f.size}-${f.lastModified}`;
+                const isExcel = ['xlsx', 'xls'].includes(f.name.split('.').pop()?.toLowerCase() || '');
+                const availableSheets = excelSheets[fileKey] || [];
+                
+                return (
+                  <div key={fileKey} className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{f.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-1"
+                        aria-label={`${t('sources.removeFile')} ${f.name}`}
+                        onClick={() => {
+                          setFiles(prev => prev.filter((_, i) => i !== idx));
+                          const newExcelSheets = { ...excelSheets };
+                          const newSelectedSheets = { ...selectedSheets };
+                          delete newExcelSheets[fileKey];
+                          delete newSelectedSheets[fileKey];
+                          setExcelSheets(newExcelSheets);
+                          setSelectedSheets(newSelectedSheets);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    
+                    {isExcel && availableSheets.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Selecionar aba:</Label>
+                        <Select
+                          value={selectedSheets[fileKey] || availableSheets[0]}
+                          onValueChange={(value) => setSelectedSheets(prev => ({ ...prev, [fileKey]: value }))}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Escolha uma aba" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableSheets.map((sheet) => (
+                              <SelectItem key={sheet} value={sheet}>
+                                {sheet}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>

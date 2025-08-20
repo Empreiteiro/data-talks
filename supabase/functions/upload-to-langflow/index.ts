@@ -106,6 +106,7 @@ serve(async (req) => {
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const selectedSheet = formData.get('selectedSheet') as string;
     
     if (!file) {
       return new Response(
@@ -117,13 +118,43 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Uploading file to Langflow: ${file.name}`);
+    console.log(`Uploading file to Langflow: ${file.name}`, selectedSheet ? `(sheet: ${selectedSheet})` : '');
 
-    const fileContent = new Uint8Array(await file.arrayBuffer());
+    let fileContent: Uint8Array;
+    let fileName = file.name;
+
+    // If it's an Excel file with a selected sheet, convert to CSV
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    if (['xlsx', 'xls'].includes(fileExt || '') && selectedSheet) {
+      const XLSX = await import('https://cdn.skypack.dev/xlsx@0.18.5');
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        
+        if (!workbook.Sheets[selectedSheet]) {
+          throw new Error(`Sheet "${selectedSheet}" not found in file`);
+        }
+        
+        const worksheet = workbook.Sheets[selectedSheet];
+        const csvContent = XLSX.utils.sheet_to_csv(worksheet);
+        
+        // Convert to CSV file for Langflow
+        fileContent = new TextEncoder().encode(csvContent);
+        fileName = file.name.replace(/\.(xlsx|xls)$/i, `.csv`);
+        
+        console.log(`Converted Excel sheet "${selectedSheet}" to CSV for Langflow upload`);
+      } catch (error) {
+        console.error('Error converting Excel to CSV:', error);
+        throw new Error(`Failed to convert Excel sheet to CSV: ${error.message}`);
+      }
+    } else {
+      fileContent = new Uint8Array(await file.arrayBuffer());
+    }
     
     const result = await uploadFileToLangflow(
       fileContent,
-      file.name,
+      fileName,
       langflowApiKey,
       langflowBaseUrl
     );

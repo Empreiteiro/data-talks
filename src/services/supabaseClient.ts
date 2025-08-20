@@ -272,7 +272,7 @@ export const supabaseClient = {
   },
 
   // File uploads
-  async uploadFile(file: File) {
+  async uploadFile(file: File, selectedSheet?: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -294,7 +294,7 @@ export const supabaseClient = {
         const text = await file.text();
         fileInfo = await this.parseCSV(text, fileInfo);
       } else if (['xlsx', 'xls'].includes(fileExt || '')) {
-        fileInfo = await this.parseExcel(file, fileInfo);
+        fileInfo = await this.parseExcel(file, fileInfo, selectedSheet);
       }
     } catch (parseError) {
       console.warn('Failed to parse file content:', parseError);
@@ -315,6 +315,11 @@ export const supabaseClient = {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      
+      // If it's Excel with selected sheet, pass the sheet name
+      if (['xlsx', 'xls'].includes(fileExt || '') && selectedSheet) {
+        formData.append('selectedSheet', selectedSheet);
+      }
       
       const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
         'upload-to-langflow',
@@ -373,14 +378,14 @@ export const supabaseClient = {
     return fileInfo;
   },
 
-  async parseExcel(file: File, fileInfo: any) {
+  async parseExcel(file: File, fileInfo: any, selectedSheet?: string) {
     const XLSX = await import('xlsx');
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
     
-    // Get first worksheet
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
+    // Use selected sheet or default to first sheet
+    const sheetName = selectedSheet || workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
     
     // Convert to JSON
     const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -389,9 +394,24 @@ export const supabaseClient = {
       fileInfo.columns = Object.keys(jsonData[0] as object);
       fileInfo.preview_rows = jsonData.slice(0, 5);
       fileInfo.row_count = jsonData.length;
+      fileInfo.selected_sheet = sheetName;
+      fileInfo.available_sheets = workbook.SheetNames;
     }
     
     return fileInfo;
+  },
+
+  // Get XLSX sheet names for sheet selection
+  async getExcelSheets(file: File): Promise<string[]> {
+    try {
+      const XLSX = await import('xlsx');
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      return workbook.SheetNames;
+    } catch (error) {
+      console.error('Error reading Excel file:', error);
+      return [];
+    }
   },
 
   // BigQuery connection
