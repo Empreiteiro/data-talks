@@ -37,13 +37,15 @@ const Pricing = () => {
         'Configuração avançada do agente',
         'Até 1.000 perguntas',
         'Suporte prioritário',
-        'Canais personalizados'
+        'Canais personalizados',
+        'Configuração de alertas'
       ] : [
         'Up to 5 data sources',
         'Advanced agent configuration',
         'Up to 1,000 questions',
         'Priority support',
-        'Integration with channels'
+        'Integration with channels',  
+        'Alert configuration'
       ],
       button: t('pricing.pro.button')
     },
@@ -116,13 +118,25 @@ const Pricing = () => {
                </CardContent>
 
                <CardFooter className="mt-auto">
-                 <Button 
-                   className="w-full" 
-                   variant={index === 1 ? "default" : "outline"}
-                   size="lg"
-                 >
-                   {plan.button}
-                 </Button>
+                 {plan.name === t('pricing.free.title') || plan.name === t('pricing.pro.title') ? (
+                   <Button 
+                     className="w-full" 
+                     variant={index === 1 ? "default" : "outline"}
+                     size="lg"
+                     onClick={() => window.open('https://t2d.lovable.app/login', '_blank')}
+                   >
+                     {plan.button}
+                   </Button>
+                 ) : (
+                   <Button 
+                     className="w-full" 
+                     variant={index === 1 ? "default" : "outline"}
+                     size="lg"
+                     onClick={() => window.open('https://whatsa.me/5534996521315', '_blank')}
+                   >
+                     {plan.button}
+                   </Button>
+                 )}
                </CardFooter>
              </Card>
           ))}
