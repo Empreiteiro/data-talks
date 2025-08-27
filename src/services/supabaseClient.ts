@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { translateSupabaseError } from '@/utils/errorHandling';
 
 export const supabaseClient = {
   // Sources
@@ -31,23 +32,28 @@ export const supabaseClient = {
   },
 
   async createAgent(name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[]) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-    const { data, error } = await supabase
-      .from('agents')
-      .insert({
-        user_id: user.id,
-        name,
-        description,
-        source_ids: sourceIds,
-        suggested_questions: suggestedQuestions || []
-      })
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+      const { data, error } = await supabase
+        .from('agents')
+        .insert({
+          user_id: user.id,
+          name,
+          description,
+          source_ids: sourceIds,
+          suggested_questions: suggestedQuestions || []
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      const friendlyError = translateSupabaseError(error);
+      throw new Error(friendlyError);
+    }
   },
 
   async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[]) {
@@ -273,106 +279,111 @@ export const supabaseClient = {
 
   // File uploads
   async uploadFile(file: File, selectedSheet?: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const fileExt = file.name.split('.').pop()?.toLowerCase();
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-    
-    // Parse file content to extract schema and preview
-    let fileInfo: any = {
-      file_path: '',
-      file_size: file.size,
-      uploaded_at: new Date().toISOString(),
-      row_count: 0,
-      columns: [],
-      preview_rows: []
-    };
-
-    let fileToUpload: File = file;
-    let finalFileExt = fileExt;
-    let finalFileName = fileName;
-
     try {
-      if (fileExt === 'csv') {
-        const text = await file.text();
-        fileInfo = await this.parseCSV(text, fileInfo);
-      } else if (['xlsx', 'xls'].includes(fileExt || '')) {
-        fileInfo = await this.parseExcel(file, fileInfo, selectedSheet);
-        
-        // Convert selected sheet to CSV
-        if (selectedSheet) {
-          const XLSX = await import('xlsx');
-          const arrayBuffer = await file.arrayBuffer();
-          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-          const worksheet = workbook.Sheets[selectedSheet];
-          const csvContent = XLSX.utils.sheet_to_csv(worksheet);
-          
-          // Create CSV file
-          const csvBlob = new Blob([csvContent], { type: 'text/csv' });
-          fileToUpload = new File([csvBlob], file.name.replace(/\.(xlsx|xls)$/i, '.csv'), {
-            type: 'text/csv'
-          });
-          
-          finalFileExt = 'csv';
-          finalFileName = `${user.id}/${Date.now()}.csv`;
-        }
-      }
-    } catch (parseError) {
-      console.warn('Failed to parse file content:', parseError);
-    }
-    
-    const { data, error } = await supabase.storage
-      .from('data-files')
-      .upload(finalFileName, fileToUpload);
-    
-    if (error) throw error;
-    
-    fileInfo.file_path = data.path;
-    
-    // Upload to Langflow
-    let langflowPath = null;
-    let langflowName = null;
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', fileToUpload);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
-      const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
-        'upload-to-langflow',
-        {
-          body: formData,
-        }
-      );
+      // Parse file content to extract schema and preview
+      let fileInfo: any = {
+        file_path: '',
+        file_size: file.size,
+        uploaded_at: new Date().toISOString(),
+        row_count: 0,
+        columns: [],
+        preview_rows: []
+      };
 
-      if (langflowError) {
-        console.error('Langflow upload error:', langflowError);
-      } else if (langflowData) {
-        langflowPath = langflowData.path;
-        langflowName = langflowData.name;
-        console.log('File uploaded to Langflow:', { path: langflowPath, name: langflowName });
+      let fileToUpload: File = file;
+      let finalFileExt = fileExt;
+      let finalFileName = fileName;
+
+      try {
+        if (fileExt === 'csv') {
+          const text = await file.text();
+          fileInfo = await this.parseCSV(text, fileInfo);
+        } else if (['xlsx', 'xls'].includes(fileExt || '')) {
+          fileInfo = await this.parseExcel(file, fileInfo, selectedSheet);
+          
+          // Convert selected sheet to CSV
+          if (selectedSheet) {
+            const XLSX = await import('xlsx');
+            const arrayBuffer = await file.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const worksheet = workbook.Sheets[selectedSheet];
+            const csvContent = XLSX.utils.sheet_to_csv(worksheet);
+            
+            // Create CSV file
+            const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+            fileToUpload = new File([csvBlob], file.name.replace(/\.(xlsx|xls)$/i, '.csv'), {
+              type: 'text/csv'
+            });
+            
+            finalFileExt = 'csv';
+            finalFileName = `${user.id}/${Date.now()}.csv`;
+          }
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse file content:', parseError);
       }
+      
+      const { data, error } = await supabase.storage
+        .from('data-files')
+        .upload(finalFileName, fileToUpload);
+      
+      if (error) throw error;
+      
+      fileInfo.file_path = data.path;
+      
+      // Upload to Langflow
+      let langflowPath = null;
+      let langflowName = null;
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', fileToUpload);
+        
+        const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
+          'upload-to-langflow',
+          {
+            body: formData,
+          }
+        );
+
+        if (langflowError) {
+          console.error('Langflow upload error:', langflowError);
+        } else if (langflowData) {
+          langflowPath = langflowData.path;
+          langflowName = langflowData.name;
+          console.log('File uploaded to Langflow:', { path: langflowPath, name: langflowName });
+        }
+      } catch (error) {
+        console.error('Error uploading to Langflow:', error);
+        // Continue with source creation even if Langflow upload fails
+      }
+      
+      // Create source record
+      const { data: source, error: sourceError } = await supabase
+        .from('sources')
+        .insert({
+          user_id: user.id,
+          name: file.name,
+          type: finalFileExt === 'csv' ? 'csv' : 'xlsx',
+          langflow_path: langflowPath,
+          langflow_name: langflowName,
+          metadata: fileInfo
+        })
+        .select()
+        .single();
+      
+      if (sourceError) throw sourceError;
+      return source;
     } catch (error) {
-      console.error('Error uploading to Langflow:', error);
-      // Continue with source creation even if Langflow upload fails
+      const friendlyError = translateSupabaseError(error);
+      throw new Error(friendlyError);
     }
-    
-    // Create source record
-    const { data: source, error: sourceError } = await supabase
-      .from('sources')
-      .insert({
-        user_id: user.id,
-        name: file.name,
-        type: finalFileExt === 'csv' ? 'csv' : 'xlsx',
-        langflow_path: langflowPath,
-        langflow_name: langflowName,
-        metadata: fileInfo
-      })
-      .select()
-      .single();
-    
-    if (sourceError) throw sourceError;
-    return source;
   },
 
   async parseCSV(text: string, fileInfo: any) {
@@ -488,24 +499,34 @@ export const supabaseClient = {
 
   // Ask question to agent
   async askQuestion(agentId: string, question: string, sessionId?: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-    const { data, error } = await supabase.functions.invoke('ask-question', {
-      body: { question, agentId, userId: user.id, sessionId }
-    });
+      const { data, error } = await supabase.functions.invoke('ask-question', {
+        body: { question, agentId, userId: user.id, sessionId }
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      const friendlyError = translateSupabaseError(error);
+      throw new Error(friendlyError);
+    }
   },
 
   // Ask question to shared agent (without authentication)
   async askQuestionShared(agentId: string, question: string, shareToken: string, sessionId?: string) {
-    const { data, error } = await supabase.functions.invoke('ask-question', {
-      body: { question, agentId, shareToken, sessionId }
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('ask-question', {
+        body: { question, agentId, shareToken, sessionId }
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      const friendlyError = translateSupabaseError(error);
+      throw new Error(friendlyError);
+    }
   },
 };

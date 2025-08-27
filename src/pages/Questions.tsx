@@ -1,461 +1,352 @@
-import { SEO } from "@/components/SEO";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { v4 as uuidv4 } from 'uuid';
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/hooks/useAuth";
+import { agentClient, Agent, QASession } from "@/services/agentClient";
 import { supabaseClient } from "@/services/supabaseClient";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { PlanLimitAlert } from "@/components/PlanLimitAlert";
 
-const Questions = () => {
-  const { t } = useLanguage();
-  const queryClient = useQueryClient();
-  const [agentId, setAgentId] = useState("");
-  const [question, setQuestion] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+export default function Questions() {
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<any[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const { agentId: agentIdParam, shareToken: shareTokenParam } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isSharedAgent, setIsSharedAgent] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const { limits, usage, planName, canAskQuestion, isLoading: limitsLoading } = usePlanLimits();
 
-  function extractBase64Image(answer: string): string | null {
-    if (!answer) return null;
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        let agentList: Agent[] = [];
 
-    try {
-      // Try to parse as JSON first
-      const parsed = JSON.parse(answer);
-      if (parsed.image && typeof parsed.image === 'string') {
-        // If image doesn't start with data:image, add the prefix
-        if (parsed.image.startsWith('data:image/')) {
-          return parsed.image;
+        if (shareTokenParam) {
+          // Load shared agent
+          setIsSharedAgent(true);
+          setShareToken(shareTokenParam);
+
+          const sharedAgent = await supabaseClient.getSharedAgent(shareTokenParam);
+          if (sharedAgent) {
+            const agent: Agent = {
+              id: agentIdParam || 'shared',
+              ownerId: 'shared',
+              name: sharedAgent.name,
+              description: sharedAgent.description,
+              createdAt: sharedAgent.created_at,
+              shareToken: shareTokenParam,
+              sharePassword: sharedAgent.has_password ? 'protected' : undefined,
+            };
+            agentList = [agent];
+            setSelectedAgent(agent);
+          } else {
+            toast({
+              title: "Agente não encontrado",
+              description: "O agente compartilhado não foi encontrado.",
+              variant: "destructive",
+            });
+            return navigate('/agents');
+          }
+
+          // Load QA history for shared agent
+          const qaSessions = await supabaseClient.getSharedAgentQASessions(shareTokenParam);
+          setHistory(qaSessions);
         } else {
-          // Assume PNG by default, could be enhanced to detect format
-          return `data:image/png;base64,${parsed.image}`;
+          // Load user's agents
+          const agents = await supabaseClient.listAgents();
+          agentList = agents;
+
+          if (agentIdParam) {
+            const agent = agentList.find(a => a.id === agentIdParam);
+            if (agent) {
+              setSelectedAgent(agent);
+            }
+          }
+
+          // Load QA history for user's agents
+          const qaSessions = await supabaseClient.listQASessions(agentIdParam);
+          setHistory(qaSessions);
         }
+
+        if (agentList.length === 0 && !shareTokenParam) {
+          toast({
+            title: "Nenhum agente encontrado",
+            description: "Crie um agente para começar a fazer perguntas.",
+            variant: "destructive",
+          });
+          return navigate('/agents/new');
+        }
+      } catch (error: any) {
+        toast({
+          title: "Erro ao carregar dados",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      // If not JSON, fall back to old logic for backwards compatibility
-      const dataUrlRegex = /data:image\/(png|jpeg|jpg);base64,([A-Za-z0-9+\/=_\s\r\n]+)/i;
-      const dataUrlMatch = answer.match(dataUrlRegex);
-      if (dataUrlMatch) {
-        return dataUrlMatch[0].replace(/[\s\r\n]+/g, '');
-      }
+    };
+
+    loadInitialData();
+  }, [agentIdParam, shareTokenParam, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!canAskQuestion) {
+      toast({
+        title: "Limite mensal atingido",
+        description: `Você atingiu o limite de ${limits.monthlyQuestions} perguntas mensais do plano ${planName}.`,
+        variant: "destructive",
+      });
+      return;
     }
 
-    return null;
-  }
+    if (!question.trim()) return;
+    if (!selectedAgent) {
+      toast({
+        title: "Agente obrigatório",
+        description: "Selecione um agente para fazer a pergunta.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  // Remove any base64-encoded image data from text answers so it doesn't render as plain text
-  function stripBase64FromText(text: string): string {
-    if (!text) return '';
-    // 1) Drop fences but keep inner content
-    let raw = text.replace(/```[\s\S]*?```/g, (block) => block.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, ''));
-    // 2) Remove explicit data URLs when they appear on their own lines
-    raw = raw.replace(/^\s*data:image\/(png|jpe?g);base64,[A-Za-z0-9+/=\r\n]+\s*$/gmi, '');
-    // 3) Remove base64-only lines starting with PNG/JPEG magic headers
-    raw = raw.replace(/^\s*iVBORw0KGgo[0-9A-Za-z+/=\r\n]+\s*$/gmi, '');
-    raw = raw.replace(/^\s*\/9j\/[0-9A-Za-z+/=\r\n]+\s*$/gmi, '');
-    // 4) Remove common JSON fields that hold base64 blobs
-    raw = raw.replace(/"(image|image_base64|imageUrl|image_url)"\s*:\s*"(?:data:image\/(?:png|jpe?g);base64,)?[0-9A-Za-z+/=\r\n]+"/gmi, '');
-    // Normalize extra blank lines
-    raw = raw.replace(/\n{3,}/g, '\n\n').trim();
-    return raw;
-  }
-
-  // Extract human-readable text from JSON response
-  function getDisplayText(answer: string, fallback: string): string {
-    if (!answer) return fallback;
+    setSubmitting(true);
+    setAnswer(null);
+    setImageUrl(null);
+    setFollowUpQuestions([]);
 
     try {
-      // Try to parse as JSON and get the text field
-      const parsed = JSON.parse(answer);
-      if (parsed.text && typeof parsed.text === 'string') {
-        return parsed.text.trim();
+      let response;
+      if (isSharedAgent && shareToken) {
+        response = await supabaseClient.askQuestionShared(selectedAgent.id, question, shareToken, sessionId);
+      } else {
+        response = await supabaseClient.askQuestion(selectedAgent.id, question, sessionId);
       }
-      // If no text field but is valid JSON, return fallback
-      return fallback;
-    } catch {
-      // If not JSON, return the original answer as-is (for backwards compatibility)
-      return answer.trim() || fallback;
+
+      setAnswer(response.answer);
+      setImageUrl(response.imageUrl);
+      setSessionId(response.sessionId);
+      setFollowUpQuestions(response.followUpQuestions);
+
+      // Update conversation history
+      const newEntry = {
+        question: question,
+        answer: response.answer,
+        imageUrl: response.imageUrl,
+        followUpQuestions: response.followUpQuestions,
+        timestamp: new Date().toISOString()
+      };
+      setConversationHistory(prevHistory => [...(prevHistory || []), newEntry]);
+
+      // Refresh history
+      if (!isSharedAgent) {
+        const qaSessions = await supabaseClient.listQASessions(selectedAgent.id);
+        setHistory(qaSessions);
+      } else if (shareToken) {
+        const qaSessions = await supabaseClient.getSharedAgentQASessions(shareToken);
+        setHistory(qaSessions);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar pergunta",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
     }
-  }
-
-  const { data: agents = [] } = useQuery({
-    queryKey: ['agents'],
-    queryFn: () => supabaseClient.listAgents()
-  });
-
-  const { data: sources = [] } = useQuery({
-    queryKey: ['sources'],
-    queryFn: () => supabaseClient.listSources()
-  });
-
-  const { data: sessions = [] } = useQuery({
-    queryKey: ['qa-sessions', agentId],
-    queryFn: () => supabaseClient.listQASessions(agentId || undefined)
-  });
-
-  // Set default agent when agents load
-  if (agents.length > 0 && !agentId) {
-    setAgentId(agents[0].id);
-  }
-
-  // Get current agent's suggested questions
-  const currentAgent = agents.find(a => a.id === agentId);
-  const suggestedQuestions = currentAgent?.suggested_questions || [];
-
-  // Get columns from connected sources
-  const getConnectedSourcesColumns = () => {
-    if (!currentAgent || !currentAgent.source_ids) return [];
-    
-    const connectedSources = sources.filter(source => 
-      currentAgent.source_ids.includes(source.id)
-    );
-    
-    const columns: string[] = [];
-    connectedSources.forEach(source => {
-      if (source.type === 'bigquery' && source.metadata) {
-        // For BigQuery sources
-        const metadata = source.metadata as any;
-        if (metadata.table_infos && Array.isArray(metadata.table_infos)) {
-          metadata.table_infos.forEach((tableInfo: any) => {
-            if (tableInfo.columns && Array.isArray(tableInfo.columns)) {
-              tableInfo.columns.forEach((col: string) => {
-                if (!columns.includes(col)) {
-                  columns.push(col);
-                }
-              });
-            }
-          });
-        }
-      } else if (source.metadata) {
-        // For CSV/JSON sources
-        const metadata = source.metadata as any;
-        if (metadata.columns && Array.isArray(metadata.columns)) {
-          metadata.columns.forEach((col: string) => {
-            if (!columns.includes(col)) {
-              columns.push(col);
-            }
-          });
-        }
-      }
-    });
-    
-    return columns.sort(); // Sort alphabetically
   };
 
-  const availableColumns = getConnectedSourcesColumns();
+  const handleFollowUpQuestion = (followUp: string) => {
+    setQuestion(followUp);
+    handleSubmit(new Event('submit') as any); // Trigger form submission
+  };
 
-  async function ask(sessionId?: string) {
-    if (!question.trim() || !agentId) return;
-
-    try {
-      setIsLoading(true);
-      const currentQuestion = question;
-      setQuestion('');
-      const result = await supabaseClient.askQuestion(agentId, currentQuestion, sessionId);
-      
-      // Refresh sessions to show the new question
-      queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
-      
-    } catch (error: any) {
-      alert(`${t('questions.error')} ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function updateFeedback(sessionId: string, feedback: 'positive' | 'negative') {
-    try {
-      await supabaseClient.updateQASessionFeedback(sessionId, feedback);
-      queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
-    } catch (error: any) {
-      alert(`${t('questions.feedbackError')} ${error.message}`);
-    }
+  if (loading || limitsLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Carregando perguntas...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <main className="container py-10">
-      <SEO title={`${t('questions.title')} | ${t('nav.tagline')}`} description={t('questions.seoDescription')} canonical="/questions" />
-      <h1 className="text-3xl font-semibold mb-6">{t('questions.title')}</h1>
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Perguntas aos Agentes</h1>
+        <p className="text-muted-foreground">
+          Faça perguntas aos seus agentes de IA ({usage.monthlyQuestions}/{limits.monthlyQuestions} este mês - Plano {planName})
+        </p>
+      </div>
 
-      {agents.length === 0 ? (
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>{t('questions.beforeStart')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{t('questions.createAgentFirst')}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium mb-2">{t('questions.agent')}</label>
-              <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-background">
-                {agents.map(a => <option key={a.id} value={a.id}>{a.name || `${a.id.slice(0,6)}...`}</option>)}
-              </select>
-            </div>
-            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t('questions.questionPlaceholder')} disabled={isLoading} />
-              <Button onClick={() => ask()} disabled={!question || isLoading} className="min-w-[120px]">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('questions.processing')}
-                  </>
-                ) : (
-                  t('questions.ask')
-                )}
-              </Button>
+      {!canAskQuestion && (
+        <PlanLimitAlert
+          type="questions"
+          limit={limits.monthlyQuestions}
+          planName={planName}
+          className="mb-6"
+        />
+      )}
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Nova Pergunta</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="agent">Agente</Label>
+              {!isSharedAgent ? (
+                <Select value={selectedAgent?.id} onValueChange={(value) => {
+                  const agent = (history || []).find((a: any) => a.id === value);
+                  const agentObj = {
+                    id: value,
+                    ownerId: user?.id || 'demo',
+                    name: agent?.name || 'Agent',
+                    description: agent?.description || '',
+                    createdAt: new Date().toISOString(),
+                    shareToken: uuidv4(),
+                  };
+                  setSelectedAgent(agentObj);
+                }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um agente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(history || []).map((agent: any) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={selectedAgent?.name}
+                  disabled
+                />
+              )}
             </div>
             
-            {suggestedQuestions.length > 0 && (
+            <div className="flex space-x-2">
+              <Input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder={canAskQuestion ? "Digite sua pergunta..." : "Limite mensal atingido"}
+                className="flex-1"
+                disabled={!selectedAgent || submitting || !canAskQuestion}
+              />
+              <Button 
+                type="submit" 
+                disabled={!selectedAgent || submitting || !question.trim() || !canAskQuestion}
+              >
+                {submitting ? "Enviando..." : "Enviar"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {answer && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Resposta</CardTitle>
+            <CardDescription>Resposta do agente {selectedAgent?.name}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {imageUrl && (
+              <div className="flex justify-center">
+                <img src={imageUrl} alt="Resposta do Agente" className="max-w-full" />
+              </div>
+            )}
+            <p>{answer}</p>
+
+            {followUpQuestions.length > 0 && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium">{t('questions.suggestedQuestionsLabel')}</label>
+                <h3 className="text-sm font-medium">Perguntas de acompanhamento:</h3>
                 <div className="flex flex-wrap gap-2">
-                  {suggestedQuestions.map((suggestedQuestion, index) => (
+                  {followUpQuestions.map((followUp, index) => (
                     <Button
                       key={index}
                       variant="outline"
                       size="sm"
-                      onClick={() => setQuestion(suggestedQuestion)}
-                      className="text-sm"
+                      onClick={() => handleFollowUpQuestion(followUp)}
                     >
-                      {suggestedQuestion}
+                      {followUp}
                     </Button>
                   ))}
                 </div>
               </div>
             )}
-
-            {availableColumns.length > 0 && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">{t('questions.availableColumns')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {availableColumns.map((column, index) => (
-                    <Button
-                      key={index}
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        const currentValue = question.trim();
-                        const newValue = currentValue ? `${currentValue} ${column}` : column;
-                        setQuestion(newValue);
-                      }}
-                      className="text-sm bg-muted hover:bg-muted/80 text-muted-foreground"
-                    >
-                      {column}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-6">
-            {isLoading && (
-              <Card className="shadow-sm animate-pulse">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-center space-x-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <p className="text-muted-foreground">{t('questions.processingQuestion')}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {sessions.length === 0 && !isLoading ? (
-              <Card className="shadow-sm">
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground text-center">
-                    {t('questions.noQuestionsFound')}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              sessions.map((h: any) => (
-                <Card key={h.id} className="shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-base">{t('questions.question')}: <span className="text-muted-foreground font-normal">{h.question}</span></CardTitle>
-                  </CardHeader>
-                   <CardContent className="space-y-4">
-                     {/* Main answer */}
-                     <div className="prose prose-sm max-w-none">
-                       <div className="space-y-2">
-        {getDisplayText(h.answer || '', t('questions.answerNotAvailable')).split('\n').map((line: string, index: number) => {
-          if (line.trim() === '') return <br key={index} />;
-          
-          // Check if line contains bullet points and format accordingly
-          if (line.startsWith('- ')) {
-            return (
-              <div key={index} className="flex items-start space-x-2">
-                <span className="text-primary font-bold">•</span>
-                <span className="flex-1">{line.substring(2)}</span>
-              </div>
-            );
-          }
-          
-          // Check if line contains bold text markers
-          if (line.includes('**')) {
-            const parts = line.split('**');
-            return (
-              <p key={index} className="mb-2 last:mb-0">
-                {parts.map((part, partIndex) => 
-                  partIndex % 2 === 1 ? 
-                    <strong key={partIndex} className="font-semibold text-primary">{part}</strong> : 
-                    part
-                )}
-              </p>
-            );
-          }
-          
-          return <p key={index} className="mb-2 last:mb-0">{line}</p>;
-        })}
-                       </div>
-                     </div>
-                      {(() => {
-                        const img = extractBase64Image(h.answer || '');
-                        return (!h.table_data?.image_url && img) ? (
-                          <div className="mt-4">
-                            <img 
-                              src={img} 
-                              alt={t('questions.analysisResult')} 
-                              className="max-w-full h-auto rounded-lg"
-                              loading="lazy"
-                            />
-                          </div>
-                        ) : null;
-                      })()}
-                      
-                      {/* Display base64 image if present in answer or table_data */}
-                     {h.table_data?.image_url && (
-                       <div className="mt-4">
-                         <img 
-                           src={h.table_data.image_url} 
-                           alt={t('questions.analysisResult')} 
-                           className="max-w-full h-auto rounded-lg"
-                         />
-                       </div>
-                     )}
-
-                    {/* Conversation History - Follow-up questions and answers (skip first if it's the same as main question) */}
-                    {h.conversation_history && h.conversation_history.length > 0 && (
-                      <div className="mt-6 space-y-4">
-                        {h.conversation_history.slice(1).map((conversation: any, index: number) => (
-                          <div key={index} className="space-y-2">
-                            <div className="text-sm">
-                              <span className="font-medium">{t('questions.question')}:</span> {conversation.question}
-                            </div>
-                            <div className="prose prose-sm max-w-none">
-                              {getDisplayText(conversation.answer, '').split('\n').map((line: string, lineIndex: number) => (
-                                <p key={lineIndex} className="mb-1 last:mb-0 text-sm">{line}</p>
-                              ))}
-                            </div>
-                            {conversation.imageUrl && (
-                              <div className="mt-2">
-                                <img 
-                                  src={conversation.imageUrl} 
-                                  alt={t('questions.analysisResult')} 
-                                  className="max-w-full h-auto rounded-lg"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {h.table_data && !h.table_data.image_url && Array.isArray(h.table_data) && (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              {Object.keys(h.table_data[0] || {}).map((c) => <TableHead key={c}>{c}</TableHead>)}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {h.table_data.map((row: any, i: number) => (
-                              <TableRow key={i}>
-                                {Object.keys(h.table_data[0] || {}).map((c) => <TableCell key={c}>{String(row[c])}</TableCell>)}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                    
-                    {/* Follow-up Questions */}
-                    {h.follow_up_questions && h.follow_up_questions.length > 0 && (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium">{t('questions.followUpQuestions')}</label>
-                        <div className="flex flex-wrap gap-2">
-                          {h.follow_up_questions.map((followUpQuestion: string, index: number) => (
-                            <Button
-                              key={index}
-                              variant="outline"
-                              size="sm"
-                            onClick={() => {
-                              setQuestion(followUpQuestion);
-                              setTimeout(() => ask(h.id), 0);
-                            }}
-                              className="text-sm"
-                            >
-                              {followUpQuestion}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant={h.feedback === 'positive' ? 'default' : 'ghost'} 
-                          size="sm" 
-                          aria-label={t('questions.positiveFeedbackLabel')}
-                          onClick={() => updateFeedback(h.id, 'positive')}
-                        >
-                          <ThumbsUp />
-                        </Button>
-                        <Button 
-                          variant={h.feedback === 'negative' ? 'default' : 'ghost'} 
-                          size="sm" 
-                          aria-label={t('questions.negativeFeedbackLabel')}
-                          onClick={() => updateFeedback(h.id, 'negative')}
-                        >
-                          <ThumbsDown />
-                        </Button>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={t('questions.deleteQuestionLabel')}
-                        onClick={async () => { 
-                          if (confirm(t('questions.deleteQuestionConfirm'))) {
-                            try {
-                              await supabaseClient.deleteQASession(h.id);
-                              queryClient.invalidateQueries({ queryKey: ['qa-sessions'] });
-                            } catch (e: any) {
-                              alert(e.message);
-                            }
-                          }
-                        }}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                                          <p className="text-xs text-muted-foreground">
-                      {new Date(h.created_at).toLocaleString(t('questions.dateFormat'))} · {t('questions.status')}: {h.status}
-                    </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
-    </main>
-  );
-};
 
-export default Questions;
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Perguntas</CardTitle>
+          <CardDescription>Suas perguntas anteriores para este agente</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[400px]">
+          <ScrollArea className="h-full">
+            <div className="space-y-4">
+              {history.map((qaSession: any) => (
+                <div key={qaSession.id} className="border rounded-md p-4">
+                  <div className="flex items-center space-x-4 mb-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={`https://avatar.vercel.sh/${qaSession.user_id}.png`} />
+                      <AvatarFallback>IA</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium">{qaSession.question}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(qaSession.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{qaSession.answerText}</p>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </CardContent>
+        <CardFooter>
+          <Button variant="link" onClick={() => setHistory([])}>Limpar histórico</Button>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
