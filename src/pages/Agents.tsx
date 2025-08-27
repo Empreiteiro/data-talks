@@ -120,7 +120,7 @@ export default function Agents() {
         <div>
           <h1 className="text-2xl font-bold">Agentes de IA</h1>
           <p className="text-muted-foreground">
-            Gerencie seus agentes de IA ({usage.agents}/{limits.agents} - Plano {planName})
+            Gerencie seus agentes de IA
           </p>
         </div>
         <Button 
