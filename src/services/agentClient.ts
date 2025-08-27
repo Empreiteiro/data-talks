@@ -21,6 +21,8 @@ export interface Agent {
   // Sharing
   shareToken: string;
   sharePassword?: string;
+  // Suggested questions
+  suggestedQuestions?: string[];
 }
 
 export interface QASession {

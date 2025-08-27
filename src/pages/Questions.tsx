@@ -86,7 +86,8 @@ export default function Questions() {
             name: agent.name,
             description: agent.description || '',
             createdAt: agent.created_at,
-            shareToken: uuidv4() // Generate a placeholder token
+            shareToken: uuidv4(), // Generate a placeholder token
+            suggestedQuestions: agent.suggested_questions || []
           }));
           setAgents(agentList);
 
@@ -287,6 +288,30 @@ export default function Questions() {
           </form>
         </CardContent>
       </Card>
+
+      {selectedAgent?.suggestedQuestions && selectedAgent.suggestedQuestions.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Perguntas Sugeridas</CardTitle>
+            <CardDescription>Clique em uma pergunta para enviá-la</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2">
+              {selectedAgent.suggestedQuestions.map((suggestedQuestion, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="justify-start text-left h-auto py-3 px-4"
+                  onClick={() => setQuestion(suggestedQuestion)}
+                  disabled={!canAskQuestion}
+                >
+                  {suggestedQuestion}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {answer && (
         <Card className="mb-6">
