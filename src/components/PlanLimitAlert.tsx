@@ -34,20 +34,22 @@ export const PlanLimitAlert = ({ type, limit, planName, className }: PlanLimitAl
 
   return (
     <Alert className={className}>
-      <AlertTriangle className="h-4 w-4" />
-      <AlertDescription className="flex items-center justify-between">
-        <span>{getMessage()}</span>
-        {planName === 'Trial' && (
-          <Button
-            onClick={() => navigate('/pricing')}
-            size="sm"
-            className="ml-2"
-          >
-            <Crown className="mr-1 h-3 w-3" />
-            Upgrade para Pro
-          </Button>
-        )}
-      </AlertDescription>
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+        <div className="flex items-center justify-between w-full min-w-0">
+          <span className="text-sm">{getMessage()}</span>
+          {planName === 'Trial' && (
+            <Button
+              onClick={() => navigate('/pricing')}
+              size="sm"
+              className="ml-3 flex-shrink-0"
+            >
+              <Crown className="mr-1 h-3 w-3" />
+              Upgrade para Pro
+            </Button>
+          )}
+        </div>
+      </div>
     </Alert>
   );
 };
