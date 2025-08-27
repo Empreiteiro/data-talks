@@ -1,7 +1,7 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
-export type SourceType = 'file' | 'bq';
+export type SourceType = 'csv' | 'xlsx' | 'bigquery';
 
 export interface Source {
   id: string;
@@ -119,7 +119,7 @@ export const agentClient = {
 
       const source: Source = {
         id: uid(),
-        type: 'file',
+        type: ext === 'csv' ? 'csv' : 'xlsx',
         name,
         metaJSON: { schema, preview, rowCount },
         ownerId,
@@ -142,7 +142,7 @@ export const agentClient = {
     if (safe.private_key) safe.private_key = '***';
     const source: Source = {
       id: uid(),
-      type: 'bq',
+      type: 'bigquery',
       name: opts.project || json.project_id || 'BigQuery',
       metaJSON: { credential: safe, project: opts.project || json.project_id, dataset: opts.dataset, tables: opts.tables || [] },
       ownerId,

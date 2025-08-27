@@ -64,16 +64,7 @@ export default function Sources() {
     setLoading(true);
     try {
       const data = await supabaseClient.listSources();
-      // Map database fields to Source interface
-      const mappedSources: Source[] = data.map(source => ({
-        id: source.id,
-        name: source.name,
-        type: source.type,
-        ownerId: source.user_id,
-        createdAt: source.created_at,
-        metaJSON: source.metadata
-      }));
-      setSources(mappedSources);
+      setSources(data);
     } catch (err: any) {
       toast.error("Erro ao carregar fontes", {
         description: err.message,

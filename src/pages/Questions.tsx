@@ -82,13 +82,11 @@ export default function Questions() {
           // Map database fields to Agent interface
           agentList = agentsData.map(agent => ({
             id: agent.id,
-            ownerId: agent.user_id || user?.id || '',
+            ownerId: user?.id || '',
             name: agent.name,
             description: agent.description || '',
             createdAt: agent.created_at,
-            shareToken: uuidv4(), // Generate a placeholder token
-            sourceIds: agent.source_ids || [],
-            suggestedQuestions: agent.suggested_questions || []
+            shareToken: uuidv4() // Generate a placeholder token
           }));
           setAgents(agentList);
 
@@ -331,7 +329,12 @@ export default function Questions() {
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">{qaSession.answerText}</p>
+                   {qaSession.imageUrl && (
+                     <div className="mb-2">
+                       <img src={qaSession.imageUrl} alt="Chart" className="max-w-full h-auto rounded" />
+                     </div>
+                   )}
+                   <p className="text-sm text-muted-foreground">{qaSession.answerText || qaSession.answer}</p>
                 </div>
               ))}
             </div>

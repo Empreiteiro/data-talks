@@ -55,14 +55,7 @@ export default function AgentBriefing() {
     setLoading(true);
     try {
       const sourcesData = await supabaseClient.listSources();
-      setSources(sourcesData.map(source => ({
-        id: source.id,
-        name: source.name,
-        type: source.type,
-        ownerId: source.user_id,
-        createdAt: source.created_at,
-        metaJSON: source.metadata
-      })));
+      setSources(sourcesData);
 
       if (isEditing) {
         const agentsData = await supabaseClient.listAgents();
@@ -74,24 +67,22 @@ export default function AgentBriefing() {
 
         const mappedAgent: Agent = {
           id: agentData.id,
-          ownerId: agentData.user_id || user?.id || '',
+          ownerId: user?.id || '',
           name: agentData.name,
           description: agentData.description || '',
           createdAt: agentData.created_at,
-          shareToken: agentData.share_token || null,
-          sourceIds: agentData.source_ids || [],
-          suggestedQuestions: agentData.suggested_questions || []
+          shareToken: agentData.has_share_token ? 'has_token' : ''
         };
 
         setAgent(mappedAgent);
         setName(mappedAgent.name);
         setDescription(mappedAgent.description || '');
-        setSelectedSourceIds(mappedAgent.sourceIds || []);
-        setSuggestedQuestions(mappedAgent.suggestedQuestions?.length ? mappedAgent.suggestedQuestions : ['']);
-        setShareEnabled(!!agentData.share_enabled);
-        setShareToken(agentData.share_token);
+        setSelectedSourceIds(agentData.source_ids || []);
+        setSuggestedQuestions(agentData.suggested_questions?.length ? agentData.suggested_questions : ['']);
+        setShareEnabled(!!agentData.has_share_token);
+        setShareToken(agentData.has_share_token ? 'has_token' : '');
         
-        if (agentData.share_enabled && agentData.has_password) {
+        if (agentData.has_share_token && agentData.has_password) {
           setSharePassword('••••••••');
         }
       }

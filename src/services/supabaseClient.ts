@@ -10,7 +10,16 @@ export const supabaseClient = {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    
+    // Map database fields to expected interface
+    return (data || []).map(source => ({
+      id: source.id,
+      name: source.name,
+      type: source.type as 'csv' | 'xlsx' | 'bigquery',
+      ownerId: source.user_id,
+      createdAt: source.created_at,
+      metaJSON: source.metadata
+    }));
   },
 
   async deleteSource(id: string) {
@@ -168,7 +177,19 @@ export const supabaseClient = {
     const { data, error } = await query;
     
     if (error) throw error;
-    return data || [];
+    
+    // Process the data to extract imageUrl from table_data and map fields correctly
+    const processedData = (data || []).map((item: any) => ({
+      ...item,
+      answerText: item.answer,
+      imageUrl: item.table_data?.image_url || null,
+      answerTableJSON: item.table_data && item.table_data.table ? item.table_data.table : null,
+      latencyMs: item.latency,
+      followUpQuestions: item.follow_up_questions || [],
+      conversationHistory: item.conversation_history || []
+    }));
+    
+    return processedData;
   },
 
   async deleteQASession(id: string) {
