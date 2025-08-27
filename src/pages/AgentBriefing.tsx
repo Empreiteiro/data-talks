@@ -252,11 +252,6 @@ export default function AgentBriefing() {
             <h1 className="text-2xl font-bold">
               {isEditing ? 'Editar Agente' : 'Criar Agente'}
             </h1>
-            {isCreating && (
-              <p className="text-muted-foreground">
-                Agentes criados: {usage.agents}/{limits.agents} - Plano {planName}
-              </p>
-            )}
           </div>
         </div>
         <div className="flex gap-2">
