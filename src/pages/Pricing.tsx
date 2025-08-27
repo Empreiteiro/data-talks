@@ -10,23 +10,6 @@ const Pricing = () => {
 
   const plans = [
     {
-      name: t('pricing.free.title'),
-      price: t('pricing.free.price'),
-      period: t('pricing.free.period'),
-      description: t('pricing.free.description'),
-      badge: null as string | null,
-      features: language === 'pt' ? [
-        'Uma fonte de dados',
-        'Configuração básica do agente',
-        '10 perguntas por mês'
-      ] : [
-        'Single data source',
-        'Basic agent configuration',
-        '10 questions per month'
-      ],
-      button: t('pricing.free.button')
-    },
-    {
       name: t('pricing.pro.title'),
       price: t('pricing.pro.price'),
       period: t('pricing.pro.period'),
@@ -90,9 +73,9 @@ const Pricing = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-[78rem] mx-auto">
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (
-                         <Card key={index} className={`relative flex flex-col h-[560px] ${index === 1 ? 'border-primary shadow-lg scale-105' : ''}`}>
+                         <Card key={index} className={`relative flex flex-col h-[560px] ${index === 0 ? 'border-primary shadow-lg scale-105' : ''}`}>
                {plan.badge && (
                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground">
                    {plan.badge}
@@ -117,27 +100,27 @@ const Pricing = () => {
                  ))}
                </CardContent>
 
-               <CardFooter className="mt-auto">
-                 {plan.name === t('pricing.free.title') || plan.name === t('pricing.pro.title') ? (
-                   <Button 
-                     className="w-full" 
-                     variant={index === 1 ? "default" : "outline"}
-                     size="lg"
-                     onClick={() => window.open('https://t2d.lovable.app/login', '_blank')}
-                   >
-                     {plan.button}
-                   </Button>
-                 ) : (
-                   <Button 
-                     className="w-full" 
-                     variant={index === 1 ? "default" : "outline"}
-                     size="lg"
-                     onClick={() => window.open('https://whatsa.me/5534996521315', '_blank')}
-                   >
-                     {plan.button}
-                   </Button>
-                 )}
-               </CardFooter>
+                <CardFooter className="mt-auto">
+                  {plan.name === t('pricing.pro.title') ? (
+                    <Button 
+                      className="w-full" 
+                      variant={index === 0 ? "default" : "outline"}
+                      size="lg"
+                      onClick={() => window.open('https://t2d.lovable.app/login', '_blank')}
+                    >
+                      {plan.button}
+                    </Button>
+                  ) : (
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      size="lg"
+                      onClick={() => window.open('https://whatsa.me/5534996521315', '_blank')}
+                    >
+                      {plan.button}
+                    </Button>
+                  )}
+                </CardFooter>
              </Card>
           ))}
         </div>
