@@ -23,7 +23,7 @@ interface PlanLimitsData {
 
 export const usePlanLimits = (): PlanLimitsData => {
   const { user } = useAuth();
-  const { subscribed, subscription_tier } = useSubscription();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const [usage, setUsage] = useState<UsageCounts>({
     sources: 0,
     agents: 0,
@@ -31,6 +31,9 @@ export const usePlanLimits = (): PlanLimitsData => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
+  const subscribed = subscription?.subscribed || false;
+  const subscription_tier = subscription?.subscription_tier;
+  
   const limits = getCurrentPlanLimits(subscribed, subscription_tier);
   const planName = getPlanName(subscribed, subscription_tier);
 
@@ -71,8 +74,10 @@ export const usePlanLimits = (): PlanLimitsData => {
   };
 
   useEffect(() => {
-    fetchUsage();
-  }, [user, subscribed, subscription_tier]);
+    if (!subscriptionLoading) {
+      fetchUsage();
+    }
+  }, [user, subscribed, subscription_tier, subscriptionLoading]);
 
   return {
     limits,
@@ -81,6 +86,6 @@ export const usePlanLimits = (): PlanLimitsData => {
     canCreateSource: usage.sources < limits.sources,
     canCreateAgent: usage.agents < limits.agents,
     canAskQuestion: usage.monthlyQuestions < limits.monthlyQuestions,
-    isLoading
+    isLoading: isLoading || subscriptionLoading
   };
 };

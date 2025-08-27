@@ -1,96 +1,239 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { ArrowLeft, Copy, Share, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-import { agentClient, Source } from "@/services/agentClient";
-import { useAsync } from "@/hooks/useAsync";
-import { useAuth } from "@/hooks/useAuth";
-import { Plus, Upload } from "lucide-react";
+import { agentClient, Agent, Source } from "@/services/agentClient";
 import { supabaseClient } from "@/services/supabaseClient";
+import { useAuth } from "@/hooks/useAuth";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { PlanLimitAlert } from "@/components/PlanLimitAlert";
 
 export default function AgentBriefing() {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { value: sources, loading } = useAsync(supabaseClient.listSources);
   const { limits, usage, planName, canCreateAgent, isLoading: limitsLoading } = usePlanLimits();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!canCreateAgent) {
-      toast({
-        title: "Limite atingido",
-        description: `Você atingiu o limite de ${limits.agents} agentes do plano ${planName}.`,
-        variant: "destructive",
-      });
-      return;
-    }
+  const [agent, setAgent] = useState<Agent | null>(null);
+  const [sources, setSources] = useState<Source[]>([]);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(['']);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [shareEnabled, setShareEnabled] = useState(false);
+  const [sharePassword, setSharePassword] = useState('');
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-    if (!name.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, informe um nome para o agente.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const isEditing = !!id;
+  const isCreating = !isEditing;
 
-    if (selectedSources.length === 0) {
-      toast({
-        title: "Fontes obrigatórias",
-        description: "Selecione pelo menos uma fonte de dados.",
-        variant: "destructive",
-      });
-      return;
-    }
+  useEffect(() => {
+    loadData();
+  }, [id]);
 
-    if (description.length < 50) {
-      toast({
-        title: "Descrição insuficiente",
-        description: "A descrição deve ter pelo menos 50 caracteres para garantir um bom desempenho do agente.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  async function loadData() {
+    setLoading(true);
     try {
-      const agent = await supabaseClient.createAgent(name, selectedSources, description);
-      toast({
-        title: "Agente criado",
-        description: "Seu agente foi criado com sucesso!",
-      });
-      navigate(`/agent/${agent.id}`);
+      const sourcesData = await supabaseClient.listSources();
+      setSources(sourcesData.map(source => ({
+        id: source.id,
+        name: source.name,
+        type: source.type,
+        ownerId: source.user_id,
+        createdAt: source.created_at,
+        metaJSON: source.metadata
+      })));
+
+      if (isEditing) {
+        const agentsData = await supabaseClient.listAgents();
+        const agentData = agentsData.find(a => a.id === id);
+        if (!agentData) {
+          toast.error("Agente não encontrado");
+          return navigate('/agents');
+        }
+
+        const mappedAgent: Agent = {
+          id: agentData.id,
+          ownerId: agentData.user_id || user?.id || '',
+          name: agentData.name,
+          description: agentData.description || '',
+          createdAt: agentData.created_at,
+          shareToken: agentData.share_token || null,
+          sourceIds: agentData.source_ids || [],
+          suggestedQuestions: agentData.suggested_questions || []
+        };
+
+        setAgent(mappedAgent);
+        setName(mappedAgent.name);
+        setDescription(mappedAgent.description || '');
+        setSelectedSourceIds(mappedAgent.sourceIds || []);
+        setSuggestedQuestions(mappedAgent.suggestedQuestions?.length ? mappedAgent.suggestedQuestions : ['']);
+        setShareEnabled(!!agentData.share_enabled);
+        setShareToken(agentData.share_token);
+        
+        if (agentData.share_enabled && agentData.has_password) {
+          setSharePassword('••••••••');
+        }
+      }
     } catch (error: any) {
-      toast({
-        title: "Erro ao criar agente",
+      toast.error("Erro ao carregar dados", {
         description: error.message,
-        variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
+  }
+
+  async function handleSave() {
+    if (!name.trim()) {
+      toast.error("Nome obrigatório", {
+        description: "Digite um nome para o agente.",
+      });
+      return;
+    }
+
+    if (selectedSourceIds.length === 0) {
+      toast.error("Fonte obrigatória", {
+        description: "Selecione pelo menos uma fonte de dados.",
+      });
+      return;
+    }
+
+    if (isCreating && !canCreateAgent) {
+      toast.error("Limite de agentes atingido", {
+        description: `Você atingiu o limite de ${limits.agents} agentes do plano ${planName}.`,
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const filteredQuestions = suggestedQuestions.filter(q => q.trim());
+      
+      if (isEditing && agent) {
+        await supabaseClient.updateAgent(
+          agent.id, 
+          name, 
+          selectedSourceIds, 
+          description || undefined, 
+          filteredQuestions
+        );
+        toast.success("Agente atualizado", {
+          description: "Agente atualizado com sucesso.",
+        });
+      } else {
+        await supabaseClient.createAgent(
+          name, 
+          selectedSourceIds, 
+          description || undefined, 
+          filteredQuestions
+        );
+        toast.success("Agente criado", {
+          description: "Agente criado com sucesso.",
+        });
+      }
+      
+      navigate('/agents');
+    } catch (error: any) {
+      toast.error("Erro ao salvar agente", {
+        description: error.message,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!agent || !confirm('Remover este agente permanentemente?')) return;
+    
+    setSaving(true);
+    try {
+      await supabaseClient.deleteAgent(agent.id);
+      toast.success("Agente removido", {
+        description: "Agente removido com sucesso.",
+      });
+      navigate('/agents');
+    } catch (error: any) {
+      toast.error("Erro ao remover agente", {
+        description: error.message,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleSharing() {
+    if (!agent) return;
+
+    setSaving(true);
+    try {
+      const updatedAgent = await supabaseClient.toggleAgentSharing(agent.id, !shareEnabled, sharePassword || undefined);
+      if (updatedAgent) {
+        setShareEnabled(!!updatedAgent.has_share_token);
+        setShareToken(updatedAgent.share_token);
+        toast.success(`Compartilhamento ${shareEnabled ? 'desativado' : 'ativado'}`, {
+          description: `Link de compartilhamento ${shareEnabled ? 'removido' : 'gerado'} com sucesso.`,
+        });
+      }
+    } catch (error: any) {
+      toast.error("Erro ao atualizar compartilhamento", {
+        description: error.message,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdatePassword() {
+    if (!agent) return;
+
+    setSaving(true);
+    try {
+      await supabaseClient.updateAgentSharePassword(agent.id, sharePassword || undefined);
+      toast.success("Senha atualizada", {
+        description: "Senha de compartilhamento atualizada com sucesso.",
+      });
+    } catch (error: any) {
+      toast.error("Erro ao atualizar senha", {
+        description: error.message,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const addSuggestedQuestion = () => {
+    setSuggestedQuestions([...suggestedQuestions, '']);
+  };
+
+  const removeSuggestedQuestion = (index: number) => {
+    setSuggestedQuestions(suggestedQuestions.filter((_, i) => i !== index));
+  };
+
+  const updateSuggestedQuestion = (index: number, value: string) => {
+    const updated = [...suggestedQuestions];
+    updated[index] = value;
+    setSuggestedQuestions(updated);
   };
 
   if (loading || limitsLoading) {
@@ -99,7 +242,7 @@ export default function AgentBriefing() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Carregando fontes...</p>
+            <p>Carregando agente...</p>
           </div>
         </div>
       </div>
@@ -107,15 +250,38 @@ export default function AgentBriefing() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Criar Agente de IA</h1>
-        <p className="text-muted-foreground">
-          Configure um agente personalizado para suas fontes de dados ({usage.agents}/{limits.agents} - Plano {planName})
-        </p>
+    <div className="container mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => navigate('/agents')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">
+              {isEditing ? 'Editar Agente' : 'Criar Agente'}
+            </h1>
+            {isCreating && (
+              <p className="text-muted-foreground">
+                Agentes criados: {usage.agents}/{limits.agents} - Plano {planName}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {isEditing && (
+            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Remover
+            </Button>
+          )}
+          <Button onClick={handleSave} disabled={saving || (isCreating && !canCreateAgent)}>
+            {saving ? 'Salvando...' : isEditing ? 'Atualizar' : 'Criar'}
+          </Button>
+        </div>
       </div>
 
-      {!canCreateAgent && (
+      {isCreating && !canCreateAgent && (
         <PlanLimitAlert
           type="agents"
           limit={limits.agents}
@@ -124,32 +290,33 @@ export default function AgentBriefing() {
         />
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Informações do Agente</CardTitle>
+            <CardTitle>Informações Básicas</CardTitle>
             <CardDescription>
-              Defina o nome e a descrição do seu agente.
+              Configure as informações básicas do seu agente de IA.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
+          <CardContent className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="name">Nome do Agente</Label>
               <Input
                 id="name"
-                placeholder="Nome do Agente"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Assistente de Vendas"
+                disabled={saving}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">Descrição (opcional)</Label>
               <Textarea
                 id="description"
-                placeholder="Descrição detalhada do agente..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={4}
+                placeholder="Descreva o propósito do seu agente..."
+                disabled={saving}
               />
             </div>
           </CardContent>
@@ -159,80 +326,83 @@ export default function AgentBriefing() {
           <CardHeader>
             <CardTitle>Fontes de Dados</CardTitle>
             <CardDescription>
-              Selecione as fontes de dados que serão utilizadas pelo agente.
+              Selecione as fontes de dados que o agente deve usar para responder perguntas.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="sources">Fontes</Label>
-              <Select
-                onValueChange={(value) =>
-                  setSelectedSources(JSON.parse(value) as string[])
-                }
-                defaultValue={JSON.stringify(selectedSources)}
-              >
-                <SelectTrigger id="sources">
-                  <SelectValue placeholder="Selecione as fontes de dados..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {sources?.map((source) => (
-                    <SelectItem
-                      key={source.id}
-                      value={JSON.stringify(
-                        selectedSources.includes(source.id)
-                          ? selectedSources.filter((s) => s !== source.id)
-                          : [...selectedSources, source.id]
-                      )}
-                    >
-                      {source.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <CardContent>
+            <div className="space-y-3">
+              {sources.map((source) => (
+                <div key={source.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={source.id}
+                    checked={selectedSourceIds.includes(source.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedSourceIds([...selectedSourceIds, source.id]);
+                      } else {
+                        setSelectedSourceIds(selectedSourceIds.filter(id => id !== source.id));
+                      }
+                    }}
+                    disabled={saving}
+                  />
+                  <Label htmlFor={source.id} className="flex items-center gap-2">
+                    {source.name}
+                    <Badge variant="secondary">{source.type}</Badge>
+                  </Label>
+                </div>
+              ))}
+              {sources.length === 0 && (
+                <p className="text-muted-foreground">
+                  Nenhuma fonte de dados disponível. 
+                  <Button variant="link" onClick={() => navigate('/sources')} className="p-0 ml-1">
+                    Criar fonte de dados
+                  </Button>
+                </p>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Fontes selecionadas:{" "}
-              {sources
-                ?.filter((s) => selectedSources.includes(s.id))
-                .map((s) => s.name)
-                .join(", ") || "Nenhuma"}
-            </p>
           </CardContent>
         </Card>
-        
-        <Button 
-          type="submit" 
-          disabled={loading || !canCreateAgent} 
-          className="w-full"
-        >
-          {loading ? "Criando..." : "Criar Agente"}
-        </Button>
-      </form>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Próximos Passos</CardTitle>
-          <CardDescription>
-            Após criar o agente, você poderá configurá-lo e começar a fazer
-            perguntas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>
-            1. **Acesse a página do agente:** Após a criação, você será
-            redirecionado para a página do agente, onde poderá ver detalhes e
-            configurações.
-          </p>
-          <p>
-            2. **Configure o agente:** Ajuste as configurações do agente para
-            otimizar o desempenho e a precisão das respostas.
-          </p>
-          <p>
-            3. **Comece a fazer perguntas:** Utilize o agente para obter
-            informações e insights a partir das suas fontes de dados.
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Perguntas Sugeridas</CardTitle>
+            <CardDescription>
+              Configure perguntas que os usuários podem fazer rapidamente ao agente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {suggestedQuestions.map((question, index) => (
+              <div key={index} className="flex gap-2">
+                <Input
+                  value={question}
+                  onChange={(e) => updateSuggestedQuestion(index, e.target.value)}
+                  placeholder="Ex: Qual foi o faturamento do mês passado?"
+                  disabled={saving}
+                />
+                {suggestedQuestions.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeSuggestedQuestion(index)}
+                    disabled={saving}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button
+              variant="outline"
+              onClick={addSuggestedQuestion}
+              disabled={saving}
+              className="w-full"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar Pergunta
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

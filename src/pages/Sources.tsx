@@ -64,12 +64,19 @@ export default function Sources() {
     setLoading(true);
     try {
       const data = await supabaseClient.listSources();
-      setSources(data);
+      // Map database fields to Source interface
+      const mappedSources: Source[] = data.map(source => ({
+        id: source.id,
+        name: source.name,
+        type: source.type,
+        ownerId: source.user_id,
+        createdAt: source.created_at,
+        metaJSON: source.metadata
+      }));
+      setSources(mappedSources);
     } catch (err: any) {
-      toast({
-        title: "Erro ao carregar fontes",
+      toast.error("Erro ao carregar fontes", {
         description: err.message,
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -95,17 +102,14 @@ export default function Sources() {
         setUploadProgress((i + 1) / files.length * 100);
       }
 
-      toast({
-        title: "Upload completo",
+      toast.success("Upload completo", {
         description: "Fontes de dados enviadas com sucesso.",
       });
       setShowUploadModal(false);
       await loadSources();
     } catch (err: any) {
-      toast({
-        title: "Erro ao enviar arquivos",
+      toast.error("Erro ao enviar arquivos", {
         description: err.message,
-        variant: "destructive",
       });
     } finally {
       setUploading(false);
@@ -119,17 +123,14 @@ export default function Sources() {
     try {
       const tables = bigQueryTables.split(',').map(s => s.trim()).filter(s => !!s);
       const data = await supabaseClient.connectBigQuery(bigQueryCreds, bigQueryProject, bigQueryDataset, tables);
-      toast({
-        title: "Conexão completa",
+      toast.success("Conexão completa", {
         description: "BigQuery conectado com sucesso.",
       });
       setShowBigQueryModal(false);
       await loadSources();
     } catch (err: any) {
-      toast({
-        title: "Erro ao conectar BigQuery",
+      toast.error("Erro ao conectar BigQuery", {
         description: err.message,
-        variant: "destructive",
       });
     } finally {
       setUploading(false);
@@ -141,16 +142,13 @@ export default function Sources() {
     setLoading(true);
     try {
       await supabaseClient.deleteSource(id);
-      toast({
-        title: "Fonte removida",
+      toast.success("Fonte removida", {
         description: "Fonte de dados removida com sucesso.",
       });
       await loadSources();
     } catch (err: any) {
-      toast({
-        title: "Erro ao remover fonte",
+      toast.error("Erro ao remover fonte", {
         description: err.message,
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -171,10 +169,8 @@ export default function Sources() {
         setSelectedSheet(sheets[0]);
       } catch (error) {
         console.error("Error fetching sheet names:", error);
-        toast({
-          title: "Erro ao ler planilha",
+        toast.error("Erro ao ler planilha", {
           description: "Não foi possível ler as planilhas do arquivo.",
-          variant: "destructive",
         });
       }
     } else {
@@ -248,7 +244,7 @@ export default function Sources() {
             <TableRow key={source.id}>
               <TableCell className="font-medium">{source.name}</TableCell>
               <TableCell>{source.type}</TableCell>
-              <TableCell>{new Date(source.created_at).toLocaleDateString()}</TableCell>
+              <TableCell>{new Date(source.createdAt).toLocaleDateString()}</TableCell>
               <TableCell className="text-right">
                 <Button variant="ghost" size="sm" onClick={() => handleDelete(source.id)}>Remover</Button>
               </TableCell>

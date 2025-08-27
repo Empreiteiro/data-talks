@@ -30,6 +30,7 @@ export default function Questions() {
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [conversationHistory, setConversationHistory] = useState<any[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -66,10 +67,8 @@ export default function Questions() {
             agentList = [agent];
             setSelectedAgent(agent);
           } else {
-            toast({
-              title: "Agente não encontrado",
+            toast.error("Agente não encontrado", {
               description: "O agente compartilhado não foi encontrado.",
-              variant: "destructive",
             });
             return navigate('/agents');
           }
@@ -79,8 +78,19 @@ export default function Questions() {
           setHistory(qaSessions);
         } else {
           // Load user's agents
-          const agents = await supabaseClient.listAgents();
-          agentList = agents;
+          const agentsData = await supabaseClient.listAgents();
+          // Map database fields to Agent interface
+          agentList = agentsData.map(agent => ({
+            id: agent.id,
+            ownerId: agent.user_id || user?.id || '',
+            name: agent.name,
+            description: agent.description || '',
+            createdAt: agent.created_at,
+            shareToken: uuidv4(), // Generate a placeholder token
+            sourceIds: agent.source_ids || [],
+            suggestedQuestions: agent.suggested_questions || []
+          }));
+          setAgents(agentList);
 
           if (agentIdParam) {
             const agent = agentList.find(a => a.id === agentIdParam);
@@ -95,18 +105,14 @@ export default function Questions() {
         }
 
         if (agentList.length === 0 && !shareTokenParam) {
-          toast({
-            title: "Nenhum agente encontrado",
+          toast.error("Nenhum agente encontrado", {
             description: "Crie um agente para começar a fazer perguntas.",
-            variant: "destructive",
           });
           return navigate('/agents/new');
         }
       } catch (error: any) {
-        toast({
-          title: "Erro ao carregar dados",
+        toast.error("Erro ao carregar dados", {
           description: error.message,
-          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -120,20 +126,16 @@ export default function Questions() {
     e.preventDefault();
     
     if (!canAskQuestion) {
-      toast({
-        title: "Limite mensal atingido",
+      toast.error("Limite mensal atingido", {
         description: `Você atingiu o limite de ${limits.monthlyQuestions} perguntas mensais do plano ${planName}.`,
-        variant: "destructive",
       });
       return;
     }
 
     if (!question.trim()) return;
     if (!selectedAgent) {
-      toast({
-        title: "Agente obrigatório",
+      toast.error("Agente obrigatório", {
         description: "Selecione um agente para fazer a pergunta.",
-        variant: "destructive",
       });
       return;
     }
@@ -175,10 +177,8 @@ export default function Questions() {
         setHistory(qaSessions);
       }
     } catch (error: any) {
-      toast({
-        title: "Erro ao enviar pergunta",
+      toast.error("Erro ao enviar pergunta", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);
@@ -231,22 +231,16 @@ export default function Questions() {
               <Label htmlFor="agent">Agente</Label>
               {!isSharedAgent ? (
                 <Select value={selectedAgent?.id} onValueChange={(value) => {
-                  const agent = (history || []).find((a: any) => a.id === value);
-                  const agentObj = {
-                    id: value,
-                    ownerId: user?.id || 'demo',
-                    name: agent?.name || 'Agent',
-                    description: agent?.description || '',
-                    createdAt: new Date().toISOString(),
-                    shareToken: uuidv4(),
-                  };
-                  setSelectedAgent(agentObj);
+                  const agent = agents.find((a) => a.id === value);
+                  if (agent) {
+                    setSelectedAgent(agent);
+                  }
                 }}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione um agente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(history || []).map((agent: any) => (
+                    {agents.map((agent) => (
                       <SelectItem key={agent.id} value={agent.id}>
                         {agent.name}
                       </SelectItem>
