@@ -51,6 +51,7 @@ export default function Sources() {
   const [bigQueryProject, setBigQueryProject] = useState('');
   const [bigQueryDataset, setBigQueryDataset] = useState('');
   const [bigQueryTables, setBigQueryTables] = useState('');
+  const [bigQueryFile, setBigQueryFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedSheet, setSelectedSheet] = useState<string | undefined>(undefined);
   const [availableSheets, setAvailableSheets] = useState<string[]>([]);
@@ -118,12 +119,28 @@ export default function Sources() {
   async function handleBigQueryConnect() {
     setUploading(true);
     try {
+      let credentials = bigQueryCreds;
+      
+      // If file is provided, read its content
+      if (bigQueryFile) {
+        credentials = await bigQueryFile.text();
+      }
+      
+      if (!credentials.trim()) {
+        throw new Error('Credenciais JSON são obrigatórias');
+      }
+      
       const tables = bigQueryTables.split(',').map(s => s.trim()).filter(s => !!s);
-      const data = await supabaseClient.connectBigQuery(bigQueryCreds, bigQueryProject, bigQueryDataset, tables);
+      const data = await supabaseClient.connectBigQuery(credentials, bigQueryProject, bigQueryDataset, tables);
       toast.success("Conexão completa", {
         description: "BigQuery conectado com sucesso.",
       });
       setShowBigQueryModal(false);
+      setBigQueryCreds('');
+      setBigQueryProject('');
+      setBigQueryDataset('');
+      setBigQueryTables('');
+      setBigQueryFile(null);
       await loadSources();
     } catch (err: any) {
       toast.error("Erro ao conectar BigQuery", {
@@ -459,42 +476,113 @@ export default function Sources() {
 
       {/* Modal BigQuery */}
       <Dialog open={showBigQueryModal} onOpenChange={setShowBigQueryModal}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Conectar BigQuery</DialogTitle>
             <DialogDescription>
-              Insira suas credenciais do BigQuery.
+              Configure a conexão com o Google BigQuery seguindo os passos abaixo.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="creds" className="text-right">
-                Credenciais (JSON)
-              </Label>
-              <Input id="creds" className="col-span-3" type="textarea" value={bigQueryCreds} onChange={e => setBigQueryCreds(e.target.value)} />
+          
+          <div className="space-y-6 py-4">
+            {/* Instruções */}
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <h4 className="font-medium text-sm">Como obter as credenciais do BigQuery:</h4>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                <li>Acesse o <a href="https://console.cloud.google.com" target="_blank" className="text-primary hover:underline">Google Cloud Console</a></li>
+                <li>Selecione ou crie um projeto</li>
+                <li>Ative a API do BigQuery</li>
+                <li>Vá para "IAM & Admin" → "Service Accounts"</li>
+                <li>Crie uma nova conta de serviço ou use uma existente</li>
+                <li>Gere uma chave JSON para a conta de serviço</li>
+                <li>Faça o download do arquivo JSON</li>
+              </ol>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="project" className="text-right">
-                Projeto
-              </Label>
-              <Input id="project" className="col-span-3" value={bigQueryProject} onChange={e => setBigQueryProject(e.target.value)} />
+
+            {/* Upload do arquivo JSON */}
+            <div className="space-y-2">
+              <Label htmlFor="bigquery-file">Arquivo de Credenciais JSON</Label>
+              <Input 
+                id="bigquery-file"
+                type="file" 
+                accept=".json"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setBigQueryFile(file || null);
+                  if (file) {
+                    setBigQueryCreds(''); // Clear manual input if file is selected
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Selecione o arquivo JSON baixado do Google Cloud Console
+              </p>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dataset" className="text-right">
-                Dataset
-              </Label>
-              <Input id="dataset" className="col-span-3" value={bigQueryDataset} onChange={e => setBigQueryDataset(e.target.value)} />
+
+            {/* Ou input manual */}
+            <div className="space-y-2">
+              <Label htmlFor="creds">Ou cole as credenciais JSON manualmente</Label>
+              <textarea
+                id="creds"
+                className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder='{"type": "service_account", "project_id": "...", ...}'
+                value={bigQueryCreds}
+                onChange={(e) => {
+                  setBigQueryCreds(e.target.value);
+                  if (e.target.value.trim()) {
+                    setBigQueryFile(null); // Clear file if manual input is used
+                  }
+                }}
+                disabled={!!bigQueryFile}
+              />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tables" className="text-right">
-                Tabelas (separadas por vírgula)
-              </Label>
-              <Input id="tables" className="col-span-3" value={bigQueryTables} onChange={e => setBigQueryTables(e.target.value)} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="project">ID do Projeto</Label>
+                <Input 
+                  id="project" 
+                  placeholder="meu-projeto-gcp"
+                  value={bigQueryProject} 
+                  onChange={e => setBigQueryProject(e.target.value)} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dataset">Dataset</Label>
+                <Input 
+                  id="dataset" 
+                  placeholder="meu_dataset"
+                  value={bigQueryDataset} 
+                  onChange={e => setBigQueryDataset(e.target.value)} 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tables">Tabelas (separadas por vírgula)</Label>
+              <Input 
+                id="tables" 
+                placeholder="tabela1, tabela2, tabela3"
+                value={bigQueryTables} 
+                onChange={e => setBigQueryTables(e.target.value)} 
+              />
+              <p className="text-xs text-muted-foreground">
+                Liste as tabelas que deseja disponibilizar para consulta
+              </p>
             </div>
           </div>
-          <Button disabled={uploading} onClick={handleBigQueryConnect}>
-            {uploading ? 'Conectando...' : 'Conectar'}
-          </Button>
+          
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowBigQueryModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              disabled={uploading || (!bigQueryCreds.trim() && !bigQueryFile) || !bigQueryProject.trim()} 
+              onClick={handleBigQueryConnect}
+            >
+              {uploading ? 'Conectando...' : 'Conectar'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
