@@ -15,6 +15,7 @@ import Sources from "@/pages/Sources";
 import AgentBriefing from "@/pages/AgentBriefing";
 import Questions from "@/pages/Questions";
 import Alerts from "@/pages/Alerts";
+import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
 import ShareAgent from "@/pages/ShareAgent";
 import Channels from "@/pages/Channels";
@@ -46,7 +47,7 @@ const App = () => (
               <Route path="/share/:token" element={<ShareAgent />} />
               <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
-              <Route path="/agents" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
+              <Route path="/agents" element={<RequireAuth><Agents /></RequireAuth>} />
               <Route path="/agents/new" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
               <Route path="/agents/:id" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
               <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
