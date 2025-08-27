@@ -2,19 +2,23 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
-import { Database, MessageSquare, Calendar } from "lucide-react";
+import { Database, MessageSquare, Calendar, Users } from "lucide-react";
 
 interface UsageStats {
   sourcesCount: number;
+  agentsCount: number;
   questionsCount: number;
   thisMonthQuestions: number;
 }
 
 const UsageMonitoring = () => {
   const { t, language } = useLanguage();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const [stats, setStats] = useState<UsageStats>({
     sourcesCount: 0,
+    agentsCount: 0,
     questionsCount: 0,
     thisMonthQuestions: 0
   });
@@ -32,6 +36,12 @@ const UsageMonitoring = () => {
       // Get sources count
       const { count: sourcesCount } = await supabase
         .from('sources')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      // Get agents count
+      const { count: agentsCount } = await supabase
+        .from('agents')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
@@ -54,6 +64,7 @@ const UsageMonitoring = () => {
 
       setStats({
         sourcesCount: sourcesCount || 0,
+        agentsCount: agentsCount || 0,
         questionsCount: questionsCount || 0,
         thisMonthQuestions: thisMonthQuestions || 0
       });
@@ -71,22 +82,32 @@ const UsageMonitoring = () => {
     return { color: "secondary", text: language === 'pt' ? 'Normal' : 'Normal' };
   };
 
-  const planLimits = {
+  // Determine plan limits based on subscription status
+  const isPro = subscription?.subscribed && subscription?.subscription_tier === 'Pro';
+  const planLimits = isPro ? {
     sources: 5,
+    agents: 10, // Pro limit for agents
     monthlyQuestions: 1000
+  } : {
+    sources: 2,  // Trial limit
+    agents: 2,   // Trial limit 
+    monthlyQuestions: 20 // Trial limit
   };
 
+  const planName = isPro ? 'Pro' : 'Trial';
+
   const sourcesStatus = getUsageStatus(stats.sourcesCount, planLimits.sources);
+  const agentsStatus = getUsageStatus(stats.agentsCount, planLimits.agents);
   const questionsStatus = getUsageStatus(stats.thisMonthQuestions, planLimits.monthlyQuestions);
 
-  if (loading) {
+  if (loading || subscriptionLoading) {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold">
           {language === 'pt' ? 'Monitoramento de Uso' : 'Usage Monitoring'}
         </h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
+        <div className="grid gap-6 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-2">
                 <div className="h-4 bg-muted rounded w-1/2"></div>
@@ -108,7 +129,7 @@ const UsageMonitoring = () => {
         {language === 'pt' ? 'Monitoramento de Uso' : 'Usage Monitoring'}
       </h2>
       
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -128,6 +149,31 @@ const UsageMonitoring = () => {
                 {language === 'pt' 
                   ? `${planLimits.sources - stats.sourcesCount} restantes` 
                   : `${planLimits.sources - stats.sourcesCount} remaining`
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === 'pt' ? 'Agentes' : 'Agents'}
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.agentsCount}/{planLimits.agents}
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant={agentsStatus.color as any}>
+                {agentsStatus.text}
+              </Badge>
+              <p className="text-xs text-muted-foreground">
+                {language === 'pt' 
+                  ? `${planLimits.agents - stats.agentsCount} restantes` 
+                  : `${planLimits.agents - stats.agentsCount} remaining`
                 }
               </p>
             </div>
@@ -186,18 +232,31 @@ const UsageMonitoring = () => {
             <span className="text-sm font-medium">
               {language === 'pt' ? 'Plano Atual:' : 'Current Plan:'}
             </span>
-            <Badge variant="default">Pro</Badge>
+            <Badge variant={isPro ? "default" : "secondary"}>{planName}</Badge>
           </div>
           
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>{language === 'pt' ? 'Fontes de dados:' : 'Data sources:'}</span>
-              <span>0/{planLimits.sources}</span>
+              <span>{stats.sourcesCount}/{planLimits.sources}</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div 
                 className="bg-primary h-2 rounded-full transition-all" 
-                style={{ width: `${(stats.sourcesCount / planLimits.sources) * 100}%` }}
+                style={{ width: `${Math.min((stats.sourcesCount / planLimits.sources) * 100, 100)}%` }}
+              ></div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>{language === 'pt' ? 'Agentes:' : 'Agents:'}</span>
+              <span>{stats.agentsCount}/{planLimits.agents}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all" 
+                style={{ width: `${Math.min((stats.agentsCount / planLimits.agents) * 100, 100)}%` }}
               ></div>
             </div>
           </div>
@@ -210,7 +269,7 @@ const UsageMonitoring = () => {
             <div className="w-full bg-muted rounded-full h-2">
               <div 
                 className="bg-primary h-2 rounded-full transition-all" 
-                style={{ width: `${(stats.thisMonthQuestions / planLimits.monthlyQuestions) * 100}%` }}
+                style={{ width: `${Math.min((stats.thisMonthQuestions / planLimits.monthlyQuestions) * 100, 100)}%` }}
               ></div>
             </div>
           </div>
