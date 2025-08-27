@@ -240,12 +240,14 @@ export default function Sources() {
       </div>
 
       {!canCreateSource && (
-        <PlanLimitAlert
-          type="sources"
-          limit={limits.sources}
-          planName={planName}
-          className="mb-6"
-        />
+        <div className="flex items-center justify-center mb-6">
+          <PlanLimitAlert
+            type="sources"
+            limit={limits.sources}
+            planName={planName}
+            className="w-full"
+          />
+        </div>
       )}
 
       <div className="grid gap-6">
@@ -286,14 +288,10 @@ export default function Sources() {
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium mb-2">Informações:</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">Tipo:</span>
                       <span className="ml-2 font-medium">{source.type}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Criado:</span>
-                      <span className="ml-2 font-medium">{new Date(source.createdAt).toLocaleDateString('pt-BR')}</span>
                     </div>
                     {source.metaJSON?.row_count !== undefined && (
                       <div>
@@ -325,19 +323,17 @@ export default function Sources() {
 
                 <div>
                   <h4 className="text-sm font-medium mb-2">Integração Langflow:</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                    <div>
+                  <div className="space-y-2">
+                    <div className="text-sm">
                       <span className="text-muted-foreground">Status:</span>
                       <span className="ml-2 font-medium">{source.langflowPath ? 'Enviado' : 'Pendente'}</span>
                     </div>
-                    <div className="truncate">
-                      <span className="text-muted-foreground">Nome:</span>
-                      <span className="ml-2 font-medium">{source.langflowName || '-'}</span>
-                    </div>
-                    <div className="truncate">
-                      <span className="text-muted-foreground">Path/ID:</span>
-                      <span className="ml-2 font-medium">{source.langflowPath || '-'}</span>
-                    </div>
+                    {source.langflowPath && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Path/ID:</span>
+                        <span className="ml-2 font-medium break-all text-xs">{source.langflowPath}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
