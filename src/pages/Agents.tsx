@@ -37,6 +37,7 @@ interface Agent {
 
 export default function Agents() {
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [sources, setSources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -44,16 +45,20 @@ export default function Agents() {
   const { limits, usage, planName, canCreateAgent, isLoading: limitsLoading } = usePlanLimits();
 
   useEffect(() => {
-    loadAgents();
+    loadData();
   }, []);
 
-  async function loadAgents() {
+  async function loadData() {
     setLoading(true);
     try {
-      const data = await supabaseClient.listAgents();
-      setAgents(data || []);
+      const [agentsData, sourcesData] = await Promise.all([
+        supabaseClient.listAgents(),
+        supabaseClient.listSources()
+      ]);
+      setAgents(agentsData || []);
+      setSources(sourcesData || []);
     } catch (error: any) {
-      toast.error("Erro ao carregar agentes", {
+      toast.error("Erro ao carregar dados", {
         description: error.message,
       });
     } finally {
@@ -68,7 +73,7 @@ export default function Agents() {
       toast.success("Agente removido", {
         description: "Agente removido com sucesso.",
       });
-      await loadAgents();
+      await loadData();
     } catch (error: any) {
       toast.error("Erro ao remover agente", {
         description: error.message,
@@ -227,16 +232,31 @@ export default function Agents() {
                 )}
 
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Informações:</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Fontes:</span>
-                      <span className="ml-2 font-medium">{agent.source_ids?.length || 0}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Atualizado:</span>
-                      <span className="ml-2 font-medium">{new Date(agent.updated_at).toLocaleDateString('pt-BR')}</span>
-                    </div>
+                  <h4 className="text-sm font-medium mb-2">Fontes Conectadas:</h4>
+                  <div className="space-y-1">
+                    {agent.source_ids && agent.source_ids.length > 0 ? (
+                      agent.source_ids.map((sourceId) => {
+                        const source = sources.find(s => s.id === sourceId);
+                        return source ? (
+                          <div key={sourceId} className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{source.name}</span>
+                              <Badge variant="secondary" className="text-xs">{source.type}</Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              Atualizado: {new Date(agent.updated_at).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                        ) : null;
+                      })
+                    ) : (
+                      <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Nenhuma fonte conectada</span>
+                        <span className="text-xs text-muted-foreground">
+                          Atualizado: {new Date(agent.updated_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
