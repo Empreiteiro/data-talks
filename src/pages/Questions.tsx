@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -203,6 +204,29 @@ export default function Questions() {
     }
   };
 
+  const handleDeleteQuestion = async (sessionId: string) => {
+    try {
+      if (isSharedAgent) {
+        toast.error("Não é possível deletar perguntas de agentes compartilhados");
+        return;
+      }
+      
+      await supabaseClient.deleteQASession(sessionId);
+      
+      // Refresh history after deletion
+      if (selectedAgent) {
+        const qaSessions = await supabaseClient.listQASessions(selectedAgent.id);
+        setHistory(qaSessions);
+      }
+      
+      toast.success("Pergunta deletada com sucesso");
+    } catch (error: any) {
+      toast.error("Erro ao deletar pergunta", {
+        description: error.message,
+      });
+    }
+  };
+
   const handleFollowUpQuestion = (followUp: string) => {
     setQuestion(followUp);
     handleSubmit(new Event('submit') as any); // Trigger form submission
@@ -374,7 +398,7 @@ export default function Questions() {
           {history.map((qaSession: any) => (
             <Card key={qaSession.id}>
               <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-base">{qaSession.question}</CardTitle>
                     <CardDescription className="text-xs">
@@ -387,6 +411,16 @@ export default function Questions() {
                       })}
                     </CardDescription>
                   </div>
+                  {!isSharedAgent && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteQuestion(qaSession.id)}
+                      className="ml-2 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               
