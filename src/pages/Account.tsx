@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { agentClient } from "@/services/agentClient";
+import UsageMonitoring from "@/components/UsageMonitoring";
 
 const Account = () => {
   const { t } = useLanguage();
@@ -28,24 +31,41 @@ const Account = () => {
       <SEO title={`${t('account.title')} | ${t('nav.tagline')}`} description="Exportar histórico, excluir conta/dados" canonical="/account" />
       <h1 className="text-3xl font-semibold mb-6">{t('account.title')}</h1>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>{t('account.export')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={exportHistory}>{t('account.exportHistory')}</Button>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>{t('account.security')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button variant="destructive" onClick={deleteAll}>{t('account.deleteAccount')}</Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="usage" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="usage">
+            {t('language') === 'pt' ? 'Uso do Plano' : 'Plan Usage'}
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            {t('language') === 'pt' ? 'Configurações' : 'Settings'}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="usage">
+          <UsageMonitoring />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>{t('account.export')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={exportHistory}>{t('account.exportHistory')}</Button>
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>{t('account.security')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button variant="destructive" onClick={deleteAll}>{t('account.deleteAccount')}</Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </main>
   );
 };
