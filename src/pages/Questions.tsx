@@ -351,7 +351,7 @@ export default function Questions() {
         </Card>
       )}
 
-      {answer && (
+      {answer && selectedAgent && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Resposta</CardTitle>
@@ -386,7 +386,7 @@ export default function Questions() {
         </Card>
       )}
 
-      {history.length > 0 && (
+      {history.length > 0 && selectedAgent && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Histórico de Perguntas</h2>
