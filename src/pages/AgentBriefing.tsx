@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -405,14 +406,11 @@ export default function AgentBriefing() {
                     Permitir que outras pessoas acessem este agente via link
                   </div>
                 </div>
-                <Button
-                  variant={shareEnabled ? "default" : "outline"}
-                  onClick={handleToggleSharing}
+                <Switch
+                  checked={shareEnabled}
+                  onCheckedChange={handleToggleSharing}
                   disabled={saving}
-                >
-                  <Share className="mr-2 h-4 w-4" />
-                  {shareEnabled ? 'Desativar' : 'Ativar'}
-                </Button>
+                />
               </div>
 
               {shareEnabled && (
