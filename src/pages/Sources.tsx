@@ -234,7 +234,7 @@ export default function Sources() {
         <div>
           <h1 className="text-2xl font-bold">Fontes de Dados</h1>
           <p className="text-muted-foreground">
-            Gerencie suas fontes de dados ({usage.sources}/{limits.sources} - Plano {planName})
+            Gerencie suas fontes de dados
           </p>
         </div>
         <div className="flex gap-2">
