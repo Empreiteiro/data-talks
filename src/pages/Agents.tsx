@@ -234,33 +234,11 @@ export default function Agents() {
                       <span className="ml-2 font-medium">{agent.source_ids?.length || 0}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Perguntas sugeridas:</span>
-                      <span className="ml-2 font-medium">{agent.suggested_questions?.length || 0}</span>
-                    </div>
-                    <div>
                       <span className="text-muted-foreground">Atualizado:</span>
                       <span className="ml-2 font-medium">{new Date(agent.updated_at).toLocaleDateString('pt-BR')}</span>
                     </div>
                   </div>
                 </div>
-
-                {agent.suggested_questions && agent.suggested_questions.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Perguntas Sugeridas:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {agent.suggested_questions.slice(0, 3).map((question, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {question.length > 50 ? `${question.substring(0, 50)}...` : question}
-                        </Badge>
-                      ))}
-                      {agent.suggested_questions.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{agent.suggested_questions.length - 3} mais
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
