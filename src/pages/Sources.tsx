@@ -387,7 +387,7 @@ export default function Sources() {
 
       {/* Modal de Preview */}
       <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Preview dos Dados</DialogTitle>
             <DialogDescription>
@@ -400,28 +400,34 @@ export default function Sources() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : previewData ? (
-            <ScrollArea className="h-[400px] w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {previewData.columns?.map((column: string, index: number) => (
-                      <TableHead key={index}>{column}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewData.rows?.map((row: any, rowIndex: number) => (
-                    <TableRow key={rowIndex}>
-                      {previewData.columns.map((col: string, cellIndex: number) => (
-                        <TableCell key={cellIndex} className="max-w-[200px] truncate">
-                          {(row?.[col] !== undefined && row?.[col] !== null) ? String(row[col]) : '-'}
-                        </TableCell>
+            <div className="overflow-hidden">
+              <ScrollArea className="h-[500px] w-full">
+                <div className="overflow-x-auto">
+                  <Table className="min-w-full">
+                    <TableHeader>
+                      <TableRow>
+                        {previewData.columns?.map((column: string, index: number) => (
+                          <TableHead key={index} className="whitespace-nowrap min-w-[120px] px-4">
+                            {column}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewData.rows?.map((row: any, rowIndex: number) => (
+                        <TableRow key={rowIndex}>
+                          {previewData.columns.map((col: string, cellIndex: number) => (
+                            <TableCell key={cellIndex} className="whitespace-nowrap min-w-[120px] max-w-[200px] px-4 truncate">
+                              {(row?.[col] !== undefined && row?.[col] !== null) ? String(row[col]) : '-'}
+                            </TableCell>
+                          ))}
+                        </TableRow>
                       ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </div>
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground">Não foi possível carregar o preview dos dados.</p>
