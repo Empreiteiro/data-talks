@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { agentClient } from "@/services/agentClient";
 import UsageMonitoring from "@/components/UsageMonitoring";
+import SubscriptionManagement from "@/components/SubscriptionManagement";
 
 const Account = () => {
   const { t } = useLanguage();
@@ -36,6 +37,9 @@ const Account = () => {
           <TabsTrigger value="usage">
             {t('language') === 'pt' ? 'Uso do Plano' : 'Plan Usage'}
           </TabsTrigger>
+          <TabsTrigger value="subscription">
+            {t('language') === 'pt' ? 'Assinatura' : 'Subscription'}
+          </TabsTrigger>
           <TabsTrigger value="settings">
             {t('language') === 'pt' ? 'Configurações' : 'Settings'}
           </TabsTrigger>
@@ -43,6 +47,10 @@ const Account = () => {
 
         <TabsContent value="usage">
           <UsageMonitoring />
+        </TabsContent>
+
+        <TabsContent value="subscription">
+          <SubscriptionManagement />
         </TabsContent>
 
         <TabsContent value="settings">

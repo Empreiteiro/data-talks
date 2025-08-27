@@ -110,6 +110,7 @@ export type Database = {
         Row: {
           agent_id: string
           answer: string | null
+          authorized_access: boolean | null
           conversation_history: Json | null
           created_at: string
           feedback: string | null
@@ -118,6 +119,7 @@ export type Database = {
           is_shared: boolean | null
           latency: number | null
           question: string
+          share_token: string | null
           sql_query: string | null
           status: string | null
           table_data: Json | null
@@ -126,6 +128,7 @@ export type Database = {
         Insert: {
           agent_id: string
           answer?: string | null
+          authorized_access?: boolean | null
           conversation_history?: Json | null
           created_at?: string
           feedback?: string | null
@@ -134,6 +137,7 @@ export type Database = {
           is_shared?: boolean | null
           latency?: number | null
           question: string
+          share_token?: string | null
           sql_query?: string | null
           status?: string | null
           table_data?: Json | null
@@ -142,6 +146,7 @@ export type Database = {
         Update: {
           agent_id?: string
           answer?: string | null
+          authorized_access?: boolean | null
           conversation_history?: Json | null
           created_at?: string
           feedback?: string | null
@@ -150,6 +155,7 @@ export type Database = {
           is_shared?: boolean | null
           latency?: number | null
           question?: string
+          share_token?: string | null
           sql_query?: string | null
           status?: string | null
           table_data?: Json | null
@@ -195,6 +201,42 @@ export type Database = {
           name?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -275,12 +317,32 @@ export type Database = {
           updated_at: string
         }[]
       }
+      validate_shared_agent_access: {
+        Args: {
+          agent_id_param: string
+          share_token_param: string
+          user_password?: string
+        }
+        Returns: boolean
+      }
+      validate_user_access: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       verify_agent_share_password: {
         Args: { password_attempt: string; token_value: string }
         Returns: boolean
       }
       verify_password: {
         Args: { password_hash: string; password_text: string }
+        Returns: boolean
+      }
+      verify_session_access: {
+        Args: {
+          session_id_param: string
+          share_token_param?: string
+          user_password_param?: string
+        }
         Returns: boolean
       }
     }
