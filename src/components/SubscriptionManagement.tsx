@@ -31,6 +31,8 @@ const SubscriptionManagement = () => {
 
       if (error) throw error;
       
+      // Marca que o usuário está indo para o Stripe
+      sessionStorage.setItem('returning_from_stripe', 'true');
       // Open Stripe checkout in new tab
       window.open(data.url, '_blank');
     } catch (error) {
@@ -58,6 +60,8 @@ const SubscriptionManagement = () => {
 
       if (error) throw error;
       
+      // Marca que o usuário está indo para o Stripe
+      sessionStorage.setItem('returning_from_stripe', 'true');
       // Open customer portal in new tab
       window.open(data.url, '_blank');
     } catch (error) {
@@ -126,7 +130,7 @@ const SubscriptionManagement = () => {
         </h2>
         <Button 
           variant="outline" 
-          onClick={checkSubscription}
+          onClick={() => checkSubscription(true)}
           disabled={loading}
         >
           {language === 'pt' ? 'Atualizar' : 'Refresh'}

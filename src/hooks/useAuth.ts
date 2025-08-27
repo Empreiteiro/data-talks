@@ -88,6 +88,10 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     cleanupAuthState();
+    // Limpa o cache de assinatura
+    try { 
+      localStorage.removeItem('subscription_cache'); 
+    } catch {}
     try { await supabase.auth.signOut({ scope: "global" }); } catch {}
     cleanupAuthState();
     window.location.href = "/login";
