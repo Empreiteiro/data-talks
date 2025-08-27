@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Database, Upload } from "lucide-react";
+import { Database, Upload, Eye, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { agentClient, Source } from "@/services/agentClient";
 import { supabaseClient } from "@/services/supabaseClient";
@@ -52,6 +55,9 @@ export default function Sources() {
   const [selectedSheet, setSelectedSheet] = useState<string | undefined>(undefined);
   const [availableSheets, setAvailableSheets] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { limits, usage, planName, canCreateSource, isLoading: limitsLoading } = usePlanLimits();
@@ -146,6 +152,29 @@ export default function Sources() {
     }
   }
 
+  async function handlePreview(source: Source) {
+    setLoadingPreview(true);
+    setShowPreviewModal(true);
+    try {
+      // Simular dados de preview básicos da fonte
+      setPreviewData({
+        columns: ['Coluna 1', 'Coluna 2', 'Coluna 3'],
+        rows: [
+          ['Exemplo 1', 'Valor A', '123'],
+          ['Exemplo 2', 'Valor B', '456'],
+          ['Exemplo 3', 'Valor C', '789']
+        ]
+      });
+    } catch (err: any) {
+      toast.error("Erro ao carregar preview", {
+        description: err.message,
+      });
+      setPreviewData(null);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     setFiles(selectedFiles);
@@ -220,39 +249,141 @@ export default function Sources() {
         />
       )}
 
-      <Table>
-        <TableCaption>Suas fontes de dados atuais.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Criado em</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sources.map((source) => (
-            <TableRow key={source.id}>
-              <TableCell className="font-medium">{source.name}</TableCell>
-              <TableCell>{source.type}</TableCell>
-              <TableCell>{new Date(source.createdAt).toLocaleDateString()}</TableCell>
-              <TableCell className="text-right">
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(source.id)}>Remover</Button>
-              </TableCell>
-            </TableRow>
-          ))}
-          {sources.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center">Nenhuma fonte de dados encontrada.</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <div className="grid gap-6">
+        {sources.map((source) => (
+          <Card key={source.id}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    {source.name}
+                    <Badge variant="secondary">{source.type}</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Criado em {new Date(source.createdAt).toLocaleDateString('pt-BR')}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePreview(source)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Visualizar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(source.id)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Informações:</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Tipo:</span>
+                      <span className="ml-2 font-medium">{source.type}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Criado:</span>
+                      <span className="ml-2 font-medium">{new Date(source.createdAt).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                  </div>
+                </div>
 
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Status:</h4>
+                  <Badge variant="outline" className="text-xs">
+                    Disponível para consulta
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {sources.length === 0 && (
+          <Card>
+            <CardContent className="text-center py-8">
+              <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma fonte de dados</h3>
+              <p className="text-muted-foreground mb-4">
+                Comece fazendo upload de arquivos CSV/Excel ou conectando ao BigQuery.
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => setShowUploadModal(true)} disabled={!canCreateSource}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Fazer Upload
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowBigQueryModal(true)}
+                  disabled={!canCreateSource}
+                >
+                  <Database className="mr-2 h-4 w-4" />
+                  Conectar BigQuery
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Modal de Preview */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Preview dos Dados</DialogTitle>
+            <DialogDescription>
+              Visualização das primeiras linhas da fonte de dados
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingPreview ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : previewData ? (
+            <ScrollArea className="h-[400px] w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {previewData.columns?.map((column: string, index: number) => (
+                      <TableHead key={index}>{column}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {previewData.rows?.map((row: any[], rowIndex: number) => (
+                    <TableRow key={rowIndex}>
+                      {row.map((cell: any, cellIndex: number) => (
+                        <TableCell key={cellIndex} className="max-w-[200px] truncate">
+                          {cell?.toString() || '-'}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Não foi possível carregar o preview dos dados.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Upload */}
       <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
-        <DialogTrigger asChild>
-          <Button>Abrir Modal</Button>
-        </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Enviar Arquivo</DialogTitle>
@@ -289,10 +420,13 @@ export default function Sources() {
           {uploadProgress > 0 && (
             <progress value={uploadProgress} max="100"></progress>
           )}
-          <Button disabled={uploading || files.length === 0} onClick={handleFileUpload}>{uploading ? 'Enviando...' : 'Enviar'}</Button>
+          <Button disabled={uploading || files.length === 0} onClick={handleFileUpload}>
+            {uploading ? 'Enviando...' : 'Enviar'}
+          </Button>
         </DialogContent>
       </Dialog>
 
+      {/* Modal BigQuery */}
       <Dialog open={showBigQueryModal} onOpenChange={setShowBigQueryModal}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -327,7 +461,9 @@ export default function Sources() {
               <Input id="tables" className="col-span-3" value={bigQueryTables} onChange={e => setBigQueryTables(e.target.value)} />
             </div>
           </div>
-          <Button disabled={uploading} onClick={handleBigQueryConnect}>{uploading ? 'Conectando...' : 'Conectar'}</Button>
+          <Button disabled={uploading} onClick={handleBigQueryConnect}>
+            {uploading ? 'Conectando...' : 'Conectar'}
+          </Button>
         </DialogContent>
       </Dialog>
     </div>
