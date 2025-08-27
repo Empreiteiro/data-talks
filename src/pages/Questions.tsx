@@ -120,6 +120,22 @@ export default function Questions() {
     loadInitialData();
   }, [agentIdParam, shareTokenParam, navigate]);
 
+  // Reload history when selected agent changes
+  useEffect(() => {
+    const loadAgentHistory = async () => {
+      if (selectedAgent && !isSharedAgent) {
+        try {
+          const qaSessions = await supabaseClient.listQASessions(selectedAgent.id);
+          setHistory(qaSessions);
+        } catch (error: any) {
+          console.error('Error loading agent history:', error);
+        }
+      }
+    };
+
+    loadAgentHistory();
+  }, [selectedAgent, isSharedAgent]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
