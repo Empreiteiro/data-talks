@@ -33,6 +33,7 @@ export default function Questions() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const { agentId: agentIdParam, shareToken: shareTokenParam } = useParams();
@@ -156,6 +157,7 @@ export default function Questions() {
     }
 
     setSubmitting(true);
+    setIsLoadingAnswer(true);
     setAnswer(null);
     setImageUrl(null);
     setFollowUpQuestions([]);
@@ -197,6 +199,7 @@ export default function Questions() {
       });
     } finally {
       setSubmitting(false);
+      setIsLoadingAnswer(false);
     }
   };
 
@@ -313,6 +316,17 @@ export default function Questions() {
         </Card>
       )}
 
+      {isLoadingAnswer && (
+        <Card className="mb-6">
+          <CardContent className="py-8">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <p className="text-muted-foreground">Processando sua pergunta...</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {answer && (
         <Card className="mb-6">
           <CardHeader>
@@ -348,43 +362,67 @@ export default function Questions() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Perguntas</CardTitle>
-          <CardDescription>Suas perguntas anteriores para este agente</CardDescription>
-        </CardHeader>
-        <CardContent className="h-[400px]">
-          <ScrollArea className="h-full">
-            <div className="space-y-4">
-              {history.map((qaSession: any) => (
-                <div key={qaSession.id} className="border rounded-md p-4">
-                  <div className="flex items-center space-x-4 mb-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={`https://avatar.vercel.sh/${qaSession.user_id}.png`} />
-                      <AvatarFallback>IA</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">{qaSession.question}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(qaSession.created_at).toLocaleDateString()}
-                      </p>
+      {history.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Histórico de Perguntas</h2>
+            <Button variant="outline" size="sm" onClick={() => setHistory([])}>
+              Limpar histórico
+            </Button>
+          </div>
+          
+          {history.map((qaSession: any) => (
+            <Card key={qaSession.id}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="flex-1">
+                    <CardTitle className="text-base">{qaSession.question}</CardTitle>
+                    <CardDescription className="text-xs">
+                      {new Date(qaSession.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                {qaSession.imageUrl && (
+                  <div className="flex justify-center">
+                    <img src={qaSession.imageUrl} alt="Gráfico da resposta" className="max-w-full h-auto rounded-md border" />
+                  </div>
+                )}
+                <div className="bg-muted rounded-md p-3">
+                  <p className="text-sm">{qaSession.answerText || qaSession.answer}</p>
+                </div>
+                
+                {qaSession.followUpQuestions && qaSession.followUpQuestions.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">Perguntas de acompanhamento:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {qaSession.followUpQuestions.map((followUp: string, index: number) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQuestion(followUp)}
+                          className="text-xs"
+                        >
+                          {followUp}
+                        </Button>
+                      ))}
                     </div>
                   </div>
-                   {qaSession.imageUrl && (
-                     <div className="mb-2">
-                       <img src={qaSession.imageUrl} alt="Chart" className="max-w-full h-auto rounded" />
-                     </div>
-                   )}
-                   <p className="text-sm text-muted-foreground">{qaSession.answerText || qaSession.answer}</p>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </CardContent>
-        <CardFooter>
-          <Button variant="link" onClick={() => setHistory([])}>Limpar histórico</Button>
-        </CardFooter>
-      </Card>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
