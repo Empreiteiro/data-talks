@@ -47,7 +47,7 @@ const Dashboard = () => {
              </CardHeader>
              <CardContent className="flex-1 flex flex-col gap-4">
                <p className="text-muted-foreground flex-1">{t('dashboard.agentConfigDesc')}</p>
-               <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/agent')}>{t('dashboard.configureAgent')}</Button>
+               <Button className="mt-auto self-start" variant="secondary" onClick={() => navigate('/agents')}>{t('dashboard.configureAgent')}</Button>
              </CardContent>
            </Card>
            <Card className="shadow-sm h-full flex flex-col min-h-[280px]">

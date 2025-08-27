@@ -46,7 +46,9 @@ const App = () => (
               <Route path="/share/:token" element={<ShareAgent />} />
               <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
-              <Route path="/agent" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
+              <Route path="/agents" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
+              <Route path="/agents/new" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
+              <Route path="/agents/:id" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
               <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
               <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
               <Route path="/channels" element={<RequireAuth><Channels /></RequireAuth>} />
