@@ -388,6 +388,101 @@ export default function AgentBriefing() {
             </Button>
           </CardContent>
         </Card>
+
+        {isEditing && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Compartilhamento</CardTitle>
+              <CardDescription>
+                Configure o compartilhamento público do agente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-base">Compartilhamento Público</div>
+                  <div className="text-sm text-muted-foreground">
+                    Permitir que outras pessoas acessem este agente via link
+                  </div>
+                </div>
+                <Button
+                  variant={shareEnabled ? "default" : "outline"}
+                  onClick={handleToggleSharing}
+                  disabled={saving}
+                >
+                  <Share className="mr-2 h-4 w-4" />
+                  {shareEnabled ? 'Desativar' : 'Ativar'}
+                </Button>
+              </div>
+
+              {shareEnabled && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="grid gap-2">
+                    <Label>Link de Compartilhamento</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={shareToken ? `${window.location.origin}/share/agent/${shareToken}` : ''}
+                        readOnly
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (shareToken) {
+                            navigator.clipboard.writeText(`${window.location.origin}/share/agent/${shareToken}`);
+                            toast.success("Link copiado!");
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="sharePassword">Senha de Proteção (opcional)</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="sharePassword"
+                          type={showPassword ? "text" : "password"}
+                          value={sharePassword}
+                          onChange={(e) => setSharePassword(e.target.value)}
+                          placeholder="Digite uma senha opcional"
+                          disabled={saving}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                          disabled={saving}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleUpdatePassword}
+                        disabled={saving}
+                      >
+                        Atualizar
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Se definida, os usuários precisarão desta senha para acessar o agente
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
