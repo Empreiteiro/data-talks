@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -15,6 +17,7 @@ const SubscriptionManagement = () => {
   const { toast } = useToast();
   const { subscription, loading, checkSubscription } = useSubscription();
   const [actionLoading, setActionLoading] = useState(false);
+  const [isQuarterly, setIsQuarterly] = useState(false);
 
   const createCheckout = async (plan: string) => {
     try {
@@ -86,13 +89,17 @@ const SubscriptionManagement = () => {
   const getPlanPricing = () => {
     if (language === 'pt') {
       return {
-        monthly: 'R$ 499/mês',
-        quarterly: 'R$ 1.347/trimestre'
+        monthly: isQuarterly ? 'R$ 449/mês' : 'R$ 499/mês',
+        period: isQuarterly ? '(cobrado trimestralmente)' : '(cobrado mensalmente)',
+        savings: isQuarterly ? '10% de economia' : null,
+        billingType: isQuarterly ? 'quarterly' : 'monthly'
       };
     } else {
       return {
-        monthly: '$99/month',
-        quarterly: '$267/quarter'
+        monthly: isQuarterly ? '$89/month' : '$99/month',
+        period: isQuarterly ? '(billed quarterly)' : '(billed monthly)',
+        savings: isQuarterly ? '10% savings' : null,
+        billingType: isQuarterly ? 'quarterly' : 'monthly'
       };
     }
   };
@@ -190,41 +197,45 @@ const SubscriptionManagement = () => {
             </CardContent>
           </Card>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="relative">
-              <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                  {language === 'pt' ? 'Plano Pro - Mensal' : 'Pro Plan - Monthly'}
-                  <Badge variant="outline">{pricing.monthly}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2 text-sm">
-                  <li>• {language === 'pt' ? 'Até 5 fontes de dados' : 'Up to 5 data sources'}</li>
-                  <li>• {language === 'pt' ? 'Até 1.000 perguntas/mês' : 'Up to 1,000 questions/month'}</li>
-                  <li>• {language === 'pt' ? 'Suporte prioritário' : 'Priority support'}</li>
-                  <li>• {language === 'pt' ? 'Canais personalizados' : 'Custom channels'}</li>
-                </ul>
-                <Button 
-                  className="w-full" 
-                  onClick={() => createCheckout('monthly')}
-                  disabled={actionLoading}
-                >
-                  {language === 'pt' ? 'Assinar Mensal' : 'Subscribe Monthly'}
-                </Button>
-              </CardContent>
-            </Card>
+          <div className="space-y-6">
+            <div className="flex items-center justify-center space-x-4 p-4 bg-muted rounded-lg">
+              <Label htmlFor="billing-toggle">
+                {language === 'pt' ? 'Mensal' : 'Monthly'}
+              </Label>
+              <Switch
+                id="billing-toggle"
+                checked={isQuarterly}
+                onCheckedChange={setIsQuarterly}
+              />
+              <Label htmlFor="billing-toggle">
+                {language === 'pt' ? 'Trimestral' : 'Quarterly'}
+                {isQuarterly && (
+                  <Badge variant="secondary" className="ml-2">
+                    {language === 'pt' ? '10% off' : '10% off'}
+                  </Badge>
+                )}
+              </Label>
+            </div>
 
-            <Card className="relative border-primary">
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-primary text-primary-foreground">
-                  {language === 'pt' ? '10% de desconto' : '10% off'}
-                </Badge>
-              </div>
+            <Card className={`relative ${isQuarterly ? 'border-primary' : ''}`}>
+              {isQuarterly && (
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-primary text-primary-foreground">
+                    {language === 'pt' ? '10% de desconto' : '10% off'}
+                  </Badge>
+                </div>
+              )}
               <CardHeader>
                 <CardTitle className="flex justify-between items-center">
-                  {language === 'pt' ? 'Plano Pro - Trimestral' : 'Pro Plan - Quarterly'}
-                  <Badge variant="outline">{pricing.quarterly}</Badge>
+                  {language === 'pt' ? 'Plano Pro' : 'Pro Plan'}
+                  <div className="text-right">
+                    <Badge variant="outline" className="text-lg px-3 py-1">
+                      {pricing.monthly}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {pricing.period}
+                    </p>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -233,14 +244,19 @@ const SubscriptionManagement = () => {
                   <li>• {language === 'pt' ? 'Até 1.000 perguntas/mês' : 'Up to 1,000 questions/month'}</li>
                   <li>• {language === 'pt' ? 'Suporte prioritário' : 'Priority support'}</li>
                   <li>• {language === 'pt' ? 'Canais personalizados' : 'Custom channels'}</li>
-                  <li>• <strong>{language === 'pt' ? '10% de economia' : '10% savings'}</strong></li>
+                  {pricing.savings && (
+                    <li>• <strong>{pricing.savings}</strong></li>
+                  )}
                 </ul>
                 <Button 
                   className="w-full" 
-                  onClick={() => createCheckout('quarterly')}
+                  onClick={() => createCheckout(pricing.billingType)}
                   disabled={actionLoading}
                 >
-                  {language === 'pt' ? 'Assinar Trimestral' : 'Subscribe Quarterly'}
+                  {language === 'pt' 
+                    ? `Assinar ${isQuarterly ? 'Trimestral' : 'Mensal'}` 
+                    : `Subscribe ${isQuarterly ? 'Quarterly' : 'Monthly'}`
+                  }
                 </Button>
               </CardContent>
             </Card>
