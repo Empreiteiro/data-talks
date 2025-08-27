@@ -11,10 +11,10 @@ const Pricing = () => {
   const plans = [
     {
       name: t('pricing.pro.title'),
-      price: t('pricing.pro.price'),
+      price: language === 'pt' ? 'R$ 499' : '$99',
       period: t('pricing.pro.period'),
       description: t('pricing.pro.description'),
-      badge: t('pricing.mostPopular'),
+      badge: null as string | null,
       features: language === 'pt' ? [
         'Até 5 fontes de dados',
         'Configuração avançada do agente',
@@ -75,7 +75,7 @@ const Pricing = () => {
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (
-                         <Card key={index} className={`relative flex flex-col h-[560px] ${index === 0 ? 'border-primary shadow-lg scale-105' : ''}`}>
+                         <Card key={index} className="relative flex flex-col h-[560px]">
                {plan.badge && (
                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground">
                    {plan.badge}
