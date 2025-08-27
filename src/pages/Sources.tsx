@@ -156,15 +156,14 @@ export default function Sources() {
     setLoadingPreview(true);
     setShowPreviewModal(true);
     try {
-      // Simular dados de preview básicos da fonte
-      setPreviewData({
-        columns: ['Coluna 1', 'Coluna 2', 'Coluna 3'],
-        rows: [
-          ['Exemplo 1', 'Valor A', '123'],
-          ['Exemplo 2', 'Valor B', '456'],
-          ['Exemplo 3', 'Valor C', '789']
-        ]
-      });
+      const meta = source.metaJSON || {};
+      const columns: string[] = Array.isArray(meta.columns) && meta.columns.length > 0
+        ? meta.columns
+        : (Array.isArray(meta.preview_rows) && meta.preview_rows[0]
+            ? Object.keys(meta.preview_rows[0])
+            : []);
+      const rows: any[] = Array.isArray(meta.preview_rows) ? meta.preview_rows : [];
+      setPreviewData({ columns, rows });
     } catch (err: any) {
       toast.error("Erro ao carregar preview", {
         description: err.message,
@@ -296,14 +295,50 @@ export default function Sources() {
                       <span className="text-muted-foreground">Criado:</span>
                       <span className="ml-2 font-medium">{new Date(source.createdAt).toLocaleDateString('pt-BR')}</span>
                     </div>
+                    {source.metaJSON?.row_count !== undefined && (
+                      <div>
+                        <span className="text-muted-foreground">Linhas:</span>
+                        <span className="ml-2 font-medium">{source.metaJSON.row_count}</span>
+                      </div>
+                    )}
+                    {Array.isArray(source.metaJSON?.columns) && (
+                      <div>
+                        <span className="text-muted-foreground">Colunas:</span>
+                        <span className="ml-2 font-medium">{source.metaJSON.columns.length}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {Array.isArray(source.metaJSON?.columns) && source.metaJSON.columns.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Colunas Disponíveis:</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {source.metaJSON.columns.map((column: string, index: number) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {column}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Status:</h4>
-                  <Badge variant="outline" className="text-xs">
-                    Disponível para consulta
-                  </Badge>
+                  <h4 className="text-sm font-medium mb-2">Integração Langflow:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Status:</span>
+                      <span className="ml-2 font-medium">{source.langflowPath ? 'Enviado' : 'Pendente'}</span>
+                    </div>
+                    <div className="truncate">
+                      <span className="text-muted-foreground">Nome:</span>
+                      <span className="ml-2 font-medium">{source.langflowName || '-'}</span>
+                    </div>
+                    <div className="truncate">
+                      <span className="text-muted-foreground">Path/ID:</span>
+                      <span className="ml-2 font-medium">{source.langflowPath || '-'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -362,11 +397,11 @@ export default function Sources() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {previewData.rows?.map((row: any[], rowIndex: number) => (
+                  {previewData.rows?.map((row: any, rowIndex: number) => (
                     <TableRow key={rowIndex}>
-                      {row.map((cell: any, cellIndex: number) => (
+                      {previewData.columns.map((col: string, cellIndex: number) => (
                         <TableCell key={cellIndex} className="max-w-[200px] truncate">
-                          {cell?.toString() || '-'}
+                          {(row?.[col] !== undefined && row?.[col] !== null) ? String(row[col]) : '-'}
                         </TableCell>
                       ))}
                     </TableRow>

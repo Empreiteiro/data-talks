@@ -18,7 +18,9 @@ export const supabaseClient = {
       type: source.type as 'csv' | 'xlsx' | 'bigquery',
       ownerId: source.user_id,
       createdAt: source.created_at,
-      metaJSON: source.metadata
+      metaJSON: source.metadata,
+      langflowPath: source.langflow_path,
+      langflowName: source.langflow_name
     }));
   },
 

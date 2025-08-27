@@ -10,6 +10,8 @@ export interface Source {
   metaJSON: any;
   ownerId: string;
   createdAt: string;
+  langflowPath?: string | null;
+  langflowName?: string | null;
 }
 
 export interface Agent {
