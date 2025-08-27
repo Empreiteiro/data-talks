@@ -3,6 +3,8 @@ import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +16,7 @@ const Pricing = () => {
   const { session } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isQuarterly, setIsQuarterly] = useState(false);
 
   const createCheckout = async (plan: string) => {
     if (!session) {
@@ -57,55 +60,36 @@ const Pricing = () => {
     }
   };
 
-  const proPlans = [
-    {
-      name: language === 'pt' ? 'Plano Pro - Mensal' : 'Pro Plan - Monthly',
-      price: language === 'pt' ? 'R$ 499' : '$99',
-      period: language === 'pt' ? '/mês' : '/month',
-      description: language === 'pt' ? 'Faturamento mensal' : 'Monthly billing',
-      planType: 'monthly',
-      features: language === 'pt' ? [
-        'Até 5 fontes de dados',
-        'Configuração avançada do agente',
-        'Até 1.000 perguntas/mês',
-        'Suporte prioritário',
-        'Canais personalizados',
-        'Configuração de alertas'
-      ] : [
-        'Up to 5 data sources',
-        'Advanced agent configuration',
-        'Up to 1,000 questions/month',
-        'Priority support',
-        'Integration with channels',  
-        'Alert configuration'
-      ]
-    },
-    {
-      name: language === 'pt' ? 'Plano Pro - Trimestral' : 'Pro Plan - Quarterly',
-      price: language === 'pt' ? 'R$ 1.347' : '$267',
-      period: language === 'pt' ? '/trimestre' : '/quarter',
-      description: language === 'pt' ? 'Faturamento trimestral' : 'Quarterly billing',
-      planType: 'quarterly',
-      badge: language === 'pt' ? '10% de desconto' : '10% off',
-      features: language === 'pt' ? [
-        'Até 5 fontes de dados',
-        'Configuração avançada do agente',
-        'Até 1.000 perguntas/mês',
-        'Suporte prioritário',
-        'Canais personalizados',
-        'Configuração de alertas',
-        '10% de economia'
-      ] : [
-        'Up to 5 data sources',
-        'Advanced agent configuration',
-        'Up to 1,000 questions/month',
-        'Priority support',
-        'Integration with channels',  
-        'Alert configuration',
-        '10% savings'
-      ]
-    }
-  ];
+  // Calculate the Pro plan details based on quarterly switch
+  const proPlan = {
+    name: language === 'pt' ? 'Plano Pro' : 'Pro Plan',
+    // Monthly price: R$ 499 or $99, Quarterly price with 10% discount: R$ 449 or $89
+    price: isQuarterly 
+      ? (language === 'pt' ? 'R$ 449' : '$89')
+      : (language === 'pt' ? 'R$ 499' : '$99'),
+    period: language === 'pt' ? '/mês' : '/month',
+    description: isQuarterly 
+      ? (language === 'pt' ? 'Faturamento trimestral - 10% de desconto' : 'Quarterly billing - 10% off')
+      : (language === 'pt' ? 'Faturamento mensal' : 'Monthly billing'),
+    planType: isQuarterly ? 'quarterly' : 'monthly',
+    features: language === 'pt' ? [
+      'Até 5 fontes de dados',
+      'Configuração avançada do agente',
+      'Até 1.000 perguntas/mês',
+      'Suporte prioritário',
+      'Canais personalizados',
+      'Configuração de alertas',
+      ...(isQuarterly ? ['10% de economia'] : [])
+    ] : [
+      'Up to 5 data sources',
+      'Advanced agent configuration',
+      'Up to 1,000 questions/month',
+      'Priority support',
+      'Integration with channels',
+      'Alert configuration',
+      ...(isQuarterly ? ['10% savings'] : [])
+    ]
+  };
 
   const enterprisePlan = {
     name: t('pricing.enterprise.title'),
@@ -149,48 +133,61 @@ const Pricing = () => {
         {/* Pro Plans Section */}
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-center mb-8">
-            {language === 'pt' ? 'Planos Pro' : 'Pro Plans'}
+            {language === 'pt' ? 'Plano Pro' : 'Pro Plan'}
           </h2>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {proPlans.map((plan, index) => (
-              <Card key={index} className={`relative flex flex-col h-[560px] ${plan.badge ? 'border-primary' : ''}`}>
-                {plan.badge && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground">
-                    {plan.badge}
-                  </Badge>
-                )}
-                
-                <CardHeader className="text-center pb-8">
-                  <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
-                  <CardDescription className="text-base">{plan.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground">{plan.period}</span>
+          
+          {/* Switch for Monthly/Quarterly */}
+          <div className="flex items-center justify-center space-x-3 mb-8">
+            <Label htmlFor="billing-toggle" className={`text-sm font-medium ${!isQuarterly ? 'text-primary' : 'text-muted-foreground'}`}>
+              {language === 'pt' ? 'Mensal' : 'Monthly'}
+            </Label>
+            <Switch
+              id="billing-toggle"
+              checked={isQuarterly}
+              onCheckedChange={setIsQuarterly}
+            />
+            <Label htmlFor="billing-toggle" className={`text-sm font-medium ${isQuarterly ? 'text-primary' : 'text-muted-foreground'}`}>
+              {language === 'pt' ? 'Trimestral' : 'Quarterly'}
+            </Label>
+            {isQuarterly && (
+              <Badge variant="secondary" className="ml-2">
+                {language === 'pt' ? '10% desconto' : '10% off'}
+              </Badge>
+            )}
+          </div>
+
+          <div className="max-w-md mx-auto">
+            <Card className={`relative flex flex-col h-[560px] ${isQuarterly ? 'border-primary' : ''}`}>
+              <CardHeader className="text-center pb-8">
+                <CardTitle className="text-2xl mb-2">{proPlan.name}</CardTitle>
+                <CardDescription className="text-base">{proPlan.description}</CardDescription>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold">{proPlan.price}</span>
+                  <span className="text-muted-foreground">{proPlan.period}</span>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4 flex-1">
+                {proPlan.features.map((feature, featureIndex) => (
+                  <div key={featureIndex} className="flex items-center gap-3">
+                    <Check className="h-5 w-5 text-primary flex-shrink-0" />
+                    <span className="text-sm">{feature}</span>
                   </div>
-                </CardHeader>
+                ))}
+              </CardContent>
 
-                <CardContent className="space-y-4 flex-1">
-                  {plan.features.map((feature, featureIndex) => (
-                    <div key={featureIndex} className="flex items-center gap-3">
-                      <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </CardContent>
-
-                <CardFooter className="mt-auto">
-                  <Button 
-                    className="w-full" 
-                    variant={plan.badge ? "default" : "outline"}
-                    size="lg"
-                    onClick={() => createCheckout(plan.planType)}
-                    disabled={loading}
-                  >
-                    {language === 'pt' ? 'Assinar Agora' : 'Subscribe Now'}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+              <CardFooter className="mt-auto">
+                <Button 
+                  className="w-full" 
+                  variant={isQuarterly ? "default" : "outline"}
+                  size="lg"
+                  onClick={() => createCheckout(proPlan.planType)}
+                  disabled={loading}
+                >
+                  {language === 'pt' ? 'Assinar Agora' : 'Subscribe Now'}
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
         </div>
 
