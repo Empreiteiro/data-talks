@@ -130,104 +130,92 @@ const Pricing = () => {
           </p>
         </div>
 
-        {/* Pro Plans Section */}
-        <div className="mb-16">
-          <h2 className="text-3xl font-bold text-center mb-8">
-            {language === 'pt' ? 'Plano Pro' : 'Pro Plan'}
-          </h2>
-          
-          {/* Switch for Monthly/Quarterly */}
-          <div className="flex items-center justify-center space-x-3 mb-8">
-            <Label htmlFor="billing-toggle" className={`text-sm font-medium ${!isQuarterly ? 'text-primary' : 'text-muted-foreground'}`}>
-              {language === 'pt' ? 'Mensal' : 'Monthly'}
-            </Label>
-            <Switch
-              id="billing-toggle"
-              checked={isQuarterly}
-              onCheckedChange={setIsQuarterly}
-            />
-            <Label htmlFor="billing-toggle" className={`text-sm font-medium ${isQuarterly ? 'text-primary' : 'text-muted-foreground'}`}>
-              {language === 'pt' ? 'Trimestral' : 'Quarterly'}
-            </Label>
-            {isQuarterly && (
-              <Badge variant="secondary" className="ml-2">
-                {language === 'pt' ? '10% desconto' : '10% off'}
-              </Badge>
-            )}
-          </div>
-
-          <div className="max-w-md mx-auto">
-            <Card className={`relative flex flex-col h-[560px] ${isQuarterly ? 'border-primary' : ''}`}>
-              <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl mb-2">{proPlan.name}</CardTitle>
-                <CardDescription className="text-base">{proPlan.description}</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">{proPlan.price}</span>
-                  <span className="text-muted-foreground">{proPlan.period}</span>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4 flex-1">
-                {proPlan.features.map((feature, featureIndex) => (
-                  <div key={featureIndex} className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
-                  </div>
-                ))}
-              </CardContent>
-
-              <CardFooter className="mt-auto">
-                <Button 
-                  className="w-full" 
-                  variant={isQuarterly ? "default" : "outline"}
-                  size="lg"
-                  onClick={() => createCheckout(proPlan.planType)}
-                  disabled={loading}
-                >
-                  {language === 'pt' ? 'Assinar Agora' : 'Subscribe Now'}
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+        {/* Switch for Monthly/Quarterly */}
+        <div className="flex items-center justify-center space-x-3 mb-12">
+          <Label htmlFor="billing-toggle" className={`text-sm font-medium ${!isQuarterly ? 'text-primary' : 'text-muted-foreground'}`}>
+            {language === 'pt' ? 'Mensal' : 'Monthly'}
+          </Label>
+          <Switch
+            id="billing-toggle"
+            checked={isQuarterly}
+            onCheckedChange={setIsQuarterly}
+          />
+          <Label htmlFor="billing-toggle" className={`text-sm font-medium ${isQuarterly ? 'text-primary' : 'text-muted-foreground'}`}>
+            {language === 'pt' ? 'Trimestral' : 'Quarterly'}
+          </Label>
+          {isQuarterly && (
+            <Badge variant="secondary" className="ml-2">
+              {language === 'pt' ? '10% desconto' : '10% off'}
+            </Badge>
+          )}
         </div>
 
-        {/* Enterprise Plan Section */}
-        <div>
-          <h2 className="text-3xl font-bold text-center mb-8">
-            {language === 'pt' ? 'Plano Enterprise' : 'Enterprise Plan'}
-          </h2>
-          <div className="max-w-2xl mx-auto">
-            <Card className="relative flex flex-col h-[560px]">
-              <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl mb-2">{enterprisePlan.name}</CardTitle>
-                <CardDescription className="text-base">{enterprisePlan.description}</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">{enterprisePlan.price}</span>
-                  <span className="text-muted-foreground">{enterprisePlan.period}</span>
+        {/* Plans Grid */}
+        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          {/* Pro Plan */}
+          <Card className={`relative flex flex-col h-[560px] ${isQuarterly ? 'border-primary' : ''}`}>
+            <CardHeader className="text-center pb-8">
+              <CardTitle className="text-2xl mb-2">{proPlan.name}</CardTitle>
+              <CardDescription className="text-base">{proPlan.description}</CardDescription>
+              <div className="mt-4">
+                <span className="text-4xl font-bold">{proPlan.price}</span>
+                <span className="text-muted-foreground">{proPlan.period}</span>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4 flex-1">
+              {proPlan.features.map((feature, featureIndex) => (
+                <div key={featureIndex} className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-primary flex-shrink-0" />
+                  <span className="text-sm">{feature}</span>
                 </div>
-              </CardHeader>
+              ))}
+            </CardContent>
 
-              <CardContent className="space-y-4 flex-1">
-                {enterprisePlan.features.map((feature, featureIndex) => (
-                  <div key={featureIndex} className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
-                  </div>
-                ))}
-              </CardContent>
+            <CardFooter className="mt-auto">
+              <Button 
+                className="w-full" 
+                variant={isQuarterly ? "default" : "outline"}
+                size="lg"
+                onClick={() => createCheckout(proPlan.planType)}
+                disabled={loading}
+              >
+                {language === 'pt' ? 'Assinar Agora' : 'Subscribe Now'}
+              </Button>
+            </CardFooter>
+          </Card>
 
-              <CardFooter className="mt-auto">
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  size="lg"
-                  onClick={() => window.open('https://whatsa.me/5534996521315', '_blank')}
-                >
-                  {enterprisePlan.button}
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+          {/* Enterprise Plan */}
+          <Card className="relative flex flex-col h-[560px]">
+            <CardHeader className="text-center pb-8">
+              <CardTitle className="text-2xl mb-2">{enterprisePlan.name}</CardTitle>
+              <CardDescription className="text-base">{enterprisePlan.description}</CardDescription>
+              <div className="mt-4">
+                <span className="text-4xl font-bold">{enterprisePlan.price}</span>
+                <span className="text-muted-foreground">{enterprisePlan.period}</span>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4 flex-1">
+              {enterprisePlan.features.map((feature, featureIndex) => (
+                <div key={featureIndex} className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-primary flex-shrink-0" />
+                  <span className="text-sm">{feature}</span>
+                </div>
+              ))}
+            </CardContent>
+
+            <CardFooter className="mt-auto">
+              <Button 
+                className="w-full" 
+                variant="outline"
+                size="lg"
+                onClick={() => window.open('https://whatsa.me/5534996521315', '_blank')}
+              >
+                {enterprisePlan.button}
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       </main>
     </div>
