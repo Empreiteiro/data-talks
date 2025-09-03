@@ -344,7 +344,7 @@ export default function Questions() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Perguntas aos Agentes</h1>
         <p className="text-muted-foreground">
-          Faça perguntas aos seus agentes de IA ({usage.monthlyQuestions}/{limits.monthlyQuestions} este mês - Plano {planName})
+          Faça perguntas aos seus agentes de IA
         </p>
       </div>
 
