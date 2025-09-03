@@ -156,6 +156,19 @@ export default function Agents() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     {agent.name}
+                    {/* Mostrar tipos de fonte conectadas */}
+                    {agent.source_ids && agent.source_ids.length > 0 && (
+                      <div className="flex gap-1">
+                        {agent.source_ids.map((sourceId) => {
+                          const source = sources.find(s => s.id === sourceId);
+                          return source ? (
+                            <Badge key={sourceId} variant="secondary" className="text-xs">
+                              {source.type}
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
                     {agent.has_share_token && (
                       <Badge variant="outline" className="text-xs">
                         <Share className="h-3 w-3 mr-1" />
@@ -238,15 +251,12 @@ export default function Agents() {
                       agent.source_ids.map((sourceId) => {
                         const source = sources.find(s => s.id === sourceId);
                         return source ? (
-                          <div key={sourceId} className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{source.name}</span>
-                              <Badge variant="secondary" className="text-xs">{source.type}</Badge>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              Atualizado: {new Date(agent.updated_at).toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
+                           <div key={sourceId} className="flex flex-col">
+                             <span className="text-sm font-medium">{source.name}</span>
+                             <span className="text-xs text-muted-foreground">
+                               Atualizado: {new Date(agent.updated_at).toLocaleDateString('pt-BR')}
+                             </span>
+                           </div>
                         ) : null;
                       })
                     ) : (
