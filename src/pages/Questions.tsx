@@ -434,24 +434,6 @@ export default function Questions() {
                   <p className="text-sm">{qaSession.answerText || qaSession.answer}</p>
                 </div>
                 
-                {qaSession.followUpQuestions && qaSession.followUpQuestions.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">Perguntas de acompanhamento:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {qaSession.followUpQuestions.map((followUp: string, index: number) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setQuestion(followUp)}
-                          className="text-xs"
-                        >
-                          {followUp}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
