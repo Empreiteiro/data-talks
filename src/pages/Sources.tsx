@@ -199,15 +199,21 @@ export default function Sources() {
       const file = selectedFiles[0];
       setSelectedFile(file);
 
-      try {
-        const sheets = await supabaseClient.getExcelSheets(file);
-        setAvailableSheets(sheets);
-        setSelectedSheet(sheets[0]);
-      } catch (error) {
-        console.error("Error fetching sheet names:", error);
-        toast.error("Erro ao ler planilha", {
-          description: "Não foi possível ler as planilhas do arquivo.",
-        });
+      // Só busca sheets se for arquivo Excel (.xlsx)
+      if (file.name.toLowerCase().endsWith('.xlsx')) {
+        try {
+          const sheets = await supabaseClient.getExcelSheets(file);
+          setAvailableSheets(sheets);
+          setSelectedSheet(sheets[0]);
+        } catch (error) {
+          console.error("Error fetching sheet names:", error);
+          toast.error("Erro ao ler planilha", {
+            description: "Não foi possível ler as planilhas do arquivo.",
+          });
+        }
+      } else {
+        setAvailableSheets([]);
+        setSelectedSheet(undefined);
       }
     } else {
       setAvailableSheets([]);
