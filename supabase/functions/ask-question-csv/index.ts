@@ -127,29 +127,43 @@ serve(async (req) => {
     const answer = outputs[0]?.results?.message?.text || 'Resposta não disponível';
     const imageUrl = outputs[0]?.results?.image_url || null;
     
-    // Second output contains follow-up questions (if available)
+    // Extract follow-up questions from multiple possible locations
     let followUpQuestions = [];
+    
+    // Try to get from second output first
     if (outputs[1]?.results?.message?.text) {
       const questionsText = outputs[1].results.message.text;
-      // Parse questions - assuming they are separated by newlines or numbered
-      followUpQuestions = questionsText
+      console.log('Second output text:', questionsText);
+      
+      // Parse questions - look for lines with question marks
+      const extractedQuestions = questionsText
         .split('\n')
-        .filter(line => line.trim() && !line.trim().match(/^\d+\.\s*$/) && line.includes('?'))
-        .map(q => q.replace(/^\d+\.\s*/, '').trim());
+        .map(line => line.trim())
+        .filter(line => line && line.includes('?'))
+        .map(q => q.replace(/^\d+\.\s*/, '').replace(/^-\s*/, '').trim())
+        .filter(q => q.length > 15); // Filter out very short questions
+      
+      followUpQuestions.push(...extractedQuestions);
     }
     
-    // Alternativa: tentar extrair das content_blocks se não encontrarmos nas outputs
+    // If no questions found in second output, try first output content blocks
     if (followUpQuestions.length === 0) {
+      console.log('No questions in second output, trying content blocks');
       const contentBlocks = outputs[0]?.results?.message?.data?.content_blocks || [];
+      
       for (const block of contentBlocks) {
         if (block.contents) {
           for (const content of block.contents) {
             if (content.type === 'text' && content.text && content.text.includes('?')) {
               const lines = content.text.split('\n');
               const questions = lines
-                .filter(line => line.trim() && line.includes('?'))
-                .map(q => q.replace(/^\d+\.\s*/, '').trim())
-                .filter(q => q.length > 10); // Filter out very short questions
+                .map(line => line.trim())
+                .filter(line => line && line.includes('?'))
+                .map(q => q.replace(/^\d+\.\s*/, '').replace(/^-\s*/, '').trim())
+                .filter(q => q.length > 15 && !q.toLowerCase().includes('pergunta'))
+                .filter(q => !q.toLowerCase().includes('análise'))
+                .filter(q => !q.toLowerCase().includes('arquivo'));
+              
               followUpQuestions.push(...questions);
             }
           }
@@ -157,7 +171,10 @@ serve(async (req) => {
       }
     }
     
-    console.log('Found follow-up questions:', followUpQuestions);
+    // Remove duplicates and limit to 3 questions
+    followUpQuestions = [...new Set(followUpQuestions)].slice(0, 3);
+    
+    console.log('Final follow-up questions:', followUpQuestions);
     
     const latency = Date.now() - startTime;
 
