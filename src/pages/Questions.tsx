@@ -227,9 +227,67 @@ export default function Questions() {
     }
   };
 
-  const handleFollowUpQuestion = (followUp: string) => {
+  const handleFollowUpQuestion = async (followUp: string) => {
+    if (!canAskQuestion && !isSharedAgent) {
+      toast.error(`Limite de perguntas atingido`, {
+        description: `Você atingiu o limite de ${limits?.monthlyQuestions} perguntas mensais do plano ${planName}.`,
+      });
+      return;
+    }
+
+    if (!selectedAgent) {
+      toast.error("Agente obrigatório", {
+        description: "Selecione um agente para fazer a pergunta.",
+      });
+      return;
+    }
+
     setQuestion(followUp);
-    handleSubmit(new Event('submit') as any); // Trigger form submission
+    setSubmitting(true);
+    setIsLoadingAnswer(true);
+    setAnswer(null);
+    setImageUrl(null);
+    setFollowUpQuestions([]);
+
+    try {
+      let response;
+      if (isSharedAgent && shareToken) {
+        response = await supabaseClient.askQuestionShared(selectedAgent.id, followUp, shareToken, sessionId);
+      } else {
+        response = await supabaseClient.askQuestion(selectedAgent.id, followUp, sessionId);
+      }
+
+      setAnswer(response.answer);
+      setImageUrl(response.imageUrl);
+      setSessionId(response.sessionId);
+      setFollowUpQuestions(response.followUpQuestions);
+
+      // Update conversation history
+      const newEntry = {
+        question: followUp,
+        answer: response.answer,
+        imageUrl: response.imageUrl,
+        followUpQuestions: response.followUpQuestions,
+        timestamp: new Date().toISOString()
+      };
+      setConversationHistory(prevHistory => [...(prevHistory || []), newEntry]);
+
+      // Refresh history
+      if (!isSharedAgent) {
+        const qaSessions = await supabaseClient.listQASessions(selectedAgent.id);
+        setHistory(qaSessions);
+      } else if (shareToken) {
+        const qaSessions = await supabaseClient.getSharedAgentQASessions(shareToken);
+        setHistory(qaSessions);
+      }
+    } catch (error: any) {
+      toast.error("Erro ao enviar pergunta de acompanhamento", {
+        description: error.message,
+      });
+    } finally {
+      setSubmitting(false);
+      setIsLoadingAnswer(false);
+    }
   };
 
   if (loading || limitsLoading) {
