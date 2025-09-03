@@ -134,8 +134,27 @@ serve(async (req) => {
       // Parse questions - assuming they are separated by newlines or numbered
       followUpQuestions = questionsText
         .split('\n')
-        .filter(line => line.trim() && !line.trim().match(/^\\d+\.\s*$/) && line.includes('?'))
-        .map(q => q.replace(/^\\d+\.\s*/, '').trim());
+        .filter(line => line.trim() && !line.trim().match(/^\d+\.\s*$/) && line.includes('?'))
+        .map(q => q.replace(/^\d+\.\s*/, '').trim());
+    }
+    
+    // Alternativa: tentar extrair das content_blocks se não encontrarmos nas outputs
+    if (followUpQuestions.length === 0) {
+      const contentBlocks = outputs[0]?.results?.message?.data?.content_blocks || [];
+      for (const block of contentBlocks) {
+        if (block.contents) {
+          for (const content of block.contents) {
+            if (content.type === 'text' && content.text && content.text.includes('?')) {
+              const lines = content.text.split('\n');
+              const questions = lines
+                .filter(line => line.trim() && line.includes('?'))
+                .map(q => q.replace(/^\d+\.\s*/, '').trim())
+                .filter(q => q.length > 10); // Filter out very short questions
+              followUpQuestions.push(...questions);
+            }
+          }
+        }
+      }
     }
     
     console.log('Found follow-up questions:', followUpQuestions);
