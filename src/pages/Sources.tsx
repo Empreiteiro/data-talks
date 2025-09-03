@@ -400,34 +400,32 @@ export default function Sources() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : previewData ? (
-            <div className="overflow-hidden">
-              <ScrollArea className="h-[500px] w-full">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-full">
-                    <TableHeader>
-                      <TableRow>
-                        {previewData.columns?.map((column: string, index: number) => (
-                          <TableHead key={index} className="whitespace-nowrap min-w-[120px] px-4">
-                            {column}
-                          </TableHead>
+            <ScrollArea className="h-[500px] w-full">
+              <div className="min-w-max">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {previewData.columns?.map((column: string, index: number) => (
+                        <TableHead key={index} className="whitespace-nowrap min-w-[120px] px-4">
+                          {column}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewData.rows?.map((row: any, rowIndex: number) => (
+                      <TableRow key={rowIndex}>
+                        {previewData.columns.map((col: string, cellIndex: number) => (
+                          <TableCell key={cellIndex} className="whitespace-nowrap min-w-[120px] max-w-[200px] px-4 truncate">
+                            {(row?.[col] !== undefined && row?.[col] !== null) ? String(row[col]) : '-'}
+                          </TableCell>
                         ))}
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewData.rows?.map((row: any, rowIndex: number) => (
-                        <TableRow key={rowIndex}>
-                          {previewData.columns.map((col: string, cellIndex: number) => (
-                            <TableCell key={cellIndex} className="whitespace-nowrap min-w-[120px] max-w-[200px] px-4 truncate">
-                              {(row?.[col] !== undefined && row?.[col] !== null) ? String(row[col]) : '-'}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </ScrollArea>
-            </div>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground">Não foi possível carregar o preview dos dados.</p>
