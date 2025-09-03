@@ -203,6 +203,15 @@ export const supabaseClient = {
     if (error) throw error;
   },
 
+  async deleteQASessionsByAgent(agentId: string) {
+    const { error } = await supabase
+      .from('qa_sessions')
+      .delete()
+      .eq('agent_id', agentId)
+      .eq('is_shared', false);
+    if (error) throw error;
+  },
+
   // Update QA session feedback
   async updateQASessionFeedback(id: string, feedback: 'positive' | 'negative') {
     const { error } = await supabase

@@ -227,6 +227,35 @@ export default function Questions() {
     }
   };
 
+  const handleClearHistory = async () => {
+    try {
+      if (isSharedAgent) {
+        toast.error("Não é possível limpar histórico de agentes compartilhados");
+        return;
+      }
+      if (!selectedAgent) {
+        toast.error("Agente obrigatório", { description: "Selecione um agente para limpar o histórico." });
+        return;
+      }
+
+      await supabaseClient.deleteQASessionsByAgent(selectedAgent.id);
+
+      // Reset local UI state
+      setHistory([]);
+      setSessionId(null);
+      setConversationHistory([]);
+      setAnswer(null);
+      setImageUrl(null);
+      setFollowUpQuestions([]);
+
+      toast.success("Histórico do agente limpo com sucesso");
+    } catch (error: any) {
+      toast.error("Erro ao limpar histórico", {
+        description: error.message,
+      });
+    }
+  };
+
   const handleFollowUpQuestion = async (followUp: string) => {
     if (!canAskQuestion && !isSharedAgent) {
       toast.error(`Limite de perguntas atingido`, {
@@ -455,9 +484,11 @@ export default function Questions() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Histórico de Perguntas</h2>
-            <Button variant="outline" size="sm" onClick={() => setHistory([])}>
-              Limpar histórico
-            </Button>
+            {!isSharedAgent && (
+              <Button variant="outline" size="sm" onClick={handleClearHistory}>
+                Limpar histórico
+              </Button>
+            )}
           </div>
           
           {history.map((qaSession: any) => (
