@@ -433,7 +433,32 @@ export default function Questions() {
                 <div className="bg-muted rounded-md p-3">
                   <p className="text-sm">{qaSession.answerText || qaSession.answer}</p>
                 </div>
-                
+                {qaSession.conversationHistory && qaSession.conversationHistory.length > 1 && (
+                  <div className="mt-4 space-y-3">
+                    <h4 className="text-sm font-medium text-muted-foreground">Acompanhamentos</h4>
+                    {qaSession.conversationHistory.slice(1).map((conversation: any, index: number) => (
+                      <div key={index} className="rounded-md border p-3 bg-background">
+                        <div className="text-sm mb-1">
+                          <span className="font-medium">Pergunta:</span> {conversation.question}
+                        </div>
+                        <div className="prose prose-sm max-w-none text-sm">
+                          {(conversation.answer || '').split('\n').map((line: string, lineIndex: number) => (
+                            <p key={lineIndex} className="mb-1 last:mb-0">{line}</p>
+                          ))}
+                        </div>
+                        {conversation.imageUrl && (
+                          <div className="mt-2">
+                            <img 
+                              src={conversation.imageUrl} 
+                              alt="Resultado da análise" 
+                              className="max-w-full h-auto rounded-md border"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
