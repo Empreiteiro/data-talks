@@ -242,6 +242,13 @@ export default function Questions() {
       return;
     }
 
+    if (!sessionId) {
+      toast.error("Sessão não encontrada", {
+        description: "Envie uma pergunta inicial antes de fazer acompanhamentos.",
+      });
+      return;
+    }
+
     setQuestion(followUp);
     setSubmitting(true);
     setIsLoadingAnswer(true);
@@ -259,7 +266,7 @@ export default function Questions() {
 
       setAnswer(response.answer);
       setImageUrl(response.imageUrl);
-      setSessionId(response.sessionId);
+      // Mantém o mesmo sessionId da pergunta original
       setFollowUpQuestions(response.followUpQuestions);
 
       // Update conversation history
