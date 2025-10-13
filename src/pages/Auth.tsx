@@ -53,45 +53,20 @@ const Auth = () => {
       <SEO title={`${t('auth.login')} | ${t('nav.tagline')}`} description="Autenticação por e-mail e senha" canonical="/login" />
       <div className="max-w-md mx-auto bg-card border rounded-lg p-6 shadow-sm">
         <h1 className="text-2xl font-semibold mb-6">{t('auth.title')}</h1>
-        <Tabs defaultValue="login">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="login">{t('auth.login')}</TabsTrigger>
-            <TabsTrigger value="register">{t('auth.register')}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="login">
-            <form className="space-y-4" onSubmit={onLogin}>
-              <div className="space-y-2">
-                <Label htmlFor="email">{t('auth.email')}</Label>
-                <Input name="email" id="email" type="email" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
-                <Input name="password" id="password" type="password" required />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full">{t('auth.loginButton')}</Button>
-            </form>
-          </TabsContent>
-          <TabsContent value="register">
-            <form className="space-y-4" onSubmit={onRegister}>
-              <div className="space-y-2">
-                <Label htmlFor="name">{t('auth.name')}</Label>
-                <Input name="name" id="name" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email2">{t('auth.email')}</Label>
-                <Input name="email" id="email2" type="email" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password2">{t('auth.password')}</Label>
-                <Input name="password" id="password2" type="password" required />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              {info && <p className="text-sm text-muted-foreground">{info}</p>}
-              <Button type="submit" className="w-full">{t('auth.registerButton')}</Button>
-            </form>
-          </TabsContent>
-        </Tabs>
+        <div>
+          <form className="space-y-4" onSubmit={onLogin}>
+            <div className="space-y-2">
+              <Label htmlFor="email">{t('auth.email')}</Label>
+              <Input name="email" id="email" type="email" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">{t('auth.password')}</Label>
+              <Input name="password" id="password" type="password" required />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full">{t('auth.loginButton')}</Button>
+          </form>
+        </div>
       </div>
     </main>
   );
