@@ -75,21 +75,21 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Studio Section */}
         <div>
           <div className="grid grid-cols-2 gap-3">
             {studioOptions.map((option) => (
               <Card
                 key={option.title}
-                className={`p-4 cursor-pointer transition-all ${
+                className={`p-4 cursor-pointer transition-all h-28 ${
                   option.locked
                     ? "opacity-50 hover:opacity-75"
                     : "hover:shadow-md"
                 }`}
                 onClick={option.locked ? handleLockedClick : undefined}
               >
-                <div className="flex flex-col items-center text-center gap-2">
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
                   <div className="relative">
                     <option.icon className="h-8 w-8 text-muted-foreground" />
                     {option.locked && (
@@ -108,20 +108,20 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
         </div>
 
         {/* Connections Section */}
-        <div className="pt-4 border-t">
+        <div className="border-t pt-4">
           <h3 className="text-sm font-semibold mb-3">{t('studio.connections')}</h3>
           <div className="grid grid-cols-2 gap-3">
             {connectionOptions.map((option) => (
               <Card
                 key={option.title}
-                className={`p-4 cursor-pointer transition-all ${
+                className={`p-4 cursor-pointer transition-all h-28 ${
                   option.locked
                     ? "opacity-50 hover:opacity-75"
                     : "hover:shadow-md"
                 }`}
                 onClick={option.locked ? handleLockedClick : undefined}
               >
-                <div className="flex flex-col items-center text-center gap-2">
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
                   <div className="relative">
                     <option.icon className="h-8 w-8 text-muted-foreground" />
                     {option.locked && (
@@ -139,7 +139,7 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
           </div>
         </div>
 
-        <div className="pt-4 border-t">
+        <div className="border-t pt-4">
           <p className="text-xs text-muted-foreground mb-3">
             {t('studio.outputDescription')}
           </p>
