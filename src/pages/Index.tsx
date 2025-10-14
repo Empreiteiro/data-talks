@@ -181,10 +181,10 @@ const Index = () => {
                   </DropdownMenu>
                 </div>
 
-                <h3 className="font-semibold mb-2 line-clamp-2">{agent.name}</h3>
+                <h3 className="font-semibold mb-4 line-clamp-2">{agent.name}</h3>
                 
-                <div className="mt-auto pt-4">
-                  <p className="text-xs text-muted-foreground">
+                <div className="mt-auto pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
                     {new Date(agent.created_at).toLocaleDateString('pt-BR')} • {agent.source_ids?.length || 0} fontes
                   </p>
                 </div>
@@ -213,8 +213,8 @@ const Index = () => {
                 <div className="text-2xl flex-shrink-0">{getEmoji(index)}</div>
                 
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{agent.name}</h3>
-                  <p className="text-xs text-muted-foreground">
+                  <h3 className="font-semibold truncate mb-1">{agent.name}</h3>
+                  <p className="text-sm text-muted-foreground">
                     {new Date(agent.created_at).toLocaleDateString('pt-BR')} • {agent.source_ids?.length || 0} fontes
                   </p>
                 </div>

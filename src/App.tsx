@@ -34,6 +34,7 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 const AppContent = () => {
   const location = useLocation();
   const isNotebookPage = location.pathname.startsWith('/notebook/');
+  const isIndexPage = location.pathname === '/';
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -58,7 +59,7 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      {!isNotebookPage && <Footer />}
+      {!isNotebookPage && !isIndexPage && <Footer />}
     </div>
   );
 };
