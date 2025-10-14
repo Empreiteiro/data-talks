@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, FileText } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -53,21 +53,15 @@ export function SourcesPanel({ onAddSource }: SourcesPanelProps) {
     <div className="h-full flex flex-col bg-background">
       <div className="p-4 border-b space-y-3">
         <h2 className="font-semibold">Sources</h2>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={onAddSource}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1">
-            <Search className="h-4 w-4 mr-2" />
-            Discover
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={onAddSource}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">

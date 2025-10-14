@@ -1,4 +1,4 @@
-import { Lock, AudioWaveform, Video, Network, FileText, Zap, HelpCircle, Plus } from "lucide-react";
+import { Lock, AudioWaveform, Network, FileText, Zap, MessageCircle, Hash, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -16,15 +16,9 @@ export function StudioPanel({ onAddNote }: StudioPanelProps) {
       locked: true,
     },
     {
-      icon: Video,
-      title: "Vídeo",
-      description: "Video Overview",
-      locked: true,
-    },
-    {
       icon: Network,
       title: "Auto ML",
-      description: "Mind Map",
+      description: "Auto ML",
       locked: true,
     },
     {
@@ -34,15 +28,21 @@ export function StudioPanel({ onAddNote }: StudioPanelProps) {
       locked: true,
     },
     {
-      icon: Zap,
-      title: "Flashcards",
-      description: "Flashcards",
+      icon: MessageCircle,
+      title: "WhatsApp",
+      description: "Connect to WhatsApp",
       locked: true,
     },
     {
-      icon: HelpCircle,
-      title: "Quiz",
-      description: "Quiz",
+      icon: Hash,
+      title: "Slack",
+      description: "Connect to Slack",
+      locked: true,
+    },
+    {
+      icon: Zap,
+      title: "Flashcards",
+      description: "Flashcards",
       locked: true,
     },
   ];
