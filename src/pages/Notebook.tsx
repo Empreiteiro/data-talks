@@ -34,17 +34,17 @@ export default function Notebook() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-background p-4">
       <SEO title="Notebook" description="Converse com seus dados" canonical={`/notebook/${id}`} />
       
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Sources Panel - Left */}
-        <div className="w-80 border-r flex-shrink-0">
+        <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col">
           <SourcesPanel onAddSource={() => setAddSourceOpen(true)} />
         </div>
 
         {/* Chat Panel - Center */}
-        <div className="flex-1 flex flex-col bg-background">
+        <div className="flex-1 flex flex-col bg-card border rounded-xl overflow-hidden">
           <div className="p-4 border-b">
             <h1 className="font-semibold">Chat</h1>
           </div>
@@ -110,7 +110,7 @@ export default function Notebook() {
 
         {/* Studio Panel - Right */}
         {!studioPanelCollapsed && (
-          <div className="w-80 border-l flex-shrink-0">
+          <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col">
             <StudioPanel 
               collapsed={studioPanelCollapsed}
               onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)}
@@ -120,17 +120,15 @@ export default function Notebook() {
 
         {/* Collapsed Studio Panel Button */}
         {studioPanelCollapsed && (
-          <div className="border-l flex-shrink-0">
-            <div className="h-full flex items-start p-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setStudioPanelCollapsed(false)}
-              >
-                <ChevronRight className="h-4 w-4 rotate-180" />
-              </Button>
-            </div>
+          <div className="flex-shrink-0 flex items-center">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 rounded-xl"
+              onClick={() => setStudioPanelCollapsed(false)}
+            >
+              <ChevronRight className="h-4 w-4 rotate-180" />
+            </Button>
           </div>
         )}
       </div>
