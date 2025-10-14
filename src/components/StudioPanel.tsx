@@ -1,4 +1,4 @@
-import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Plus } from "lucide-react";
+import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -37,6 +37,12 @@ export function StudioPanel({ onAddNote }: StudioPanelProps) {
       icon: Hash,
       title: "Slack",
       description: "Connect to Slack",
+      locked: true,
+    },
+    {
+      icon: Bell,
+      title: "Alertas",
+      description: "Configuração de Alertas",
       locked: true,
     },
   ];
