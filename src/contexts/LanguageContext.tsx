@@ -317,6 +317,11 @@ const translations = {
      'pricing.needCustom': 'Need something custom?',
      'pricing.contactUs': 'Contact us',
      
+     // Settings
+     'settings.title': 'Settings',
+     'settings.manageSubscription': 'Manage subscription',
+     'settings.language': 'Language',
+     
      // Add Source Modal
      'addSource.title': 'Add sources',
      'addSource.description': 'Sources allow NotebookLM to base its answers on the most important information for you.',
@@ -650,6 +655,11 @@ const translations = {
      'pricing.save20': 'Economize 20%',
      'pricing.needCustom': 'Precisa de algo personalizado?',
      'pricing.contactUs': 'Entre em contato conosco',
+     
+     // Settings
+     'settings.title': 'Configurações',
+     'settings.manageSubscription': 'Gerenciar inscrição',
+     'settings.language': 'Idioma',
      
      // Add Source Modal
      'addSource.title': 'Adicionar fontes',
