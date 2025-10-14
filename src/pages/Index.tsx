@@ -51,6 +51,23 @@ const Index = () => {
     }
   }
 
+  const handleCreateNotebook = async () => {
+    try {
+      const newAgent = await supabaseClient.createAgent(
+        "Novo Notebook",
+        [],
+        "",
+        []
+      );
+      
+      navigate(`/notebook/${newAgent.id}?openAddSource=true`);
+    } catch (error: any) {
+      toast.error("Erro ao criar notebook", {
+        description: error.message,
+      });
+    }
+  };
+
   const getEmoji = (index: number) => {
     const emojis = ["📊", "🎯", "💡", "🚀", "📈", "🔍", "💼", "🎨", "⚡"];
     return emojis[index % emojis.length];
@@ -109,7 +126,7 @@ const Index = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={() => navigate('/agents/new')}>
+            <Button onClick={handleCreateNotebook}>
               <Plus className="h-4 w-4 mr-2" />
               Novo notebook
             </Button>
@@ -122,7 +139,7 @@ const Index = () => {
             {/* Create new card */}
             <Card
               className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]"
-              onClick={() => navigate('/agents/new')}
+              onClick={handleCreateNotebook}
             >
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <Plus className="h-6 w-6 text-primary" />
@@ -179,7 +196,7 @@ const Index = () => {
             {/* Create new list item */}
             <Card
               className="p-4 flex items-center gap-4 cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={() => navigate('/agents/new')}
+              onClick={handleCreateNotebook}
             >
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Plus className="h-5 w-5 text-primary" />

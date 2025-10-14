@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
@@ -11,7 +11,14 @@ export default function Notebook() {
   const {
     id
   } = useParams();
+  const [searchParams] = useSearchParams();
   const [addSourceOpen, setAddSourceOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('openAddSource') === 'true') {
+      setAddSourceOpen(true);
+    }
+  }, [searchParams]);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Array<{
     role: string;
