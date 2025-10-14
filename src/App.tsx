@@ -19,6 +19,7 @@ import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
 import ShareAgent from "@/pages/ShareAgent";
 import Channels from "@/pages/Channels";
+import Notebook from "@/pages/Notebook";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/login" element={<Auth />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/share/:token" element={<ShareAgent />} />
+              <Route path="/notebook/:id" element={<RequireAuth><Notebook /></RequireAuth>} />
               <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
               <Route path="/agents" element={<RequireAuth><Agents /></RequireAuth>} />
