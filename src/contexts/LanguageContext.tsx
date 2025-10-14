@@ -129,7 +129,7 @@ const translations = {
     'sources.bigQueryStep8': '8. Upload the downloaded JSON file above',
     'sources.bigQueryDocsLink': 'View official documentation',
     'sources.savedSourcesAppear': 'Saved sources will appear here',
-    'sources.addSourcesInstructions': 'Click Add above to add PDFs, websites, text, videos or audio files. Or import a file directly from Google Drive.',
+    'sources.addSourcesInstructions': 'Click Add above to add CSV or XLSX files, connect to BigQuery, or link Google Sheets.',
     
     // Agent
     'agent.title': 'Agent Configuration',
@@ -336,7 +336,7 @@ const translations = {
      'addSource.dragDrop': 'Drag and drop or',
      'addSource.chooseFile': 'choose file',
      'addSource.uploadText': 'for upload',
-     'addSource.supportedTypes': 'Supported file types: PDF, txt, Markdown, Audio (e.g. mp3), CSV, XLSX',
+     'addSource.supportedTypes': 'Supported file types: CSV, XLSX',
      'addSource.credentials': 'Credentials (JSON)',
      'addSource.project': 'Project',
      'addSource.dataset': 'Dataset',
@@ -492,7 +492,7 @@ const translations = {
     'sources.bigQueryStep8': '8. Faça upload do arquivo JSON baixado acima',
     'sources.bigQueryDocsLink': 'Ver documentação oficial',
     'sources.savedSourcesAppear': 'As fontes salvas aparecerão aqui',
-    'sources.addSourcesInstructions': 'Clique em Add acima para adicionar PDFs, websites, texto, vídeos ou arquivos de áudio. Ou importe um arquivo diretamente do Google Drive.',
+    'sources.addSourcesInstructions': 'Clique em Adicionar acima para adicionar arquivos CSV ou XLSX, conectar ao BigQuery ou vincular Google Sheets.',
     
     // Agent
     'agent.title': 'Configuração do Agente',
@@ -699,7 +699,7 @@ const translations = {
      'addSource.dragDrop': 'Arraste e solte ou',
      'addSource.chooseFile': 'escolha arquivo',
      'addSource.uploadText': 'para upload',
-     'addSource.supportedTypes': 'Tipos de arquivo suportados: PDF, txt, Markdown, Audio (e.g. mp3), CSV, XLSX',
+     'addSource.supportedTypes': 'Tipos de arquivo suportados: CSV, XLSX',
      'addSource.credentials': 'Credenciais (JSON)',
      'addSource.project': 'Projeto',
      'addSource.dataset': 'Dataset',

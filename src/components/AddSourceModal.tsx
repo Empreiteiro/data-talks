@@ -125,7 +125,7 @@ export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceM
                   type="file"
                   className="hidden"
                   multiple
-                  accept=".pdf,.txt,.md,.mp3,.wav,.csv,.xlsx,.xls"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileInput}
                   disabled={uploading}
                 />
