@@ -106,7 +106,7 @@ export default function Notebook() {
 
         {/* Chat Panel - Center */}
         <div className="flex-1 flex flex-col bg-card border rounded-xl overflow-hidden">
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex items-center h-[57px]">
             <h1 className="font-semibold">{t('notebook.chat')}</h1>
           </div>
 

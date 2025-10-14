@@ -80,17 +80,18 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <div className="p-4 border-b space-y-3">
-        <h2 className="font-semibold">{t('sources.title')}</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={onAddSource}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {t('sources.add')}
-        </Button>
+      <div className="p-4 border-b flex items-center h-[57px]">
+        <div className="flex items-center justify-between w-full">
+          <h2 className="font-semibold">{t('sources.title')}</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddSource}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t('sources.add')}
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">

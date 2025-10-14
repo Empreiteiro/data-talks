@@ -63,7 +63,7 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b flex items-center justify-between">
+      <div className="p-4 border-b flex items-center justify-between h-[57px]">
         <h2 className="font-semibold">{t('studio.title')}</h2>
         <Button
           variant="ghost"
