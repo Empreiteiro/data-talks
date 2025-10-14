@@ -18,7 +18,6 @@ import Alerts from "@/pages/Alerts";
 import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
 import ShareAgent from "@/pages/ShareAgent";
-import Channels from "@/pages/Channels";
 import Notebook from "@/pages/Notebook";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -53,7 +52,6 @@ const AppContent = () => {
           <Route path="/agents/:id" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
           <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
           <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
-          <Route path="/channels" element={<RequireAuth><Channels /></RequireAuth>} />
           <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
