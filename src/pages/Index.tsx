@@ -162,12 +162,12 @@ const Index = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/agents/${agent.id}`);
-                      }}>
-                        Editar
-                      </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/notebook/${agent.id}`);
+                    }}>
+                      Editar
+                    </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={(e) => {
@@ -228,7 +228,7 @@ const Index = () => {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/agents/${agent.id}`);
+                      navigate(`/notebook/${agent.id}`);
                     }}>
                       Editar
                     </DropdownMenuItem>
