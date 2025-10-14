@@ -28,6 +28,15 @@ export function StudioPanel({ onAddNote }: StudioPanelProps) {
       locked: true,
     },
     {
+      icon: Bell,
+      title: "Alertas",
+      description: "Configuração de Alertas",
+      locked: true,
+    },
+  ];
+
+  const connectionOptions = [
+    {
       icon: MessageCircle,
       title: "WhatsApp",
       description: "Connect to WhatsApp",
@@ -37,12 +46,6 @@ export function StudioPanel({ onAddNote }: StudioPanelProps) {
       icon: Hash,
       title: "Slack",
       description: "Connect to Slack",
-      locked: true,
-    },
-    {
-      icon: Bell,
-      title: "Alertas",
-      description: "Configuração de Alertas",
       locked: true,
     },
   ];
@@ -59,36 +62,71 @@ export function StudioPanel({ onAddNote }: StudioPanelProps) {
         <h2 className="font-semibold">Studio</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="grid grid-cols-2 gap-3">
-          {studioOptions.map((option) => (
-            <Card
-              key={option.title}
-              className={`p-4 cursor-pointer transition-all ${
-                option.locked
-                  ? "opacity-50 hover:opacity-75"
-                  : "hover:shadow-md"
-              }`}
-              onClick={option.locked ? handleLockedClick : undefined}
-            >
-              <div className="flex flex-col items-center text-center gap-2">
-                <div className="relative">
-                  <option.icon className="h-8 w-8 text-muted-foreground" />
-                  {option.locked && (
-                    <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
-                      <Lock className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                  )}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Studio Section */}
+        <div>
+          <div className="grid grid-cols-2 gap-3">
+            {studioOptions.map((option) => (
+              <Card
+                key={option.title}
+                className={`p-4 cursor-pointer transition-all ${
+                  option.locked
+                    ? "opacity-50 hover:opacity-75"
+                    : "hover:shadow-md"
+                }`}
+                onClick={option.locked ? handleLockedClick : undefined}
+              >
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className="relative">
+                    <option.icon className="h-8 w-8 text-muted-foreground" />
+                    {option.locked && (
+                      <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
+                        <Lock className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium">{option.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium">{option.description}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t">
+        {/* Connections Section */}
+        <div className="pt-4 border-t">
+          <h3 className="text-sm font-semibold mb-3">Connections</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {connectionOptions.map((option) => (
+              <Card
+                key={option.title}
+                className={`p-4 cursor-pointer transition-all ${
+                  option.locked
+                    ? "opacity-50 hover:opacity-75"
+                    : "hover:shadow-md"
+                }`}
+                onClick={option.locked ? handleLockedClick : undefined}
+              >
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className="relative">
+                    <option.icon className="h-8 w-8 text-muted-foreground" />
+                    {option.locked && (
+                      <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
+                        <Lock className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium">{option.description}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        <div className="pt-4 border-t">
           <p className="text-xs text-muted-foreground mb-3">
             A saída do Studio será salva aqui.
             Após adicionar fontes, clique para adicionar Visão Geral de Áudio, Guia de Estudo,
