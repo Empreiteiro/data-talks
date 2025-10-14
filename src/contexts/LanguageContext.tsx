@@ -348,17 +348,20 @@ const translations = {
      'addSource.sheetsUrl': 'Google Sheets link',
      'addSource.sheetsUrlPlaceholder': 'https://docs.google.com/spreadsheets/d/...',
      'addSource.sheetsDescription': 'Paste the sharing link of the Google Sheets you want to connect',
+     
+     // Notebook
+     'notebook.chat': 'Chat',
+     'notebook.addSourceToStart': 'Add a source to start',
+     'notebook.addSourceDescription': 'Upload your data sources to start asking questions and getting insights.',
+     'notebook.uploadSource': 'Upload Source',
+     'notebook.inputPlaceholder': 'Ask a question about your data...',
+     'notebook.addSourceFirst': 'Add a source first to start asking questions',
+     'notebook.startConversation': 'Start a conversation',
+     'notebook.startConversationDescription': 'Ask questions about your data to get insights and answers.',
      'addSource.connectSheets': 'Connect Google Sheets',
       'addSource.sourceLimit': 'Source limit',
       'addSource.filesUploaded': 'Files uploaded successfully!',
       'addSource.uploadError': 'Error uploading files',
-      
-      // Notebook
-      'notebook.chat': 'Chat',
-      'notebook.addSourceToStart': 'Add a source to get started',
-      'notebook.addSourceDescription': 'Upload documents, connect to BigQuery, or add Google Sheets to start asking questions about your data.',
-      'notebook.uploadSource': 'Upload a source',
-      'notebook.inputPlaceholder': 'Upload a source to get started',
       
       // Studio
       'studio.title': 'Studio',
@@ -719,9 +722,12 @@ const translations = {
       // Notebook
       'notebook.chat': 'Chat',
       'notebook.addSourceToStart': 'Adicione uma fonte para começar',
-      'notebook.addSourceDescription': 'Carregue documentos, conecte ao BigQuery ou adicione Google Sheets para começar a fazer perguntas aos seus dados.',
-      'notebook.uploadSource': 'Fazer upload de uma fonte',
-      'notebook.inputPlaceholder': 'Fazer upload de uma fonte para começar',
+      'notebook.addSourceDescription': 'Carregue suas fontes de dados para começar a fazer perguntas e obter insights.',
+      'notebook.uploadSource': 'Carregar Fonte',
+      'notebook.inputPlaceholder': 'Faça uma pergunta sobre seus dados...',
+      'notebook.addSourceFirst': 'Adicione uma fonte primeiro para fazer perguntas',
+      'notebook.startConversation': 'Inicie uma conversa',
+      'notebook.startConversationDescription': 'Faça perguntas sobre seus dados para obter insights e respostas.',
       
       // Studio
       'studio.title': 'Studio',

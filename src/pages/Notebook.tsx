@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Send, Upload, ChevronRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 export default function Notebook() {
   const { t } = useLanguage();
   const {
@@ -27,21 +29,68 @@ export default function Notebook() {
     content: string;
   }>>([]);
   const [studioPanelCollapsed, setStudioPanelCollapsed] = useState(false);
-  const handleSendMessage = () => {
-    if (!question.trim()) return;
+  const [hasSources, setHasSources] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    checkSources();
+  }, [id]);
+
+  async function checkSources() {
+    if (!id) return;
+    
+    try {
+      const { data: agent, error } = await supabase
+        .from('agents')
+        .select('source_ids')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      setHasSources(agent?.source_ids && agent.source_ids.length > 0);
+    } catch (error: any) {
+      console.error("Erro ao verificar fontes:", error);
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (!question.trim() || !id) return;
+    
+    const userMessage = question;
     setMessages([...messages, {
       role: "user",
-      content: question
+      content: userMessage
     }]);
     setQuestion("");
+    setIsLoading(true);
 
-    // TODO: Implementar integração com API do agente
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ask-question', {
+        body: {
+          question: userMessage,
+          agentId: id
+        }
+      });
+
+      if (error) throw error;
+
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "Esta é uma resposta de exemplo. A integração com o agente será implementada em breve."
+        content: data.answer || "Não foi possível gerar uma resposta."
       }]);
-    }, 1000);
+    } catch (error: any) {
+      console.error("Erro ao enviar pergunta:", error);
+      toast.error("Erro ao processar pergunta", {
+        description: error.message
+      });
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "Desculpe, ocorreu um erro ao processar sua pergunta."
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
   return <div className="h-[calc(100vh-4rem)] flex flex-col bg-background p-4">
       <SEO title="Notebook" description="Converse com seus dados" canonical={`/notebook/${id}`} />
@@ -65,28 +114,43 @@ export default function Notebook() {
             {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
                 <Upload className="h-16 w-16 text-primary mb-4" />
                 <h2 className="text-xl font-semibold mb-2">
-                  {t('notebook.addSourceToStart')}
+                  {hasSources ? t('notebook.startConversation') : t('notebook.addSourceToStart')}
                 </h2>
                 <p className="text-muted-foreground max-w-md mb-6">
-                  {t('notebook.addSourceDescription')}
+                  {hasSources 
+                    ? t('notebook.startConversationDescription')
+                    : t('notebook.addSourceDescription')
+                  }
                 </p>
-                <Button onClick={() => setAddSourceOpen(true)}>
-                  {t('notebook.uploadSource')}
-                </Button>
+                {!hasSources && (
+                  <Button onClick={() => setAddSourceOpen(true)}>
+                    {t('notebook.uploadSource')}
+                  </Button>
+                )}
               </div> : <div className="space-y-4 max-w-3xl mx-auto">
                 {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div className={`rounded-lg p-4 max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                      <p className="text-sm">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     </div>
                   </div>)}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="rounded-lg p-4 bg-muted">
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <p className="text-sm text-muted-foreground">Processando...</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>}
           </div>
 
           <div className="p-4 border-t">
             <div className="max-w-3xl mx-auto">
               <div className="flex gap-2">
-                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={t('notebook.inputPlaceholder')} onKeyPress={e => e.key === "Enter" && handleSendMessage()} disabled={messages.length === 0} />
-                <Button onClick={handleSendMessage} disabled={!question.trim()}>
+                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={hasSources ? t('notebook.inputPlaceholder') : t('notebook.addSourceFirst')} onKeyPress={e => e.key === "Enter" && !isLoading && hasSources && handleSendMessage()} disabled={!hasSources || isLoading} />
+                <Button onClick={handleSendMessage} disabled={!question.trim() || !hasSources || isLoading}>
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
@@ -109,7 +173,7 @@ export default function Notebook() {
       </div>
 
       <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} onSourceAdded={() => {
-      // Reload sources
-    }} />
+        checkSources(); // Atualiza o estado de fontes
+      }} />
     </div>;
 }
