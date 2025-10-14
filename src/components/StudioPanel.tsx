@@ -2,6 +2,7 @@ import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface StudioPanelProps {
   onAddNote?: () => void;
@@ -10,29 +11,31 @@ interface StudioPanelProps {
 }
 
 export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPanelProps) {
+  const { t } = useLanguage();
+  
   const studioOptions = [
     {
       icon: AudioWaveform,
-      title: "Áudio",
-      description: "Audio Overview",
+      title: "Audio",
+      description: t('studio.audioOverview'),
       locked: true,
     },
     {
       icon: Network,
       title: "Auto ML",
-      description: "Auto ML",
+      description: t('studio.autoML'),
       locked: true,
     },
     {
       icon: FileText,
-      title: "Report",
-      description: "Reports",
+      title: "Reports",
+      description: t('studio.reports'),
       locked: true,
     },
     {
       icon: Bell,
-      title: "Alertas",
-      description: "Configuração de Alertas",
+      title: "Alerts",
+      description: t('studio.alertConfig'),
       locked: true,
     },
   ];
@@ -41,20 +44,20 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
     {
       icon: MessageCircle,
       title: "WhatsApp",
-      description: "Connect to WhatsApp",
+      description: t('studio.connectWhatsApp'),
       locked: true,
     },
     {
       icon: Hash,
       title: "Slack",
-      description: "Connect to Slack",
+      description: t('studio.connectSlack'),
       locked: true,
     },
   ];
 
   const handleLockedClick = () => {
-    toast.info("Recurso em breve", {
-      description: "Esta funcionalidade estará disponível em breve.",
+    toast.info(t('studio.comingSoon'), {
+      description: t('studio.comingSoonDescription'),
     });
   };
 
@@ -106,7 +109,7 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
 
         {/* Connections Section */}
         <div className="pt-4 border-t">
-          <h3 className="text-sm font-semibold mb-3">Connections</h3>
+          <h3 className="text-sm font-semibold mb-3">{t('studio.connections')}</h3>
           <div className="grid grid-cols-2 gap-3">
             {connectionOptions.map((option) => (
               <Card
@@ -138,9 +141,7 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
 
         <div className="pt-4 border-t">
           <p className="text-xs text-muted-foreground mb-3">
-            A saída do Studio será salva aqui.
-            Após adicionar fontes, clique para adicionar Visão Geral de Áudio, Guia de Estudo,
-            Mapa Mental e mais!
+            {t('studio.outputDescription')}
           </p>
         </div>
       </div>
@@ -152,7 +153,7 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
           onClick={onAddNote}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Adicionar nota
+          {t('studio.addNote')}
         </Button>
       </div>
     </div>

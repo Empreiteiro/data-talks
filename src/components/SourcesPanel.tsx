@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Source {
   id: string;
@@ -19,6 +20,7 @@ interface SourcesPanelProps {
 }
 
 export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
+  const { t } = useLanguage();
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,11 +105,10 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <FileText className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">
-              As fontes salvas aparecerão aqui
+              {t('sources.savedSourcesAppear')}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              Clique em Add acima para adicionar PDFs, websites, texto, vídeos ou arquivos de áudio. 
-              Ou importe um arquivo diretamente do Google Drive.
+              {t('sources.addSourcesInstructions')}
             </p>
           </div>
         ) : (

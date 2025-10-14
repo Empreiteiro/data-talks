@@ -127,6 +127,8 @@ const translations = {
     'sources.bigQueryStep7': '7. Select "JSON" format and download the file',
     'sources.bigQueryStep8': '8. Upload the downloaded JSON file above',
     'sources.bigQueryDocsLink': 'View official documentation',
+    'sources.savedSourcesAppear': 'Saved sources will appear here',
+    'sources.addSourcesInstructions': 'Click Add above to add PDFs, websites, text, videos or audio files. Or import a file directly from Google Drive.',
     
     // Agent
     'agent.title': 'Agent Configuration',
@@ -356,6 +358,19 @@ const translations = {
       'notebook.addSourceDescription': 'Upload documents, connect to BigQuery, or add Google Sheets to start asking questions about your data.',
       'notebook.uploadSource': 'Upload a source',
       'notebook.inputPlaceholder': 'Upload a source to get started',
+      
+      // Studio
+      'studio.audioOverview': 'Audio Overview',
+      'studio.autoML': 'Auto ML',
+      'studio.reports': 'Reports',
+      'studio.alertConfig': 'Alert Configuration',
+      'studio.connectWhatsApp': 'Connect to WhatsApp',
+      'studio.connectSlack': 'Connect to Slack',
+      'studio.connections': 'Connections',
+      'studio.outputDescription': 'Studio output will be saved here. After adding sources, click to add Audio Overview, Study Guide, Mind Map and more!',
+      'studio.addNote': 'Add note',
+      'studio.comingSoon': 'Coming soon',
+      'studio.comingSoonDescription': 'This feature will be available soon.',
    },
   pt: {
     // Navigation
@@ -473,6 +488,8 @@ const translations = {
     'sources.bigQueryStep7': '7. Selecione o formato "JSON" e baixe o arquivo',
     'sources.bigQueryStep8': '8. Faça upload do arquivo JSON baixado acima',
     'sources.bigQueryDocsLink': 'Ver documentação oficial',
+    'sources.savedSourcesAppear': 'As fontes salvas aparecerão aqui',
+    'sources.addSourcesInstructions': 'Clique em Add acima para adicionar PDFs, websites, texto, vídeos ou arquivos de áudio. Ou importe um arquivo diretamente do Google Drive.',
     
     // Agent
     'agent.title': 'Configuração do Agente',
@@ -702,6 +719,19 @@ const translations = {
       'notebook.addSourceDescription': 'Carregue documentos, conecte ao BigQuery ou adicione Google Sheets para começar a fazer perguntas aos seus dados.',
       'notebook.uploadSource': 'Fazer upload de uma fonte',
       'notebook.inputPlaceholder': 'Fazer upload de uma fonte para começar',
+      
+      // Studio
+      'studio.audioOverview': 'Visão Geral de Áudio',
+      'studio.autoML': 'Auto ML',
+      'studio.reports': 'Relatórios',
+      'studio.alertConfig': 'Configuração de Alertas',
+      'studio.connectWhatsApp': 'Conectar ao WhatsApp',
+      'studio.connectSlack': 'Conectar ao Slack',
+      'studio.connections': 'Conexões',
+      'studio.outputDescription': 'A saída do Studio será salva aqui. Após adicionar fontes, clique para adicionar Visão Geral de Áudio, Guia de Estudo, Mapa Mental e mais!',
+      'studio.addNote': 'Adicionar nota',
+      'studio.comingSoon': 'Recurso em breve',
+      'studio.comingSoonDescription': 'Esta funcionalidade estará disponível em breve.',
    }
 };
 
