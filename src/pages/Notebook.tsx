@@ -49,7 +49,10 @@ export default function Notebook() {
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Sources Panel - Left */}
         <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col">
-          <SourcesPanel onAddSource={() => setAddSourceOpen(true)} />
+          <SourcesPanel 
+            agentId={id} 
+            onAddSource={() => setAddSourceOpen(true)} 
+          />
         </div>
 
         {/* Chat Panel - Center */}

@@ -3,7 +3,7 @@ import { Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { supabaseClient } from "@/services/supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Source {
@@ -15,25 +15,52 @@ interface Source {
 
 interface SourcesPanelProps {
   onAddSource?: () => void;
+  agentId?: string;
 }
 
-export function SourcesPanel({ onAddSource }: SourcesPanelProps) {
+export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    loadSources();
-  }, []);
+    if (agentId) {
+      loadSources();
+    }
+  }, [agentId]);
 
   async function loadSources() {
+    if (!agentId) return;
+    
     try {
-      const data = await supabaseClient.listSources();
-      const mappedSources = (data || []).map(source => ({
+      // Primeiro, buscar o agent para pegar os source_ids
+      const { data: agent, error: agentError } = await supabase
+        .from('agents')
+        .select('source_ids')
+        .eq('id', agentId)
+        .single();
+
+      if (agentError) throw agentError;
+
+      if (!agent || !agent.source_ids || agent.source_ids.length === 0) {
+        setSources([]);
+        setLoading(false);
+        return;
+      }
+
+      // Buscar as fontes vinculadas ao agent
+      const { data: sourcesData, error: sourcesError } = await supabase
+        .from('sources')
+        .select('*')
+        .in('id', agent.source_ids);
+
+      if (sourcesError) throw sourcesError;
+
+      const mappedSources = (sourcesData || []).map(source => ({
         id: source.id,
         name: source.name,
         type: source.type,
-        createdAt: source.createdAt,
+        createdAt: source.created_at,
       }));
       setSources(mappedSources);
     } catch (error: any) {
