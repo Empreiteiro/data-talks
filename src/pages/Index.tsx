@@ -69,6 +69,24 @@ const Index = () => {
     }
   };
 
+  const handleDeleteNotebook = async (agentId: string, agentName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm(`Tem certeza que deseja excluir o notebook "${agentName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      await supabaseClient.deleteAgent(agentId);
+      toast.success("Notebook excluído com sucesso");
+      loadAgents(); // Recarrega a lista
+    } catch (error: any) {
+      toast.error("Erro ao excluir notebook", {
+        description: error.message,
+      });
+    }
+  };
+
   const getEmoji = (index: number) => {
     const emojis = ["📊", "🎯", "💡", "🚀", "📈", "🔍", "💼", "🎨", "⚡"];
     return emojis[index % emojis.length];
@@ -192,10 +210,7 @@ const Index = () => {
                     </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // TODO: Implementar delete
-                        }}
+                        onClick={(e) => handleDeleteNotebook(agent.id, agent.name, e)}
                       >
                         Excluir
                       </DropdownMenuItem>
@@ -256,10 +271,7 @@ const Index = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // TODO: Implementar delete
-                      }}
+                      onClick={(e) => handleDeleteNotebook(agent.id, agent.name, e)}
                     >
                       Excluir
                     </DropdownMenuItem>
