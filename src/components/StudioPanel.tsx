@@ -1,13 +1,15 @@
-import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus } from "lucide-react";
+import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 
 interface StudioPanelProps {
   onAddNote?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPanelProps) {
   const studioOptions = [
     {
       icon: AudioWaveform,
@@ -58,8 +60,16 @@ export function StudioPanel({ onAddNote }: StudioPanelProps) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex items-center justify-between">
         <h2 className="font-semibold">Studio</h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={onToggleCollapse}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">

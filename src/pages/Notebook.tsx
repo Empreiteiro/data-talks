@@ -5,7 +5,7 @@ import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload } from "lucide-react";
+import { Send, Upload, ChevronRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 export default function Notebook() {
@@ -13,6 +13,7 @@ export default function Notebook() {
   const [addSourceOpen, setAddSourceOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
+  const [studioPanelCollapsed, setStudioPanelCollapsed] = useState(false);
 
   const handleSendMessage = () => {
     if (!question.trim()) return;
@@ -108,9 +109,30 @@ export default function Notebook() {
         </div>
 
         {/* Studio Panel - Right */}
-        <div className="w-80 border-l flex-shrink-0">
-          <StudioPanel />
-        </div>
+        {!studioPanelCollapsed && (
+          <div className="w-80 border-l flex-shrink-0">
+            <StudioPanel 
+              collapsed={studioPanelCollapsed}
+              onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)}
+            />
+          </div>
+        )}
+
+        {/* Collapsed Studio Panel Button */}
+        {studioPanelCollapsed && (
+          <div className="border-l flex-shrink-0">
+            <div className="h-full flex items-start p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setStudioPanelCollapsed(false)}
+              >
+                <ChevronRight className="h-4 w-4 rotate-180" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <AddSourceModal
