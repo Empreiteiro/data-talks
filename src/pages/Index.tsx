@@ -78,14 +78,7 @@ const Index = () => {
       
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">
-              Todos
-            </Button>
-            <Button variant="ghost" size="sm">
-              Meus notebooks
-            </Button>
-          </div>
+          <h1 className="text-2xl font-semibold">Notebooks recentes</h1>
 
           <div className="flex items-center gap-2">
             <Button
@@ -123,35 +116,99 @@ const Index = () => {
           </div>
         </div>
 
-        <h2 className="text-2xl font-semibold mb-6">Notebooks recentes</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Create new card */}
-          <Card
-            className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]"
-            onClick={() => navigate('/agents/new')}
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-              <Plus className="h-6 w-6 text-primary" />
-            </div>
-            <p className="font-medium">Criar novo notebook</p>
-          </Card>
-
-          {agents.map((agent, index) => (
+        {viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Create new card */}
             <Card
-              key={agent.id}
-              className="p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[200px] flex flex-col"
-              onClick={() => navigate(`/notebook/${agent.id}`)}
+              className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]"
+              onClick={() => navigate('/agents/new')}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="text-3xl">{getEmoji(index)}</div>
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Plus className="h-6 w-6 text-primary" />
+              </div>
+              <p className="font-medium">Criar novo notebook</p>
+            </Card>
+
+            {agents.map((agent, index) => (
+              <Card
+                key={agent.id}
+                className="p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[200px] flex flex-col"
+                onClick={() => navigate(`/notebook/${agent.id}`)}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="text-3xl">{getEmoji(index)}</div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/agents/${agent.id}`);
+                      }}>
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // TODO: Implementar delete
+                        }}
+                      >
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <h3 className="font-semibold mb-2 line-clamp-2">{agent.name}</h3>
+                
+                <div className="mt-auto pt-4">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(agent.created_at).toLocaleDateString('pt-BR')} • {agent.source_ids?.length || 0} fontes
+                  </p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {/* Create new list item */}
+            <Card
+              className="p-4 flex items-center gap-4 cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => navigate('/agents/new')}
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Plus className="h-5 w-5 text-primary" />
+              </div>
+              <p className="font-medium">Criar novo notebook</p>
+            </Card>
+
+            {agents.map((agent, index) => (
+              <Card
+                key={agent.id}
+                className="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate(`/notebook/${agent.id}`)}
+              >
+                <div className="text-2xl flex-shrink-0">{getEmoji(index)}</div>
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate">{agent.name}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(agent.created_at).toLocaleDateString('pt-BR')} • {agent.source_ids?.length || 0} fontes
+                  </p>
+                </div>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/agents/${agent.id}`);
@@ -169,18 +226,10 @@ const Index = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-
-              <h3 className="font-semibold mb-2 line-clamp-2">{agent.name}</h3>
-              
-              <div className="mt-auto pt-4">
-                <p className="text-xs text-muted-foreground">
-                  {new Date(agent.created_at).toLocaleDateString('pt-BR')} • {agent.source_ids?.length || 0} fontes
-                </p>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
