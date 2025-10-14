@@ -31,6 +31,7 @@ const Index = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
 
   useEffect(() => {
     if (!initializing && isAuthenticated) {
@@ -72,6 +73,19 @@ const Index = () => {
     const emojis = ["📊", "🎯", "💡", "🚀", "📈", "🔍", "💼", "🎨", "⚡"];
     return emojis[index % emojis.length];
   };
+
+  const sortedAgents = [...agents].sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case "oldest":
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case "name":
+        return a.name.localeCompare(b.name);
+      default:
+        return 0;
+    }
+  });
 
   if (!isAuthenticated && !initializing) {
     navigate('/login');
@@ -116,13 +130,21 @@ const Index = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  Mais recentes
+                  {sortBy === "newest" && "Mais recentes"}
+                  {sortBy === "oldest" && "Mais antigos"}
+                  {sortBy === "name" && "Nome (A-Z)"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem>Mais recentes</DropdownMenuItem>
-                <DropdownMenuItem>Mais antigos</DropdownMenuItem>
-                <DropdownMenuItem>Nome (A-Z)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("newest")}>
+                  Mais recentes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("oldest")}>
+                  Mais antigos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("name")}>
+                  Nome (A-Z)
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -147,7 +169,7 @@ const Index = () => {
               <p className="font-medium">Criar novo notebook</p>
             </Card>
 
-            {agents.map((agent, index) => (
+            {sortedAgents.map((agent, index) => (
               <Card
                 key={agent.id}
                 className="p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[200px] flex flex-col"
@@ -204,7 +226,7 @@ const Index = () => {
               <p className="font-medium">Criar novo notebook</p>
             </Card>
 
-            {agents.map((agent, index) => (
+            {sortedAgents.map((agent, index) => (
               <Card
                 key={agent.id}
                 className="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
