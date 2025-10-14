@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Upload, ChevronRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { useLanguage } from "@/contexts/LanguageContext";
 export default function Notebook() {
+  const { t } = useLanguage();
   const {
     id
   } = useParams();
@@ -53,20 +55,20 @@ export default function Notebook() {
         {/* Chat Panel - Center */}
         <div className="flex-1 flex flex-col bg-card border rounded-xl overflow-hidden">
           <div className="p-4 border-b">
-            <h1 className="font-semibold">Chat</h1>
+            <h1 className="font-semibold">{t('notebook.chat')}</h1>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
             {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
                 <Upload className="h-16 w-16 text-primary mb-4" />
                 <h2 className="text-xl font-semibold mb-2">
-                  Adicione uma fonte para começar
+                  {t('notebook.addSourceToStart')}
                 </h2>
                 <p className="text-muted-foreground max-w-md mb-6">
-                  Carregue documentos, conecte ao BigQuery ou adicione Google Sheets para começar a fazer perguntas aos seus dados.
+                  {t('notebook.addSourceDescription')}
                 </p>
                 <Button onClick={() => setAddSourceOpen(true)}>
-                  Fazer upload de uma fonte
+                  {t('notebook.uploadSource')}
                 </Button>
               </div> : <div className="space-y-4 max-w-3xl mx-auto">
                 {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -80,7 +82,7 @@ export default function Notebook() {
           <div className="p-4 border-t">
             <div className="max-w-3xl mx-auto">
               <div className="flex gap-2">
-                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder="Fazer upload de uma fonte para começar" onKeyPress={e => e.key === "Enter" && handleSendMessage()} disabled={messages.length === 0} />
+                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={t('notebook.inputPlaceholder')} onKeyPress={e => e.key === "Enter" && handleSendMessage()} disabled={messages.length === 0} />
                 <Button onClick={handleSendMessage} disabled={!question.trim()}>
                   <Send className="h-4 w-4" />
                 </Button>

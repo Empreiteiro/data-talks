@@ -346,10 +346,17 @@ const translations = {
      'addSource.sheetsUrlPlaceholder': 'https://docs.google.com/spreadsheets/d/...',
      'addSource.sheetsDescription': 'Paste the sharing link of the Google Sheets you want to connect',
      'addSource.connectSheets': 'Connect Google Sheets',
-     'addSource.sourceLimit': 'Source limit',
-     'addSource.filesUploaded': 'Files uploaded successfully!',
-     'addSource.uploadError': 'Error uploading files',
-  },
+      'addSource.sourceLimit': 'Source limit',
+      'addSource.filesUploaded': 'Files uploaded successfully!',
+      'addSource.uploadError': 'Error uploading files',
+      
+      // Notebook
+      'notebook.chat': 'Chat',
+      'notebook.addSourceToStart': 'Add a source to get started',
+      'notebook.addSourceDescription': 'Upload documents, connect to BigQuery, or add Google Sheets to start asking questions about your data.',
+      'notebook.uploadSource': 'Upload a source',
+      'notebook.inputPlaceholder': 'Upload a source to get started',
+   },
   pt: {
     // Navigation
     'nav.dashboard': 'Dashboard',
@@ -685,10 +692,17 @@ const translations = {
      'addSource.sheetsUrlPlaceholder': 'https://docs.google.com/spreadsheets/d/...',
      'addSource.sheetsDescription': 'Cole o link de compartilhamento do Google Sheets que você deseja conectar',
      'addSource.connectSheets': 'Conectar Google Sheets',
-     'addSource.sourceLimit': 'Limite de fontes',
-     'addSource.filesUploaded': 'Arquivos enviados com sucesso!',
-     'addSource.uploadError': 'Erro ao enviar arquivos',
-  }
+      'addSource.sourceLimit': 'Limite de fontes',
+      'addSource.filesUploaded': 'Arquivos enviados com sucesso!',
+      'addSource.uploadError': 'Erro ao enviar arquivos',
+      
+      // Notebook
+      'notebook.chat': 'Chat',
+      'notebook.addSourceToStart': 'Adicione uma fonte para começar',
+      'notebook.addSourceDescription': 'Carregue documentos, conecte ao BigQuery ou adicione Google Sheets para começar a fazer perguntas aos seus dados.',
+      'notebook.uploadSource': 'Fazer upload de uma fonte',
+      'notebook.inputPlaceholder': 'Fazer upload de uma fonte para começar',
+   }
 };
 
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
