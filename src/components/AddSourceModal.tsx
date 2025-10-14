@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AddSourceModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface AddSourceModalProps {
 }
 
 export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceModalProps) {
+  const { t } = useLanguage();
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -54,11 +56,11 @@ export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceM
     setUploading(true);
     try {
       // TODO: Implementar upload de arquivos
-      toast.success("Arquivos enviados com sucesso!");
+      toast.success(t('addSource.filesUploaded'));
       onSourceAdded?.();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error("Erro ao enviar arquivos", {
+      toast.error(t('addSource.uploadError'), {
         description: error.message,
       });
     } finally {
@@ -71,7 +73,7 @@ export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceM
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Adicionar fontes</span>
+            <span>{t('addSource.title')}</span>
             <Button
               variant="ghost"
               size="icon"
@@ -84,15 +86,14 @@ export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceM
 
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
-            As fontes permitem que o NotebookLM baseie suas respostas nas informações mais importantes para você.
-            (Exemplos: planos de marketing, leitura de curso, notas de pesquisa, transcrições de reunião, documentos de vendas, etc.)
+            {t('addSource.description')} {t('addSource.examples')}
           </p>
 
           <Tabs defaultValue="upload" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="upload">Upload</TabsTrigger>
-              <TabsTrigger value="bigquery">BigQuery</TabsTrigger>
-              <TabsTrigger value="sheets">Google Sheets</TabsTrigger>
+              <TabsTrigger value="upload">{t('addSource.uploadTab')}</TabsTrigger>
+              <TabsTrigger value="bigquery">{t('addSource.bigQueryTab')}</TabsTrigger>
+              <TabsTrigger value="sheets">{t('addSource.sheetsTab')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-4">
@@ -108,16 +109,16 @@ export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceM
                 onDrop={handleDrop}
               >
                 <Upload className="h-12 w-12 mx-auto mb-4 text-primary" />
-                <h3 className="text-lg font-medium mb-2">Upload de fontes</h3>
+                <h3 className="text-lg font-medium mb-2">{t('addSource.uploadTitle')}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Arraste e solte ou{" "}
+                  {t('addSource.dragDrop')}{" "}
                   <label htmlFor="file-upload" className="text-primary cursor-pointer hover:underline">
-                    escolha arquivo
+                    {t('addSource.chooseFile')}
                   </label>{" "}
-                  para upload
+                  {t('addSource.uploadText')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Tipos de arquivo suportados: PDF, txt, Markdown, Audio (e.g. mp3), CSV, XLSX
+                  {t('addSource.supportedTypes')}
                 </p>
                 <input
                   id="file-upload"
@@ -134,48 +135,48 @@ export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceM
             <TabsContent value="bigquery" className="space-y-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="credentials">Credenciais (JSON)</Label>
+                  <Label htmlFor="credentials">{t('addSource.credentials')}</Label>
                   <Input id="credentials" type="file" accept=".json" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="project">Projeto</Label>
-                  <Input id="project" placeholder="my-project" />
+                  <Label htmlFor="project">{t('addSource.project')}</Label>
+                  <Input id="project" placeholder={t('addSource.projectPlaceholder')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dataset">Dataset</Label>
-                  <Input id="dataset" placeholder="analytics" />
+                  <Label htmlFor="dataset">{t('addSource.dataset')}</Label>
+                  <Input id="dataset" placeholder={t('addSource.datasetPlaceholder')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tables">Tabelas permitidas (separadas por vírgula)</Label>
-                  <Input id="tables" placeholder="orders, customers" />
+                  <Label htmlFor="tables">{t('addSource.allowedTables')}</Label>
+                  <Input id="tables" placeholder={t('addSource.tablesPlaceholder')} />
                 </div>
-                <Button className="w-full">Conectar BigQuery</Button>
+                <Button className="w-full">{t('addSource.connectBigQuery')}</Button>
               </div>
             </TabsContent>
 
             <TabsContent value="sheets" className="space-y-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="sheets-url">Link do Google Sheets</Label>
+                  <Label htmlFor="sheets-url">{t('addSource.sheetsUrl')}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="sheets-url"
-                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      placeholder={t('addSource.sheetsUrlPlaceholder')}
                       className="flex-1"
                     />
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Cole o link de compartilhamento do Google Sheets que você deseja conectar
+                  {t('addSource.sheetsDescription')}
                 </p>
-                <Button className="w-full">Conectar Google Sheets</Button>
+                <Button className="w-full">{t('addSource.connectSheets')}</Button>
               </div>
             </TabsContent>
           </Tabs>
 
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Limite de fontes</span>
+              <span className="text-muted-foreground">{t('addSource.sourceLimit')}</span>
               <span className="font-medium">0 / 300</span>
             </div>
           </div>
