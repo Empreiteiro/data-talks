@@ -33,7 +33,7 @@ export default function Notebook() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
       <SEO title="Notebook" description="Converse com seus dados" canonical={`/notebook/${id}`} />
       
       <div className="flex-1 flex overflow-hidden">
