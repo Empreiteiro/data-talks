@@ -82,7 +82,8 @@ const translations = {
     'dashboard.comingSoon': 'Coming Soon',
     
     // Sources
-    'sources.title': 'Data Sources',
+    'sources.title': 'Sources',
+    'sources.add': 'Add',
     'sources.filesTab': 'Files (CSV/XLSX)',
     'sources.bigQueryTab': 'Google BigQuery',
     'sources.uploadButton': 'Upload',
@@ -360,6 +361,7 @@ const translations = {
       'notebook.inputPlaceholder': 'Upload a source to get started',
       
       // Studio
+      'studio.title': 'Studio',
       'studio.audioOverview': 'Audio Overview',
       'studio.autoML': 'Auto ML',
       'studio.reports': 'Reports',
@@ -443,7 +445,8 @@ const translations = {
     'dashboard.comingSoon': 'Em Breve',
     
     // Sources
-    'sources.title': 'Fontes de Dados',
+    'sources.title': 'Fontes',
+    'sources.add': 'Adicionar',
     'sources.filesTab': 'Arquivos (CSV/XLSX)',
     'sources.bigQueryTab': 'Google BigQuery',
     'sources.uploadButton': 'Fazer upload',
@@ -721,6 +724,7 @@ const translations = {
       'notebook.inputPlaceholder': 'Fazer upload de uma fonte para começar',
       
       // Studio
+      'studio.title': 'Studio',
       'studio.audioOverview': 'Visão Geral de Áudio',
       'studio.autoML': 'Auto ML',
       'studio.reports': 'Relatórios',
