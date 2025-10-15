@@ -83,18 +83,18 @@ serve(async (req) => {
       input_value: question,
       session_id: langflowSessionId,
       tweaks: {
-        'File-6hxDL': {
+        'File Path-LlOhc': {
+          path: langflowPaths[0]
+        },
+        'File-7zqqu': {
           path: [langflowPaths[0]]
         },
-        'File-eHrha': {
-          path: [langflowPaths[0]]
+        'Prompt Template-b14Tn': {
+          description: agent.description || '',
+          question: question,
+          file_path: langflowPaths[0] || '',
+          schema: csvSchema
         },
-    'Prompt Template-xmZAC': {
-      description: agent.description || '',
-      question: question,
-      file_path: langflowPaths[0] || '',
-      schema: csvSchema
-    },
         'Memory-dPQjb': {
           session_id: langflowSessionId
         }
