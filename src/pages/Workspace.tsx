@@ -89,6 +89,32 @@ export default function Workspace() {
     }
   }
 
+  const handleDeleteHistory = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Evitar que o card seja clicado
+    
+    try {
+      const { error } = await supabase
+        .from('qa_sessions')
+        .delete()
+        .eq('id', sessionId);
+        
+      if (error) throw error;
+      
+      // Se a conversa excluída é a atual, limpar o chat
+      if (currentSessionId === sessionId) {
+        setMessages([]);
+        setCurrentSessionId(null);
+      }
+      
+      // Recarregar histórico
+      loadHistory();
+      toast.success("Conversa excluída");
+    } catch (error: any) {
+      console.error("Erro ao excluir conversa:", error);
+      toast.error("Erro ao excluir conversa");
+    }
+  };
+
   const handleDeleteMessage = async (index: number) => {
     const updatedMessages = messages.filter((_, i) => i !== index);
     setMessages(updatedMessages);
@@ -239,11 +265,19 @@ export default function Workspace() {
                       {history.map((qaSession: any) => (
                         <Card
                           key={qaSession.id}
-                          className="cursor-pointer hover:bg-accent transition-colors"
+                          className="group relative cursor-pointer hover:bg-accent transition-colors"
                           onClick={() => handleLoadConversation(qaSession)}
                         >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm hover:bg-destructive hover:text-destructive-foreground z-10"
+                            onClick={(e) => handleDeleteHistory(qaSession.id, e)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
                           <CardHeader className="p-4">
-                            <CardTitle className="text-sm line-clamp-1">
+                            <CardTitle className="text-sm line-clamp-1 pr-8">
                               {qaSession.question}
                             </CardTitle>
                             <CardDescription className="text-xs">
