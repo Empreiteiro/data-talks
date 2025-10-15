@@ -89,12 +89,11 @@ serve(async (req) => {
         'File-eHrha': {
           path: [langflowPaths[0]]
         },
-        'Prompt Template-xmZAC': {
-          description: agent.description || '',
-          question: question,
-          file_path: langflowPaths[0] || '',
-          schema: csvSchema
-        },
+    'Prompt Template-xmZAC': {
+      description: agent.description || '',
+      file_path: langflowPaths[0] || '',
+      schema: csvSchema
+    },
         'Memory-dPQjb': {
           session_id: langflowSessionId
         }
