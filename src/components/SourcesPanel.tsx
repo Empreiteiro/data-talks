@@ -68,6 +68,8 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
           createdAt: source.created_at,
           metadata: source.metadata,
         }));
+        console.log('Sources loaded:', mappedSources);
+        console.log('Source metadata:', mappedSources[0]?.metadata);
         setSources(mappedSources);
       } else {
         setSources([]);

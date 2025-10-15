@@ -12,8 +12,14 @@ interface DataPreviewModalProps {
 
 export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: DataPreviewModalProps) => {
   const { t } = useLanguage();
+  
+  console.log('DataPreviewModal - metadata:', metadata);
+  
   const schema = metadata?.schema || [];
   const previewRows = metadata?.preview_rows || [];
+  
+  console.log('DataPreviewModal - schema:', schema);
+  console.log('DataPreviewModal - previewRows:', previewRows);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
