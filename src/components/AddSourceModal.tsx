@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabaseClient } from "@/services/supabaseClient";
 
 interface AddSourceModalProps {
   open: boolean;
@@ -55,11 +56,14 @@ export function AddSourceModal({ open, onOpenChange, onSourceAdded }: AddSourceM
   const handleFiles = async (files: File[]) => {
     setUploading(true);
     try {
-      // TODO: Implementar upload de arquivos
+      const uploadPromises = files.map(file => supabaseClient.uploadFile(file));
+      await Promise.all(uploadPromises);
+      
       toast.success(t('addSource.filesUploaded'));
       onSourceAdded?.();
       onOpenChange(false);
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast.error(t('addSource.uploadError'), {
         description: error.message,
       });
