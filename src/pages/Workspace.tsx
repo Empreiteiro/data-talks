@@ -50,7 +50,7 @@ export default function Workspace() {
   useEffect(() => {
     checkSources();
     loadHistory();
-  }, [id]);
+  }, [id, user]);
 
   async function checkSources() {
     if (!id) return;
