@@ -55,7 +55,7 @@ const Index = () => {
   }
   const handleCreateWorkspace = async () => {
     try {
-      const newAgent = await supabaseClient.createAgent("Novo Workspace", [], "", []);
+      const newAgent = await supabaseClient.createAgent("Novo espaço de trabalho", [], "", []);
       navigate(`/workspace/${newAgent.id}?openAddSource=true`);
     } catch (error: any) {
       toast.error("Erro ao criar workspace", {

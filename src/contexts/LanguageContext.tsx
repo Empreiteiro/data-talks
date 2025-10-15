@@ -379,7 +379,7 @@ const translations = {
    },
   pt: {
     // Navigation
-    'nav.dashboard': 'Dashboard',
+    'nav.dashboard': 'Painel',
     'nav.account': 'Conta',
     'nav.logout': 'Sair',
     'nav.getStarted': 'Começar agora',
