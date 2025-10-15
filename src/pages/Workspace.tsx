@@ -10,8 +10,10 @@ import { SEO } from "@/components/SEO";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 export default function Workspace() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const {
     id
   } = useParams();
@@ -69,7 +71,8 @@ export default function Workspace() {
       const { data, error } = await supabase.functions.invoke('ask-question', {
         body: {
           question: userMessage,
-          agentId: id
+          agentId: id,
+          userId: user?.id
         }
       });
 
