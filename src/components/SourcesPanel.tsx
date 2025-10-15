@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { DataPreviewModal } from "@/components/DataPreviewModal";
 
 interface Source {
   id: string;
   name: string;
   type: string;
   createdAt: string;
+  metadata?: any;
 }
 
 interface SourcesPanelProps {
@@ -25,6 +27,8 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
   const [linkedSourceIds, setLinkedSourceIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [previewSource, setPreviewSource] = useState<Source | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (agentId) {
@@ -62,6 +66,7 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
           name: source.name,
           type: source.type,
           createdAt: source.created_at,
+          metadata: source.metadata,
         }));
         setSources(mappedSources);
       } else {
@@ -149,7 +154,11 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
             {filteredSources.map((source) => (
               <div
                 key={source.id}
-                className="group relative p-3 rounded-lg border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors"
+                className="group relative p-3 rounded-lg border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors cursor-pointer"
+                onClick={() => {
+                  setPreviewSource(source);
+                  setShowPreview(true);
+                }}
               >
                 <div className="flex items-start gap-2">
                   <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
@@ -184,6 +193,15 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
           </div>
         )}
       </div>
+      
+      {previewSource && (
+        <DataPreviewModal
+          open={showPreview}
+          onOpenChange={setShowPreview}
+          sourceName={previewSource.name}
+          metadata={previewSource.metadata}
+        />
+      )}
     </div>
   );
 }
