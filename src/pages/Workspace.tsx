@@ -383,7 +383,7 @@ export default function Workspace() {
               </div>
             )}
             {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
-                <Upload className="h-16 w-16 text-primary mb-4" />
+                {!hasSources && <Upload className="h-16 w-16 text-primary mb-4" />}
                 <h2 className="text-xl font-semibold mb-2">
                   {hasSources ? t('workspace.startConversation') : t('workspace.addSourceToStart')}
                 </h2>
