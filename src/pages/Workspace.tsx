@@ -436,7 +436,7 @@ export default function Workspace() {
                 </div>
               )}
               <div className="flex gap-2">
-                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={hasSources ? t('workspace.inputPlaceholder') : t('workspace.addSourceFirst')} onKeyPress={e => e.key === "Enter" && !isLoading && hasSources && handleSendMessage()} disabled={!hasSources || isLoading} />
+                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={hasSources ? t('workspace.inputPlaceholder') : t('workspace.addSourceFirst')} onKeyPress={e => e.key === "Enter" && !isLoading && hasSources && handleSendMessage()} disabled={!hasSources || isLoading} className="h-12" />
                 <Button onClick={handleSendMessage} disabled={!question.trim() || !hasSources || isLoading}>
                   <Send className="h-4 w-4" />
                 </Button>
