@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2 } from "lucide-react";
+import { Trash2, History } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -17,6 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { agentClient, Agent, QASession } from "@/services/agentClient";
 import { supabaseClient } from "@/services/supabaseClient";
@@ -43,6 +51,7 @@ export default function Questions() {
   const [isSharedAgent, setIsSharedAgent] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const { limits, usage, planName, canAskQuestion, isLoading: limitsLoading } = usePlanLimits();
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -326,6 +335,20 @@ export default function Questions() {
     }
   };
 
+  const handleLoadConversation = (qaSession: any) => {
+    setSessionId(qaSession.id);
+    setAnswer(qaSession.answer);
+    setImageUrl(qaSession.table_data?.image_url || null);
+    setFollowUpQuestions(qaSession.follow_up_questions || []);
+    setConversationHistory(qaSession.conversation_history || []);
+    setQuestion(qaSession.question);
+    setIsHistoryOpen(false);
+    
+    toast.success("Conversa carregada", {
+      description: "Você pode continuar de onde parou.",
+    });
+  };
+
   if (loading || limitsLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -341,11 +364,68 @@ export default function Questions() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Perguntas aos Agentes</h1>
-        <p className="text-muted-foreground">
-          Faça perguntas aos seus agentes de IA
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Perguntas aos Agentes</h1>
+          <p className="text-muted-foreground">
+            Faça perguntas aos seus agentes de IA
+          </p>
+        </div>
+        
+        <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon">
+              <History className="h-4 w-4" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-[400px] sm:w-[540px]">
+            <SheetHeader>
+              <SheetTitle>Conversas Anteriores</SheetTitle>
+              <SheetDescription>
+                Selecione uma conversa para continuar de onde parou
+              </SheetDescription>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+              {history.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  Nenhuma conversa anterior encontrada
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {history.map((qaSession: any) => (
+                    <Card
+                      key={qaSession.id}
+                      className="cursor-pointer hover:bg-accent transition-colors"
+                      onClick={() => handleLoadConversation(qaSession)}
+                    >
+                      <CardHeader className="p-4">
+                        <CardTitle className="text-sm line-clamp-1">
+                          {qaSession.question}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {new Date(qaSession.created_at).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </CardDescription>
+                      </CardHeader>
+                      {qaSession.answer && (
+                        <CardContent className="p-4 pt-0">
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {qaSession.answer}
+                          </p>
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
       </div>
 
       {!canAskQuestion && (
