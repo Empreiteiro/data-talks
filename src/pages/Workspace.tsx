@@ -46,6 +46,7 @@ export default function Workspace() {
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
 
   useEffect(() => {
     checkSources();
@@ -205,6 +206,11 @@ export default function Workspace() {
         content: data.answer || "Não foi possível gerar uma resposta."
       }]);
       
+      // Atualizar follow-up questions se disponíveis
+      if (data.follow_up_questions && Array.isArray(data.follow_up_questions)) {
+        setFollowUpQuestions(data.follow_up_questions);
+      }
+      
       // Atualizar sessionId se for uma nova conversa
       if (data.sessionId && !currentSessionId) {
         setCurrentSessionId(data.sessionId);
@@ -352,6 +358,21 @@ export default function Workspace() {
 
           <div className="p-4 border-t">
             <div className="max-w-3xl mx-auto">
+              {followUpQuestions.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {followUpQuestions.map((fq, idx) => (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-auto py-2 px-3"
+                      onClick={() => setQuestion(fq)}
+                    >
+                      {fq}
+                    </Button>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2">
                 <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={hasSources ? t('workspace.inputPlaceholder') : t('workspace.addSourceFirst')} onKeyPress={e => e.key === "Enter" && !isLoading && hasSources && handleSendMessage()} disabled={!hasSources || isLoading} />
                 <Button onClick={handleSendMessage} disabled={!question.trim() || !hasSources || isLoading}>
