@@ -40,6 +40,7 @@ export default function Workspace() {
     role: string;
     content: string;
   }>>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [studioPanelCollapsed, setStudioPanelCollapsed] = useState(false);
   const [hasSources, setHasSources] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,13 +92,25 @@ export default function Workspace() {
   const handleLoadConversation = (qaSession: any) => {
     const conversationHistory = qaSession.conversation_history || [];
     
-    // Reconstruir o array de mensagens
-    const loadedMessages = conversationHistory.map((msg: any) => ({
-      role: msg.role,
-      content: msg.content
-    }));
+    // Reconstruir o array de mensagens a partir do formato do backend
+    const loadedMessages: Array<{role: string; content: string}> = [];
+    
+    conversationHistory.forEach((entry: any) => {
+      // Adicionar pergunta do usuário
+      loadedMessages.push({
+        role: "user",
+        content: entry.question
+      });
+      
+      // Adicionar resposta do assistente
+      loadedMessages.push({
+        role: "assistant",
+        content: entry.answer
+      });
+    });
 
     setMessages(loadedMessages);
+    setCurrentSessionId(qaSession.id); // Manter o sessionId para continuar a conversa
     setIsHistoryOpen(false);
     
     toast.success("Conversa carregada", {
@@ -121,7 +134,8 @@ export default function Workspace() {
         body: {
           question: userMessage,
           agentId: id,
-          userId: user?.id
+          userId: user?.id,
+          sessionId: currentSessionId // Enviar sessionId se existir para continuar conversa
         }
       });
 
@@ -131,6 +145,11 @@ export default function Workspace() {
         role: "assistant",
         content: data.answer || "Não foi possível gerar uma resposta."
       }]);
+      
+      // Atualizar sessionId se for uma nova conversa
+      if (data.sessionId && !currentSessionId) {
+        setCurrentSessionId(data.sessionId);
+      }
       
       // Recarregar histórico após resposta bem-sucedida
       loadHistory();
