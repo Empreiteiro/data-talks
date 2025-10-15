@@ -326,15 +326,13 @@ export default function Workspace() {
             <h1 className="font-semibold">{t('workspace.chat')}</h1>
             
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => setIsSettingsOpen(true)}
-                title={t('agentSettings.title')}
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-              </Button>
-              
+              <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <History className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                
               <Button 
                 variant="outline" 
                 size="icon"
@@ -344,12 +342,14 @@ export default function Workspace() {
                 <RotateCcw className="h-4 w-4" />
               </Button>
               
-              <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <History className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setIsSettingsOpen(true)}
+                title={t('agentSettings.title')}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
               <SheetContent className="w-[400px] sm:w-[540px]">
                 <SheetHeader>
                   <SheetTitle>{t('workspace.previousConversations')}</SheetTitle>
