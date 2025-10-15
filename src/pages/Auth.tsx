@@ -17,7 +17,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      window.location.href = '/dashboard';
+      window.location.href = '/';
     }
   }, [isAuthenticated]);
   async function onLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -26,7 +26,7 @@ const Auth = () => {
     const data = new FormData(e.currentTarget);
     try {
       await login(String(data.get('email')), String(data.get('password')));
-      window.location.href = '/dashboard';
+      window.location.href = '/';
     } catch (err: any) {
       setError(err.message || t('auth.loginError'));
     }
@@ -41,7 +41,7 @@ const Auth = () => {
       if (res && !res.session) {
         setInfo(t('auth.registerSuccess'));
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = '/';
       }
     } catch (err: any) {
       setError(err.message || t('auth.registerError'));
