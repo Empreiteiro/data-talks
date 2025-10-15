@@ -6,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Grid3x3, List, MoreVertical } from "lucide-react";
+import { Plus, Grid3x3, List, MoreVertical, Pencil } from "lucide-react";
 import { supabaseClient } from "@/services/supabaseClient";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Agent {
   id: string;
@@ -32,6 +42,9 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [newName, setNewName] = useState("");
 
   useEffect(() => {
     if (!initializing && isAuthenticated) {
@@ -64,6 +77,34 @@ const Index = () => {
       navigate(`/workspace/${newAgent.id}?openAddSource=true`);
     } catch (error: any) {
       toast.error("Erro ao criar workspace", {
+        description: error.message,
+      });
+    }
+  };
+
+  const handleRenameWorkspace = (agent: Agent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedAgent(agent);
+    setNewName(agent.name);
+    setRenameDialogOpen(true);
+  };
+
+  const handleConfirmRename = async () => {
+    if (!selectedAgent || !newName.trim()) return;
+
+    try {
+      await supabaseClient.updateAgent(
+        selectedAgent.id,
+        newName,
+        selectedAgent.source_ids,
+        selectedAgent.description || "",
+        []
+      );
+      toast.success("Workspace renomeado com sucesso");
+      loadAgents();
+      setRenameDialogOpen(false);
+    } catch (error: any) {
+      toast.error("Erro ao renomear workspace", {
         description: error.message,
       });
     }
@@ -208,6 +249,10 @@ const Index = () => {
                     }}>
                       Editar
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => handleRenameWorkspace(agent, e)}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Renomear
+                    </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={(e) => handleDeleteWorkspace(agent.id, agent.name, e)}
@@ -269,6 +314,10 @@ const Index = () => {
                     }}>
                       Editar
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => handleRenameWorkspace(agent, e)}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Renomear
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
                       onClick={(e) => handleDeleteWorkspace(agent.id, agent.name, e)}
@@ -282,6 +331,42 @@ const Index = () => {
           </div>
         )}
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renomear workspace</DialogTitle>
+            <DialogDescription>
+              Digite o novo nome para o workspace
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Nome do workspace"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleConfirmRename();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmRename} disabled={!newName.trim()}>
+              Renomear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
