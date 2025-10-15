@@ -44,7 +44,7 @@ const Index = () => {
       const data = await supabaseClient.listAgents();
       setAgents(data || []);
     } catch (error: any) {
-      toast.error("Erro ao carregar notebooks", {
+      toast.error("Erro ao carregar workspaces", {
         description: error.message,
       });
     } finally {
@@ -52,36 +52,36 @@ const Index = () => {
     }
   }
 
-  const handleCreateNotebook = async () => {
+  const handleCreateWorkspace = async () => {
     try {
       const newAgent = await supabaseClient.createAgent(
-        "Novo Notebook",
+        "Novo Workspace",
         [],
         "",
         []
       );
       
-      navigate(`/notebook/${newAgent.id}?openAddSource=true`);
+      navigate(`/workspace/${newAgent.id}?openAddSource=true`);
     } catch (error: any) {
-      toast.error("Erro ao criar notebook", {
+      toast.error("Erro ao criar workspace", {
         description: error.message,
       });
     }
   };
 
-  const handleDeleteNotebook = async (agentId: string, agentName: string, e: React.MouseEvent) => {
+  const handleDeleteWorkspace = async (agentId: string, agentName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!confirm(`Tem certeza que deseja excluir o notebook "${agentName}"? Esta ação não pode ser desfeita.`)) {
+    if (!confirm(`Tem certeza que deseja excluir o workspace "${agentName}"? Esta ação não pode ser desfeita.`)) {
       return;
     }
 
     try {
       await supabaseClient.deleteAgent(agentId);
-      toast.success("Notebook excluído com sucesso");
+      toast.success("Workspace excluído com sucesso");
       loadAgents(); // Recarrega a lista
     } catch (error: any) {
-      toast.error("Erro ao excluir notebook", {
+      toast.error("Erro ao excluir workspace", {
         description: error.message,
       });
     }
@@ -123,11 +123,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Notebooks" description="Gerencie seus notebooks" canonical="/" />
+      <SEO title="Workspaces" description="Gerencie seus workspaces" canonical="/" />
       
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-semibold">Notebooks recentes</h1>
+          <h1 className="text-2xl font-semibold">Workspaces recentes</h1>
 
           <div className="flex items-center gap-2">
             <Button
@@ -166,9 +166,9 @@ const Index = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={handleCreateNotebook}>
+            <Button onClick={handleCreateWorkspace}>
               <Plus className="h-4 w-4 mr-2" />
-              Novo notebook
+              Novo workspace
             </Button>
           </div>
         </div>
@@ -179,19 +179,19 @@ const Index = () => {
             {/* Create new card */}
             <Card
               className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]"
-              onClick={handleCreateNotebook}
+              onClick={handleCreateWorkspace}
             >
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <Plus className="h-6 w-6 text-primary" />
               </div>
-              <p className="font-medium">Criar novo notebook</p>
+              <p className="font-medium">Criar novo workspace</p>
             </Card>
 
             {sortedAgents.map((agent, index) => (
               <Card
                 key={agent.id}
                 className="p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[200px] flex flex-col"
-                onClick={() => navigate(`/notebook/${agent.id}`)}
+                onClick={() => navigate(`/workspace/${agent.id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="text-3xl">{getEmoji(index)}</div>
@@ -204,13 +204,13 @@ const Index = () => {
                     <DropdownMenuContent>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/notebook/${agent.id}`);
+                      navigate(`/workspace/${agent.id}`);
                     }}>
                       Editar
                     </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={(e) => handleDeleteNotebook(agent.id, agent.name, e)}
+                        onClick={(e) => handleDeleteWorkspace(agent.id, agent.name, e)}
                       >
                         Excluir
                       </DropdownMenuItem>
@@ -233,19 +233,19 @@ const Index = () => {
             {/* Create new list item */}
             <Card
               className="p-4 flex items-center gap-4 cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={handleCreateNotebook}
+              onClick={handleCreateWorkspace}
             >
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Plus className="h-5 w-5 text-primary" />
               </div>
-              <p className="font-medium">Criar novo notebook</p>
+              <p className="font-medium">Criar novo workspace</p>
             </Card>
 
             {sortedAgents.map((agent, index) => (
               <Card
                 key={agent.id}
                 className="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate(`/notebook/${agent.id}`)}
+                onClick={() => navigate(`/workspace/${agent.id}`)}
               >
                 <div className="text-2xl flex-shrink-0">{getEmoji(index)}</div>
                 
@@ -265,13 +265,13 @@ const Index = () => {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/notebook/${agent.id}`);
+                      navigate(`/workspace/${agent.id}`);
                     }}>
                       Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={(e) => handleDeleteNotebook(agent.id, agent.name, e)}
+                      onClick={(e) => handleDeleteWorkspace(agent.id, agent.name, e)}
                     >
                       Excluir
                     </DropdownMenuItem>

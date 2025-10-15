@@ -327,7 +327,7 @@ const translations = {
      
      // Add Source Modal
      'addSource.title': 'Add sources',
-     'addSource.description': 'Sources allow NotebookLM to base its answers on the most important information for you.',
+     'addSource.description': 'Sources allow your Workspace to base its answers on the most important information for you.',
      'addSource.examples': '(Examples: marketing plans, course readings, research notes, meeting transcripts, sales documents, etc.)',
      'addSource.uploadTab': 'Upload',
      'addSource.bigQueryTab': 'BigQuery',
@@ -349,15 +349,15 @@ const translations = {
      'addSource.sheetsUrlPlaceholder': 'https://docs.google.com/spreadsheets/d/...',
      'addSource.sheetsDescription': 'Paste the sharing link of the Google Sheets you want to connect',
      
-     // Notebook
-     'notebook.chat': 'Chat',
-     'notebook.addSourceToStart': 'Add a source to start',
-     'notebook.addSourceDescription': 'Upload your data sources to start asking questions and getting insights.',
-     'notebook.uploadSource': 'Upload Source',
-     'notebook.inputPlaceholder': 'Ask a question about your data...',
-     'notebook.addSourceFirst': 'Add a source first to start asking questions',
-     'notebook.startConversation': 'Start a conversation',
-     'notebook.startConversationDescription': 'Ask questions about your data to get insights and answers.',
+      // Workspace
+      'workspace.chat': 'Chat',
+      'workspace.addSourceToStart': 'Add a source to start',
+      'workspace.addSourceDescription': 'Upload your data sources to start asking questions and getting insights.',
+      'workspace.uploadSource': 'Upload Source',
+      'workspace.inputPlaceholder': 'Ask a question about your data...',
+      'workspace.addSourceFirst': 'Add a source first to start asking questions',
+      'workspace.startConversation': 'Start a conversation',
+      'workspace.startConversationDescription': 'Ask questions about your data to get insights and answers.',
      'addSource.connectSheets': 'Connect Google Sheets',
       'addSource.sourceLimit': 'Source limit',
       'addSource.filesUploaded': 'Files uploaded successfully!',
@@ -693,7 +693,7 @@ const translations = {
      
      // Add Source Modal
      'addSource.title': 'Adicionar fontes',
-     'addSource.description': 'As fontes permitem que o NotebookLM baseie suas respostas nas informações mais importantes para você.',
+     'addSource.description': 'As fontes permitem que seu Workspace baseie suas respostas nas informações mais importantes para você.',
      'addSource.examples': '(Exemplos: planos de marketing, leitura de curso, notas de pesquisa, transcrições de reunião, documentos de vendas, etc.)',
      'addSource.uploadTab': 'Upload',
      'addSource.bigQueryTab': 'BigQuery',
@@ -719,15 +719,15 @@ const translations = {
       'addSource.filesUploaded': 'Arquivos enviados com sucesso!',
       'addSource.uploadError': 'Erro ao enviar arquivos',
       
-      // Notebook
-      'notebook.chat': 'Chat',
-      'notebook.addSourceToStart': 'Adicione uma fonte para começar',
-      'notebook.addSourceDescription': 'Carregue suas fontes de dados para começar a fazer perguntas e obter insights.',
-      'notebook.uploadSource': 'Carregar Fonte',
-      'notebook.inputPlaceholder': 'Faça uma pergunta sobre seus dados...',
-      'notebook.addSourceFirst': 'Adicione uma fonte primeiro para fazer perguntas',
-      'notebook.startConversation': 'Inicie uma conversa',
-      'notebook.startConversationDescription': 'Faça perguntas sobre seus dados para obter insights e respostas.',
+       // Workspace
+       'workspace.chat': 'Chat',
+       'workspace.addSourceToStart': 'Adicione uma fonte para começar',
+       'workspace.addSourceDescription': 'Carregue suas fontes de dados para começar a fazer perguntas e obter insights.',
+       'workspace.uploadSource': 'Carregar Fonte',
+       'workspace.inputPlaceholder': 'Faça uma pergunta sobre seus dados...',
+       'workspace.addSourceFirst': 'Adicione uma fonte primeiro para fazer perguntas',
+       'workspace.startConversation': 'Inicie uma conversa',
+       'workspace.startConversationDescription': 'Faça perguntas sobre seus dados para obter insights e respostas.',
       
       // Studio
       'studio.title': 'Studio',

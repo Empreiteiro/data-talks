@@ -10,7 +10,7 @@ import { SEO } from "@/components/SEO";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-export default function Notebook() {
+export default function Workspace() {
   const { t } = useLanguage();
   const {
     id
@@ -93,7 +93,7 @@ export default function Notebook() {
     }
   };
   return <div className="h-[calc(100vh-4rem)] flex flex-col bg-background p-4">
-      <SEO title="Notebook" description="Converse com seus dados" canonical={`/notebook/${id}`} />
+      <SEO title="Workspace" description="Converse com seus dados" canonical={`/workspace/${id}`} />
       
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Sources Panel - Left */}
@@ -107,24 +107,24 @@ export default function Notebook() {
         {/* Chat Panel - Center */}
         <div className="flex-1 flex flex-col bg-card border rounded-xl overflow-hidden">
           <div className="p-4 border-b flex items-center h-[57px]">
-            <h1 className="font-semibold">{t('notebook.chat')}</h1>
+            <h1 className="font-semibold">{t('workspace.chat')}</h1>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
             {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
                 <Upload className="h-16 w-16 text-primary mb-4" />
                 <h2 className="text-xl font-semibold mb-2">
-                  {hasSources ? t('notebook.startConversation') : t('notebook.addSourceToStart')}
+                  {hasSources ? t('workspace.startConversation') : t('workspace.addSourceToStart')}
                 </h2>
                 <p className="text-muted-foreground max-w-md mb-6">
                   {hasSources 
-                    ? t('notebook.startConversationDescription')
-                    : t('notebook.addSourceDescription')
+                    ? t('workspace.startConversationDescription')
+                    : t('workspace.addSourceDescription')
                   }
                 </p>
                 {!hasSources && (
                   <Button onClick={() => setAddSourceOpen(true)}>
-                    {t('notebook.uploadSource')}
+                    {t('workspace.uploadSource')}
                   </Button>
                 )}
               </div> : <div className="space-y-4 max-w-3xl mx-auto">
@@ -149,7 +149,7 @@ export default function Notebook() {
           <div className="p-4 border-t">
             <div className="max-w-3xl mx-auto">
               <div className="flex gap-2">
-                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={hasSources ? t('notebook.inputPlaceholder') : t('notebook.addSourceFirst')} onKeyPress={e => e.key === "Enter" && !isLoading && hasSources && handleSendMessage()} disabled={!hasSources || isLoading} />
+                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={hasSources ? t('workspace.inputPlaceholder') : t('workspace.addSourceFirst')} onKeyPress={e => e.key === "Enter" && !isLoading && hasSources && handleSendMessage()} disabled={!hasSources || isLoading} />
                 <Button onClick={handleSendMessage} disabled={!question.trim() || !hasSources || isLoading}>
                   <Send className="h-4 w-4" />
                 </Button>

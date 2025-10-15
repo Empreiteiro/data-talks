@@ -18,7 +18,7 @@ import Alerts from "@/pages/Alerts";
 import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
 import ShareAgent from "@/pages/ShareAgent";
-import Notebook from "@/pages/Notebook";
+import Workspace from "@/pages/Workspace";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -32,7 +32,7 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 
 const AppContent = () => {
   const location = useLocation();
-  const isNotebookPage = location.pathname.startsWith('/notebook/');
+  const isWorkspacePage = location.pathname.startsWith('/workspace/');
   const isIndexPage = location.pathname === '/';
 
   return (
@@ -44,7 +44,9 @@ const AppContent = () => {
           <Route path="/login" element={<Auth />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/share/:token" element={<ShareAgent />} />
-          <Route path="/notebook/:id" element={<RequireAuth><Notebook /></RequireAuth>} />
+          <Route path="/workspace/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
+          {/* Redirect old notebook URLs to workspace */}
+          <Route path="/notebook/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
           <Route path="/agents" element={<RequireAuth><Agents /></RequireAuth>} />
@@ -57,7 +59,7 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      {!isNotebookPage && !isIndexPage && <Footer />}
+      {!isWorkspacePage && !isIndexPage && <Footer />}
     </div>
   );
 };
