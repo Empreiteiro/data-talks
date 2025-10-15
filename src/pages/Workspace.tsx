@@ -397,7 +397,7 @@ export default function Workspace() {
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Table className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-medium">Colunas Disponíveis</h3>
+                  <h3 className="text-sm font-medium">{t('questions.availableColumns')}</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {availableColumns.map((column, idx) => (
@@ -419,7 +419,7 @@ export default function Workspace() {
             {warmupQuestions.length > 0 && messages.length === 0 && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
-                  <h3 className="text-sm font-medium">Perguntas de Aquecimento</h3>
+                  <h3 className="text-sm font-medium">{t('questions.warmupQuestions')}</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {warmupQuestions.map((question, idx) => (

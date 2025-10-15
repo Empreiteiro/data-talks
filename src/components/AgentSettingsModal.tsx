@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AgentSettingsModalProps {
   open: boolean;
@@ -21,6 +22,7 @@ export function AgentSettingsModal({
   agentId,
   onSettingsUpdated
 }: AgentSettingsModalProps) {
+  const { t } = useLanguage();
   const [instructions, setInstructions] = useState("");
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
@@ -46,7 +48,7 @@ export function AgentSettingsModal({
       setWarmupQuestions(data?.suggested_questions || []);
     } catch (error: any) {
       console.error("Erro ao carregar configurações:", error);
-      toast.error("Erro ao carregar configurações");
+      toast.error(t('agentSettings.loadError'));
     }
   };
 
@@ -64,12 +66,12 @@ export function AgentSettingsModal({
 
       if (error) throw error;
 
-      toast.success("Configurações salvas com sucesso");
+      toast.success(t('agentSettings.saveSuccess'));
       onSettingsUpdated?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Erro ao salvar configurações:", error);
-      toast.error("Erro ao salvar configurações");
+      toast.error(t('agentSettings.saveError'));
     } finally {
       setLoading(false);
     }
@@ -90,30 +92,30 @@ export function AgentSettingsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Configurações do Agente</DialogTitle>
+          <DialogTitle>{t('agentSettings.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Orientações Específicas */}
           <div className="space-y-2">
-            <Label htmlFor="instructions">Orientações Específicas para o Agente</Label>
+            <Label htmlFor="instructions">{t('agentSettings.instructions')}</Label>
             <Textarea
               id="instructions"
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Digite as orientações específicas que o agente deve seguir ao responder perguntas..."
+              placeholder={t('agentSettings.instructionsPlaceholder')}
               className="min-h-[120px]"
             />
             <p className="text-xs text-muted-foreground">
-              Essas orientações serão usadas pelo agente para personalizar as respostas.
+              {t('agentSettings.instructionsHelp')}
             </p>
           </div>
 
           {/* Perguntas de Aquecimento */}
           <div className="space-y-2">
-            <Label>Perguntas de Aquecimento</Label>
+            <Label>{t('agentSettings.warmupQuestions')}</Label>
             <p className="text-xs text-muted-foreground mb-3">
-              Essas perguntas aparecerão abaixo das colunas disponíveis para ajudar os usuários a começar.
+              {t('agentSettings.warmupQuestionsHelp')}
             </p>
 
             {/* Lista de perguntas existentes */}
@@ -138,7 +140,7 @@ export function AgentSettingsModal({
               <Input
                 value={newQuestion}
                 onChange={(e) => setNewQuestion(e.target.value)}
-                placeholder="Digite uma nova pergunta de aquecimento..."
+                placeholder={t('agentSettings.addQuestion')}
                 onKeyPress={(e) => e.key === "Enter" && addQuestion()}
               />
               <Button
@@ -159,10 +161,10 @@ export function AgentSettingsModal({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              Cancelar
+              {t('agentSettings.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={loading}>
-              {loading ? "Salvando..." : "Salvar"}
+              {loading ? t('agentSettings.saving') : t('agentSettings.save')}
             </Button>
           </div>
         </div>
