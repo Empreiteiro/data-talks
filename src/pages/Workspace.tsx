@@ -6,7 +6,7 @@ import { AddSourceModal } from "@/components/AddSourceModal";
 import { AgentSettingsModal } from "@/components/AgentSettingsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, ChevronRight, History, X, Table, Settings, RotateCcw } from "lucide-react";
+import { Send, Upload, ChevronRight, History, X, Table, SlidersHorizontal, RotateCcw } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -332,7 +332,7 @@ export default function Workspace() {
                 onClick={() => setIsSettingsOpen(true)}
                 title={t('agentSettings.title')}
               >
-                <Settings className="h-4 w-4" />
+                <SlidersHorizontal className="h-4 w-4" />
               </Button>
               
               <Button 
