@@ -397,6 +397,14 @@ export const supabaseClient = {
       }
       
       // Create source record
+      console.log('Creating source record with data:', {
+        user_id: user.id,
+        name: file.name,
+        type: finalFileExt === 'csv' ? 'csv' : 'xlsx',
+        langflow_path: langflowPath,
+        langflow_name: langflowName
+      });
+      
       const { data: source, error: sourceError } = await supabase
         .from('sources')
         .insert({
@@ -410,7 +418,12 @@ export const supabaseClient = {
         .select()
         .single();
       
-      if (sourceError) throw sourceError;
+      if (sourceError) {
+        console.error('Error creating source record:', sourceError);
+        throw sourceError;
+      }
+      
+      console.log('Source created successfully:', source);
       return source;
     } catch (error) {
       const friendlyError = translateSupabaseError(error);
