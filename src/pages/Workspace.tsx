@@ -351,11 +351,11 @@ export default function Workspace() {
           <div className="flex-1 overflow-y-auto p-6">
             {availableColumns.length > 0 && messages.length === 0 && (
               <div className="max-w-3xl mx-auto mb-6">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3 px-2">
                   <Table className="h-4 w-4 text-primary" />
                   <h3 className="text-sm font-medium">Colunas Disponíveis</h3>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 px-2">
                   {availableColumns.map((column, idx) => (
                     <Button
                       key={idx}
