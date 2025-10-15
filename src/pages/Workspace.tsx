@@ -5,7 +5,7 @@ import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, ChevronRight, History } from "lucide-react";
+import { Send, Upload, ChevronRight, History, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -88,6 +88,39 @@ export default function Workspace() {
       console.error("Erro ao carregar histórico:", error);
     }
   }
+
+  const handleDeleteMessage = async (index: number) => {
+    const updatedMessages = messages.filter((_, i) => i !== index);
+    setMessages(updatedMessages);
+    
+    // Se temos um sessionId, atualizar no backend
+    if (currentSessionId) {
+      try {
+        // Reconstruir conversation_history a partir das mensagens atualizadas
+        const conversationHistory = [];
+        for (let i = 0; i < updatedMessages.length; i += 2) {
+          if (updatedMessages[i]?.role === "user" && updatedMessages[i + 1]?.role === "assistant") {
+            conversationHistory.push({
+              question: updatedMessages[i].content,
+              answer: updatedMessages[i + 1].content
+            });
+          }
+        }
+        
+        const { error } = await supabase
+          .from('qa_sessions')
+          .update({ conversation_history: conversationHistory })
+          .eq('id', currentSessionId);
+          
+        if (error) throw error;
+        
+        toast.success("Mensagem excluída");
+      } catch (error: any) {
+        console.error("Erro ao atualizar histórico:", error);
+        toast.error("Erro ao excluir mensagem");
+      }
+    }
+  };
 
   const handleLoadConversation = (qaSession: any) => {
     const conversationHistory = qaSession.conversation_history || [];
@@ -258,7 +291,15 @@ export default function Workspace() {
                 )}
               </div> : <div className="space-y-4 max-w-3xl mx-auto">
                 {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`rounded-lg p-4 max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                    <div className={`group relative rounded-lg p-4 max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => handleDeleteMessage(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     </div>
                   </div>)}
