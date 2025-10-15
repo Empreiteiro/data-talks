@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +74,39 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
     }
   }
 
+  async function handleDeleteSource(sourceId: string) {
+    if (!agentId) return;
+    
+    try {
+      // Buscar o agent atual
+      const { data: agent, error: agentError } = await supabase
+        .from('agents')
+        .select('source_ids')
+        .eq('id', agentId)
+        .single();
+
+      if (agentError) throw agentError;
+
+      // Remover o source_id do array
+      const updatedSourceIds = (agent.source_ids || []).filter((id: string) => id !== sourceId);
+
+      // Atualizar o agent
+      const { error: updateError } = await supabase
+        .from('agents')
+        .update({ source_ids: updatedSourceIds })
+        .eq('id', agentId);
+
+      if (updateError) throw updateError;
+
+      toast.success("Fonte removida com sucesso");
+      loadSources(); // Recarregar as fontes
+    } catch (error: any) {
+      toast.error("Erro ao remover fonte", {
+        description: error.message,
+      });
+    }
+  }
+
   const filteredSources = sources.filter((source) =>
     source.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -117,7 +150,7 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
             {filteredSources.map((source) => (
               <div
                 key={source.id}
-                className="p-3 rounded-lg border hover:bg-accent/50 cursor-pointer transition-colors"
+                className="group relative p-3 rounded-lg border hover:bg-accent/50 cursor-pointer transition-colors"
               >
                 <div className="flex items-start gap-2">
                   <FileText className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
@@ -132,6 +165,17 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
                       </span>
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSource(source.id);
+                    }}
+                  >
+                    <X className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               </div>
             ))}
