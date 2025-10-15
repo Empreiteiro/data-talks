@@ -5,7 +5,17 @@ import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, ChevronRight } from "lucide-react";
+import { Send, Upload, ChevronRight, History } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SEO } from "@/components/SEO";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,9 +43,12 @@ export default function Workspace() {
   const [studioPanelCollapsed, setStudioPanelCollapsed] = useState(false);
   const [hasSources, setHasSources] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     checkSources();
+    loadHistory();
   }, [id]);
 
   async function checkSources() {
@@ -55,6 +68,42 @@ export default function Workspace() {
       console.error("Erro ao verificar fontes:", error);
     }
   }
+
+  async function loadHistory() {
+    if (!id || !user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('qa_sessions')
+        .select('*')
+        .eq('agent_id', id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setHistory(data || []);
+    } catch (error: any) {
+      console.error("Erro ao carregar histórico:", error);
+    }
+  }
+
+  const handleLoadConversation = (qaSession: any) => {
+    const conversationHistory = qaSession.conversation_history || [];
+    
+    // Reconstruir o array de mensagens
+    const loadedMessages = conversationHistory.map((msg: any) => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    setMessages(loadedMessages);
+    setIsHistoryOpen(false);
+    
+    toast.success("Conversa carregada", {
+      description: "Você pode continuar de onde parou.",
+    });
+  };
 
   const handleSendMessage = async () => {
     if (!question.trim() || !id) return;
@@ -109,8 +158,63 @@ export default function Workspace() {
 
         {/* Chat Panel - Center */}
         <div className="flex-1 flex flex-col bg-card border rounded-xl overflow-hidden">
-          <div className="p-4 border-b flex items-center h-[57px]">
+          <div className="p-4 border-b flex items-center justify-between h-[57px]">
             <h1 className="font-semibold">{t('workspace.chat')}</h1>
+            
+            <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <History className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-[400px] sm:w-[540px]">
+                <SheetHeader>
+                  <SheetTitle>Conversas Anteriores</SheetTitle>
+                  <SheetDescription>
+                    Selecione uma conversa para continuar de onde parou
+                  </SheetDescription>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+                  {history.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      Nenhuma conversa anterior encontrada
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {history.map((qaSession: any) => (
+                        <Card
+                          key={qaSession.id}
+                          className="cursor-pointer hover:bg-accent transition-colors"
+                          onClick={() => handleLoadConversation(qaSession)}
+                        >
+                          <CardHeader className="p-4">
+                            <CardTitle className="text-sm line-clamp-1">
+                              {qaSession.question}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                              {new Date(qaSession.created_at).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </CardDescription>
+                          </CardHeader>
+                          {qaSession.answer && (
+                            <CardContent className="p-4 pt-0">
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {qaSession.answer}
+                              </p>
+                            </CardContent>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
