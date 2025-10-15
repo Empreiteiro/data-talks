@@ -45,10 +45,6 @@ const NavBar = () => {
         <div className="flex items-center gap-2">
           {user ? (
             <>
-              <Button asChild size="sm">
-                <Link to="/dashboard">{t('nav.dashboard')}</Link>
-              </Button>
-              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
@@ -58,6 +54,12 @@ const NavBar = () => {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>{t('settings.title')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer">
+                      Dashboard (deprecated)
+                    </Link>
+                  </DropdownMenuItem>
                   
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="cursor-pointer">
