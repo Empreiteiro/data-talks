@@ -41,7 +41,10 @@ export default function Workspace() {
     content: string;
   }>>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [studioPanelCollapsed, setStudioPanelCollapsed] = useState(false);
+  const [studioPanelCollapsed, setStudioPanelCollapsed] = useState(() => {
+    const saved = localStorage.getItem('studioPanelCollapsed');
+    return saved === 'true';
+  });
   const [hasSources, setHasSources] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -54,6 +57,10 @@ export default function Workspace() {
     loadHistory();
     loadAvailableColumns();
   }, [id, user]);
+
+  useEffect(() => {
+    localStorage.setItem('studioPanelCollapsed', studioPanelCollapsed.toString());
+  }, [studioPanelCollapsed]);
 
   async function checkSources() {
     if (!id) return;
