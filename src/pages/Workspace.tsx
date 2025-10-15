@@ -6,7 +6,7 @@ import { AddSourceModal } from "@/components/AddSourceModal";
 import { AgentSettingsModal } from "@/components/AgentSettingsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, ChevronRight, History, X, Table, Settings } from "lucide-react";
+import { Send, Upload, ChevronRight, History, X, Table, Settings, RotateCcw } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -134,6 +134,13 @@ export default function Workspace() {
     } catch (error: any) {
       console.error("Erro ao carregar perguntas de aquecimento:", error);
     }
+  }
+
+  function clearConversation() {
+    setMessages([]);
+    setCurrentSessionId(null);
+    setFollowUpQuestions([]);
+    setQuestion("");
   }
 
   async function loadHistory() {
@@ -323,8 +330,18 @@ export default function Workspace() {
                 variant="outline" 
                 size="icon"
                 onClick={() => setIsSettingsOpen(true)}
+                title={t('agentSettings.title')}
               >
                 <Settings className="h-4 w-4" />
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={clearConversation}
+                title={t('questions.clearConversation')}
+              >
+                <RotateCcw className="h-4 w-4" />
               </Button>
               
               <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>

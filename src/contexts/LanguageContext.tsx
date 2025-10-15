@@ -207,6 +207,7 @@ const translations = {
      'questions.status': 'Status',
      'questions.availableColumns': 'Available Columns',
      'questions.warmupQuestions': 'Warmup Questions',
+     'questions.clearConversation': 'Clear conversation',
      'questions.seoDescription': 'Ask questions in natural language',
      'questions.dateFormat': 'en-US',
      
@@ -620,6 +621,7 @@ const translations = {
      'questions.status': 'Status',
      'questions.availableColumns': 'Colunas disponíveis',
      'questions.warmupQuestions': 'Perguntas de Aquecimento',
+     'questions.clearConversation': 'Limpar conversa',
      'questions.seoDescription': 'Faça perguntas em linguagem natural',
      'questions.dateFormat': 'pt-BR',
      
