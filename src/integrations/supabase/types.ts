@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          instructions: string | null
           name: string
           share_password: string | null
           share_token: string | null
@@ -31,6 +32,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          instructions?: string | null
           name: string
           share_password?: string | null
           share_token?: string | null
@@ -43,6 +45,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          instructions?: string | null
           name?: string
           share_password?: string | null
           share_token?: string | null

@@ -3,9 +3,10 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
+import { AgentSettingsModal } from "@/components/AgentSettingsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, ChevronRight, History, X, Table } from "lucide-react";
+import { Send, Upload, ChevronRight, History, X, Table, Settings } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -51,11 +52,14 @@ export default function Workspace() {
   const [history, setHistory] = useState<any[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     checkSources();
     loadHistory();
     loadAvailableColumns();
+    loadWarmupQuestions();
   }, [id, user]);
 
   useEffect(() => {
@@ -111,6 +115,24 @@ export default function Workspace() {
       }
     } catch (error: any) {
       console.error("Erro ao carregar colunas:", error);
+    }
+  }
+
+  async function loadWarmupQuestions() {
+    if (!id) return;
+    
+    try {
+      const { data: agent, error } = await supabase
+        .from('agents')
+        .select('suggested_questions')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      setWarmupQuestions(agent?.suggested_questions || []);
+    } catch (error: any) {
+      console.error("Erro ao carregar perguntas de aquecimento:", error);
     }
   }
 
@@ -296,12 +318,21 @@ export default function Workspace() {
           <div className="p-4 border-b flex items-center justify-between h-[57px]">
             <h1 className="font-semibold">{t('workspace.chat')}</h1>
             
-            <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <History className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setIsSettingsOpen(true)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              
+              <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <History className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
               <SheetContent className="w-[400px] sm:w-[540px]">
                 <SheetHeader>
                   <SheetTitle>{t('workspace.previousConversations')}</SheetTitle>
@@ -358,6 +389,7 @@ export default function Workspace() {
                 </ScrollArea>
               </SheetContent>
             </Sheet>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-6">
@@ -382,6 +414,29 @@ export default function Workspace() {
                 </div>
               </div>
             )}
+            
+            {/* Perguntas de Aquecimento */}
+            {warmupQuestions.length > 0 && messages.length === 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-sm font-medium">Perguntas de Aquecimento</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {warmupQuestions.map((question, idx) => (
+                    <Button
+                      key={idx}
+                      variant="secondary"
+                      size="sm"
+                      className="text-xs h-auto py-2 px-3"
+                      onClick={() => setQuestion(question)}
+                    >
+                      {question}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
                 {!hasSources && <Upload className="h-16 w-16 text-primary mb-4" />}
                 <h2 className="text-xl font-semibold mb-2">
@@ -488,5 +543,15 @@ export default function Workspace() {
           });
         }
       }} />
+      
+      <AgentSettingsModal
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        agentId={id || ''}
+        onSettingsUpdated={() => {
+          loadWarmupQuestions();
+          toast.success("Configurações atualizadas");
+        }}
+      />
     </div>;
 }
