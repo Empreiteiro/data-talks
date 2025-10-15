@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, X } from "lucide-react";
+import { Plus, FileText, X, Link as LinkIcon, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,39 +22,41 @@ interface SourcesPanelProps {
 export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
   const { t } = useLanguage();
   const [sources, setSources] = useState<Source[]>([]);
+  const [linkedSourceIds, setLinkedSourceIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    loadSources();
     if (agentId) {
-      loadSources();
+      loadAgentSourceIds();
     }
   }, [agentId]);
 
-  async function loadSources() {
+  async function loadAgentSourceIds() {
     if (!agentId) return;
     
     try {
-      // Primeiro, buscar o agent para pegar os source_ids
-      const { data: agent, error: agentError } = await supabase
+      const { data: agent, error } = await supabase
         .from('agents')
         .select('source_ids')
         .eq('id', agentId)
         .single();
 
-      if (agentError) throw agentError;
+      if (error) throw error;
+      setLinkedSourceIds(agent?.source_ids || []);
+    } catch (error: any) {
+      console.error("Erro ao carregar source_ids do agente:", error);
+    }
+  }
 
-      if (!agent || !agent.source_ids || agent.source_ids.length === 0) {
-        setSources([]);
-        setLoading(false);
-        return;
-      }
-
-      // Buscar as fontes vinculadas ao agent
+  async function loadSources() {
+    try {
+      // Buscar todas as fontes do usuário
       const { data: sourcesData, error: sourcesError } = await supabase
         .from('sources')
         .select('*')
-        .in('id', agent.source_ids);
+        .order('created_at', { ascending: false });
 
       if (sourcesError) throw sourcesError;
 
@@ -74,32 +76,56 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
     }
   }
 
-  async function handleDeleteSource(sourceId: string) {
+  async function handleToggleSource(sourceId: string) {
     if (!agentId) return;
     
     try {
-      // Buscar o agent atual
-      const { data: agent, error: agentError } = await supabase
-        .from('agents')
-        .select('source_ids')
-        .eq('id', agentId)
-        .single();
+      const isLinked = linkedSourceIds.includes(sourceId);
+      const updatedSourceIds = isLinked
+        ? linkedSourceIds.filter(id => id !== sourceId)
+        : [...linkedSourceIds, sourceId];
 
-      if (agentError) throw agentError;
-
-      // Remover o source_id do array
-      const updatedSourceIds = (agent.source_ids || []).filter((id: string) => id !== sourceId);
-
-      // Atualizar o agent
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('agents')
         .update({ source_ids: updatedSourceIds })
         .eq('id', agentId);
 
-      if (updateError) throw updateError;
+      if (error) throw error;
+
+      setLinkedSourceIds(updatedSourceIds);
+      toast.success(isLinked ? "Fonte desvinculada" : "Fonte vinculada");
+    } catch (error: any) {
+      toast.error("Erro ao atualizar fonte", {
+        description: error.message,
+      });
+    }
+  }
+
+  async function handleDeleteSource(sourceId: string) {
+    try {
+      // Remover a fonte da tabela sources
+      const { error: deleteError } = await supabase
+        .from('sources')
+        .delete()
+        .eq('id', sourceId);
+
+      if (deleteError) throw deleteError;
+
+      // Se estava vinculada ao agente, também remover do agent
+      if (agentId && linkedSourceIds.includes(sourceId)) {
+        const updatedSourceIds = linkedSourceIds.filter(id => id !== sourceId);
+        
+        const { error: updateError } = await supabase
+          .from('agents')
+          .update({ source_ids: updatedSourceIds })
+          .eq('id', agentId);
+
+        if (updateError) throw updateError;
+        setLinkedSourceIds(updatedSourceIds);
+      }
 
       toast.success("Fonte removida com sucesso");
-      loadSources(); // Recarregar as fontes
+      loadSources();
     } catch (error: any) {
       toast.error("Erro ao remover fonte", {
         description: error.message,
@@ -147,38 +173,66 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredSources.map((source) => (
-              <div
-                key={source.id}
-                className="group relative p-3 rounded-lg border hover:bg-accent/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-start gap-2">
-                  <FileText className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{source.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {source.type}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(source.createdAt).toLocaleDateString('pt-BR')}
-                      </span>
+            {filteredSources.map((source) => {
+              const isLinked = linkedSourceIds.includes(source.id);
+              return (
+                <div
+                  key={source.id}
+                  className={`group relative p-3 rounded-lg border transition-colors ${
+                    isLinked 
+                      ? 'bg-primary/5 border-primary/20 hover:bg-primary/10' 
+                      : 'hover:bg-accent/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <FileText className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isLinked ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{source.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={isLinked ? "default" : "secondary"} className="text-xs">
+                          {source.type}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(source.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {agentId && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleSource(source.id);
+                          }}
+                          title={isLinked ? "Desvincular fonte" : "Vincular fonte"}
+                        >
+                          {isLinked ? (
+                            <Unlink className="h-4 w-4 text-orange-500" />
+                          ) : (
+                            <LinkIcon className="h-4 w-4 text-primary" />
+                          )}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSource(source.id);
+                        }}
+                        title="Excluir fonte"
+                      >
+                        <X className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSource(source.id);
-                    }}
-                  >
-                    <X className="h-4 w-4 text-destructive" />
-                  </Button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

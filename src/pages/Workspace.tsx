@@ -173,7 +173,9 @@ export default function Workspace() {
       </div>
 
       <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} onSourceAdded={() => {
-        checkSources(); // Atualiza o estado de fontes
+        checkSources();
+        // Força reload do SourcesPanel
+        window.location.reload();
       }} />
     </div>;
 }

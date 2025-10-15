@@ -51,7 +51,10 @@ export function AddSourceModal({
     setUploading(true);
     try {
       const uploadPromises = files.map(file => supabaseClient.uploadFile(file));
-      await Promise.all(uploadPromises);
+      const results = await Promise.all(uploadPromises);
+      
+      console.log('Upload results:', results);
+      
       toast.success(t('addSource.filesUploaded'));
       onSourceAdded?.();
       onOpenChange(false);
