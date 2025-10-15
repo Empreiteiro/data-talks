@@ -77,12 +77,7 @@ export function AddSourceModal({
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{t('addSource.title')}</span>
-            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          <DialogTitle>{t('addSource.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
