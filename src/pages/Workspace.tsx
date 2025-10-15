@@ -131,6 +131,9 @@ export default function Workspace() {
         role: "assistant",
         content: data.answer || "Não foi possível gerar uma resposta."
       }]);
+      
+      // Recarregar histórico após resposta bem-sucedida
+      loadHistory();
     } catch (error: any) {
       console.error("Erro ao enviar pergunta:", error);
       toast.error("Erro ao processar pergunta", {
