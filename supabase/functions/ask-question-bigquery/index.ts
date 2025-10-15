@@ -2,8 +2,8 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const langflowBigqueryApiKey = Deno.env.get('LANGFLOW_BIGQUERY_API_KEY');
-const langflowBigqueryUrl = Deno.env.get('LANGFLOW_BIGQUERY_URL');
+const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
+const langflowBaseUrl = Deno.env.get('LANGFLOW_BASE_URL');
 const langflowBigqueryFlowId = Deno.env.get('LANGFLOW_BIGQUERY_FLOW_ID');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -29,19 +29,19 @@ serve(async (req) => {
       );
     }
 
-    // Validate BigQuery configuration
-    console.log('BigQuery API key present:', !!langflowBigqueryApiKey);
-    console.log('BigQuery URL present:', !!langflowBigqueryUrl);
+    // Validate Langflow configuration
+    console.log('Langflow API key present:', !!langflowApiKey);
+    console.log('Langflow base URL present:', !!langflowBaseUrl);
     console.log('BigQuery Flow ID present:', !!langflowBigqueryFlowId);
     
-    if (!langflowBigqueryApiKey || !langflowBigqueryUrl || !langflowBigqueryFlowId) {
-      console.error('Missing BigQuery configuration:', {
-        hasApiKey: !!langflowBigqueryApiKey,
-        hasUrl: !!langflowBigqueryUrl,
+    if (!langflowApiKey || !langflowBaseUrl || !langflowBigqueryFlowId) {
+      console.error('Missing Langflow configuration:', {
+        hasApiKey: !!langflowApiKey,
+        hasBaseUrl: !!langflowBaseUrl,
         hasFlowId: !!langflowBigqueryFlowId
       });
       return new Response(
-        JSON.stringify({ error: 'Langflow BigQuery configuration not complete' }),
+        JSON.stringify({ error: 'Langflow configuration not complete' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -152,11 +152,11 @@ serve(async (req) => {
     console.log('=== FIM DO PAYLOAD ===');
     
     // Construct the complete Langflow API URL as specified
-    const langflowApiUrl = `${langflowBigqueryUrl.replace(/\/$/, '')}/api/v1/run/${langflowBigqueryFlowId}`;
+    const langflowApiUrl = `${langflowBaseUrl.replace(/\/$/, '')}/api/v1/run/${langflowBigqueryFlowId}`;
     
     console.log('BigQuery API URL:', langflowApiUrl);
     
-    const headers = { 'x-api-key': langflowBigqueryApiKey };
+    const headers = { 'x-api-key': langflowApiKey };
     
     const langflowResponse = await fetch(langflowApiUrl, {
       method: 'POST',
