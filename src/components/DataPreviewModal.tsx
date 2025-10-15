@@ -15,7 +15,7 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
   
   console.log('DataPreviewModal - metadata:', metadata);
   
-  const schema = metadata?.schema || [];
+  const schema = metadata?.columns || [];
   const previewRows = metadata?.preview_rows || [];
   
   console.log('DataPreviewModal - schema:', schema);
@@ -35,9 +35,9 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
           <Table>
             <TableHeader>
               <TableRow>
-                {schema.map((column: any, index: number) => (
+                {schema.map((column: string, index: number) => (
                   <TableHead key={index} className="whitespace-nowrap">
-                    {column.name || column}
+                    {column}
                   </TableHead>
                 ))}
               </TableRow>
@@ -46,16 +46,13 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
               {previewRows.length > 0 ? (
                 previewRows.map((row: any, rowIndex: number) => (
                   <TableRow key={rowIndex}>
-                    {schema.map((column: any, colIndex: number) => {
-                      const columnName = column.name || column;
-                      return (
-                        <TableCell key={colIndex} className="whitespace-nowrap">
-                          {row[columnName] !== null && row[columnName] !== undefined 
-                            ? String(row[columnName]) 
-                            : '-'}
-                        </TableCell>
-                      );
-                    })}
+                    {schema.map((column: string, colIndex: number) => (
+                      <TableCell key={colIndex} className="whitespace-nowrap">
+                        {row[column] !== null && row[column] !== undefined 
+                          ? String(row[column]) 
+                          : '-'}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))
               ) : (

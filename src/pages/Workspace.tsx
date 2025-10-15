@@ -97,10 +97,7 @@ export default function Workspace() {
         const metadata = source?.metadata as any;
         console.log('Workspace - source metadata:', metadata);
         
-        const schema = metadata?.schema || [];
-        console.log('Workspace - schema:', schema);
-        
-        const columnNames = schema.map((col: any) => col.name || col);
+        const columnNames = metadata?.columns || [];
         console.log('Workspace - columnNames:', columnNames);
         
         setAvailableColumns(columnNames);
