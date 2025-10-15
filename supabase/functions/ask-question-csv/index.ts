@@ -103,7 +103,13 @@ serve(async (req) => {
     
     console.log('CSV Payload:', JSON.stringify(payload, null, 2));
     
-    const langflowResponse = await fetch(`${langflowBaseUrl}/api/v1/run/${langflowCsvFlowId}`, {
+    const langflowUrl = `${langflowBaseUrl}/api/v1/run/${langflowCsvFlowId}`;
+    console.log('Calling Langflow URL:', langflowUrl);
+    console.log('Langflow API Key present:', !!langflowApiKey);
+    console.log('Langflow Base URL:', langflowBaseUrl);
+    console.log('Langflow CSV Flow ID:', langflowCsvFlowId);
+    
+    const langflowResponse = await fetch(langflowUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -112,13 +118,25 @@ serve(async (req) => {
       body: JSON.stringify(payload),
     });
     
-    const langflowData = await langflowResponse.json();
-    console.log('Langflow CSV Response:', JSON.stringify(langflowData, null, 2));
+    console.log('Langflow response status:', langflowResponse.status);
+    console.log('Langflow response headers:', Object.fromEntries(langflowResponse.headers.entries()));
     
     if (!langflowResponse.ok) {
-      console.error('Langflow CSV API error:', langflowData);
-      throw new Error('Erro na API do Langflow CSV');
+      const errorText = await langflowResponse.text();
+      console.error('Langflow error response:', errorText.substring(0, 1000));
+      throw new Error(`Langflow API returned ${langflowResponse.status}: ${errorText.substring(0, 200)}`);
     }
+    
+    // Check content-type to ensure it's JSON
+    const contentType = langflowResponse.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const responseText = await langflowResponse.text();
+      console.error('Non-JSON response from Langflow:', responseText.substring(0, 500));
+      throw new Error(`Langflow returned non-JSON response. Content-Type: ${contentType}. Response: ${responseText.substring(0, 200)}`);
+    }
+    
+    const langflowData = await langflowResponse.json();
+    console.log('Langflow CSV Response:', JSON.stringify(langflowData, null, 2));
 
     // For CSV responses, extract main answer and follow-up questions
     const outputs = langflowData.outputs?.[0]?.outputs || [];
