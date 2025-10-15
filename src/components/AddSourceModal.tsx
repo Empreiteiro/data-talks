@@ -98,9 +98,7 @@ export function AddSourceModal({
                   </label>{" "}
                   {t('addSource.uploadText')}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {t('addSource.supportedTypes')}
-                </p>
+                
                 <input id="file-upload" type="file" className="hidden" multiple accept=".csv,.xlsx,.xls" onChange={handleFileInput} disabled={uploading} />
               </div>
             </TabsContent>
