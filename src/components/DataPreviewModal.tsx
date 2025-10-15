@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DataPreviewModalProps {
   open: boolean;
@@ -10,6 +11,7 @@ interface DataPreviewModalProps {
 }
 
 export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: DataPreviewModalProps) => {
+  const { t } = useLanguage();
   const schema = metadata?.schema || [];
   const previewRows = metadata?.preview_rows || [];
 
@@ -17,9 +19,9 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>Preview dos Dados</DialogTitle>
+          <DialogTitle>{t('workspace.dataPreview')}</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Visualização das primeiras linhas da fonte de dados
+            {t('workspace.dataPreviewDescription')}
           </p>
         </DialogHeader>
         
@@ -53,7 +55,7 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
               ) : (
                 <TableRow>
                   <TableCell colSpan={schema.length} className="text-center text-muted-foreground">
-                    Nenhum dado de preview disponível
+                    {t('workspace.noPreviewData')}
                   </TableCell>
                 </TableRow>
               )}

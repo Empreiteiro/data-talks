@@ -289,15 +289,15 @@ export default function Workspace() {
               </SheetTrigger>
               <SheetContent className="w-[400px] sm:w-[540px]">
                 <SheetHeader>
-                  <SheetTitle>Conversas Anteriores</SheetTitle>
+                  <SheetTitle>{t('workspace.previousConversations')}</SheetTitle>
                   <SheetDescription>
-                    Selecione uma conversa para continuar de onde parou
+                    {t('workspace.previousConversationsDescription')}
                   </SheetDescription>
                 </SheetHeader>
                 <ScrollArea className="h-[calc(100vh-120px)] mt-6">
                   {history.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
-                      Nenhuma conversa anterior encontrada
+                      {t('workspace.noPreviousConversations')}
                     </div>
                   ) : (
                     <div className="space-y-3">

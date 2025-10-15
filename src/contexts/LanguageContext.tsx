@@ -387,6 +387,12 @@ const translations = {
        'workspace.deleteConfirm': 'Are you sure you want to delete the workspace "{name}"? This action cannot be undone.',
        'workspace.deleteSuccess': 'Workspace deleted successfully',
        'workspace.deleteError': 'Error deleting workspace',
+       'workspace.dataPreview': 'Data Preview',
+       'workspace.dataPreviewDescription': 'Viewing the first rows of the data source',
+       'workspace.noPreviewData': 'No preview data available',
+       'workspace.previousConversations': 'Previous Conversations',
+       'workspace.previousConversationsDescription': 'Select a conversation to continue from where you left off',
+       'workspace.noPreviousConversations': 'No previous conversations found',
        
        // Studio
        'studio.title': 'Studio',
@@ -778,6 +784,12 @@ const translations = {
        'workspace.deleteConfirm': 'Tem certeza que deseja excluir o workspace "{name}"? Esta ação não pode ser desfeita.',
        'workspace.deleteSuccess': 'Workspace excluído com sucesso',
        'workspace.deleteError': 'Erro ao excluir workspace',
+       'workspace.dataPreview': 'Preview dos Dados',
+       'workspace.dataPreviewDescription': 'Visualização das primeiras linhas da fonte de dados',
+       'workspace.noPreviewData': 'Nenhum dado de preview disponível',
+       'workspace.previousConversations': 'Conversas Anteriores',
+       'workspace.previousConversationsDescription': 'Selecione uma conversa para continuar de onde parou',
+       'workspace.noPreviousConversations': 'Nenhuma conversa anterior encontrada',
        
       // Studio
       'studio.title': 'Studio',
