@@ -374,7 +374,7 @@ export default function Workspace() {
                       variant="outline"
                       size="sm"
                       className="text-xs h-auto py-1.5 px-3 font-mono"
-                      onClick={() => setQuestion(column)}
+                      onClick={() => setQuestion(prev => prev ? `${prev} ${column}` : column)}
                     >
                       {column}
                     </Button>
