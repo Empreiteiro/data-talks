@@ -243,10 +243,10 @@ export default function Workspace() {
       }]);
       
       // Atualizar follow-up questions se disponíveis
-      console.log('Follow-up questions from API:', data.follow_up_questions);
-      if (data.follow_up_questions && Array.isArray(data.follow_up_questions)) {
-        console.log('Setting follow-up questions:', data.follow_up_questions);
-        setFollowUpQuestions(data.follow_up_questions);
+      console.log('Follow-up questions from API:', data.followUpQuestions);
+      if (data.followUpQuestions && Array.isArray(data.followUpQuestions)) {
+        console.log('Setting follow-up questions:', data.followUpQuestions);
+        setFollowUpQuestions(data.followUpQuestions);
       } else {
         console.log('No follow-up questions or invalid format');
         setFollowUpQuestions([]);
