@@ -327,8 +327,8 @@ const translations = {
      
      // Add Source Modal
      'addSource.title': 'Add sources',
-     'addSource.description': 'Sources allow your Workspace to base its answers on the most important information for you.',
-     'addSource.examples': '(Examples: marketing plans, course readings, research notes, meeting transcripts, sales documents, etc.)',
+     'addSource.description': 'Transform your data into intelligent conversations. Connect your data sources and ask questions in natural language to get instant insights.',
+     'addSource.examples': 'Supported sources: CSV/Excel files, Google BigQuery databases, and Google Sheets.',
      'addSource.uploadTab': 'Upload',
      'addSource.bigQueryTab': 'BigQuery',
      'addSource.sheetsTab': 'Google Sheets',
@@ -693,8 +693,8 @@ const translations = {
      
      // Add Source Modal
      'addSource.title': 'Adicionar fontes',
-     'addSource.description': 'As fontes permitem que seu Workspace baseie suas respostas nas informações mais importantes para você.',
-     'addSource.examples': '(Exemplos: planos de marketing, leitura de curso, notas de pesquisa, transcrições de reunião, documentos de vendas, etc.)',
+     'addSource.description': 'Transforme seus dados em conversas inteligentes. Conecte suas fontes de dados e faça perguntas em linguagem natural para obter insights instantâneos.',
+     'addSource.examples': 'Fontes suportadas: arquivos CSV/Excel, bancos de dados Google BigQuery e Google Sheets.',
      'addSource.uploadTab': 'Upload',
      'addSource.bigQueryTab': 'BigQuery',
      'addSource.sheetsTab': 'Google Sheets',
