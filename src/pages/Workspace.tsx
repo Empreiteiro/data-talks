@@ -5,7 +5,7 @@ import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, ChevronRight, History, X } from "lucide-react";
+import { Send, Upload, ChevronRight, History, X, Table } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -47,10 +47,12 @@ export default function Workspace() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const [availableColumns, setAvailableColumns] = useState<string[]>([]);
 
   useEffect(() => {
     checkSources();
     loadHistory();
+    loadAvailableColumns();
   }, [id, user]);
 
   async function checkSources() {
@@ -68,6 +70,37 @@ export default function Workspace() {
       setHasSources(agent?.source_ids && agent.source_ids.length > 0);
     } catch (error: any) {
       console.error("Erro ao verificar fontes:", error);
+    }
+  }
+
+  async function loadAvailableColumns() {
+    if (!id) return;
+    
+    try {
+      const { data: agent, error: agentError } = await supabase
+        .from('agents')
+        .select('source_ids')
+        .eq('id', id)
+        .single();
+
+      if (agentError) throw agentError;
+
+      if (agent?.source_ids && agent.source_ids.length > 0) {
+        const { data: source, error: sourceError } = await supabase
+          .from('sources')
+          .select('metadata')
+          .eq('id', agent.source_ids[0])
+          .single();
+
+        if (sourceError) throw sourceError;
+
+        const metadata = source?.metadata as any;
+        const schema = metadata?.schema || [];
+        const columnNames = schema.map((col: any) => col.name || col);
+        setAvailableColumns(columnNames);
+      }
+    } catch (error: any) {
+      console.error("Erro ao carregar colunas:", error);
     }
   }
 
@@ -313,6 +346,27 @@ export default function Workspace() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
+            {availableColumns.length > 0 && messages.length === 0 && (
+              <div className="max-w-3xl mx-auto mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Table className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-medium">Colunas Disponíveis</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {availableColumns.map((column, idx) => (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-auto py-1.5 px-3 font-mono"
+                      onClick={() => setQuestion(column)}
+                    >
+                      {column}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
             {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
                 <Upload className="h-16 w-16 text-primary mb-4" />
                 <h2 className="text-xl font-semibold mb-2">
@@ -410,6 +464,7 @@ export default function Workspace() {
           if (error) throw error;
           
           checkSources();
+          loadAvailableColumns();
           window.location.reload();
         } catch (error: any) {
           console.error("Erro ao vincular fonte:", error);
