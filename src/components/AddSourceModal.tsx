@@ -11,7 +11,7 @@ import { supabaseClient } from "@/services/supabaseClient";
 interface AddSourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSourceAdded?: () => void;
+  onSourceAdded?: (sourceId: string) => void;
 }
 export function AddSourceModal({
   open,
@@ -56,7 +56,14 @@ export function AddSourceModal({
       console.log('Upload results:', results);
       
       toast.success(t('addSource.filesUploaded'));
-      onSourceAdded?.();
+      
+      // Passar o ID da primeira fonte criada (workspace suporta apenas 1 fonte por vez)
+      if (results.length > 0 && results[0]?.id) {
+        onSourceAdded?.(results[0].id);
+      } else {
+        onSourceAdded?.('');
+      }
+      
       onOpenChange(false);
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -87,7 +94,7 @@ export function AddSourceModal({
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="upload">{t('addSource.uploadTab')}</TabsTrigger>
               <TabsTrigger value="bigquery">{t('addSource.bigQueryTab')}</TabsTrigger>
-              <TabsTrigger value="sheets">{t('addSource.sheetsTab')}</TabsTrigger>
+              <TabsTrigger value="sheets" disabled className="cursor-not-allowed opacity-50">{t('addSource.sheetsTab')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-4">

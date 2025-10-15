@@ -172,10 +172,26 @@ export default function Workspace() {
           </div>}
       </div>
 
-      <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} onSourceAdded={() => {
-        checkSources();
-        // Força reload do SourcesPanel
-        window.location.reload();
+      <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} onSourceAdded={async (sourceId: string) => {
+        if (!id) return;
+        
+        // Auto-vincular a fonte ao workspace (substituindo qualquer fonte anterior)
+        try {
+          const { error } = await supabase
+            .from('agents')
+            .update({ source_ids: [sourceId] })
+            .eq('id', id);
+
+          if (error) throw error;
+          
+          checkSources();
+          window.location.reload();
+        } catch (error: any) {
+          console.error("Erro ao vincular fonte:", error);
+          toast.error("Erro ao vincular fonte", {
+            description: error.message
+          });
+        }
       }} />
     </div>;
 }
