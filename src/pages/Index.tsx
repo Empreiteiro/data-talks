@@ -55,10 +55,10 @@ const Index = () => {
   }
   const handleCreateWorkspace = async () => {
     try {
-      const newAgent = await supabaseClient.createAgent("Novo espaço de trabalho", [], "", []);
+      const newAgent = await supabaseClient.createAgent(t('workspace.newWorkspace'), [], "", []);
       navigate(`/workspace/${newAgent.id}?openAddSource=true`);
     } catch (error: any) {
-      toast.error("Erro ao criar workspace", {
+      toast.error(t('workspace.errorCreatingWorkspace'), {
         description: error.message
       });
     }
@@ -73,26 +73,26 @@ const Index = () => {
     if (!selectedAgent || !newName.trim()) return;
     try {
       await supabaseClient.updateAgent(selectedAgent.id, newName, selectedAgent.source_ids, selectedAgent.description || "", []);
-      toast.success("Workspace renomeado com sucesso");
+      toast.success(t('workspace.renameSuccess'));
       loadAgents();
       setRenameDialogOpen(false);
     } catch (error: any) {
-      toast.error("Erro ao renomear workspace", {
+      toast.error(t('workspace.renameError'), {
         description: error.message
       });
     }
   };
   const handleDeleteWorkspace = async (agentId: string, agentName: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Tem certeza que deseja excluir o workspace "${agentName}"? Esta ação não pode ser desfeita.`)) {
+    if (!confirm(t('workspace.deleteConfirm', { name: agentName }))) {
       return;
     }
     try {
       await supabaseClient.deleteAgent(agentId);
-      toast.success("Workspace excluído com sucesso");
-      loadAgents(); // Recarrega a lista
+      toast.success(t('workspace.deleteSuccess'));
+      loadAgents();
     } catch (error: any) {
-      toast.error("Erro ao excluir workspace", {
+      toast.error(t('workspace.deleteError'), {
         description: error.message
       });
     }
@@ -121,16 +121,16 @@ const Index = () => {
     return <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>;
   }
   return <div className="min-h-screen bg-background">
-      <SEO title="Workspaces" description="Gerencie seus workspaces" canonical="/" />
+      <SEO title={t('workspace.title')} description={t('workspace.description')} canonical="/" />
       
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-semibold">Workspaces</h1>
+          <h1 className="text-2xl font-semibold">{t('workspace.title')}</h1>
 
           <div className="flex items-center gap-2">
             <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" onClick={() => setViewMode("grid")}>
@@ -143,27 +143,27 @@ const Index = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  {sortBy === "newest" && "Mais recentes"}
-                  {sortBy === "oldest" && "Mais antigos"}
-                  {sortBy === "name" && "Nome (A-Z)"}
+                  {sortBy === "newest" && t('workspace.mostRecent')}
+                  {sortBy === "oldest" && t('workspace.oldest')}
+                  {sortBy === "name" && t('workspace.nameAZ')}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={() => setSortBy("newest")}>
-                  Mais recentes
+                  {t('workspace.mostRecent')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortBy("oldest")}>
-                  Mais antigos
+                  {t('workspace.oldest')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortBy("name")}>
-                  Nome (A-Z)
+                  {t('workspace.nameAZ')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
             <Button onClick={handleCreateWorkspace}>
               <Plus className="h-4 w-4 mr-2" />
-              Novo workspace
+              {t('workspace.newWorkspace')}
             </Button>
           </div>
         </div>
@@ -175,7 +175,7 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <Plus className="h-6 w-6 text-primary" />
               </div>
-              <p className="font-medium">Criar novo workspace</p>
+              <p className="font-medium">{t('workspace.createNewWorkspace')}</p>
             </Card>
 
             {sortedAgents.map((agent, index) => <Card key={agent.id} className="p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[200px] flex flex-col" onClick={() => navigate(`/workspace/${agent.id}`)}>
@@ -192,14 +192,14 @@ const Index = () => {
                   e.stopPropagation();
                   navigate(`/workspace/${agent.id}`);
                 }}>
-                      Editar
+                      {t('workspace.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={e => handleRenameWorkspace(agent, e)}>
                       <Pencil className="h-4 w-4 mr-2" />
-                      Renomear
+                      {t('workspace.rename')}
                     </DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive" onClick={e => handleDeleteWorkspace(agent.id, agent.name, e)}>
-                        Excluir
+                        {t('workspace.delete')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -209,7 +209,7 @@ const Index = () => {
                 
                 <div className="mt-auto pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
-                    {new Date(agent.created_at).toLocaleDateString('pt-BR')} • {agent.source_ids?.length || 0} fontes
+                    {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_ids?.length || 0} {agent.source_ids?.length === 1 ? t('workspace.source') : t('workspace.sources')}
                   </p>
                 </div>
               </Card>)}
@@ -219,7 +219,7 @@ const Index = () => {
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Plus className="h-5 w-5 text-primary" />
               </div>
-              <p className="font-medium">Criar novo workspace</p>
+              <p className="font-medium">{t('workspace.createNewWorkspace')}</p>
             </Card>
 
             {sortedAgents.map((agent, index) => <Card key={agent.id} className="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/workspace/${agent.id}`)}>
@@ -228,7 +228,7 @@ const Index = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-lg truncate mb-1">{agent.name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(agent.created_at).toLocaleDateString('pt-BR')} • {agent.source_ids?.length || 0} fontes
+                    {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_ids?.length || 0} {agent.source_ids?.length === 1 ? t('workspace.source') : t('workspace.sources')}
                   </p>
                 </div>
 
@@ -243,14 +243,14 @@ const Index = () => {
                 e.stopPropagation();
                 navigate(`/workspace/${agent.id}`);
               }}>
-                      Editar
+                      {t('workspace.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={e => handleRenameWorkspace(agent, e)}>
                       <Pencil className="h-4 w-4 mr-2" />
-                      Renomear
+                      {t('workspace.rename')}
                     </DropdownMenuItem>
                     <DropdownMenuItem className="text-destructive" onClick={e => handleDeleteWorkspace(agent.id, agent.name, e)}>
-                      Excluir
+                      {t('workspace.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -262,15 +262,15 @@ const Index = () => {
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Renomear workspace</DialogTitle>
+            <DialogTitle>{t('workspace.renameWorkspace')}</DialogTitle>
             <DialogDescription>
-              Digite o novo nome para o workspace
+              {t('workspace.renameDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input id="name" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nome do workspace" onKeyDown={e => {
+              <Label htmlFor="name">{t('workspace.name')}</Label>
+              <Input id="name" value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('workspace.name')} onKeyDown={e => {
               if (e.key === 'Enter') {
                 handleConfirmRename();
               }
@@ -279,10 +279,10 @@ const Index = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
-              Cancelar
+              {t('workspace.cancel')}
             </Button>
             <Button onClick={handleConfirmRename} disabled={!newName.trim()}>
-              Renomear
+              {t('workspace.rename')}
             </Button>
           </DialogFooter>
         </DialogContent>

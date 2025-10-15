@@ -12,6 +12,9 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const translations = {
   en: {
+    // Common
+    'common.loading': 'Loading...',
+    
     // Navigation
     'nav.dashboard': 'Dashboard',
     'nav.account': 'Account',
@@ -349,22 +352,44 @@ const translations = {
      'addSource.sheetsUrlPlaceholder': 'https://docs.google.com/spreadsheets/d/...',
      'addSource.sheetsDescription': 'Paste the sharing link of the Google Sheets you want to connect',
      
-      // Workspace
-      'workspace.chat': 'Chat',
-      'workspace.addSourceToStart': 'Add a source to start',
-      'workspace.addSourceDescription': 'Upload your data sources to start asking questions and getting insights.',
-      'workspace.uploadSource': 'Upload Source',
-      'workspace.inputPlaceholder': 'Ask a question about your data...',
-      'workspace.addSourceFirst': 'Add a source first to start asking questions',
-      'workspace.startConversation': 'Start a conversation',
-      'workspace.startConversationDescription': 'Ask questions about your data to get insights and answers.',
-     'addSource.connectSheets': 'Connect Google Sheets',
-      'addSource.sourceLimit': 'Source limit',
-      'addSource.filesUploaded': 'Files uploaded successfully!',
-      'addSource.uploadError': 'Error uploading files',
-      
-      // Studio
-      'studio.title': 'Studio',
+       // Workspace
+       'workspace.chat': 'Chat',
+       'workspace.addSourceToStart': 'Add a source to start',
+       'workspace.addSourceDescription': 'Upload your data sources to start asking questions and getting insights.',
+       'workspace.uploadSource': 'Upload Source',
+       'workspace.inputPlaceholder': 'Ask a question about your data...',
+       'workspace.addSourceFirst': 'Add a source first to start asking questions',
+       'workspace.startConversation': 'Start a conversation',
+       'workspace.startConversationDescription': 'Ask questions about your data to get insights and answers.',
+      'addSource.connectSheets': 'Connect Google Sheets',
+       'addSource.sourceLimit': 'Source limit',
+       'addSource.filesUploaded': 'Files uploaded successfully!',
+       'addSource.uploadError': 'Error uploading files',
+       'workspace.title': 'Workspaces',
+       'workspace.createNewWorkspace': 'Create new workspace',
+       'workspace.newWorkspace': 'New workspace',
+       'workspace.mostRecent': 'Most recent',
+       'workspace.oldest': 'Oldest',
+       'workspace.nameAZ': 'Name (A-Z)',
+       'workspace.sources': 'sources',
+       'workspace.source': 'source',
+       'workspace.rename': 'Rename',
+       'workspace.renameWorkspace': 'Rename workspace',
+       'workspace.renameDescription': 'Enter the new name for the workspace',
+       'workspace.name': 'Name',
+       'workspace.cancel': 'Cancel',
+       'workspace.delete': 'Delete',
+       'workspace.edit': 'Edit',
+       'workspace.description': 'Manage your workspaces',
+       'workspace.errorCreatingWorkspace': 'Error creating workspace',
+       'workspace.renameSuccess': 'Workspace renamed successfully',
+       'workspace.renameError': 'Error renaming workspace',
+       'workspace.deleteConfirm': 'Are you sure you want to delete the workspace "{name}"? This action cannot be undone.',
+       'workspace.deleteSuccess': 'Workspace deleted successfully',
+       'workspace.deleteError': 'Error deleting workspace',
+       
+       // Studio
+       'studio.title': 'Studio',
       'studio.audioOverview': 'Audio Overview',
       'studio.autoML': 'Auto ML',
       'studio.reports': 'Reports',
@@ -378,6 +403,9 @@ const translations = {
       'studio.comingSoonDescription': 'This feature will be available soon.',
    },
   pt: {
+    // Common
+    'common.loading': 'Carregando...',
+    
     // Navigation
     'nav.dashboard': 'Painel',
     'nav.account': 'Conta',
@@ -728,7 +756,29 @@ const translations = {
        'workspace.addSourceFirst': 'Adicione uma fonte primeiro para fazer perguntas',
        'workspace.startConversation': 'Inicie uma conversa',
        'workspace.startConversationDescription': 'Faça perguntas sobre seus dados para obter insights e respostas.',
-      
+       'workspace.title': 'Workspaces',
+       'workspace.createNewWorkspace': 'Criar novo workspace',
+       'workspace.newWorkspace': 'Novo workspace',
+       'workspace.mostRecent': 'Mais recentes',
+       'workspace.oldest': 'Mais antigos',
+       'workspace.nameAZ': 'Nome (A-Z)',
+       'workspace.sources': 'fontes',
+       'workspace.source': 'fonte',
+       'workspace.rename': 'Renomear',
+       'workspace.renameWorkspace': 'Renomear workspace',
+       'workspace.renameDescription': 'Digite o novo nome para o workspace',
+       'workspace.name': 'Nome',
+       'workspace.cancel': 'Cancelar',
+       'workspace.delete': 'Excluir',
+       'workspace.edit': 'Editar',
+       'workspace.description': 'Gerencie seus workspaces',
+       'workspace.errorCreatingWorkspace': 'Erro ao criar workspace',
+       'workspace.renameSuccess': 'Workspace renomeado com sucesso',
+       'workspace.renameError': 'Erro ao renomear workspace',
+       'workspace.deleteConfirm': 'Tem certeza que deseja excluir o workspace "{name}"? Esta ação não pode ser desfeita.',
+       'workspace.deleteSuccess': 'Workspace excluído com sucesso',
+       'workspace.deleteError': 'Erro ao excluir workspace',
+       
       // Studio
       'studio.title': 'Studio',
       'studio.audioOverview': 'Visão Geral de Áudio',
