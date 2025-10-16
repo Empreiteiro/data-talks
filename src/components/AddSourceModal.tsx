@@ -251,7 +251,7 @@ export function AddSourceModal({
             <TabsContent value="bigquery" className="space-y-4">
               <div className="space-y-4">
                 {existingCredentials.length > 0 && (
-                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6">
+                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
