@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Upload, Link as LinkIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabaseClient } from "@/services/supabaseClient";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,12 +26,53 @@ export function AddSourceModal({
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [existingCredentials, setExistingCredentials] = useState<Array<{
+    langflowPath: string;
+    langflowName: string;
+    sourceName: string;
+  }>>([]);
+  const [useExistingCredential, setUseExistingCredential] = useState(false);
+  const [selectedCredential, setSelectedCredential] = useState<string>("");
   const [bigQueryData, setBigQueryData] = useState({
     credentialsFile: null as File | null,
     projectId: '',
     datasetId: '',
     tables: ''
   });
+
+  // Fetch existing BigQuery credentials when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchExistingCredentials();
+    }
+  }, [open]);
+
+  const fetchExistingCredentials = async () => {
+    try {
+      const { data: sources, error } = await supabase
+        .from('sources')
+        .select('name, langflow_path, langflow_name, metadata')
+        .eq('type', 'bigquery')
+        .not('langflow_path', 'is', null);
+
+      if (error) throw error;
+
+      const credentials = sources?.map(source => ({
+        langflowPath: source.langflow_path!,
+        langflowName: source.langflow_name!,
+        sourceName: source.name
+      })) || [];
+
+      // Remove duplicates based on langflowPath
+      const uniqueCredentials = credentials.filter((cred, index, self) =>
+        index === self.findIndex((c) => c.langflowPath === cred.langflowPath)
+      );
+
+      setExistingCredentials(uniqueCredentials);
+    } catch (error) {
+      console.error('Error fetching existing credentials:', error);
+    }
+  };
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -84,41 +126,62 @@ export function AddSourceModal({
   };
 
   const handleBigQueryConnect = async () => {
-    if (!bigQueryData.credentialsFile || !bigQueryData.projectId || !bigQueryData.datasetId) {
+    if (!useExistingCredential && !bigQueryData.credentialsFile) {
+      toast.error('Por favor, selecione ou envie uma credencial');
+      return;
+    }
+    
+    if (useExistingCredential && !selectedCredential) {
+      toast.error('Por favor, selecione uma credencial existente');
+      return;
+    }
+    
+    if (!bigQueryData.projectId || !bigQueryData.datasetId) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
       return;
     }
 
     setConnecting(true);
     try {
-      // Read credentials file as text (already JSON string)
-      const credentialsJson = await bigQueryData.credentialsFile.text();
-
-      // Upload credentials to Langflow using the same approach as CSV
       let langflowPath = null;
       let langflowName = null;
-      
-      try {
-        const formData = new FormData();
-        formData.append('file', bigQueryData.credentialsFile);
-        
-        const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
-          'upload-to-langflow',
-          {
-            body: formData,
-          }
-        );
+      let credentialsJson = '';
 
-        if (langflowError) {
-          console.error('Langflow upload error:', langflowError);
-        } else if (langflowData) {
-          langflowPath = langflowData.path;
-          langflowName = langflowData.name;
-          console.log('Credentials uploaded to Langflow:', { path: langflowPath, name: langflowName });
+      if (useExistingCredential) {
+        // Use existing credential
+        const selectedCred = existingCredentials.find(c => c.langflowPath === selectedCredential);
+        if (selectedCred) {
+          langflowPath = selectedCred.langflowPath;
+          langflowName = selectedCred.langflowName;
+          // We don't need the actual credentials JSON when reusing
+          credentialsJson = '';
         }
-      } catch (error) {
-        console.error('Error uploading to Langflow:', error);
-        // Continue with connection even if Langflow upload fails
+      } else {
+        // Upload new credential
+        credentialsJson = await bigQueryData.credentialsFile!.text();
+
+        try {
+          const formData = new FormData();
+          formData.append('file', bigQueryData.credentialsFile!);
+          
+          const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
+            'upload-to-langflow',
+            {
+              body: formData,
+            }
+          );
+
+          if (langflowError) {
+            console.error('Langflow upload error:', langflowError);
+          } else if (langflowData) {
+            langflowPath = langflowData.path;
+            langflowName = langflowData.name;
+            console.log('Credentials uploaded to Langflow:', { path: langflowPath, name: langflowName });
+          }
+        } catch (error) {
+          console.error('Error uploading to Langflow:', error);
+          // Continue with connection even if Langflow upload fails
+        }
       }
 
       // Call BigQuery connect edge function with Langflow info
@@ -187,18 +250,59 @@ export function AddSourceModal({
 
             <TabsContent value="bigquery" className="space-y-4">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="credentials">{t('addSource.credentials')}</Label>
-                  <Input 
-                    id="credentials" 
-                    type="file" 
-                    accept=".json"
-                    onChange={(e) => setBigQueryData({
-                      ...bigQueryData,
-                      credentialsFile: e.target.files?.[0] || null
-                    })}
-                  />
-                </div>
+                {existingCredentials.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="use-existing"
+                        checked={useExistingCredential}
+                        onChange={(e) => {
+                          setUseExistingCredential(e.target.checked);
+                          if (e.target.checked) {
+                            setBigQueryData({...bigQueryData, credentialsFile: null});
+                          } else {
+                            setSelectedCredential("");
+                          }
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="use-existing" className="cursor-pointer">
+                        Usar credencial existente
+                      </Label>
+                    </div>
+                    
+                    {useExistingCredential && (
+                      <Select value={selectedCredential} onValueChange={setSelectedCredential}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma credencial" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {existingCredentials.map((cred) => (
+                            <SelectItem key={cred.langflowPath} value={cred.langflowPath}>
+                              {cred.sourceName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+                
+                {!useExistingCredential && (
+                  <div className="space-y-2">
+                    <Label htmlFor="credentials">{t('addSource.credentials')}</Label>
+                    <Input 
+                      id="credentials" 
+                      type="file" 
+                      accept=".json"
+                      onChange={(e) => setBigQueryData({
+                        ...bigQueryData,
+                        credentialsFile: e.target.files?.[0] || null
+                      })}
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="project">{t('addSource.project')}</Label>
                   <Input 
