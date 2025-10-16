@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabaseClient } from "@/services/supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
 interface AddSourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,6 +24,13 @@ export function AddSourceModal({
   } = useLanguage();
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [bigQueryData, setBigQueryData] = useState({
+    credentialsFile: null as File | null,
+    projectId: '',
+    datasetId: '',
+    tables: ''
+  });
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -74,6 +82,47 @@ export function AddSourceModal({
       setUploading(false);
     }
   };
+
+  const handleBigQueryConnect = async () => {
+    if (!bigQueryData.credentialsFile || !bigQueryData.projectId || !bigQueryData.datasetId) {
+      toast.error('Por favor, preencha todos os campos obrigatórios');
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      // Read credentials file
+      const credentialsText = await bigQueryData.credentialsFile.text();
+      const credentials = JSON.parse(credentialsText);
+
+      // Call BigQuery connect edge function
+      const { data, error } = await supabase.functions.invoke('bigquery-connect', {
+        body: {
+          credentials,
+          projectId: bigQueryData.projectId,
+          datasetId: bigQueryData.datasetId,
+          tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : []
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('BigQuery conectado com sucesso!');
+      
+      if (data?.sourceId) {
+        onSourceAdded?.(data.sourceId);
+      }
+      
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('BigQuery connection error:', error);
+      toast.error('Erro ao conectar BigQuery', {
+        description: error.message
+      });
+    } finally {
+      setConnecting(false);
+    }
+  };
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
@@ -112,21 +161,59 @@ export function AddSourceModal({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="credentials">{t('addSource.credentials')}</Label>
-                  <Input id="credentials" type="file" accept=".json" />
+                  <Input 
+                    id="credentials" 
+                    type="file" 
+                    accept=".json"
+                    onChange={(e) => setBigQueryData({
+                      ...bigQueryData,
+                      credentialsFile: e.target.files?.[0] || null
+                    })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="project">{t('addSource.project')}</Label>
-                  <Input id="project" placeholder={t('addSource.projectPlaceholder')} />
+                  <Input 
+                    id="project" 
+                    placeholder={t('addSource.projectPlaceholder')}
+                    value={bigQueryData.projectId}
+                    onChange={(e) => setBigQueryData({
+                      ...bigQueryData,
+                      projectId: e.target.value
+                    })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dataset">{t('addSource.dataset')}</Label>
-                  <Input id="dataset" placeholder={t('addSource.datasetPlaceholder')} />
+                  <Input 
+                    id="dataset" 
+                    placeholder={t('addSource.datasetPlaceholder')}
+                    value={bigQueryData.datasetId}
+                    onChange={(e) => setBigQueryData({
+                      ...bigQueryData,
+                      datasetId: e.target.value
+                    })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tables">{t('addSource.allowedTables')}</Label>
-                  <Input id="tables" placeholder={t('addSource.tablesPlaceholder')} />
+                  <Input 
+                    id="tables" 
+                    placeholder={t('addSource.tablesPlaceholder')}
+                    value={bigQueryData.tables}
+                    onChange={(e) => setBigQueryData({
+                      ...bigQueryData,
+                      tables: e.target.value
+                    })}
+                  />
                 </div>
-                <Button className="w-full">{t('addSource.connectBigQuery')}</Button>
+                <Button 
+                  className="w-full" 
+                  onClick={handleBigQueryConnect}
+                  disabled={connecting}
+                >
+                  {connecting ? 'Conectando...' : t('addSource.connectBigQuery')}
+                </Button>
               </div>
             </TabsContent>
 
