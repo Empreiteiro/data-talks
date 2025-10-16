@@ -492,15 +492,18 @@ export const supabaseClient = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Create a file from the credentials string to upload to Langflow
+    // Create a file from the credentials string to upload to Langflow and Supabase Storage
     const credentialsBlob = new Blob([credentials], { type: 'application/json' });
-    const credentialsFile = new File([credentialsBlob], `${projectId}-${datasetId}-credentials.json`, {
+    const fileName = `${projectId}.json`;
+    const credentialsFile = new File([credentialsBlob], fileName, {
       type: 'application/json'
     });
 
-    // Upload credentials to Langflow
+    // Upload credentials to Langflow and Supabase Storage
     let langflowPath = null;
     let langflowName = null;
+    let supabaseStoragePath = null;
+    let credentialsContent = null;
     
     try {
       const formData = new FormData();
@@ -518,11 +521,18 @@ export const supabaseClient = {
       } else if (langflowData) {
         langflowPath = langflowData.path;
         langflowName = langflowData.name;
-        console.log('BigQuery credentials uploaded to Langflow:', { path: langflowPath, name: langflowName });
+        supabaseStoragePath = langflowData.supabaseStoragePath;
+        credentialsContent = langflowData.credentialsContent;
+        console.log('BigQuery credentials uploaded:', { 
+          langflowPath, 
+          langflowName, 
+          supabaseStoragePath,
+          hasCredentialsContent: !!credentialsContent 
+        });
       }
     } catch (error) {
-      console.error('Error uploading BigQuery credentials to Langflow:', error);
-      // Continue with BigQuery connection even if Langflow upload fails
+      console.error('Error uploading BigQuery credentials:', error);
+      // Continue with BigQuery connection even if upload fails
     }
 
     const { data, error } = await supabase.functions.invoke('bigquery-connect', {
@@ -532,7 +542,9 @@ export const supabaseClient = {
         datasetId,
         tables,
         langflowPath,
-        langflowName
+        langflowName,
+        supabaseStoragePath,
+        credentialsContent
       }
     });
 

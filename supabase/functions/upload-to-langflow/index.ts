@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,8 @@ const corsHeaders = {
 interface UploadResponse {
   path: string;
   name: string;
+  supabaseStoragePath?: string;
+  credentialsContent?: string;
 }
 
 function getMimeType(fileName: string): string {
@@ -90,6 +93,23 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')!;
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Get user from token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      console.error('Auth error:', userError);
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
     const langflowBaseUrl = Deno.env.get('LANGFLOW_BASE_URL');
 
@@ -129,10 +149,47 @@ serve(async (req) => {
       langflowBaseUrl
     );
 
-    console.log('File uploaded successfully:', result);
+    console.log('File uploaded successfully to Langflow:', result);
+
+    // For JSON files (BigQuery credentials), also save to Supabase Storage
+    let supabaseStoragePath: string | undefined;
+    let credentialsContent: string | undefined;
+    
+    if (fileName.toLowerCase().endsWith('.json')) {
+      try {
+        console.log('Saving JSON file to Supabase Storage...');
+        
+        // Convert content to string for credentials
+        const decoder = new TextDecoder();
+        credentialsContent = decoder.decode(fileContent);
+        
+        // Save to Supabase Storage
+        const storagePath = `${user.id}/${fileName}`;
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+          .from('data-files')
+          .upload(storagePath, fileContent, {
+            contentType: 'application/json',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Error uploading to Supabase Storage:', uploadError);
+        } else {
+          supabaseStoragePath = storagePath;
+          console.log('File saved to Supabase Storage:', supabaseStoragePath);
+        }
+      } catch (storageError) {
+        console.error('Error saving to storage:', storageError);
+        // Continue even if storage fails
+      }
+    }
 
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({
+        ...result,
+        supabaseStoragePath,
+        credentialsContent
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

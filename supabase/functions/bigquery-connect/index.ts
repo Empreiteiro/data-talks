@@ -13,6 +13,8 @@ interface BigQueryRequest {
   tables: string[];
   langflowPath?: string;
   langflowName?: string;
+  supabaseStoragePath?: string;
+  credentialsContent?: string;
 }
 
 serve(async (req) => {
@@ -48,8 +50,17 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id)
 
-    const { credentials, projectId, datasetId, tables, langflowPath, langflowName } = await req.json() as BigQueryRequest
-    console.log('Request data:', { projectId, datasetId, tables: tables.length, langflowPath, langflowName, hasCredentials: !!credentials })
+    const { credentials, projectId, datasetId, tables, langflowPath, langflowName, supabaseStoragePath, credentialsContent } = await req.json() as BigQueryRequest
+    console.log('Request data:', { 
+      projectId, 
+      datasetId, 
+      tables: tables.length, 
+      langflowPath, 
+      langflowName, 
+      supabaseStoragePath,
+      hasCredentials: !!credentials,
+      hasCredentialsContent: !!credentialsContent
+    })
 
     // Parse and validate credentials
     let credentialsObj
@@ -59,11 +70,52 @@ serve(async (req) => {
     const reusingCredentials = langflowPath && (!credentials || credentials.trim() === '')
     
     if (reusingCredentials) {
-      // Reusing existing credentials - no need to authenticate again
-      // We'll skip table info collection since credentials are already validated in Langflow
-      console.log('Reusing existing credentials from Langflow:', langflowPath)
-      access_token = null
-      credentialsObj = null
+      // Reusing existing credentials - fetch from Supabase Storage
+      console.log('Reusing existing credentials from Supabase Storage:', supabaseStoragePath)
+      
+      try {
+        // Find an existing source with the same langflowPath to get supabaseStoragePath
+        const { data: existingSource, error: sourceQueryError } = await supabaseClient
+          .from('sources')
+          .select('metadata')
+          .eq('type', 'bigquery')
+          .eq('langflow_path', langflowPath)
+          .limit(1)
+          .single()
+        
+        if (sourceQueryError || !existingSource) {
+          console.error('Error finding existing source:', sourceQueryError)
+          throw new Error('Nenhuma fonte encontrada com estas credenciais')
+        }
+        
+        const metadata = existingSource.metadata as any
+        const storagePath = metadata?.supabase_storage_path
+        
+        if (!storagePath) {
+          throw new Error('Caminho do storage não encontrado nos metadados')
+        }
+        
+        // Download credentials from Supabase Storage
+        const { data: fileData, error: downloadError } = await supabaseServiceClient.storage
+          .from('data-files')
+          .download(storagePath)
+        
+        if (downloadError) {
+          console.error('Error downloading from storage:', downloadError)
+          throw new Error('Falha ao recuperar credenciais do storage')
+        }
+        
+        // Read file content
+        const fileText = await fileData.text()
+        credentialsObj = JSON.parse(fileText)
+        console.log('Credentials loaded from Supabase Storage successfully')
+      } catch (e) {
+        console.error('Error loading credentials from storage:', e.message)
+        return new Response(JSON.stringify({ error: 'Falha ao carregar credenciais: ' + e.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
     } else {
       // New credentials - need to parse and validate
       try {
@@ -215,7 +267,9 @@ serve(async (req) => {
           connection_tested: true,
           table_infos: tableInfos,
           total_tables: tableInfos.length,
-          failed_tables: failedTables
+          failed_tables: failedTables,
+          supabase_storage_path: supabaseStoragePath || null,
+          credentials_content: credentialsContent || null
         }
       })
       .select()
