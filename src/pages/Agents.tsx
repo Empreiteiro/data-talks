@@ -148,7 +148,7 @@ export default function Agents() {
         </div>
       )}
 
-      <div className="grid gap-6">
+      <div className="flex flex-col gap-6">
         {agents.map((agent) => (
           <Card key={agent.id}>
             <CardHeader>
