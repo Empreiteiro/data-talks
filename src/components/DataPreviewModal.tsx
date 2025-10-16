@@ -15,8 +15,21 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
   
   console.log('DataPreviewModal - metadata:', metadata);
   
-  const schema = metadata?.columns || [];
-  const previewRows = metadata?.preview_rows || [];
+  // Para BigQuery, buscar de table_infos
+  let schema: string[] = [];
+  let previewRows: any[] = [];
+  
+  if (metadata?.table_infos && metadata.table_infos.length > 0) {
+    // BigQuery structure
+    schema = metadata.table_infos[0]?.columns || [];
+    previewRows = metadata.table_infos[0]?.preview_rows || [];
+    console.log('DataPreviewModal - BigQuery data from table_infos');
+  } else {
+    // CSV/Excel structure
+    schema = metadata?.columns || [];
+    previewRows = metadata?.preview_rows || [];
+    console.log('DataPreviewModal - CSV/Excel data');
+  }
   
   console.log('DataPreviewModal - schema:', schema);
   console.log('DataPreviewModal - previewRows:', previewRows);

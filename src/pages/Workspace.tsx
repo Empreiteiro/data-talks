@@ -99,7 +99,7 @@ export default function Workspace() {
       if (agent?.source_ids && agent.source_ids.length > 0) {
         const { data: source, error: sourceError } = await supabase
           .from('sources')
-          .select('metadata')
+          .select('metadata, type')
           .eq('id', agent.source_ids[0])
           .single();
 
@@ -107,9 +107,21 @@ export default function Workspace() {
 
         const metadata = source?.metadata as any;
         console.log('Workspace - source metadata:', metadata);
+        console.log('Workspace - source type:', source?.type);
         
-        const columnNames = metadata?.columns || [];
-        console.log('Workspace - columnNames:', columnNames);
+        let columnNames: string[] = [];
+        
+        // Para BigQuery, buscar de table_infos
+        if (source?.type === 'bigquery' && metadata?.table_infos && metadata.table_infos.length > 0) {
+          // Pegar as colunas da primeira tabela
+          columnNames = metadata.table_infos[0].columns || [];
+          console.log('Workspace - BigQuery columns from table_infos:', columnNames);
+        } 
+        // Para CSV/Excel, buscar diretamente de columns
+        else if (metadata?.columns) {
+          columnNames = metadata.columns;
+          console.log('Workspace - CSV/Excel columns:', columnNames);
+        }
         
         setAvailableColumns(columnNames);
       }
