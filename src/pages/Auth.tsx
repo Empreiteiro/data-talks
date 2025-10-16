@@ -49,9 +49,9 @@ const Auth = () => {
   }
 
   return (
-    <main className="container py-16">
+    <main className="min-h-screen flex items-center justify-center px-4">
       <SEO title={`${t('auth.login')} | ${t('nav.tagline')}`} description="Autenticação por e-mail e senha" canonical="/login" />
-      <div className="max-w-md mx-auto bg-card border rounded-lg p-6 shadow-sm">
+      <div className="max-w-md w-full bg-card border rounded-lg p-6 shadow-sm">
         <h1 className="text-2xl font-semibold mb-6">{t('auth.title')}</h1>
         <div>
           <form className="space-y-4" onSubmit={onLogin}>
