@@ -140,7 +140,7 @@ const Index = () => {
       {/* How it Works */}
       <section id="how-it-works" className="container mx-auto px-6 py-24">
         <h2 className="text-3xl md:text-4xl font-normal text-center mb-20">
-          Como funciona
+          {t('howItWorks.title')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
           <Card className="p-6 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
@@ -180,17 +180,17 @@ const Index = () => {
       {/* Benefits */}
       <section className="container mx-auto px-6 py-24">
         <h2 className="text-3xl md:text-4xl font-normal text-center mb-20">
-          Benefícios
+          {t('benefits.title')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl mx-auto">
           <div className="space-y-4">
             <Zap className="h-12 w-12 text-primary mb-6" strokeWidth={1.5} />
             <h3 className="font-normal text-xl">{t('benefits.easy.title')}</h3>
             <p className="text-muted-foreground leading-relaxed">
-              {t('benefits.easy.description')}. Faça perguntas em linguagem natural e obtenha insights sem precisar escrever consultas complexas.
+              {t('benefits.easy.extended')}
             </p>
             <p className="text-muted-foreground italic text-sm pt-2">
-              Análise de dados simplificada.
+              {t('benefits.easy.tagline')}
             </p>
           </div>
           
@@ -198,10 +198,10 @@ const Index = () => {
             <BarChart3 className="h-12 w-12 text-primary mb-6" strokeWidth={1.5} />
             <h3 className="font-normal text-xl">{t('benefits.fast.title')}</h3>
             <p className="text-muted-foreground leading-relaxed">
-              {t('benefits.fast.description')}. Conecte suas fontes de dados e comece a fazer perguntas imediatamente para obter respostas instantâneas.
+              {t('benefits.fast.extended')}
             </p>
             <p className="text-muted-foreground italic text-sm pt-2">
-              Tome decisões com agilidade.
+              {t('benefits.fast.tagline')}
             </p>
           </div>
           
@@ -209,10 +209,10 @@ const Index = () => {
             <Shield className="h-12 w-12 text-primary mb-6" strokeWidth={1.5} />
             <h3 className="font-normal text-xl">{t('benefits.secure.title')}</h3>
             <p className="text-muted-foreground leading-relaxed">
-              {t('benefits.secure.description')}. Seus dados são criptografados e você mantém total controle sobre quem pode acessá-los.
+              {t('benefits.secure.extended')}
             </p>
             <p className="text-muted-foreground italic text-sm pt-2">
-              Privacidade garantida.
+              {t('benefits.secure.tagline')}
             </p>
           </div>
         </div>
@@ -221,50 +221,50 @@ const Index = () => {
       {/* Testimonials Section */}
       <section className="container mx-auto px-6 py-24">
         <h2 className="text-3xl md:text-4xl font-normal text-center mb-20">
-          O que as pessoas estão dizendo
+          {t('testimonials.title')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <Card className="p-8 border-0 shadow-sm">
             <p className="text-muted-foreground leading-relaxed mb-8 min-h-[120px]">
-              "Finalmente uma ferramenta que entende que eu não falo SQL. Só pergunto em português mesmo e ela me responde. Incrível!"
+              "{t('testimonials.feedback1')}"
             </p>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-sm font-medium">JD</span>
               </div>
               <div>
-                <p className="font-medium text-sm">João Developer</p>
-                <p className="text-xs text-muted-foreground">Ex-escravo de Excel</p>
+                <p className="font-medium text-sm">{t('testimonials.name1')}</p>
+                <p className="text-xs text-muted-foreground">{t('testimonials.role1')}</p>
               </div>
             </div>
           </Card>
 
           <Card className="p-8 border-0 shadow-sm">
             <p className="text-muted-foreground leading-relaxed mb-8 min-h-[120px]">
-              "Economizei horas tentando entender dashboards complexos. Agora só pergunto 'quanto vendemos esse mês?' e pronto."
+              "{t('testimonials.feedback2')}"
             </p>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-sm font-medium">MS</span>
               </div>
               <div>
-                <p className="font-medium text-sm">Maria Silva</p>
-                <p className="text-xs text-muted-foreground">CEO de Alguma Coisa</p>
+                <p className="font-medium text-sm">{t('testimonials.name2')}</p>
+                <p className="text-xs text-muted-foreground">{t('testimonials.role2')}</p>
               </div>
             </div>
           </Card>
 
           <Card className="p-8 border-0 shadow-sm">
             <p className="text-muted-foreground leading-relaxed mb-8 min-h-[120px]">
-              "Conectei meu BigQuery e agora converso com bilhões de linhas como se fosse um chat. Meus relatórios saem em segundos."
+              "{t('testimonials.feedback3')}"
             </p>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-sm font-medium">PC</span>
               </div>
               <div>
-                <p className="font-medium text-sm">Pedro Costa</p>
-                <p className="text-xs text-muted-foreground">Fundador de Startup Unicórnio</p>
+                <p className="font-medium text-sm">{t('testimonials.name3')}</p>
+                <p className="text-xs text-muted-foreground">{t('testimonials.role3')}</p>
               </div>
             </div>
           </Card>
