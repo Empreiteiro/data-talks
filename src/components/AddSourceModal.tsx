@@ -94,13 +94,30 @@ export function AddSourceModal({
       // Read credentials file as text (already JSON string)
       const credentialsJson = await bigQueryData.credentialsFile.text();
 
-      // Call BigQuery connect edge function
+      // Upload credentials to Langflow
+      const uploadResponse = await supabase.functions.invoke('upload-to-langflow', {
+        body: {
+          fileName: `bigquery_credentials_${Date.now()}.json`,
+          fileContent: credentialsJson
+        }
+      });
+
+      if (uploadResponse.error) {
+        console.error('Langflow upload error:', uploadResponse.error);
+        throw new Error('Erro ao fazer upload das credenciais');
+      }
+
+      console.log('Langflow upload response:', uploadResponse.data);
+
+      // Call BigQuery connect edge function with Langflow info
       const { data, error } = await supabase.functions.invoke('bigquery-connect', {
         body: {
-          credentials: credentialsJson, // Send as JSON string
+          credentials: credentialsJson,
           projectId: bigQueryData.projectId,
           datasetId: bigQueryData.datasetId,
-          tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : []
+          tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : [],
+          langflowPath: uploadResponse.data?.path,
+          langflowName: uploadResponse.data?.name
         }
       });
 
