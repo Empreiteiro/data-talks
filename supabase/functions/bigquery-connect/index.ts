@@ -45,14 +45,40 @@ serve(async (req) => {
     const { credentials, projectId, datasetId, tables, langflowPath, langflowName } = await req.json() as BigQueryRequest
     console.log('Request data:', { projectId, datasetId, tables: tables.length, langflowPath, langflowName, hasCredentials: !!credentials })
 
-    // Parse and validate credentials only if not reusing existing credentials
+    // Parse and validate credentials
     let credentialsObj
     let access_token
     
     // Check if we're reusing existing credentials (langflowPath exists and credentials is empty)
     const reusingCredentials = langflowPath && (!credentials || credentials.trim() === '')
     
-    if (!reusingCredentials) {
+    if (reusingCredentials) {
+      // Reusing existing credentials - fetch from storage
+      console.log('Reusing existing credentials from storage:', langflowPath)
+      
+      try {
+        // Download credentials from storage
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from('data-files')
+          .download(langflowPath)
+        
+        if (downloadError) {
+          console.error('Error downloading credentials:', downloadError)
+          throw new Error('Falha ao recuperar credenciais do storage')
+        }
+        
+        // Read file content
+        const fileText = await fileData.text()
+        credentialsObj = JSON.parse(fileText)
+        console.log('Credentials loaded from storage successfully')
+      } catch (e) {
+        console.error('Error loading credentials from storage:', e.message)
+        return new Response(JSON.stringify({ error: 'Falha ao carregar credenciais do storage: ' + e.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    } else {
       // New credentials - need to parse and validate
       try {
         if (!credentials || credentials.trim() === '') {
@@ -72,42 +98,37 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
-
-      // Get access token using service account credentials
-      console.log('Getting access token...')
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-          assertion: await createJWT(credentialsObj)
-        })
-      })
-
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text()
-        console.error('Token error:', errorText)
-        return new Response(JSON.stringify({ error: 'Falha na autenticação com Google: ' + errorText }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      }
-
-      const tokenData = await tokenResponse.json()
-      access_token = tokenData.access_token
-      console.log('Access token obtained')
-    } else {
-      // Reusing existing credentials
-      console.log('Reusing existing credentials from Langflow:', langflowPath)
-      access_token = null
     }
 
-    // Get table schemas and preview data only if we have an access token
+    // Get access token using service account credentials
+    console.log('Getting access token...')
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: await createJWT(credentialsObj)
+      })
+    })
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text()
+      console.error('Token error:', errorText)
+      return new Response(JSON.stringify({ error: 'Falha na autenticação com Google: ' + errorText }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const tokenData = await tokenResponse.json()
+    access_token = tokenData.access_token
+    console.log('Access token obtained')
+
+    // Get table schemas and preview data
     const tableInfos = []
     const failedTables = []
     
-    if (access_token) {
-      for (const tableName of tables) {
+    for (const tableName of tables) {
         try {
           console.log(`Getting info for table: ${tableName}`)
           
@@ -180,13 +201,10 @@ serve(async (req) => {
               row_count: rowCount
             })
           }
-        } catch (tableError) {
-          console.error(`Error processing table ${tableName}:`, tableError)
-        }
+      } catch (tableError) {
+        console.error(`Error processing table ${tableName}:`, tableError)
+        failedTables.push(`${tableName} (erro ao processar)`)
       }
-    } else {
-      // When reusing credentials, we don't have access token, so we just store basic info
-      console.log('Skipping table info collection - reusing existing credentials')
     }
     
     console.log('Creating source record...')
