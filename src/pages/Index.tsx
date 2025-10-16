@@ -178,34 +178,43 @@ const Index = () => {
       </section>
 
       {/* Benefits */}
-      <section className="container mx-auto px-6 py-20 bg-accent/30">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
+      <section className="container mx-auto px-6 py-24">
+        <h2 className="text-3xl md:text-4xl font-normal text-center mb-20">
           {t('benefits.title')}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <Card className="p-8 border-0 shadow-lg">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mb-4">
-              <Zap className="h-7 w-7 text-primary" />
-            </div>
-            <h3 className="font-semibold text-lg mb-3">{t('benefits.easy.title')}</h3>
-            <p className="text-muted-foreground leading-relaxed">{t('benefits.easy.description')}</p>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl mx-auto">
+          <div className="space-y-4">
+            <Zap className="h-12 w-12 text-primary mb-6" strokeWidth={1.5} />
+            <h3 className="font-normal text-xl">{t('benefits.easy.title')}</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              {t('benefits.easy.description')}. Faça perguntas em linguagem natural e obtenha insights sem precisar escrever consultas complexas.
+            </p>
+            <p className="text-muted-foreground italic text-sm pt-2">
+              Análise de dados simplificada.
+            </p>
+          </div>
           
-          <Card className="p-8 border-0 shadow-lg">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mb-4">
-              <BarChart3 className="h-7 w-7 text-primary" />
-            </div>
-            <h3 className="font-semibold text-lg mb-3">{t('benefits.fast.title')}</h3>
-            <p className="text-muted-foreground leading-relaxed">{t('benefits.fast.description')}</p>
-          </Card>
+          <div className="space-y-4">
+            <BarChart3 className="h-12 w-12 text-primary mb-6" strokeWidth={1.5} />
+            <h3 className="font-normal text-xl">{t('benefits.fast.title')}</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              {t('benefits.fast.description')}. Conecte suas fontes de dados e comece a fazer perguntas imediatamente para obter respostas instantâneas.
+            </p>
+            <p className="text-muted-foreground italic text-sm pt-2">
+              Tome decisões com agilidade.
+            </p>
+          </div>
           
-          <Card className="p-8 border-0 shadow-lg">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mb-4">
-              <Shield className="h-7 w-7 text-primary" />
-            </div>
-            <h3 className="font-semibold text-lg mb-3">{t('benefits.secure.title')}</h3>
-            <p className="text-muted-foreground leading-relaxed">{t('benefits.secure.description')}</p>
-          </Card>
+          <div className="space-y-4">
+            <Shield className="h-12 w-12 text-primary mb-6" strokeWidth={1.5} />
+            <h3 className="font-normal text-xl">{t('benefits.secure.title')}</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              {t('benefits.secure.description')}. Seus dados são criptografados e você mantém total controle sobre quem pode acessá-los.
+            </p>
+            <p className="text-muted-foreground italic text-sm pt-2">
+              Privacidade garantida.
+            </p>
+          </div>
         </div>
       </section>
 
