@@ -27,7 +27,7 @@ const NavBar = () => {
 
   return (
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
-      <nav className="container mx-auto flex items-center h-16 px-6">
+      <nav className="w-full flex items-center justify-between h-16 px-6">
         <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight" aria-label={t('nav.tagline')}>
           <span role="img" aria-label="Logo gráfico de crescimento" className="text-xl leading-none">📈</span>
           <span className="hidden sm:inline">{t('nav.tagline')}</span>
