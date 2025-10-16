@@ -33,19 +33,19 @@ const NavBar = () => {
           <span className="hidden sm:inline">{t('nav.tagline')}</span>
         </Link>
         
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           {/* Links principais */}
           {!user && (
-            <div className="hidden md:flex items-center gap-6">
+            <>
               <Button asChild variant="ghost" size="sm" className="text-sm font-normal">
                 <Link to="/pricing">{t('pricing.title')}</Link>
               </Button>
-            </div>
+            </>
           )}
           
           {/* Social Links - sempre visível para não-logados */}
           {!user && (
-            <div className="hidden md:flex items-center gap-1">
+            <>
               <a
                 href="mailto:democh@oriontech.me"
                 className="text-muted-foreground hover:text-foreground transition-colors p-2"
@@ -62,86 +62,84 @@ const NavBar = () => {
               >
                 <Linkedin className="h-4 w-4" />
               </a>
-            </div>
+            </>
           )}
           
           {/* Language & Auth */}
-          <div className="flex items-center gap-2">
-            {user ? (
-              <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>{t('settings.title')}</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="cursor-pointer">
-                        Dashboard (deprecated)
-                      </Link>
+          {user ? (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>{t('settings.title')}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer">
+                      Dashboard (deprecated)
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem asChild>
+                    <Link to="/account" className="cursor-pointer">
+                      {t('settings.manageSubscription')}
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                    {t('settings.language')}
+                  </DropdownMenuLabel>
+                  
+                  {languages.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code)}
+                      className={language === lang.code ? "bg-accent" : ""}
+                    >
+                      <span className="mr-2">{lang.flag}</span>
+                      {lang.name}
                     </DropdownMenuItem>
-                    
-                    <DropdownMenuItem asChild>
-                      <Link to="/account" className="cursor-pointer">
-                        {t('settings.manageSubscription')}
-                      </Link>
+                  ))}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    {t('nav.logout')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {languages.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code)}
+                      className={language === lang.code ? "bg-accent" : ""}
+                    >
+                      <span className="mr-2">{lang.flag}</span>
+                      {lang.name}
                     </DropdownMenuItem>
-                    
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                      {t('settings.language')}
-                    </DropdownMenuLabel>
-                    
-                    {languages.map((lang) => (
-                      <DropdownMenuItem
-                        key={lang.code}
-                        onClick={() => setLanguage(lang.code)}
-                        className={language === lang.code ? "bg-accent" : ""}
-                      >
-                        <span className="mr-2">{lang.flag}</span>
-                        {lang.name}
-                      </DropdownMenuItem>
-                    ))}
-                    
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      {t('nav.logout')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9">
-                      <Globe className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {languages.map((lang) => (
-                      <DropdownMenuItem
-                        key={lang.code}
-                        onClick={() => setLanguage(lang.code)}
-                        className={language === lang.code ? "bg-accent" : ""}
-                      >
-                        <span className="mr-2">{lang.flag}</span>
-                        {lang.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                
-                <Button asChild className="rounded-full">
-                  <Link to="/login">{t('nav.getStarted')}</Link>
-                </Button>
-              </>
-            )}
-          </div>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <Button asChild className="rounded-full">
+                <Link to="/login">{t('nav.getStarted')}</Link>
+              </Button>
+            </>
+          )}
         </div>
       </nav>
     </header>
