@@ -114,8 +114,15 @@ const Index = () => {
     }
   });
   if (!isAuthenticated && !initializing) {
-    navigate('/login');
-    return null;
+    return <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="text-center max-w-2xl">
+        <h1 className="text-4xl font-bold mb-4">{t('nav.tagline')}</h1>
+        <p className="text-lg text-muted-foreground mb-8">{t('workspace.description')}</p>
+        <Button asChild size="lg">
+          <a href="/login">{t('nav.getStarted')}</a>
+        </Button>
+      </div>
+    </div>;
   }
   if (loading || initializing) {
     return <div className="min-h-screen flex items-center justify-center">
