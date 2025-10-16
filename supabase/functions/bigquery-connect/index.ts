@@ -197,7 +197,8 @@ serve(async (req) => {
     console.log('Source created successfully:', source.id)
 
     return new Response(JSON.stringify({ 
-      success: true, 
+      success: true,
+      sourceId: source.id,
       source,
       tableInfos,
       message: 'BigQuery conectado com sucesso!'
