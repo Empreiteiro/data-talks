@@ -59,11 +59,30 @@ serve(async (req) => {
     const reusingCredentials = langflowPath && (!credentials || credentials.trim() === '')
     
     if (reusingCredentials) {
-      // Reusing existing credentials - fetch from storage
-      console.log('Reusing existing credentials from storage:', langflowPath)
+      // Reusing existing credentials - fetch from an existing source with same langflowPath
+      console.log('Reusing existing credentials, fetching from existing source:', langflowPath)
       
       try {
-        // Download credentials from storage using service role client
+        // Find an existing source with the same langflowPath
+        const { data: existingSource, error: sourceQueryError } = await supabaseClient
+          .from('sources')
+          .select('metadata')
+          .eq('type', 'bigquery')
+          .eq('langflow_path', langflowPath)
+          .limit(1)
+          .single()
+        
+        if (sourceQueryError || !existingSource) {
+          console.error('Error finding existing source:', sourceQueryError)
+          throw new Error('Nenhuma fonte encontrada com estas credenciais')
+        }
+        
+        const metadata = existingSource.metadata as any
+        if (!metadata?.project_id) {
+          throw new Error('Metadados de fonte inválidos')
+        }
+        
+        // For reused credentials, we need to download from storage
         const { data: fileData, error: downloadError } = await supabaseServiceClient.storage
           .from('data-files')
           .download(langflowPath)
