@@ -91,14 +91,13 @@ export function AddSourceModal({
 
     setConnecting(true);
     try {
-      // Read credentials file
-      const credentialsText = await bigQueryData.credentialsFile.text();
-      const credentials = JSON.parse(credentialsText);
+      // Read credentials file as text (already JSON string)
+      const credentialsJson = await bigQueryData.credentialsFile.text();
 
       // Call BigQuery connect edge function
       const { data, error } = await supabase.functions.invoke('bigquery-connect', {
         body: {
-          credentials,
+          credentials: credentialsJson, // Send as JSON string
           projectId: bigQueryData.projectId,
           datasetId: bigQueryData.datasetId,
           tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : []
