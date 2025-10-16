@@ -45,126 +45,146 @@ serve(async (req) => {
     const { credentials, projectId, datasetId, tables, langflowPath, langflowName } = await req.json() as BigQueryRequest
     console.log('Request data:', { projectId, datasetId, tables: tables.length, langflowPath, langflowName })
 
-    // Parse and validate credentials
+    // Parse and validate credentials only if not reusing existing credentials
     let credentialsObj
-    try {
-      credentialsObj = JSON.parse(credentials)
-      console.log('Credentials parsed successfully')
-      
-      if (!credentialsObj.client_email || !credentialsObj.private_key) {
-        throw new Error('Credenciais inválidas: client_email ou private_key ausentes')
+    let access_token
+    
+    if (!langflowPath || !credentials) {
+      // New credentials - need to parse and validate
+      try {
+        if (!credentials) {
+          throw new Error('Credenciais não fornecidas')
+        }
+        
+        credentialsObj = JSON.parse(credentials)
+        console.log('Credentials parsed successfully')
+        
+        if (!credentialsObj.client_email || !credentialsObj.private_key) {
+          throw new Error('Credenciais inválidas: client_email ou private_key ausentes')
+        }
+      } catch (e) {
+        console.error('Credentials parse error:', e.message)
+        return new Response(JSON.stringify({ error: 'Credenciais JSON inválidas: ' + e.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
       }
-    } catch (e) {
-      console.error('Credentials parse error:', e.message)
-      return new Response(JSON.stringify({ error: 'Credenciais JSON inválidas: ' + e.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+
+      // Get access token using service account credentials
+      console.log('Getting access token...')
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+          assertion: await createJWT(credentialsObj)
+        })
       })
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text()
+        console.error('Token error:', errorText)
+        return new Response(JSON.stringify({ error: 'Falha na autenticação com Google: ' + errorText }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const tokenData = await tokenResponse.json()
+      access_token = tokenData.access_token
+      console.log('Access token obtained')
+    } else {
+      // Reusing existing credentials - we need to get credentials from Langflow
+      // For now, we'll skip authentication and just create the source record
+      console.log('Reusing existing credentials from Langflow:', langflowPath)
+      access_token = null
     }
 
-    // Get access token using service account credentials
-    console.log('Getting access token...')
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: await createJWT(credentialsObj)
-      })
-    })
-
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text()
-      console.error('Token error:', errorText)
-      return new Response(JSON.stringify({ error: 'Falha na autenticação com Google: ' + errorText }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    const { access_token } = await tokenResponse.json()
-    console.log('Access token obtained')
-
-    // Get table schemas and preview data
+    // Get table schemas and preview data only if we have an access token
     const tableInfos = []
     const failedTables = []
     
-    for (const tableName of tables) {
-      try {
-        console.log(`Getting info for table: ${tableName}`)
-        
-        // Get table schema
-        const schemaUrl = `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableName}`
-        const schemaResponse = await fetch(schemaUrl, {
-          headers: { 'Authorization': `Bearer ${access_token}` }
-        })
-
-        if (!schemaResponse.ok) {
-          const errorText = await schemaResponse.text()
-          console.error(`Failed to get schema for ${tableName}:`, errorText)
-          failedTables.push(`${tableName} (não encontrada)`)
-          continue
-        }
-
-        const schemaData = await schemaResponse.json()
-        const columns = schemaData.schema?.fields?.map((field: any) => field.name) || []
-
-        // Get preview data (first 5 rows)
-        const queryUrl = `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`
-        const query = `SELECT * FROM \`${projectId}.${datasetId}.${tableName}\` LIMIT 5`
-        
-        const queryResponse = await fetch(queryUrl, {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            query,
-            useLegacySql: false
+    if (access_token) {
+      for (const tableName of tables) {
+        try {
+          console.log(`Getting info for table: ${tableName}`)
+          
+          // Get table schema
+          const schemaUrl = `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableName}`
+          const schemaResponse = await fetch(schemaUrl, {
+            headers: { 'Authorization': `Bearer ${access_token}` }
           })
-        })
 
-        if (queryResponse.ok) {
-          const queryData = await queryResponse.json()
-          const previewRows = queryData.rows?.map((row: any) => {
-            const rowData: any = {}
-            columns.forEach((col: string, idx: number) => {
-              rowData[col] = row.f[idx]?.v || null
-            })
-            return rowData
-          }) || []
+          if (!schemaResponse.ok) {
+            const errorText = await schemaResponse.text()
+            console.error(`Failed to get schema for ${tableName}:`, errorText)
+            failedTables.push(`${tableName} (não encontrada)`)
+            continue
+          }
 
-          // Get total row count
-          const countQuery = `SELECT COUNT(*) as total FROM \`${projectId}.${datasetId}.${tableName}\``
-          const countResponse = await fetch(queryUrl, {
+          const schemaData = await schemaResponse.json()
+          const columns = schemaData.schema?.fields?.map((field: any) => field.name) || []
+
+          // Get preview data (first 5 rows)
+          const queryUrl = `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`
+          const query = `SELECT * FROM \`${projectId}.${datasetId}.${tableName}\` LIMIT 5`
+          
+          const queryResponse = await fetch(queryUrl, {
             method: 'POST',
             headers: { 
               'Authorization': `Bearer ${access_token}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              query: countQuery,
+              query,
               useLegacySql: false
             })
           })
 
-          let rowCount = 0
-          if (countResponse.ok) {
-            const countData = await countResponse.json()
-            rowCount = parseInt(countData.rows?.[0]?.f?.[0]?.v || '0')
-          }
+          if (queryResponse.ok) {
+            const queryData = await queryResponse.json()
+            const previewRows = queryData.rows?.map((row: any) => {
+              const rowData: any = {}
+              columns.forEach((col: string, idx: number) => {
+                rowData[col] = row.f[idx]?.v || null
+              })
+              return rowData
+            }) || []
 
-          tableInfos.push({
-            table_name: tableName,
-            columns,
-            preview_rows: previewRows,
-            row_count: rowCount
-          })
+            // Get total row count
+            const countQuery = `SELECT COUNT(*) as total FROM \`${projectId}.${datasetId}.${tableName}\``
+            const countResponse = await fetch(queryUrl, {
+              method: 'POST',
+              headers: { 
+                'Authorization': `Bearer ${access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                query: countQuery,
+                useLegacySql: false
+              })
+            })
+
+            let rowCount = 0
+            if (countResponse.ok) {
+              const countData = await countResponse.json()
+              rowCount = parseInt(countData.rows?.[0]?.f?.[0]?.v || '0')
+            }
+
+            tableInfos.push({
+              table_name: tableName,
+              columns,
+              preview_rows: previewRows,
+              row_count: rowCount
+            })
+          }
+        } catch (tableError) {
+          console.error(`Error processing table ${tableName}:`, tableError)
         }
-      } catch (tableError) {
-        console.error(`Error processing table ${tableName}:`, tableError)
       }
+    } else {
+      // When reusing credentials, we don't have access token, so we just store basic info
+      console.log('Skipping table info collection - reusing existing credentials')
     }
     
     console.log('Creating source record...')
