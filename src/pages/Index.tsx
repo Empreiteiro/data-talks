@@ -283,7 +283,7 @@ const Index = () => {
   return <div className="min-h-screen bg-background">
       <SEO title={t('workspace.title')} description={t('workspace.description')} canonical="/" />
       
-      <div className="container mx-auto px-6 py-8">
+      <div className="w-full px-6 py-8">
         <div className="flex items-center mb-8">
           <h1 className="text-2xl font-semibold">{t('workspace.title')}</h1>
 
