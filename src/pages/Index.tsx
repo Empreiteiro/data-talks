@@ -234,7 +234,7 @@ const Index = () => {
               </div>
               <div>
                 <p className="font-medium text-sm">João Developer</p>
-                <p className="text-xs text-muted-foreground">Analista de Dados</p>
+                <p className="text-xs text-muted-foreground">Ex-escravo de Excel</p>
               </div>
             </div>
           </Card>
@@ -249,7 +249,7 @@ const Index = () => {
               </div>
               <div>
                 <p className="font-medium text-sm">Maria Silva</p>
-                <p className="text-xs text-muted-foreground">Gerente Comercial</p>
+                <p className="text-xs text-muted-foreground">CEO de Alguma Coisa</p>
               </div>
             </div>
           </Card>
@@ -264,7 +264,7 @@ const Index = () => {
               </div>
               <div>
                 <p className="font-medium text-sm">Pedro Costa</p>
-                <p className="text-xs text-muted-foreground">Engenheiro de Dados</p>
+                <p className="text-xs text-muted-foreground">Fundador de Startup Unicórnio</p>
               </div>
             </div>
           </Card>
