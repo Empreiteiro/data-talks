@@ -59,8 +59,9 @@ export function AddSourceModal({
 
       const credentials = sources?.map(source => ({
         langflowPath: source.langflow_path!,
-        langflowName: source.langflow_name!,
-        sourceName: source.name
+        langflowName: source.langflow_name || source.langflow_path!.split('/').pop()!,
+        sourceName: source.langflow_name || source.langflow_path!.split('/').pop()!.replace('.json', ''),
+        metadata: source.metadata
       })) || [];
 
       // Remove duplicates based on langflowPath

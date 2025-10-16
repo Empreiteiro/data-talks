@@ -24,14 +24,20 @@ serve(async (req) => {
     console.log('BigQuery connection request started')
     
     const authHeader = req.headers.get('Authorization')!
-    const supabase = createClient(
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     )
+    
+    // Create service role client for storage access
+    const supabaseServiceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
     // Get user from token
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
     if (userError || !user) {
       console.error('Auth error:', userError)
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -57,8 +63,8 @@ serve(async (req) => {
       console.log('Reusing existing credentials from storage:', langflowPath)
       
       try {
-        // Download credentials from storage
-        const { data: fileData, error: downloadError } = await supabase.storage
+        // Download credentials from storage using service role client
+        const { data: fileData, error: downloadError } = await supabaseServiceClient.storage
           .from('data-files')
           .download(langflowPath)
         
@@ -208,7 +214,7 @@ serve(async (req) => {
     }
     
     console.log('Creating source record...')
-    const { data: source, error: sourceError } = await supabase
+    const { data: source, error: sourceError } = await supabaseClient
       .from('sources')
       .insert({
         user_id: user.id,
