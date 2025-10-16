@@ -25,7 +25,7 @@ const Dashboard = () => {
       <SEO title={`${t('dashboard.title')} | ${t('nav.tagline')}`} description="Visão geral das fontes, perguntas e alertas" canonical="/dashboard" />
       <h1 className="text-3xl font-semibold mb-6">{t('dashboard.title')}</h1>
       <div className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3 justify-items-start">
           <Card className="shadow-sm h-full flex flex-col min-h-[280px]">
             <CardHeader>
               <CardTitle>{t('dashboard.dataSources')}</CardTitle>
