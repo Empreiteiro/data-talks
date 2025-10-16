@@ -149,7 +149,7 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
       <div className="p-4 border-t">
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full h-12"
           onClick={onAddNote}
         >
           <Plus className="h-4 w-4 mr-2" />
