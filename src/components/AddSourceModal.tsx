@@ -94,20 +94,30 @@ export function AddSourceModal({
       // Read credentials file as text (already JSON string)
       const credentialsJson = await bigQueryData.credentialsFile.text();
 
-      // Upload credentials to Langflow
-      const uploadResponse = await supabase.functions.invoke('upload-to-langflow', {
-        body: {
-          fileName: `bigquery_credentials_${Date.now()}.json`,
-          fileContent: credentialsJson
-        }
-      });
+      // Upload credentials to Langflow using FormData
+      const formData = new FormData();
+      formData.append('file', bigQueryData.credentialsFile);
 
-      if (uploadResponse.error) {
-        console.error('Langflow upload error:', uploadResponse.error);
+      const { data: session } = await supabase.auth.getSession();
+      const uploadResponse = await fetch(
+        `https://ooimkdueuozjfwadrkkh.supabase.co/functions/v1/upload-to-langflow`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.session?.access_token}`
+          },
+          body: formData
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Langflow upload error:', errorText);
         throw new Error('Erro ao fazer upload das credenciais');
       }
 
-      console.log('Langflow upload response:', uploadResponse.data);
+      const uploadData = await uploadResponse.json();
+      console.log('Langflow upload response:', uploadData);
 
       // Call BigQuery connect edge function with Langflow info
       const { data, error } = await supabase.functions.invoke('bigquery-connect', {
@@ -116,8 +126,8 @@ export function AddSourceModal({
           projectId: bigQueryData.projectId,
           datasetId: bigQueryData.datasetId,
           tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : [],
-          langflowPath: uploadResponse.data?.path,
-          langflowName: uploadResponse.data?.name
+          langflowPath: uploadData?.path,
+          langflowName: uploadData?.name
         }
       });
 
