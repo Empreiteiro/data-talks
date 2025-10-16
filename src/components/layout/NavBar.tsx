@@ -45,10 +45,10 @@ const NavBar = () => {
           
           {/* Social Links - sempre visível para não-logados */}
           {!user && (
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-1">
               <a
                 href="mailto:democh@oriontech.me"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors p-2"
                 aria-label="Email"
               >
                 <Mail className="h-4 w-4" />
@@ -57,7 +57,7 @@ const NavBar = () => {
                 href="https://www.linkedin.com/in/lucas-democh-goularte-8b290356/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors p-2"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="h-4 w-4" />
