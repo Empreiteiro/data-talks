@@ -85,13 +85,13 @@ const UsageMonitoring = () => {
   // Determine plan limits based on subscription status
   const isPro = subscription?.subscribed && subscription?.subscription_tier === 'Pro';
   const planLimits = isPro ? {
-    sources: 5,
-    agents: 10, // Pro limit for agents
+    sources: 10,
+    agents: 20,
     monthlyQuestions: 1000
   } : {
-    sources: 2,  // Trial limit
-    agents: 2,   // Trial limit 
-    monthlyQuestions: 20 // Trial limit
+    sources: 5,
+    agents: 5,
+    monthlyQuestions: 20
   };
 
   const planName = isPro ? 'Pro' : 'Trial';
