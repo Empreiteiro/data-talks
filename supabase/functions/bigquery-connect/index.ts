@@ -43,16 +43,19 @@ serve(async (req) => {
     console.log('User authenticated:', user.id)
 
     const { credentials, projectId, datasetId, tables, langflowPath, langflowName } = await req.json() as BigQueryRequest
-    console.log('Request data:', { projectId, datasetId, tables: tables.length, langflowPath, langflowName })
+    console.log('Request data:', { projectId, datasetId, tables: tables.length, langflowPath, langflowName, hasCredentials: !!credentials })
 
     // Parse and validate credentials only if not reusing existing credentials
     let credentialsObj
     let access_token
     
-    if (!langflowPath || !credentials) {
+    // Check if we're reusing existing credentials (langflowPath exists and credentials is empty)
+    const reusingCredentials = langflowPath && (!credentials || credentials.trim() === '')
+    
+    if (!reusingCredentials) {
       // New credentials - need to parse and validate
       try {
-        if (!credentials) {
+        if (!credentials || credentials.trim() === '') {
           throw new Error('Credenciais não fornecidas')
         }
         
@@ -94,8 +97,7 @@ serve(async (req) => {
       access_token = tokenData.access_token
       console.log('Access token obtained')
     } else {
-      // Reusing existing credentials - we need to get credentials from Langflow
-      // For now, we'll skip authentication and just create the source record
+      // Reusing existing credentials
       console.log('Reusing existing credentials from Langflow:', langflowPath)
       access_token = null
     }

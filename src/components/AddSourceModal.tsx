@@ -251,7 +251,7 @@ export function AddSourceModal({
             <TabsContent value="bigquery" className="space-y-4">
               <div className="space-y-4">
                 {existingCredentials.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -265,17 +265,17 @@ export function AddSourceModal({
                             setSelectedCredential("");
                           }
                         }}
-                        className="h-4 w-4"
+                        className="h-4 w-4 rounded border-gray-300"
                       />
-                      <Label htmlFor="use-existing" className="cursor-pointer">
-                        Usar credencial existente
+                      <Label htmlFor="use-existing" className="cursor-pointer font-medium">
+                        {t('sources.useExistingCredential')}
                       </Label>
                     </div>
                     
                     {useExistingCredential && (
                       <Select value={selectedCredential} onValueChange={setSelectedCredential}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione uma credencial" />
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={t('sources.selectCredential')} />
                         </SelectTrigger>
                         <SelectContent>
                           {existingCredentials.map((cred) => (

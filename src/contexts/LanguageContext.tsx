@@ -149,6 +149,8 @@ const translations = {
     'sources.bigQueryStep7': '7. Select "JSON" format and download the file',
     'sources.bigQueryStep8': '8. Upload the downloaded JSON file above',
     'sources.bigQueryDocsLink': 'View official documentation',
+    'sources.useExistingCredential': 'Use existing credential',
+    'sources.selectCredential': 'Select a credential',
     'sources.savedSourcesAppear': 'Saved sources will appear here',
     'sources.addSourcesInstructions': 'Click Add above to add CSV or XLSX files, connect to BigQuery, or link Google Sheets.',
     
@@ -581,6 +583,8 @@ const translations = {
     'sources.bigQueryStep7': '7. Selecione o formato "JSON" e baixe o arquivo',
     'sources.bigQueryStep8': '8. Faça upload do arquivo JSON baixado acima',
     'sources.bigQueryDocsLink': 'Ver documentação oficial',
+    'sources.useExistingCredential': 'Usar credencial existente',
+    'sources.selectCredential': 'Selecione uma credencial',
     'sources.savedSourcesAppear': 'As fontes salvas aparecerão aqui',
     'sources.addSourcesInstructions': 'Clique em Adicionar acima para adicionar arquivos CSV ou XLSX, conectar ao BigQuery ou vincular Google Sheets.',
     
