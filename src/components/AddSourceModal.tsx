@@ -94,30 +94,32 @@ export function AddSourceModal({
       // Read credentials file as text (already JSON string)
       const credentialsJson = await bigQueryData.credentialsFile.text();
 
-      // Upload credentials to Langflow using FormData
-      const formData = new FormData();
-      formData.append('file', bigQueryData.credentialsFile);
+      // Upload credentials to Langflow using the same approach as CSV
+      let langflowPath = null;
+      let langflowName = null;
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', bigQueryData.credentialsFile);
+        
+        const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
+          'upload-to-langflow',
+          {
+            body: formData,
+          }
+        );
 
-      const { data: session } = await supabase.auth.getSession();
-      const uploadResponse = await fetch(
-        `https://ooimkdueuozjfwadrkkh.supabase.co/functions/v1/upload-to-langflow`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.session?.access_token}`
-          },
-          body: formData
+        if (langflowError) {
+          console.error('Langflow upload error:', langflowError);
+        } else if (langflowData) {
+          langflowPath = langflowData.path;
+          langflowName = langflowData.name;
+          console.log('Credentials uploaded to Langflow:', { path: langflowPath, name: langflowName });
         }
-      );
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        console.error('Langflow upload error:', errorText);
-        throw new Error('Erro ao fazer upload das credenciais');
+      } catch (error) {
+        console.error('Error uploading to Langflow:', error);
+        // Continue with connection even if Langflow upload fails
       }
-
-      const uploadData = await uploadResponse.json();
-      console.log('Langflow upload response:', uploadData);
 
       // Call BigQuery connect edge function with Langflow info
       const { data, error } = await supabase.functions.invoke('bigquery-connect', {
@@ -126,8 +128,8 @@ export function AddSourceModal({
           projectId: bigQueryData.projectId,
           datasetId: bigQueryData.datasetId,
           tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : [],
-          langflowPath: uploadData?.path,
-          langflowName: uploadData?.name
+          langflowPath: langflowPath,
+          langflowName: langflowName
         }
       });
 
