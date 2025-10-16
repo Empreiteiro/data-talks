@@ -138,9 +138,9 @@ const Index = () => {
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="container mx-auto px-6 py-20">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-          {t('howItWorks.title')}
+      <section id="how-it-works" className="container mx-auto px-6 py-24">
+        <h2 className="text-3xl md:text-4xl font-normal text-center mb-20">
+          Como funciona
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
           <Card className="p-6 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
@@ -180,7 +180,7 @@ const Index = () => {
       {/* Benefits */}
       <section className="container mx-auto px-6 py-24">
         <h2 className="text-3xl md:text-4xl font-normal text-center mb-20">
-          {t('benefits.title')}
+          Benefícios
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl mx-auto">
           <div className="space-y-4">
@@ -219,52 +219,52 @@ const Index = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="container mx-auto px-6 py-24 bg-accent/20">
+      <section className="container mx-auto px-6 py-24">
         <h2 className="text-3xl md:text-4xl font-normal text-center mb-20">
           O que as pessoas estão dizendo
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          <Card className="p-8 border-0 shadow-sm bg-background/50">
+          <Card className="p-8 border-0 shadow-sm">
             <p className="text-muted-foreground leading-relaxed mb-8 min-h-[120px]">
-              "Um feedback de alguém que parece importante."
+              "Finalmente uma ferramenta que entende que eu não falo SQL. Só pergunto em português mesmo e ela me responde. Incrível!"
             </p>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <span className="text-sm font-medium">AI</span>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-medium">JD</span>
               </div>
               <div>
-                <p className="font-medium text-sm">Alguém Importante</p>
-                <p className="text-xs text-muted-foreground">CEO de Alguma Coisa</p>
+                <p className="font-medium text-sm">João Developer</p>
+                <p className="text-xs text-muted-foreground">Analista de Dados</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-8 border-0 shadow-sm bg-background/50">
+          <Card className="p-8 border-0 shadow-sm">
             <p className="text-muted-foreground leading-relaxed mb-8 min-h-[120px]">
-              "Uma opinião de uma pessoa importante que você nunca vai saber se é de verdade."
+              "Economizei horas tentando entender dashboards complexos. Agora só pergunto 'quanto vendemos esse mês?' e pronto."
             </p>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <span className="text-sm font-medium">VIP</span>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-medium">MS</span>
               </div>
               <div>
-                <p className="font-medium text-sm">Pessoa Muito Importante</p>
-                <p className="text-xs text-muted-foreground">Fundadora de Startup Unicórnio</p>
+                <p className="font-medium text-sm">Maria Silva</p>
+                <p className="text-xs text-muted-foreground">Gerente Comercial</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-8 border-0 shadow-sm bg-background/50">
+          <Card className="p-8 border-0 shadow-sm">
             <p className="text-muted-foreground leading-relaxed mb-8 min-h-[120px]">
-              "Revolucionou completamente a forma como converso com planilhas. Agora elas me respondem."
+              "Conectei meu BigQuery e agora converso com bilhões de linhas como se fosse um chat. Meus relatórios saem em segundos."
             </p>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <span className="text-sm font-medium">IA</span>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-medium">PC</span>
               </div>
               <div>
-                <p className="font-medium text-sm">Analista Anônimo</p>
-                <p className="text-xs text-muted-foreground">Ex-escravo de Excel</p>
+                <p className="font-medium text-sm">Pedro Costa</p>
+                <p className="text-xs text-muted-foreground">Engenheiro de Dados</p>
               </div>
             </div>
           </Card>
