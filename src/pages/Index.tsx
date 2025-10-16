@@ -284,10 +284,10 @@ const Index = () => {
       <SEO title={t('workspace.title')} description={t('workspace.description')} canonical="/" />
       
       <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center mb-8">
           <h1 className="text-2xl font-semibold">{t('workspace.title')}</h1>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" onClick={() => setViewMode("grid")}>
               <Grid3x3 className="h-4 w-4" />
             </Button>
