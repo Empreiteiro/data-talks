@@ -121,105 +121,103 @@ const Index = () => {
         canonical="/" 
       />
       
-      {/* Hero Section */}
-      <section className="container mx-auto px-6 py-20 text-center">
-        <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          {t('hero.title')}
+      {/* Hero Section - Inspired by NotebookLM */}
+      <section className="container mx-auto px-6 pt-32 pb-20 text-center">
+        <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+          {t('hero.title').split(' ').slice(0, 4).join(' ')}{' '}
+          <span className="bg-gradient-to-r from-blue-500 to-primary bg-clip-text text-transparent">
+            {t('hero.title').split(' ').slice(4, 6).join(' ')}
+          </span>
         </h1>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
           {t('hero.subtitle')}
         </p>
-        <div className="flex gap-4 justify-center">
-          <Button asChild size="lg">
-            <a href="/login">{t('hero.getStarted')}</a>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <a href="#how-it-works">{t('hero.howItWorks')}</a>
-          </Button>
-        </div>
+        <Button asChild size="lg" className="rounded-full px-8 py-6 text-base font-medium">
+          <a href="/login">{t('hero.getStarted')}</a>
+        </Button>
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="container mx-auto px-6 py-20 bg-accent/50">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+      <section id="how-it-works" className="container mx-auto px-6 py-20">
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
           {t('howItWorks.title')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-          <Card className="p-6 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Database className="h-6 w-6 text-primary" />
+          <Card className="p-6 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Database className="h-7 w-7 text-primary" />
             </div>
             <h3 className="font-semibold text-lg mb-2">{t('howItWorks.step1.title')}</h3>
-            <p className="text-muted-foreground text-sm">{t('howItWorks.step1.description')}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed">{t('howItWorks.step1.description')}</p>
           </Card>
           
-          <Card className="p-6 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MessageSquare className="h-6 w-6 text-primary" />
+          <Card className="p-6 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <MessageSquare className="h-7 w-7 text-primary" />
             </div>
             <h3 className="font-semibold text-lg mb-2">{t('howItWorks.step2.title')}</h3>
-            <p className="text-muted-foreground text-sm">{t('howItWorks.step2.description')}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed">{t('howItWorks.step2.description')}</p>
           </Card>
           
-          <Card className="p-6 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BarChart3 className="h-6 w-6 text-primary" />
+          <Card className="p-6 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="h-7 w-7 text-primary" />
             </div>
             <h3 className="font-semibold text-lg mb-2">{t('howItWorks.step3.title')}</h3>
-            <p className="text-muted-foreground text-sm">{t('howItWorks.step3.description')}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed">{t('howItWorks.step3.description')}</p>
           </Card>
           
-          <Card className="p-6 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Bell className="h-6 w-6 text-primary" />
+          <Card className="p-6 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Bell className="h-7 w-7 text-primary" />
             </div>
             <h3 className="font-semibold text-lg mb-2">{t('howItWorks.step4.title')}</h3>
-            <p className="text-muted-foreground text-sm">{t('howItWorks.step4.description')}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed">{t('howItWorks.step4.description')}</p>
           </Card>
         </div>
       </section>
 
       {/* Benefits */}
-      <section className="container mx-auto px-6 py-20">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+      <section className="container mx-auto px-6 py-20 bg-accent/30">
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
           {t('benefits.title')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <Card className="p-6">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Zap className="h-6 w-6 text-primary" />
+          <Card className="p-8 border-0 shadow-lg">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mb-4">
+              <Zap className="h-7 w-7 text-primary" />
             </div>
-            <h3 className="font-semibold text-lg mb-2">{t('benefits.easy.title')}</h3>
-            <p className="text-muted-foreground">{t('benefits.easy.description')}</p>
+            <h3 className="font-semibold text-lg mb-3">{t('benefits.easy.title')}</h3>
+            <p className="text-muted-foreground leading-relaxed">{t('benefits.easy.description')}</p>
           </Card>
           
-          <Card className="p-6">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <BarChart3 className="h-6 w-6 text-primary" />
+          <Card className="p-8 border-0 shadow-lg">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mb-4">
+              <BarChart3 className="h-7 w-7 text-primary" />
             </div>
-            <h3 className="font-semibold text-lg mb-2">{t('benefits.fast.title')}</h3>
-            <p className="text-muted-foreground">{t('benefits.fast.description')}</p>
+            <h3 className="font-semibold text-lg mb-3">{t('benefits.fast.title')}</h3>
+            <p className="text-muted-foreground leading-relaxed">{t('benefits.fast.description')}</p>
           </Card>
           
-          <Card className="p-6">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Shield className="h-6 w-6 text-primary" />
+          <Card className="p-8 border-0 shadow-lg">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl flex items-center justify-center mb-4">
+              <Shield className="h-7 w-7 text-primary" />
             </div>
-            <h3 className="font-semibold text-lg mb-2">{t('benefits.secure.title')}</h3>
-            <p className="text-muted-foreground">{t('benefits.secure.description')}</p>
+            <h3 className="font-semibold text-lg mb-3">{t('benefits.secure.title')}</h3>
+            <p className="text-muted-foreground leading-relaxed">{t('benefits.secure.description')}</p>
           </Card>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-6 py-20 text-center bg-accent/50">
-        <h2 className="text-3xl md:text-4xl font-bold mb-6">
+      <section className="container mx-auto px-6 py-24 text-center">
+        <h2 className="text-4xl md:text-5xl font-bold mb-6">
           {t('nav.tagline')}
         </h2>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
           {t('workspace.description')}
         </p>
-        <Button asChild size="lg">
+        <Button asChild size="lg" className="rounded-full px-8 py-6 text-base font-medium">
           <a href="/login">{t('nav.getStarted')}</a>
         </Button>
       </section>
