@@ -36,6 +36,18 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
     }
   }, [agentId]);
 
+  // Recarregar sources quando a janela recebe foco
+  useEffect(() => {
+    const handleFocus = () => {
+      if (agentId) {
+        loadAgentSourceIds();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [agentId]);
+
   async function loadAgentSourceIds() {
     if (!agentId) return;
     

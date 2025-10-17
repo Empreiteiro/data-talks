@@ -35,7 +35,11 @@ interface Credential {
   projectId?: string;
 }
 
-export const BigQueryCredentialsManager = () => {
+interface BigQueryCredentialsManagerProps {
+  onSourceAdded?: () => void;
+}
+
+export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredentialsManagerProps = {}) => {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -145,7 +149,8 @@ export const BigQueryCredentialsManager = () => {
       toast.success('Credencial adicionada com sucesso!');
       setCredentialName('');
       setCredentialsFile(null);
-      fetchCredentials();
+      await fetchCredentials();
+      onSourceAdded?.();
     } catch (error: any) {
       console.error('Error uploading credential:', error);
       toast.error('Erro ao adicionar credencial', {
