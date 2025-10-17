@@ -127,14 +127,14 @@ serve(async (req) => {
           question: question,
           schema: schemaText
         },
-        "BigQueryExecutor-WZCNa": {
-          service_account_key: metadata.credentials_content || ""
+        "File-Ym9hw": {
+          path: [credentialsPath]
         }
       }
     };
     
     // Log payload details
-    console.log('Service account key in payload:', payload.tweaks["BigQueryExecutor-WZCNa"].service_account_key ? 'Present (length: ' + payload.tweaks["BigQueryExecutor-WZCNa"].service_account_key.length + ')' : 'Missing');
+    console.log('Credentials path in payload:', credentialsPath);
 
     console.log('=== PAYLOAD COMPLETO PARA BIGQUERY ===');
     console.log(JSON.stringify(payload, null, 2));
