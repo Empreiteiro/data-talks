@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -617,10 +619,10 @@ export default function Questions() {
                         <div className="text-sm mb-1">
                           <span className="font-medium">Pergunta:</span> {conversation.question}
                         </div>
-                        <div className="prose prose-sm max-w-none text-sm">
-                          {(conversation.answer || '').split('\n').map((line: string, lineIndex: number) => (
-                            <p key={lineIndex} className="mb-1 last:mb-0">{line}</p>
-                          ))}
+                        <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {conversation.answer || ''}
+                          </ReactMarkdown>
                         </div>
                         {conversation.imageUrl && (
                           <div className="mt-2">

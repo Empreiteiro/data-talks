@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
@@ -493,7 +495,11 @@ export default function Workspace() {
                       >
                         <X className="h-3 w-3" />
                       </Button>
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   </div>)}
                 {isLoading && (

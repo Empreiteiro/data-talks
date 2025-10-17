@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabaseClient } from "@/services/supabaseClient";
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const ShareAgent = () => {
   const { token = "" } = useParams();
@@ -212,10 +214,10 @@ const ShareAgent = () => {
                           <div className="text-sm">
                             <span className="font-medium">Pergunta:</span> {conversation.question}
                           </div>
-                          <div className="prose prose-sm max-w-none">
-                            {conversation.answer.split('\n').map((line: string, lineIndex: number) => (
-                              <p key={lineIndex} className="mb-1 last:mb-0 text-sm">{line}</p>
-                            ))}
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {conversation.answer}
+                            </ReactMarkdown>
                           </div>
                           {conversation.imageUrl && (
                             <div className="mt-2">
