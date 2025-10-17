@@ -93,56 +93,23 @@ serve(async (req) => {
     // Generate session ID with agent prefix to avoid cross-contamination
     const langflowSessionId = `bigquery-${agent.id}-${crypto.randomUUID()}`;
     
-    // Build payload using the same structure as CSV flow
+    // Build payload using the new structure
     const payload = {
       output_type: "chat",
       input_type: "text",
       input_value: question,
-      session_id: langflowSessionId,
       tweaks: {
-        "Prompt-7HDgb": {
-          Schema: schemaText,
-          table: metadata.table || (Array.isArray(metadata.tables) && metadata.tables[0]) || (Array.isArray(metadata.table_infos) && metadata.table_infos[0]?.table_name) || "",
+        "Prompt-m6BHb": {
           project: metadata.project || metadata.project_id || "",
-          dataset: metadata.dataset || metadata.dataset_id || ""
+          dataset: metadata.dataset || metadata.dataset_id || "",
+          Table: metadata.table || (Array.isArray(metadata.tables) && metadata.tables[0]) || (Array.isArray(metadata.table_infos) && metadata.table_infos[0]?.table_name) || ""
         },
-        "File-lER3y": {
-          path: [(() => {
-            console.log('Looking for credentials file...');
-            console.log('BigQuery source langflow_path:', bigquerySource.langflow_path);
-            console.log('BigQuery source metadata fields:', Object.keys(metadata));
-            
-            // Primary: Use langflow_path like CSV agent does
-            let credentialsPath = bigquerySource.langflow_path;
-            
-            // Fallback: Try metadata fields if langflow_path is empty
-            if (!credentialsPath) {
-              credentialsPath = metadata.service_account_json_file ||
-                metadata.credentials_file ||
-                metadata.service_account ||
-                metadata.service_account_filename ||
-                metadata.credentials_name ||
-                "";
-              console.log('Using fallback metadata path:', credentialsPath);
-            } else {
-              console.log('Using primary langflow_path:', credentialsPath);
-            }
-            
-            if (!credentialsPath) {
-              console.error('ERROR: No credentials file path found! Check BigQuery source configuration.');
-              return "";
-            }
-            
-            console.log('Final credentials path sent to Langflow:', credentialsPath);
-            return credentialsPath;
-          })()]
-        },
-        "Prompt Template-RF5j9": {
+        "Prompt Template-05Bvn": {
           question: question,
           schema: schemaText
         },
-        "Python REPL Tool-eYPvH": {
-          chart_without_border: "true"
+        "BigQueryExecutor-WZCNa": {
+          service_account_key: metadata.credentials_content || ""
         }
       }
     };
