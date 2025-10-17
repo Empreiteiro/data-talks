@@ -96,48 +96,30 @@ serve(async (req) => {
           credentialsObj = JSON.parse(fileText)
           console.log('Credentials loaded from Supabase Storage')
         }
-        // Priority 3: Fallback - search existing source
+        // Priority 3: Fetch from Langflow using langflowPath
+        else if (langflowPath) {
+          console.log('Fetching credentials from Langflow:', langflowPath)
+          
+          const langflowBaseUrl = Deno.env.get('LANGFLOW_BASE_URL')
+          if (!langflowBaseUrl) {
+            throw new Error('LANGFLOW_BASE_URL não configurado')
+          }
+          
+          const langflowUrl = `${langflowBaseUrl}/${langflowPath}`
+          console.log('Downloading from:', langflowUrl)
+          
+          const langflowResponse = await fetch(langflowUrl)
+          if (!langflowResponse.ok) {
+            console.error('Langflow fetch error:', await langflowResponse.text())
+            throw new Error('Falha ao buscar credenciais do Langflow')
+          }
+          
+          const credentialsText = await langflowResponse.text()
+          credentialsObj = JSON.parse(credentialsText)
+          console.log('Credentials loaded from Langflow')
+        }
         else {
-          console.log('Searching for existing source metadata')
-          
-          const { data: existingSource, error: sourceQueryError } = await supabaseClient
-            .from('sources')
-            .select('metadata')
-            .eq('type', 'bigquery')
-            .eq('langflow_path', langflowPath)
-            .limit(1)
-            .single()
-          
-          if (sourceQueryError || !existingSource) {
-            console.error('Error finding existing source:', sourceQueryError)
-            throw new Error('Nenhuma fonte encontrada com estas credenciais')
-          }
-          
-          const metadata = existingSource.metadata as any
-          
-          // Try credentialsContent from metadata first
-          if (metadata?.credentials_content) {
-            console.log('Using credentials_content from metadata')
-            credentialsObj = JSON.parse(metadata.credentials_content)
-          }
-          // Then try storage path
-          else if (metadata?.supabase_storage_path) {
-            console.log('Using supabase_storage_path from metadata')
-            
-            const { data: fileData, error: downloadError } = await supabaseServiceClient.storage
-              .from('data-files')
-              .download(metadata.supabase_storage_path)
-            
-            if (downloadError) {
-              console.error('Error downloading from storage:', downloadError)
-              throw new Error('Falha ao recuperar credenciais do storage')
-            }
-            
-            const fileText = await fileData.text()
-            credentialsObj = JSON.parse(fileText)
-          } else {
-            throw new Error('Credenciais não encontradas nos metadados')
-          }
+          throw new Error('Nenhuma fonte de credenciais disponível')
         }
         
         console.log('Credentials loaded successfully')
