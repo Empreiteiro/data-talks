@@ -91,7 +91,20 @@ serve(async (req) => {
     console.log('Schema construído:', schemaText);
     
     // Generate session ID with agent prefix to avoid cross-contamination
-    const langflowSessionId = `bigquery-${agent.id}-${crypto.randomUUID()}`;
+    // If sessionId exists (follow-up), reuse the same langflowSessionId
+    // If not (new question), generate new one
+    let langflowSessionId: string;
+    
+    if (sessionId) {
+      // For follow-up questions, use the existing session
+      langflowSessionId = `bigquery-${agent.id}-${sessionId}`;
+      console.log('Reusing langflowSessionId for follow-up:', langflowSessionId);
+    } else {
+      // For new conversation, generate new ID that will be updated later
+      const tempId = crypto.randomUUID();
+      langflowSessionId = `bigquery-${agent.id}-${tempId}`;
+      console.log('Generated new langflowSessionId:', langflowSessionId);
+    }
     
     // Validate credentials before building payload
     console.log('Credentials content type:', typeof metadata.credentials_content);
@@ -103,6 +116,7 @@ serve(async (req) => {
       output_type: "chat",
       input_type: "text",
       input_value: question,
+      session_id: langflowSessionId,  // Include session_id for conversation context
       tweaks: {
         "Prompt-m6BHb": {
           project: metadata.project || metadata.project_id || "",
@@ -300,7 +314,17 @@ serve(async (req) => {
       }
       
       qaSession = sessionData;
+      
+      // For new session, update langflowSessionId with the real session ID
+      langflowSessionId = `bigquery-${agent.id}-${qaSession.id}`;
+      console.log('Updated langflowSessionId for new session:', langflowSessionId);
     }
+    
+    console.log('Session management:', {
+      hasExistingSessionId: !!sessionId,
+      langflowSessionId: langflowSessionId,
+      supabaseSessionId: qaSession?.id
+    });
 
     // Update the session with the response
     if (sessionId) {
