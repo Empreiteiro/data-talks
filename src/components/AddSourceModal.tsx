@@ -30,6 +30,9 @@ export function AddSourceModal({
     langflowPath: string;
     langflowName: string;
     sourceName: string;
+    metadata?: any;
+    supabaseStoragePath?: string;
+    credentialsContent?: string;
   }>>([]);
   const [useExistingCredential, setUseExistingCredential] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<string>("");
@@ -61,7 +64,9 @@ export function AddSourceModal({
         langflowPath: source.langflow_path!,
         langflowName: source.langflow_name || source.langflow_path!.split('/').pop()!,
         sourceName: source.langflow_name || source.langflow_path!.split('/').pop()!.replace('.json', ''),
-        metadata: source.metadata
+        metadata: source.metadata,
+        supabaseStoragePath: (source.metadata as any)?.supabaseStoragePath,
+        credentialsContent: (source.metadata as any)?.credentialsContent
       })) || [];
 
       // Remove duplicates based on langflowPath
@@ -146,6 +151,8 @@ export function AddSourceModal({
     try {
       let langflowPath = null;
       let langflowName = null;
+      let supabaseStoragePath = null;
+      let credentialsContent = null;
       let credentialsJson = '';
 
       if (useExistingCredential) {
@@ -154,6 +161,8 @@ export function AddSourceModal({
         if (selectedCred) {
           langflowPath = selectedCred.langflowPath;
           langflowName = selectedCred.langflowName;
+          supabaseStoragePath = selectedCred.supabaseStoragePath;
+          credentialsContent = selectedCred.credentialsContent;
           // We don't need the actual credentials JSON when reusing
           credentialsJson = '';
         }
@@ -177,7 +186,14 @@ export function AddSourceModal({
           } else if (langflowData) {
             langflowPath = langflowData.path;
             langflowName = langflowData.name;
-            console.log('Credentials uploaded to Langflow:', { path: langflowPath, name: langflowName });
+            supabaseStoragePath = langflowData.supabaseStoragePath;
+            credentialsContent = langflowData.credentialsContent;
+            console.log('Credentials uploaded to Langflow:', { 
+              path: langflowPath, 
+              name: langflowName,
+              supabaseStoragePath,
+              hasCredentialsContent: !!credentialsContent
+            });
           }
         } catch (error) {
           console.error('Error uploading to Langflow:', error);
@@ -193,7 +209,9 @@ export function AddSourceModal({
           datasetId: bigQueryData.datasetId,
           tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : [],
           langflowPath: langflowPath,
-          langflowName: langflowName
+          langflowName: langflowName,
+          supabaseStoragePath: supabaseStoragePath,
+          credentialsContent: credentialsContent
         }
       });
 
