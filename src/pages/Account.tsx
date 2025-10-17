@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { agentClient } from "@/services/agentClient";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import SubscriptionManagement from "@/components/SubscriptionManagement";
+import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
 
 const Account = () => {
   const { t } = useLanguage();
@@ -40,6 +41,9 @@ const Account = () => {
           <TabsTrigger value="subscription">
             {t('language') === 'pt' ? 'Assinatura' : 'Subscription'}
           </TabsTrigger>
+          <TabsTrigger value="credentials">
+            {t('language') === 'pt' ? 'Credenciais BigQuery' : 'BigQuery Credentials'}
+          </TabsTrigger>
           <TabsTrigger value="settings">
             {t('language') === 'pt' ? 'Configurações' : 'Settings'}
           </TabsTrigger>
@@ -51,6 +55,10 @@ const Account = () => {
 
         <TabsContent value="subscription">
           <SubscriptionManagement />
+        </TabsContent>
+
+        <TabsContent value="credentials">
+          <BigQueryCredentialsManager />
         </TabsContent>
 
         <TabsContent value="settings">
