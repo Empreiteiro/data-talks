@@ -70,47 +70,79 @@ serve(async (req) => {
     const reusingCredentials = langflowPath && (!credentials || credentials.trim() === '')
     
     if (reusingCredentials) {
-      // Reusing existing credentials - fetch from Supabase Storage
-      console.log('Reusing existing credentials from Supabase Storage:', supabaseStoragePath)
+      // Reusing existing credentials
+      console.log('Reusing credentials. StoragePath:', supabaseStoragePath, 'HasContent:', !!credentialsContent)
       
       try {
-        // Find an existing source with the same langflowPath to get supabaseStoragePath
-        const { data: existingSource, error: sourceQueryError } = await supabaseClient
-          .from('sources')
-          .select('metadata')
-          .eq('type', 'bigquery')
-          .eq('langflow_path', langflowPath)
-          .limit(1)
-          .single()
-        
-        if (sourceQueryError || !existingSource) {
-          console.error('Error finding existing source:', sourceQueryError)
-          throw new Error('Nenhuma fonte encontrada com estas credenciais')
+        // Priority 1: Use credentialsContent if provided (fastest)
+        if (credentialsContent) {
+          console.log('Using credentials from credentialsContent')
+          credentialsObj = JSON.parse(credentialsContent)
+        }
+        // Priority 2: Use supabaseStoragePath if provided
+        else if (supabaseStoragePath) {
+          console.log('Loading credentials from Supabase Storage:', supabaseStoragePath)
+          
+          const { data: fileData, error: downloadError } = await supabaseServiceClient.storage
+            .from('data-files')
+            .download(supabaseStoragePath)
+          
+          if (downloadError) {
+            console.error('Error downloading from storage:', downloadError)
+            throw new Error('Falha ao recuperar credenciais do storage')
+          }
+          
+          const fileText = await fileData.text()
+          credentialsObj = JSON.parse(fileText)
+          console.log('Credentials loaded from Supabase Storage')
+        }
+        // Priority 3: Fallback - search existing source
+        else {
+          console.log('Searching for existing source metadata')
+          
+          const { data: existingSource, error: sourceQueryError } = await supabaseClient
+            .from('sources')
+            .select('metadata')
+            .eq('type', 'bigquery')
+            .eq('langflow_path', langflowPath)
+            .limit(1)
+            .single()
+          
+          if (sourceQueryError || !existingSource) {
+            console.error('Error finding existing source:', sourceQueryError)
+            throw new Error('Nenhuma fonte encontrada com estas credenciais')
+          }
+          
+          const metadata = existingSource.metadata as any
+          
+          // Try credentialsContent from metadata first
+          if (metadata?.credentials_content) {
+            console.log('Using credentials_content from metadata')
+            credentialsObj = JSON.parse(metadata.credentials_content)
+          }
+          // Then try storage path
+          else if (metadata?.supabase_storage_path) {
+            console.log('Using supabase_storage_path from metadata')
+            
+            const { data: fileData, error: downloadError } = await supabaseServiceClient.storage
+              .from('data-files')
+              .download(metadata.supabase_storage_path)
+            
+            if (downloadError) {
+              console.error('Error downloading from storage:', downloadError)
+              throw new Error('Falha ao recuperar credenciais do storage')
+            }
+            
+            const fileText = await fileData.text()
+            credentialsObj = JSON.parse(fileText)
+          } else {
+            throw new Error('Credenciais não encontradas nos metadados')
+          }
         }
         
-        const metadata = existingSource.metadata as any
-        const storagePath = metadata?.supabase_storage_path
-        
-        if (!storagePath) {
-          throw new Error('Caminho do storage não encontrado nos metadados')
-        }
-        
-        // Download credentials from Supabase Storage
-        const { data: fileData, error: downloadError } = await supabaseServiceClient.storage
-          .from('data-files')
-          .download(storagePath)
-        
-        if (downloadError) {
-          console.error('Error downloading from storage:', downloadError)
-          throw new Error('Falha ao recuperar credenciais do storage')
-        }
-        
-        // Read file content
-        const fileText = await fileData.text()
-        credentialsObj = JSON.parse(fileText)
-        console.log('Credentials loaded from Supabase Storage successfully')
+        console.log('Credentials loaded successfully')
       } catch (e) {
-        console.error('Error loading credentials from storage:', e.message)
+        console.error('Error loading credentials:', e.message)
         return new Response(JSON.stringify({ error: 'Falha ao carregar credenciais: ' + e.message }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -136,35 +168,35 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
-
-      // Get access token using service account credentials (only for new credentials)
-      if (credentialsObj) {
-        console.log('Getting access token...')
-        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-            assertion: await createJWT(credentialsObj)
-          })
-        })
-
-        if (!tokenResponse.ok) {
-          const errorText = await tokenResponse.text()
-          console.error('Token error:', errorText)
-          return new Response(JSON.stringify({ error: 'Falha na autenticação com Google: ' + errorText }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-
-        const tokenData = await tokenResponse.json()
-        access_token = tokenData.access_token
-        console.log('Access token obtained')
-      }
     }
 
-    // Get table schemas and preview data (only if we have access token)
+    // Get access token using service account credentials (always needed for data preview)
+    if (credentialsObj) {
+      console.log('Getting access token...')
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+          assertion: await createJWT(credentialsObj)
+        })
+      })
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text()
+        console.error('Token error:', errorText)
+        return new Response(JSON.stringify({ error: 'Falha na autenticação com Google: ' + errorText }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const tokenData = await tokenResponse.json()
+      access_token = tokenData.access_token
+      console.log('Access token obtained')
+    }
+
+    // Get table schemas and preview data
     const tableInfos = []
     const failedTables = []
     
@@ -247,8 +279,6 @@ serve(async (req) => {
           failedTables.push(`${tableName} (erro ao processar)`)
         }
       }
-    } else {
-      console.log('Skipping table info collection - reusing existing credentials')
     }
     
     console.log('Creating source record...')
