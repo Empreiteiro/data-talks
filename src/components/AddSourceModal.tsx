@@ -65,8 +65,8 @@ export function AddSourceModal({
         langflowName: source.langflow_name || source.langflow_path!.split('/').pop()!,
         sourceName: source.langflow_name || source.langflow_path!.split('/').pop()!.replace('.json', ''),
         metadata: source.metadata,
-        supabaseStoragePath: (source.metadata as any)?.supabaseStoragePath,
-        credentialsContent: (source.metadata as any)?.credentialsContent
+        supabaseStoragePath: (source.metadata as any)?.supabase_storage_path,
+        credentialsContent: (source.metadata as any)?.credentials_content
       })) || [];
 
       // Remove duplicates based on langflowPath
