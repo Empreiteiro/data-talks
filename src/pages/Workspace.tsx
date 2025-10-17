@@ -562,9 +562,9 @@ export default function Workspace() {
 
           if (error) throw error;
           
+          setAddSourceOpen(false);
           checkSources();
           loadAvailableColumns();
-          window.location.reload();
         } catch (error: any) {
           console.error("Erro ao vincular fonte:", error);
           toast.error("Erro ao vincular fonte", {
