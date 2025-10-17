@@ -93,6 +93,11 @@ serve(async (req) => {
     // Generate session ID with agent prefix to avoid cross-contamination
     const langflowSessionId = `bigquery-${agent.id}-${crypto.randomUUID()}`;
     
+    // Validate credentials before building payload
+    console.log('Credentials content type:', typeof metadata.credentials_content);
+    console.log('Credentials content length:', metadata.credentials_content ? metadata.credentials_content.length : 0);
+    console.log('Credentials content preview (first 100 chars):', metadata.credentials_content ? metadata.credentials_content.substring(0, 100) : 'EMPTY');
+    
     // Build payload using the new structure
     const payload = {
       output_type: "chat",
@@ -113,6 +118,9 @@ serve(async (req) => {
         }
       }
     };
+    
+    // Log payload details
+    console.log('Service account key in payload:', payload.tweaks["BigQueryExecutor-WZCNa"].service_account_key ? 'Present (length: ' + payload.tweaks["BigQueryExecutor-WZCNa"].service_account_key.length + ')' : 'Missing');
 
     console.log('=== PAYLOAD COMPLETO PARA BIGQUERY ===');
     console.log(JSON.stringify(payload, null, 2));
