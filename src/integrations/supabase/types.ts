@@ -300,20 +300,6 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
-      get_user_agents_safe: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          created_at: string
-          description: string
-          has_password: boolean
-          has_share_token: boolean
-          id: string
-          name: string
-          source_ids: string[]
-          suggested_questions: string[]
-          updated_at: string
-        }[]
-      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

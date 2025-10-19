@@ -277,23 +277,6 @@ serve(async (req) => {
       }
       
       qaSession = existingSession;
-    } else if (isShared) {
-      // For shared questions, create session with agent_id and share_token
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('qa_sessions')
-        .insert({
-          question,
-          agent_id: agent.id,
-          share_token: shareToken,
-          is_shared: true
-        })
-        .select()
-        .single();
-
-      if (sessionError) {
-        console.error('Error creating shared session:', sessionError);
-        throw new Error('Failed to create shared session');
-      }
       
       qaSession = sessionData;
     } else {

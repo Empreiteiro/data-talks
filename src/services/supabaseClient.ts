@@ -33,10 +33,12 @@ export const supabaseClient = {
     if (error) throw error;
   },
 
-  // Agents - using secure functions to prevent exposure of sensitive fields
+  // Agents
   async listAgents() {
     const { data, error } = await supabase
-      .rpc('get_user_agents_safe');
+      .from('agents')
+      .select('id, name, description, source_ids, suggested_questions, created_at, updated_at')
+      .order('updated_at', { ascending: false });
     
     if (error) throw error;
     return data || [];
