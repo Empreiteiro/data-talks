@@ -20,9 +20,6 @@ export interface Agent {
   name?: string;
   description: string;
   createdAt: string;
-  // Sharing
-  shareToken: string;
-  sharePassword?: string;
   // Suggested questions
   suggestedQuestions?: string[];
 }
@@ -176,7 +173,7 @@ export const agentClient = {
   createBriefing(sourceIds: string[], description: string, name?: string): Agent {
     if (description.trim().length < 200) throw new Error('Descrição mínima de 200 caracteres');
     const ownerId = getCurrentUserId();
-    const agent: Agent = { id: uid(), ownerId, name: name?.trim() || undefined, description, createdAt: nowISO(), shareToken: uid(), sharePassword: undefined };
+    const agent: Agent = { id: uid(), ownerId, name: name?.trim() || undefined, description, createdAt: nowISO() };
     const agents = read<Agent>(DB.agents);
     agents.push(agent);
     write(DB.agents, agents);
@@ -217,16 +214,6 @@ export const agentClient = {
     return a;
   },
 
-  setAgentShare(agentId: string, password?: string) {
-    const agents = read<Agent>(DB.agents);
-    const a = agents.find(x => x.id === agentId);
-    if (!a) throw new Error('Agente não encontrado');
-    a.sharePassword = password || undefined;
-    if (!a.shareToken) a.shareToken = uid();
-    write(DB.agents, agents);
-    return a;
-  },
-
   deleteAgent(agentId: string): void {
     const ownerId = getCurrentUserId();
     // Remove agent
@@ -241,16 +228,6 @@ export const agentClient = {
     // Remove alerts
     const alerts = read<Alert>(DB.alerts).filter(a => a.agentId !== agentId);
     write(DB.alerts, alerts);
-  },
-
-  getAgentByShareToken(token: string): Agent | undefined {
-    return read<Agent>(DB.agents).find(a => a.shareToken === token);
-  },
-
-  verifySharePassword(agentId: string, password: string): boolean {
-    const a = read<Agent>(DB.agents).find(x => x.id === agentId);
-    if (!a) return false;
-    return (a.sharePassword || '') === (password || '');
   },
 
   // QA

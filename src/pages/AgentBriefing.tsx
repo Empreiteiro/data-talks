@@ -58,8 +58,7 @@ export default function AgentBriefing() {
           ownerId: user?.id || '',
           name: agentData.name,
           description: agentData.description || '',
-          createdAt: agentData.created_at,
-          shareToken: ''
+          createdAt: agentData.created_at
         };
 
         setAgent(mappedAgent);
