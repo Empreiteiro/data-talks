@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Link } from "react-router-dom";
 import { Settings, Globe, Linkedin, Mail } from "lucide-react";
 import {
@@ -14,6 +15,7 @@ import {
 
 const NavBar = () => {
   const { user, logout } = useAuth();
+  const { data: userRole } = useUserRole(user?.id);
   const { t, language, setLanguage } = useLanguage();
   
   const languages = [
@@ -89,6 +91,22 @@ const NavBar = () => {
                       {t('settings.manageSubscription')}
                     </Link>
                   </DropdownMenuItem>
+                  
+                  {userRole === 'admin' && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/users" className="cursor-pointer">
+                          Usuários
+                        </Link>
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem asChild>
+                        <Link to="/workspace-access" className="cursor-pointer">
+                          Controle de Acesso
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">

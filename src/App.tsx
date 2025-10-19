@@ -19,6 +19,8 @@ import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
 import ShareAgent from "@/pages/ShareAgent";
 import Workspace from "@/pages/Workspace";
+import Users from "@/pages/Users";
+import WorkspaceAccess from "@/pages/WorkspaceAccess";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -55,6 +57,8 @@ const AppContent = () => {
           <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
           <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
           <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
+          <Route path="/users" element={<RequireAuth><Users /></RequireAuth>} />
+          <Route path="/workspace-access" element={<RequireAuth><WorkspaceAccess /></RequireAuth>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
