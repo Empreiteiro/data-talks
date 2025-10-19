@@ -43,56 +43,35 @@ const Users = () => {
   const { data: usersWithRoles = [] } = useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('id, user_id, role, created_at');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const { data, error } = await supabase.functions.invoke('get-users-with-roles', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) throw error;
-
-      // Get user emails from auth.users
-      const userIds = data.map(r => r.user_id);
-      const users: UserWithRole[] = [];
-
-      for (const roleData of data) {
-        const { data: authData } = await supabase.auth.admin.getUserById(roleData.user_id);
-        if (authData?.user) {
-          users.push({
-            id: roleData.user_id,
-            email: authData.user.email || '',
-            role: roleData.role as 'admin' | 'member',
-            created_at: roleData.created_at
-          });
-        }
-      }
-
-      return users;
+      return data as UserWithRole[];
     },
     enabled: currentUserRole === 'admin',
   });
 
   const addUserMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: 'admin' | 'member' }) => {
-      // First, create the user via edge function or manually
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        email_confirm: true,
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { email, role },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Then assign role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role,
-          created_by: user?.id
-        });
-
-      if (roleError) throw roleError;
-
-      return authData.user;
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       toast.success('Usuário adicionado com sucesso');

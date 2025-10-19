@@ -53,57 +53,34 @@ const WorkspaceAccess = () => {
   const { data: users = [] } = useQuery({
     queryKey: ['users-for-sharing'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('user_id');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const { data, error } = await supabase.functions.invoke('get-users-for-sharing', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) throw error;
-
-      const usersData = [];
-      for (const roleData of data) {
-        const { data: authData } = await supabase.auth.admin.getUserById(roleData.user_id);
-        if (authData?.user && authData.user.id !== user?.id) {
-          usersData.push({
-            id: authData.user.id,
-            email: authData.user.email || ''
-          });
-        }
-      }
-      return usersData;
+      return data;
     },
   });
 
   const { data: accessList = [] } = useQuery({
     queryKey: ['workspace-access'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('workspace_users')
-        .select('id, workspace_id, user_id, created_at');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const { data, error } = await supabase.functions.invoke('get-workspace-access', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) throw error;
-
-      const accessData: WorkspaceAccess[] = [];
-      for (const access of data) {
-        const { data: workspace } = await supabase
-          .from('agents')
-          .select('name')
-          .eq('id', access.workspace_id)
-          .single();
-
-        const { data: authData } = await supabase.auth.admin.getUserById(access.user_id);
-
-        if (workspace && authData?.user) {
-          accessData.push({
-            id: access.id,
-            workspace_id: access.workspace_id,
-            workspace_name: workspace.name,
-            user_id: access.user_id,
-            user_email: authData.user.email || '',
-            granted_at: access.created_at
-          });
-        }
-      }
-      return accessData;
+      return data as WorkspaceAccess[];
     },
   });
 
