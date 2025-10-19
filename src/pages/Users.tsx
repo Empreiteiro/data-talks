@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,17 +34,6 @@ const Users = () => {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<'admin' | 'member'>('member');
 
-  // Redirect if not admin (wait for role to load)
-  if (currentUserRole !== undefined && currentUserRole !== 'admin') {
-    navigate('/dashboard');
-    return null;
-  }
-
-  // Show loading while checking role
-  if (currentUserRole === undefined) {
-    return null;
-  }
-
   const { data: usersWithRoles = [] } = useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async () => {
@@ -62,6 +51,22 @@ const Users = () => {
     },
     enabled: currentUserRole === 'admin',
   });
+
+  // Redirect if not admin
+  useEffect(() => {
+    if (currentUserRole !== undefined && currentUserRole !== 'admin') {
+      navigate('/dashboard');
+    }
+  }, [currentUserRole, navigate]);
+
+  // Show loading while checking role
+  if (currentUserRole === undefined) {
+    return null;
+  }
+
+  if (currentUserRole !== 'admin') {
+    return null;
+  }
 
   const addUserMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: 'admin' | 'member' }) => {
