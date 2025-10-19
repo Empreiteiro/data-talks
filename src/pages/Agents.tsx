@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Share, Users } from "lucide-react";
+import { Plus, Edit2, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,8 +31,6 @@ interface Agent {
   suggested_questions?: string[];
   created_at: string;
   updated_at: string;
-  has_share_token: boolean;
-  has_password: boolean;
 }
 
 export default function Agents() {
@@ -83,28 +81,6 @@ export default function Agents() {
     }
   }
 
-  async function handleShare(agent: Agent) {
-    if (agent.has_share_token) {
-      try {
-        const shareToken = await supabaseClient.getAgentShareToken(agent.id);
-        const shareUrl = `${window.location.origin}/share/${shareToken}`;
-        await navigator.clipboard.writeText(shareUrl);
-        toast.success("Link copiado", {
-          description: "Link de compartilhamento copiado para a área de transferência.",
-        });
-      } catch (error: any) {
-        toast.error("Erro ao obter link", {
-          description: error.message,
-        });
-      }
-    } else {
-      // Navigate to edit page to enable sharing
-      navigate(`/agents/${agent.id}`);
-      toast.info("Configure o compartilhamento", {
-        description: "Configure o compartilhamento na página de edição do agente.",
-      });
-    }
-  }
 
   if (loading || limitsLoading) {
     return (
@@ -169,31 +145,12 @@ export default function Agents() {
                         })}
                       </div>
                     )}
-                    {agent.has_share_token && (
-                      <Badge variant="outline" className="text-xs">
-                        <Share className="h-3 w-3 mr-1" />
-                        Compartilhado
-                      </Badge>
-                    )}
-                    {agent.has_password && (
-                      <Badge variant="secondary" className="text-xs">
-                        Protegido
-                      </Badge>
-                    )}
                   </CardTitle>
                   <CardDescription>
                     Criado em {new Date(agent.created_at).toLocaleDateString('pt-BR')}
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleShare(agent)}
-                  >
-                    <Share className="h-4 w-4 mr-2" />
-                    {agent.has_share_token ? 'Copiar Link' : 'Compartilhar'}
-                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

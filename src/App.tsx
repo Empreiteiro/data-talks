@@ -17,7 +17,6 @@ import Questions from "@/pages/Questions";
 import Alerts from "@/pages/Alerts";
 import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
-import ShareAgent from "@/pages/ShareAgent";
 import Workspace from "@/pages/Workspace";
 import Users from "@/pages/Users";
 import WorkspaceAccess from "@/pages/WorkspaceAccess";
@@ -45,7 +44,6 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/share/:token" element={<ShareAgent />} />
           <Route path="/workspace/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
           {/* Redirect old notebook URLs to workspace */}
           <Route path="/notebook/:id" element={<RequireAuth><Workspace /></RequireAuth>} />

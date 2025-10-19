@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Share, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,16 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 import { agentClient, Agent, Source } from "@/services/agentClient";
 import { supabaseClient } from "@/services/supabaseClient";
@@ -40,10 +31,6 @@ export default function AgentBriefing() {
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(['']);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [shareEnabled, setShareEnabled] = useState(false);
-  const [sharePassword, setSharePassword] = useState('');
-  const [shareToken, setShareToken] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const isEditing = !!id;
   const isCreating = !isEditing;
@@ -72,7 +59,7 @@ export default function AgentBriefing() {
           name: agentData.name,
           description: agentData.description || '',
           createdAt: agentData.created_at,
-          shareToken: agentData.has_share_token ? 'has_token' : ''
+          shareToken: ''
         };
 
         setAgent(mappedAgent);
@@ -80,12 +67,6 @@ export default function AgentBriefing() {
         setDescription(mappedAgent.description || '');
         setSelectedSourceIds(agentData.source_ids || []);
         setSuggestedQuestions(agentData.suggested_questions?.length ? agentData.suggested_questions : ['']);
-        setShareEnabled(!!agentData.has_share_token);
-        setShareToken(agentData.has_share_token ? 'has_token' : '');
-        
-        if (agentData.has_share_token && agentData.has_password) {
-          setSharePassword('••••••••');
-        }
       }
     } catch (error: any) {
       toast.error("Erro ao carregar dados", {
@@ -174,45 +155,6 @@ export default function AgentBriefing() {
     }
   }
 
-  async function handleToggleSharing() {
-    if (!agent) return;
-
-    setSaving(true);
-    try {
-      const updatedAgent = await supabaseClient.toggleAgentSharing(agent.id, !shareEnabled, sharePassword || undefined);
-      if (updatedAgent) {
-        setShareEnabled(!!updatedAgent.has_share_token);
-        setShareToken(updatedAgent.share_token);
-        toast.success(`Compartilhamento ${shareEnabled ? 'desativado' : 'ativado'}`, {
-          description: `Link de compartilhamento ${shareEnabled ? 'removido' : 'gerado'} com sucesso.`,
-        });
-      }
-    } catch (error: any) {
-      toast.error("Erro ao atualizar compartilhamento", {
-        description: error.message,
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleUpdatePassword() {
-    if (!agent) return;
-
-    setSaving(true);
-    try {
-      await supabaseClient.updateAgentSharePassword(agent.id, sharePassword || undefined);
-      toast.success("Senha atualizada", {
-        description: "Senha de compartilhamento atualizada com sucesso.",
-      });
-    } catch (error: any) {
-      toast.error("Erro ao atualizar senha", {
-        description: error.message,
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
 
   const addSuggestedQuestion = () => {
     setSuggestedQuestions([...suggestedQuestions, '']);
@@ -390,97 +332,6 @@ export default function AgentBriefing() {
           </CardContent>
         </Card>
 
-        {isEditing && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Compartilhamento</CardTitle>
-              <CardDescription>
-                Configure o compartilhamento público do agente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="text-base">Compartilhamento Público</div>
-                  <div className="text-sm text-muted-foreground">
-                    Permitir que outras pessoas acessem este agente via link
-                  </div>
-                </div>
-                <Switch
-                  checked={shareEnabled}
-                  onCheckedChange={handleToggleSharing}
-                  disabled={saving}
-                />
-              </div>
-
-              {shareEnabled && (
-                <div className="space-y-4 pt-4 border-t">
-                  <div className="grid gap-2">
-                    <Label>Link de Compartilhamento</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={shareToken ? `${window.location.origin}/share/agent/${shareToken}` : ''}
-                        readOnly
-                        className="font-mono text-sm"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (shareToken) {
-                            navigator.clipboard.writeText(`${window.location.origin}/share/agent/${shareToken}`);
-                            toast.success("Link copiado!");
-                          }
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="sharePassword">Senha de Proteção (opcional)</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input
-                          id="sharePassword"
-                          type={showPassword ? "text" : "password"}
-                          value={sharePassword}
-                          onChange={(e) => setSharePassword(e.target.value)}
-                          placeholder="Digite uma senha opcional"
-                          disabled={saving}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowPassword(!showPassword)}
-                          disabled={saving}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={handleUpdatePassword}
-                        disabled={saving}
-                      >
-                        Atualizar
-                      </Button>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Se definida, os usuários precisarão desta senha para acessar o agente
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );
