@@ -13,7 +13,6 @@ import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import Sources from "@/pages/Sources";
 import AgentBriefing from "@/pages/AgentBriefing";
-import Questions from "@/pages/Questions";
 import Alerts from "@/pages/Alerts";
 import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
@@ -52,7 +51,6 @@ const AppContent = () => {
           <Route path="/agents" element={<RequireAuth><Agents /></RequireAuth>} />
           <Route path="/agents/new" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
           <Route path="/agents/:id" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
-          <Route path="/questions" element={<RequireAuth><Questions /></RequireAuth>} />
           <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
           <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
           <Route path="/users" element={<RequireAuth><Users /></RequireAuth>} />

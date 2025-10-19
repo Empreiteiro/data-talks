@@ -135,8 +135,7 @@ export const supabaseClient = {
     const { error } = await supabase
       .from('qa_sessions')
       .delete()
-      .eq('agent_id', agentId)
-      .eq('is_shared', false);
+      .eq('agent_id', agentId);
     if (error) throw error;
   },
 
@@ -500,18 +499,5 @@ export const supabaseClient = {
     }
   },
 
-  // Ask question to shared agent (without authentication)
-  async askQuestionShared(agentId: string, question: string, shareToken: string, sessionId?: string) {
-    try {
-      const { data, error } = await supabase.functions.invoke('ask-question', {
-        body: { question, agentId, shareToken, sessionId }
-      });
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      const friendlyError = translateSupabaseError(error);
-      throw new Error(friendlyError);
-    }
-  },
 };
+

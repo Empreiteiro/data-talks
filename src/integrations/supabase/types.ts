@@ -21,8 +21,6 @@ export type Database = {
           id: string
           instructions: string | null
           name: string
-          share_password: string | null
-          share_token: string | null
           source_ids: string[]
           suggested_questions: string[] | null
           updated_at: string
@@ -34,8 +32,6 @@ export type Database = {
           id?: string
           instructions?: string | null
           name: string
-          share_password?: string | null
-          share_token?: string | null
           source_ids?: string[]
           suggested_questions?: string[] | null
           updated_at?: string
@@ -47,8 +43,6 @@ export type Database = {
           id?: string
           instructions?: string | null
           name?: string
-          share_password?: string | null
-          share_token?: string | null
           source_ids?: string[]
           suggested_questions?: string[] | null
           updated_at?: string
@@ -119,10 +113,8 @@ export type Database = {
           feedback: string | null
           follow_up_questions: Json | null
           id: string
-          is_shared: boolean | null
           latency: number | null
           question: string
-          share_token: string | null
           sql_query: string | null
           status: string | null
           table_data: Json | null
@@ -137,10 +129,8 @@ export type Database = {
           feedback?: string | null
           follow_up_questions?: Json | null
           id?: string
-          is_shared?: boolean | null
           latency?: number | null
           question: string
-          share_token?: string | null
           sql_query?: string | null
           status?: string | null
           table_data?: Json | null
@@ -155,10 +145,8 @@ export type Database = {
           feedback?: string | null
           follow_up_questions?: Json | null
           id?: string
-          is_shared?: boolean | null
           latency?: number | null
           question?: string
-          share_token?: string | null
           sql_query?: string | null
           status?: string | null
           table_data?: Json | null
@@ -304,10 +292,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      block_sensitive_agent_columns: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       can_access_alert_email: {
         Args: { alert_user_id: string }
         Returns: boolean
@@ -315,34 +299,6 @@ export type Database = {
       can_access_workspace: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
-      }
-      get_agent_share_token: {
-        Args: { agent_id: string }
-        Returns: string
-      }
-      get_shared_agent_qa_sessions: {
-        Args: { token_value: string }
-        Returns: {
-          answer: string
-          created_at: string
-          feedback: string
-          id: string
-          latency: number
-          question: string
-          sql_query: string
-          status: string
-          table_data: Json
-        }[]
-      }
-      get_shared_agent_safe_fields: {
-        Args: { token_value: string }
-        Returns: {
-          created_at: string
-          description: string
-          has_password: boolean
-          id: string
-          name: string
-        }[]
       }
       get_user_agents_safe: {
         Args: Record<PropertyKey, never>
@@ -369,54 +325,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      hash_password: {
-        Args: { password_text: string }
-        Returns: string
-      }
-      update_agent_share_password_only: {
-        Args: { agent_id: string; password: string }
-        Returns: boolean
-      }
-      update_agent_sharing: {
-        Args: { agent_id: string; enabled: boolean; password?: string }
-        Returns: {
-          created_at: string
-          description: string
-          has_share_token: boolean
-          id: string
-          name: string
-          share_token: string
-          source_ids: string[]
-          suggested_questions: string[]
-          updated_at: string
-        }[]
-      }
-      validate_shared_agent_access: {
-        Args: {
-          agent_id_param: string
-          share_token_param: string
-          user_password?: string
-        }
-        Returns: boolean
-      }
       validate_user_access: {
         Args: { target_user_id: string }
-        Returns: boolean
-      }
-      verify_agent_share_password: {
-        Args: { password_attempt: string; token_value: string }
-        Returns: boolean
-      }
-      verify_password: {
-        Args: { password_hash: string; password_text: string }
-        Returns: boolean
-      }
-      verify_session_access: {
-        Args: {
-          session_id_param: string
-          share_token_param?: string
-          user_password_param?: string
-        }
         Returns: boolean
       }
     }
