@@ -32,9 +32,14 @@ const WorkspaceAccess = () => {
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>("");
   const [selectedUser, setSelectedUser] = useState<string>("");
 
-  // Redirect if not admin
-  if (currentUserRole !== 'admin') {
+  // Redirect if not admin (wait for role to load)
+  if (currentUserRole !== undefined && currentUserRole !== 'admin') {
     navigate('/dashboard');
+    return null;
+  }
+
+  // Show loading while checking role
+  if (currentUserRole === undefined) {
     return null;
   }
 

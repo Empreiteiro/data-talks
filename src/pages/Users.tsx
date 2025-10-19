@@ -34,9 +34,14 @@ const Users = () => {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<'admin' | 'member'>('member');
 
-  // Redirect if not admin
-  if (currentUserRole !== 'admin') {
+  // Redirect if not admin (wait for role to load)
+  if (currentUserRole !== undefined && currentUserRole !== 'admin') {
     navigate('/dashboard');
+    return null;
+  }
+
+  // Show loading while checking role
+  if (currentUserRole === undefined) {
     return null;
   }
 
