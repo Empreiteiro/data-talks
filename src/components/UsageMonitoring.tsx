@@ -5,11 +5,19 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Database, MessageSquare, Calendar, Users } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+
 interface UsageStats {
   sourcesCount: number;
   agentsCount: number;
   questionsCount: number;
   thisMonthQuestions: number;
+}
+
+interface DailyQuestion {
+  date: string;
+  count: number;
 }
 const UsageMonitoring = () => {
   const {
@@ -26,6 +34,7 @@ const UsageMonitoring = () => {
     questionsCount: 0,
     thisMonthQuestions: 0
   });
+  const [dailyQuestions, setDailyQuestions] = useState<DailyQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     fetchUsageStats();
@@ -73,12 +82,40 @@ const UsageMonitoring = () => {
         count: 'exact',
         head: true
       }).eq('user_id', user.id).gte('created_at', startOfMonth.toISOString());
+
+      // Get daily questions for the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: questionsData } = await supabase
+        .from('qa_sessions')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .order('created_at', { ascending: true });
+
+      // Group questions by day
+      const dailyMap = new Map<string, number>();
+      questionsData?.forEach((q) => {
+        const date = new Date(q.created_at).toLocaleDateString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit' 
+        });
+        dailyMap.set(date, (dailyMap.get(date) || 0) + 1);
+      });
+
+      const dailyData = Array.from(dailyMap.entries()).map(([date, count]) => ({
+        date,
+        count
+      }));
+
       setStats({
         sourcesCount: sourcesCount || 0,
         agentsCount: agentsCount || 0,
         questionsCount: questionsCount || 0,
         thisMonthQuestions: thisMonthQuestions || 0
       });
+      setDailyQuestions(dailyData);
     } catch (error) {
       console.error('Error fetching usage stats:', error);
     } finally {
@@ -220,57 +257,105 @@ const UsageMonitoring = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {language === 'pt' ? 'Informações do Plano' : 'Plan Information'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">
-              {language === 'pt' ? 'Plano Atual:' : 'Current Plan:'}
-            </span>
-            <Badge variant={isPro ? "default" : "secondary"}>{planName}</Badge>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>{language === 'pt' ? 'Fontes de dados:' : 'Data sources:'}</span>
-              <span>{stats.sourcesCount}/{planLimits.sources}</span>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {language === 'pt' ? 'Informações do Plano' : 'Plan Information'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">
+                {language === 'pt' ? 'Plano Atual:' : 'Current Plan:'}
+              </span>
+              <Badge variant={isPro ? "default" : "secondary"}>{planName}</Badge>
             </div>
-            <div className="w-full bg-muted rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{
-              width: `${Math.min(stats.sourcesCount / planLimits.sources * 100, 100)}%`
-            }}></div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{language === 'pt' ? 'Fontes de dados:' : 'Data sources:'}</span>
+                <span>{stats.sourcesCount}/{planLimits.sources}</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all" style={{
+                width: `${Math.min(stats.sourcesCount / planLimits.sources * 100, 100)}%`
+              }}></div>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>{language === 'pt' ? 'Agentes:' : 'Agents:'}</span>
-              <span>{stats.agentsCount}/{planLimits.agents}</span>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{language === 'pt' ? 'Agentes:' : 'Agents:'}</span>
+                <span>{stats.agentsCount}/{planLimits.agents}</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all" style={{
+                width: `${Math.min(stats.agentsCount / planLimits.agents * 100, 100)}%`
+              }}></div>
+              </div>
             </div>
-            <div className="w-full bg-muted rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{
-              width: `${Math.min(stats.agentsCount / planLimits.agents * 100, 100)}%`
-            }}></div>
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>{language === 'pt' ? 'Perguntas mensais:' : 'Monthly questions:'}</span>
-              <span>{stats.thisMonthQuestions}/{planLimits.monthlyQuestions}</span>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{language === 'pt' ? 'Perguntas mensais:' : 'Monthly questions:'}</span>
+                <span>{stats.thisMonthQuestions}/{planLimits.monthlyQuestions}</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all" style={{
+                width: `${Math.min(stats.thisMonthQuestions / planLimits.monthlyQuestions * 100, 100)}%`
+              }}></div>
+              </div>
             </div>
-            <div className="w-full bg-muted rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{
-              width: `${Math.min(stats.thisMonthQuestions / planLimits.monthlyQuestions * 100, 100)}%`
-            }}></div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {language === 'pt' ? 'Perguntas por Dia (Últimos 30 dias)' : 'Questions per Day (Last 30 days)'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {dailyQuestions.length > 0 ? (
+              <ChartContainer
+                config={{
+                  count: {
+                    label: language === 'pt' ? 'Perguntas' : 'Questions',
+                    color: "hsl(var(--primary))",
+                  },
+                }}
+                className="h-[300px]"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyQuestions}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="date" 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Bar 
+                      dataKey="count" 
+                      fill="hsl(var(--primary))" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                {language === 'pt' ? 'Nenhuma pergunta nos últimos 30 dias' : 'No questions in the last 30 days'}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>;
 };
 export default UsageMonitoring;
