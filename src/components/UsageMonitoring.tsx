@@ -165,22 +165,11 @@ const UsageMonitoring = () => {
   const agentsStatus = getUsageStatus(stats.agentsCount, planLimits.agents);
   const questionsStatus = getUsageStatus(stats.thisMonthQuestions, planLimits.monthlyQuestions);
   if (loading || subscriptionLoading) {
-    return <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">
-          {language === 'pt' ? 'Monitoramento de Uso' : 'Usage Monitoring'}
-        </h2>
-        <div className="grid gap-6 md:grid-cols-4">
-          {[1, 2, 3, 4].map(i => <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-muted rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-1/3 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-2/3"></div>
-              </CardContent>
-            </Card>)}
-        </div>
-      </div>;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
   return <div className="space-y-6">
       
