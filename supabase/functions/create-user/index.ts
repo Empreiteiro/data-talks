@@ -12,22 +12,14 @@ serve(async (req) => {
   }
 
   try {
-    const { email, role } = await req.json();
+    const authHeader = req.headers.get('Authorization')!;
+    const token = authHeader.replace('Bearer ', '');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
-
-    // Get current user from auth header
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Verify admin user
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
@@ -35,21 +27,38 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !user) throw new Error('Unauthorized');
 
-    // Create user via admin API
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get admin's organization
+    const { data: adminRole, error: roleCheckError } = await supabaseAdmin
+      .from('user_roles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (roleCheckError || !adminRole?.organization_id) {
+      throw new Error('Admin organization not found');
+    }
+
+    const { email, password, role } = await req.json();
+
+    // Create user in auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
+      password,
       email_confirm: true,
     });
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('Failed to create user');
 
-    // Assign role
+    // Assign role in the same organization
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({
         user_id: authData.user.id,
         role,
+        organization_id: adminRole.organization_id,
         created_by: user.id
       });
 

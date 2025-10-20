@@ -49,10 +49,22 @@ export const supabaseClient = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Get user's organization
+      const { data: userRole, error: roleError } = await supabase
+        .from('user_roles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (roleError || !userRole?.organization_id) {
+        throw new Error('Organization not found');
+      }
+
       const { data, error } = await supabase
         .from('agents')
         .insert({
           user_id: user.id,
+          organization_id: userRole.organization_id,
           name,
           description,
           source_ids: sourceIds,

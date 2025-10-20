@@ -34,17 +34,28 @@ serve(async (req) => {
       }
     });
 
-    // Get all users with roles except current user
+    // Get current user's organization
+    const { data: currentUserRole, error: currentRoleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (currentRoleError || !currentUserRole?.organization_id) {
+      throw new Error('Organization not found');
+    }
+
+    // Get all users from the same organization except current user
     const { data: rolesData, error: rolesError } = await supabaseAdmin
       .from('user_roles')
-      .select('user_id');
+      .select('user_id')
+      .eq('organization_id', currentUserRole.organization_id)
+      .neq('user_id', user.id);
     
     if (rolesError) throw rolesError;
 
     const users = [];
     for (const roleData of rolesData) {
-      if (roleData.user_id === user.id) continue; // Skip current user
-      
       const { data: authData } = await supabaseAdmin.auth.admin.getUserById(roleData.user_id);
       if (authData?.user) {
         users.push({

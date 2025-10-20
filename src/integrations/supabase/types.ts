@@ -21,6 +21,7 @@ export type Database = {
           id: string
           instructions: string | null
           name: string
+          organization_id: string | null
           source_ids: string[]
           suggested_questions: string[] | null
           updated_at: string
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           name: string
+          organization_id?: string | null
           source_ids?: string[]
           suggested_questions?: string[] | null
           updated_at?: string
@@ -43,12 +45,21 @@ export type Database = {
           id?: string
           instructions?: string | null
           name?: string
+          organization_id?: string | null
           source_ids?: string[]
           suggested_questions?: string[] | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       alerts: {
         Row: {
@@ -102,6 +113,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       qa_sessions: {
         Row: {
@@ -236,6 +268,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          organization_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -243,6 +276,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          organization_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -250,10 +284,19 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          organization_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspace_users: {
         Row: {
@@ -310,6 +353,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_organization_admin: {
+        Args: { _organization_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_organization_id: {
+        Args: { _user_id: string }
+        Returns: string
       }
       validate_user_access: {
         Args: { target_user_id: string }
