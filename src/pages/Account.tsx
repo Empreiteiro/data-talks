@@ -55,8 +55,8 @@ const Account = () => {
       <div className="flex gap-6 container flex-1">
         {/* Left Sidebar Menu */}
         <div className="w-64 flex-shrink-0">
-          <div className="sticky top-6 bg-background border rounded-lg overflow-hidden">
-            <div className="p-2">
+          <div className="h-full flex flex-col bg-background border rounded-lg">
+            <div className="flex-1 overflow-y-auto p-2">
               <div className="space-y-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
@@ -88,12 +88,14 @@ const Account = () => {
           {activeSection === "subscription" && <SubscriptionManagement />}
           
           {activeSection === "sources" && (
-            <div className="bg-background border rounded-lg overflow-hidden flex flex-col" style={{ height: '600px' }}>
-              <SourcesPanel 
-                onAddSource={() => setShowAddSourceModal(true)}
-                refreshTrigger={refreshTrigger}
-              />
-            </div>
+            <Card className="shadow-sm h-[600px] flex flex-col">
+              <CardContent className="flex-1 p-0 overflow-hidden">
+                <SourcesPanel 
+                  onAddSource={() => setShowAddSourceModal(true)}
+                  refreshTrigger={refreshTrigger}
+                />
+              </CardContent>
+            </Card>
           )}
           
           {activeSection === "credentials" && <BigQueryCredentialsManager />}
