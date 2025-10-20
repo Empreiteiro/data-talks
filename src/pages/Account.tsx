@@ -88,15 +88,11 @@ const Account = () => {
           {activeSection === "subscription" && <SubscriptionManagement />}
           
           {activeSection === "sources" && (
-            <div className="border rounded-lg h-full">
-              <Card className="shadow-none border-0 h-full flex flex-col">
-                <CardContent className="flex-1 p-0 overflow-hidden">
-                  <SourcesPanel 
-                    onAddSource={() => setShowAddSourceModal(true)}
-                    refreshTrigger={refreshTrigger}
-                  />
-                </CardContent>
-              </Card>
+            <div className="h-full">
+              <SourcesPanel 
+                onAddSource={() => setShowAddSourceModal(true)}
+                refreshTrigger={refreshTrigger}
+              />
             </div>
           )}
           
