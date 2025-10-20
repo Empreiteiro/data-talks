@@ -277,8 +277,6 @@ serve(async (req) => {
       }
       
       qaSession = existingSession;
-      
-      qaSession = sessionData;
     } else {
       // For regular questions, create session with user_id
       const { data: sessionData, error: sessionError } = await supabase
