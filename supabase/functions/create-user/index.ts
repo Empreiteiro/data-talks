@@ -59,8 +59,9 @@ serve(async (req) => {
     console.log('Inviting user:', email, 'with role:', role);
 
     // Create user with invite (user will receive email to set password)
+    const origin = req.headers.get('origin') || 'https://2dd880c5-0c69-4f0d-9f15-e15fec7986a3.lovableproject.com';
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${window.location.origin}/`
+      redirectTo: `${origin}/`
     });
 
     if (authError) {
