@@ -37,6 +37,9 @@ const Index = () => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [newName, setNewName] = useState("");
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo(0, 0);
+    
     if (!initializing && isAuthenticated) {
       loadAgents();
     }
