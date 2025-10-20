@@ -68,14 +68,14 @@ const Users = () => {
       return data;
     },
     onSuccess: () => {
-      toast.success('Usuário adicionado com sucesso');
+      toast.success(t('users.addSuccess'));
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
       setIsAddUserOpen(false);
       setNewUserEmail("");
       setNewUserRole('member');
     },
     onError: (error: any) => {
-      toast.error(`Erro ao adicionar usuário: ${error.message}`);
+      toast.error(`${t('users.addError')} ${error.message}`);
     },
   });
 
@@ -89,11 +89,11 @@ const Users = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Usuário removido com sucesso');
+      toast.success(t('users.removeSuccess'));
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
     },
     onError: (error: any) => {
-      toast.error(`Erro ao remover usuário: ${error.message}`);
+      toast.error(`${t('users.removeError')} ${error.message}`);
     },
   });
 
@@ -115,7 +115,7 @@ const Users = () => {
 
   const handleAddUser = () => {
     if (!newUserEmail) {
-      toast.error('Digite um email válido');
+      toast.error(t('users.validEmailError'));
       return;
     }
     addUserMutation.mutate({ email: newUserEmail, role: newUserRole });
@@ -124,34 +124,34 @@ const Users = () => {
   return (
     <main className="container py-10">
       <SEO 
-        title="Gestão de Usuários | Orion.t2d" 
-        description="Gerencie usuários e permissões do sistema" 
+        title={`${t('users.title')} | Orion.t2d`}
+        description={t('users.description')}
         canonical="/users" 
       />
       
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-semibold">Gestão de Usuários</h1>
+        <h1 className="text-3xl font-semibold">{t('users.title')}</h1>
         <Button onClick={() => setIsAddUserOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
-          Adicionar Usuário
+          {t('users.addUser')}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Usuários do Sistema</CardTitle>
+          <CardTitle>{t('users.systemUsers')}</CardTitle>
           <CardDescription>
-            Gerencie os usuários e suas permissões de acesso
+            {t('users.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Perfil</TableHead>
-                <TableHead>Data de Criação</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead>{t('users.email')}</TableHead>
+                <TableHead>{t('users.profile')}</TableHead>
+                <TableHead>{t('users.createdAt')}</TableHead>
+                <TableHead className="text-right">{t('users.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -160,7 +160,7 @@ const Users = () => {
                   <TableCell className="font-medium">{userWithRole.email}</TableCell>
                   <TableCell>
                     <Badge variant={userWithRole.role === 'admin' ? 'default' : 'secondary'}>
-                      {userWithRole.role === 'admin' ? 'Administrador' : 'Membro'}
+                      {userWithRole.role === 'admin' ? t('users.admin') : t('users.member')}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -183,7 +183,7 @@ const Users = () => {
               {usersWithRoles.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    Nenhum usuário encontrado
+                    {t('users.noUsersFound')}
                   </TableCell>
                 </TableRow>
               )}
@@ -195,33 +195,33 @@ const Users = () => {
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Novo Usuário</DialogTitle>
+            <DialogTitle>{t('users.inviteNewUser')}</DialogTitle>
             <DialogDescription>
-              Convide um novo usuário para acessar o sistema
+              {t('users.inviteDescription')}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('users.email')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="usuario@exemplo.com"
+                placeholder={t('users.emailPlaceholder')}
                 value={newUserEmail}
                 onChange={(e) => setNewUserEmail(e.target.value)}
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="role">Perfil</Label>
+              <Label htmlFor="role">{t('users.profile')}</Label>
               <Select value={newUserRole} onValueChange={(value) => setNewUserRole(value as 'admin' | 'member')}>
                 <SelectTrigger id="role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="member">Membro</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="member">{t('users.member')}</SelectItem>
+                  <SelectItem value="admin">{t('users.admin')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -229,10 +229,10 @@ const Users = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
-              Cancelar
+              {t('users.cancel')}
             </Button>
             <Button onClick={handleAddUser} disabled={addUserMutation.isPending}>
-              {addUserMutation.isPending ? 'Adicionando...' : 'Adicionar'}
+              {addUserMutation.isPending ? t('users.adding') : t('users.add')}
             </Button>
           </DialogFooter>
         </DialogContent>

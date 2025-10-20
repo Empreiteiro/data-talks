@@ -91,13 +91,13 @@ const WorkspaceAccess = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Acesso concedido com sucesso');
+      toast.success(t('workspaceAccess.accessGrantedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['workspace-access'] });
       setSelectedWorkspace("");
       setSelectedUser("");
     },
     onError: (error: any) => {
-      toast.error(`Erro ao conceder acesso: ${error.message}`);
+      toast.error(`${t('workspaceAccess.accessGrantedError')} ${error.message}`);
     },
   });
 
@@ -111,11 +111,11 @@ const WorkspaceAccess = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Acesso revogado com sucesso');
+      toast.success(t('workspaceAccess.accessRevokedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['workspace-access'] });
     },
     onError: (error: any) => {
-      toast.error(`Erro ao revogar acesso: ${error.message}`);
+      toast.error(`${t('workspaceAccess.accessRevokedError')} ${error.message}`);
     },
   });
 
@@ -137,7 +137,7 @@ const WorkspaceAccess = () => {
 
   const handleGrantAccess = () => {
     if (!selectedWorkspace || !selectedUser) {
-      toast.error('Selecione um workspace e um usuário');
+      toast.error(t('workspaceAccess.selectWorkspaceAndUser'));
       return;
     }
     grantAccessMutation.mutate({ 
@@ -149,18 +149,18 @@ const WorkspaceAccess = () => {
   return (
     <main className="container py-10">
       <SEO 
-        title="Controle de Acesso | Orion.t2d" 
-        description="Gerencie o acesso dos usuários aos workspaces" 
+        title={`${t('workspaceAccess.title')} | Orion.t2d`}
+        description={t('workspaceAccess.description')}
         canonical="/workspace-access" 
       />
       
-      <h1 className="text-3xl font-semibold mb-6">Controle de Acesso aos Workspaces</h1>
+      <h1 className="text-3xl font-semibold mb-6">{t('workspaceAccess.title')}</h1>
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Conceder Acesso</CardTitle>
+          <CardTitle>{t('workspaceAccess.grantAccess')}</CardTitle>
           <CardDescription>
-            Permita que usuários acessem workspaces específicos
+            {t('workspaceAccess.grantAccessDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -168,7 +168,7 @@ const WorkspaceAccess = () => {
             <div className="flex-1">
               <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um workspace" />
+                  <SelectValue placeholder={t('workspaceAccess.selectWorkspace')} />
                 </SelectTrigger>
                 <SelectContent>
                   {workspaces.map((workspace) => (
@@ -183,7 +183,7 @@ const WorkspaceAccess = () => {
             <div className="flex-1">
               <Select value={selectedUser} onValueChange={setSelectedUser}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um usuário" />
+                  <SelectValue placeholder={t('workspaceAccess.selectUser')} />
                 </SelectTrigger>
                 <SelectContent>
                   {users.map((u) => (
@@ -200,7 +200,7 @@ const WorkspaceAccess = () => {
               disabled={grantAccessMutation.isPending || !selectedWorkspace || !selectedUser}
             >
               <UserPlus className="mr-2 h-4 w-4" />
-              Conceder
+              {t('workspaceAccess.grant')}
             </Button>
           </div>
         </CardContent>
@@ -208,19 +208,19 @@ const WorkspaceAccess = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Acessos Concedidos</CardTitle>
+          <CardTitle>{t('workspaceAccess.grantedAccess')}</CardTitle>
           <CardDescription>
-            Lista de usuários com acesso a cada workspace
+            {t('workspaceAccess.grantedAccessDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Workspace</TableHead>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Data de Concessão</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead>{t('workspaceAccess.workspace')}</TableHead>
+                <TableHead>{t('workspaceAccess.user')}</TableHead>
+                <TableHead>{t('workspaceAccess.grantedAt')}</TableHead>
+                <TableHead className="text-right">{t('workspaceAccess.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -246,7 +246,7 @@ const WorkspaceAccess = () => {
               {accessList.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    Nenhum acesso concedido
+                    {t('workspaceAccess.noAccessGranted')}
                   </TableCell>
                 </TableRow>
               )}
