@@ -61,7 +61,7 @@ serve(async (req) => {
     // Create user with invite (user will receive email to set password)
     const origin = req.headers.get('origin') || 'https://2dd880c5-0c69-4f0d-9f15-e15fec7986a3.lovableproject.com';
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${origin}/`
+      redirectTo: `${origin}/reset-password`
     });
 
     if (authError) {
