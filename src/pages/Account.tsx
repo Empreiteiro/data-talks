@@ -82,13 +82,13 @@ const Account = () => {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 bg-background overflow-hidden">
+        <div className="flex-1 border rounded-lg bg-background overflow-hidden">
           {activeSection === "usage" && <UsageMonitoring />}
           
           {activeSection === "subscription" && <SubscriptionManagement />}
           
           {activeSection === "sources" && (
-            <Card className="shadow-none border rounded-lg h-full flex flex-col">
+            <Card className="shadow-none border-0 h-full flex flex-col">
               <CardContent className="flex-1 p-0 overflow-hidden">
                 <SourcesPanel 
                   onAddSource={() => setShowAddSourceModal(true)}
