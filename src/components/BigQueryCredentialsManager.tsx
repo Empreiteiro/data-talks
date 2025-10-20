@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Trash2, Upload, Key } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Table,
   TableBody,
@@ -40,6 +41,7 @@ interface BigQueryCredentialsManagerProps {
 }
 
 export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredentialsManagerProps = {}) => {
+  const { t } = useLanguage();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -76,7 +78,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       setCredentials(formattedCredentials);
     } catch (error) {
       console.error('Error fetching credentials:', error);
-      toast.error('Erro ao carregar credenciais');
+      toast.error(t('bigquery.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -91,13 +93,13 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
     if (file && file.type === 'application/json') {
       setCredentialsFile(file);
     } else {
-      toast.error('Por favor, selecione um arquivo JSON válido');
+      toast.error(t('bigquery.errors.invalidFile'));
     }
   };
 
   const handleUpload = async () => {
     if (!credentialsFile || !credentialName.trim()) {
-      toast.error('Por favor, preencha o nome e selecione um arquivo');
+      toast.error(t('bigquery.errors.missingFields'));
       return;
     }
 
@@ -108,7 +110,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       try {
         parsedCredentials = JSON.parse(credentialsJson);
       } catch {
-        toast.error('Arquivo JSON inválido');
+        toast.error(t('bigquery.errors.invalidJson'));
         return;
       }
 
@@ -146,14 +148,14 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
 
       if (dbError) throw dbError;
 
-      toast.success('Credencial adicionada com sucesso!');
+      toast.success(t('bigquery.success.added'));
       setCredentialName('');
       setCredentialsFile(null);
       await fetchCredentials();
       onSourceAdded?.();
     } catch (error: any) {
       console.error('Error uploading credential:', error);
-      toast.error('Erro ao adicionar credencial', {
+      toast.error(t('bigquery.errors.uploadFailed'), {
         description: error.message
       });
     } finally {
@@ -170,11 +172,11 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
 
       if (error) throw error;
 
-      toast.success('Credencial removida com sucesso');
+      toast.success(t('bigquery.success.deleted'));
       fetchCredentials();
     } catch (error: any) {
       console.error('Error deleting credential:', error);
-      toast.error('Erro ao remover credencial', {
+      toast.error(t('bigquery.errors.deleteFailed'), {
         description: error.message
       });
     }
@@ -186,25 +188,25 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Adicionar Nova Credencial BigQuery
+            {t('bigquery.addCredential.title')}
           </CardTitle>
           <CardDescription>
-            Faça upload de uma nova chave de serviço do BigQuery
+            {t('bigquery.addCredential.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="credential-name">Nome da Credencial</Label>
+            <Label htmlFor="credential-name">{t('bigquery.addCredential.nameLabel')}</Label>
             <Input
               id="credential-name"
-              placeholder="Ex: Produção, Desenvolvimento, etc."
+              placeholder={t('bigquery.addCredential.namePlaceholder')}
               value={credentialName}
               onChange={(e) => setCredentialName(e.target.value)}
               disabled={uploading}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="credential-file">Arquivo de Credenciais (.json)</Label>
+            <Label htmlFor="credential-file">{t('bigquery.addCredential.fileLabel')}</Label>
             <Input
               id="credential-file"
               type="file"
@@ -214,7 +216,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
             />
             {credentialsFile && (
               <p className="text-sm text-muted-foreground">
-                Arquivo selecionado: {credentialsFile.name}
+                {t('bigquery.addCredential.fileSelected')} {credentialsFile.name}
               </p>
             )}
           </div>
@@ -223,7 +225,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
             disabled={uploading || !credentialsFile || !credentialName.trim()}
             className="w-full"
           >
-            {uploading ? 'Enviando...' : 'Adicionar Credencial'}
+            {uploading ? t('bigquery.addCredential.uploading') : t('bigquery.addCredential.uploadButton')}
           </Button>
         </CardContent>
       </Card>
@@ -232,28 +234,28 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            Credenciais Configuradas
+            {t('bigquery.configured.title')}
           </CardTitle>
           <CardDescription>
-            Gerencie suas credenciais do BigQuery
+            {t('bigquery.configured.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando credenciais...</p>
+            <p className="text-sm text-muted-foreground">{t('bigquery.configured.loading')}</p>
           ) : credentials.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nenhuma credencial configurada. Adicione uma acima.
+              {t('bigquery.configured.empty')}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Project ID</TableHead>
-                  <TableHead>Caminho Langflow</TableHead>
-                  <TableHead>Criado em</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead>{t('bigquery.configured.name')}</TableHead>
+                  <TableHead>{t('bigquery.configured.projectId')}</TableHead>
+                  <TableHead>{t('bigquery.configured.langflowPath')}</TableHead>
+                  <TableHead>{t('bigquery.configured.createdAt')}</TableHead>
+                  <TableHead className="text-right">{t('bigquery.configured.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -267,7 +269,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
                       {cred.langflowPath || 'N/A'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(cred.createdAt).toLocaleDateString('pt-BR')}
+                      {new Date(cred.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>
@@ -278,19 +280,18 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogTitle>{t('bigquery.delete.title')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Tem certeza que deseja remover a credencial "{cred.name}"?
-                              Esta ação não pode ser desfeita.
+                              {t('bigquery.delete.description', { name: cred.name })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogCancel>{t('bigquery.delete.cancel')}</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDelete(cred.id)}
                               className="bg-destructive text-destructive-foreground"
                             >
-                              Excluir
+                              {t('bigquery.delete.confirm')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
