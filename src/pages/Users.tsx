@@ -52,22 +52,6 @@ const Users = () => {
     enabled: currentUserRole === 'admin',
   });
 
-  // Redirect if not admin
-  useEffect(() => {
-    if (currentUserRole !== undefined && currentUserRole !== 'admin') {
-      navigate('/dashboard');
-    }
-  }, [currentUserRole, navigate]);
-
-  // Show loading while checking role
-  if (currentUserRole === undefined) {
-    return null;
-  }
-
-  if (currentUserRole !== 'admin') {
-    return null;
-  }
-
   const addUserMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: 'admin' | 'member' }) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -112,6 +96,22 @@ const Users = () => {
       toast.error(`Erro ao remover usuário: ${error.message}`);
     },
   });
+
+  // Redirect if not admin
+  useEffect(() => {
+    if (currentUserRole !== undefined && currentUserRole !== 'admin') {
+      navigate('/dashboard');
+    }
+  }, [currentUserRole, navigate]);
+
+  // Show loading while checking role
+  if (currentUserRole === undefined) {
+    return null;
+  }
+
+  if (currentUserRole !== 'admin') {
+    return null;
+  }
 
   const handleAddUser = () => {
     if (!newUserEmail) {
