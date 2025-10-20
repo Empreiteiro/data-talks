@@ -67,8 +67,8 @@ const Users = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      toast.success(t('users.addSuccess'));
+    onSuccess: (data: any) => {
+      toast.success(data?.message || t('users.inviteSuccess'));
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
       setIsAddUserOpen(false);
       setNewUserEmail("");

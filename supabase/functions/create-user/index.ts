@@ -40,17 +40,15 @@ serve(async (req) => {
       throw new Error('Admin organization not found');
     }
 
-    const { email, password, role } = await req.json();
+    const { email, role } = await req.json();
 
-    // Create user in auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
+    // Create user with invite (user will receive email to set password)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`
     });
 
     if (authError) throw authError;
-    if (!authData.user) throw new Error('Failed to create user');
+    if (!authData.user) throw new Error('Failed to invite user');
 
     // Assign role in the same organization
     const { error: roleError } = await supabaseAdmin
@@ -64,7 +62,11 @@ serve(async (req) => {
 
     if (roleError) throw roleError;
 
-    return new Response(JSON.stringify({ success: true, userId: authData.user.id }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      userId: authData.user.id,
+      message: 'User invited successfully. They will receive an email to set their password.' 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
