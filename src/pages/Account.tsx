@@ -7,29 +7,17 @@ import { agentClient } from "@/services/agentClient";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import SubscriptionManagement from "@/components/SubscriptionManagement";
 import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
-import UsersManagement from "@/components/UsersManagement";
-import WorkspaceAccessManagement from "@/components/WorkspaceAccessManagement";
-import { Activity, CreditCard, Database, Settings, Users as UsersIcon, Shield } from "lucide-react";
+import { Activity, CreditCard, Database, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUserRole } from "@/hooks/useUserRole";
-import { useAuth } from "@/hooks/useAuth";
 
 const Account = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const { data: currentUserRole } = useUserRole(user?.id);
   const [activeSection, setActiveSection] = useState("usage");
-
-  const isAdmin = currentUserRole === 'admin';
 
   const menuItems = [
     { id: "usage", label: t('account.tabs.usage'), icon: Activity },
     { id: "subscription", label: t('account.tabs.subscription'), icon: CreditCard },
     { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
-    ...(isAdmin ? [
-      { id: "users", label: t('account.tabs.users'), icon: UsersIcon },
-      { id: "access", label: t('account.tabs.access'), icon: Shield },
-    ] : []),
     { id: "settings", label: t('account.tabs.settings'), icon: Settings },
   ];
 
@@ -90,10 +78,6 @@ const Account = () => {
           {activeSection === "subscription" && <SubscriptionManagement />}
           
           {activeSection === "credentials" && <BigQueryCredentialsManager />}
-          
-          {activeSection === "users" && isAdmin && <UsersManagement />}
-          
-          {activeSection === "access" && isAdmin && <WorkspaceAccessManagement />}
           
           {activeSection === "settings" && (
             <div className="grid gap-6 md:grid-cols-2">
