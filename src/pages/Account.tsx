@@ -46,9 +46,6 @@ const Account = () => {
         {/* Left Sidebar Menu */}
         <div className="w-64 flex-shrink-0">
           <div className="h-full flex flex-col bg-background border rounded-lg">
-            <div className="p-4 border-b">
-              <h2 className="font-semibold">{t('account.title')}</h2>
-            </div>
             <div className="flex-1 overflow-y-auto p-2">
               <div className="space-y-1">
                 {menuItems.map((item) => {
