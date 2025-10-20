@@ -125,9 +125,7 @@ const SubscriptionManagement = () => {
   return <div className="space-y-6">
       <div className="flex justify-between items-center">
         
-        <Button variant="outline" onClick={() => checkSubscription(true)} disabled={loading}>
-          {language === 'pt' ? 'Atualizar' : 'Refresh'}
-        </Button>
+        
       </div>
 
       {subscription?.subscribed ? <Card>
