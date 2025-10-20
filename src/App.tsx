@@ -17,8 +17,6 @@ import Alerts from "@/pages/Alerts";
 import Agents from "@/pages/Agents";
 import Account from "@/pages/Account";
 import Workspace from "@/pages/Workspace";
-import Users from "@/pages/Users";
-import WorkspaceAccess from "@/pages/WorkspaceAccess";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,8 +55,6 @@ const AppContent = () => {
           <Route path="/agents/:id" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
           <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
           <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
-          <Route path="/users" element={<RequireAuth><Users /></RequireAuth>} />
-          <Route path="/workspace-access" element={<RequireAuth><WorkspaceAccess /></RequireAuth>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
