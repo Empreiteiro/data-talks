@@ -82,13 +82,13 @@ const NavBar = () => {
                   
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard" className="cursor-pointer">
-                      Dashboard (deprecated)
+                      {t('settings.dashboard')}
                     </Link>
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="cursor-pointer">
-                      {t('settings.manageSubscription')}
+                      {t('settings.subscription')}
                     </Link>
                   </DropdownMenuItem>
                   
