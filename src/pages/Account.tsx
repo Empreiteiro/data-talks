@@ -88,7 +88,7 @@ const Account = () => {
           {activeSection === "subscription" && <SubscriptionManagement />}
           
           {activeSection === "sources" && (
-            <div className="h-full">
+            <div className="h-full border rounded-lg">
               <SourcesPanel 
                 onAddSource={() => setShowAddSourceModal(true)}
                 refreshTrigger={refreshTrigger}
