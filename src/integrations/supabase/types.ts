@@ -358,6 +358,10 @@ export type Database = {
         Args: { _organization_id: string; _user_id: string }
         Returns: boolean
       }
+      user_belongs_to_organization: {
+        Args: { _organization_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_organization_id: {
         Args: { _user_id: string }
         Returns: string
