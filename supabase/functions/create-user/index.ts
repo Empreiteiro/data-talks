@@ -19,13 +19,20 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
+    console.log('Starting user invite process...');
+    
     // Verify admin user
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
     
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !user) throw new Error('Unauthorized');
+    if (userError || !user) {
+      console.error('Auth error:', userError);
+      throw new Error('Unauthorized');
+    }
+
+    console.log('Admin user verified:', user.id);
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -36,19 +43,37 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .single();
     
-    if (roleCheckError || !adminRole?.organization_id) {
+    if (roleCheckError) {
+      console.error('Role check error:', roleCheckError);
+      throw new Error('Admin organization not found');
+    }
+    
+    if (!adminRole?.organization_id) {
+      console.error('No organization found for admin');
       throw new Error('Admin organization not found');
     }
 
+    console.log('Admin organization:', adminRole.organization_id);
+
     const { email, role } = await req.json();
+    console.log('Inviting user:', email, 'with role:', role);
 
     // Create user with invite (user will receive email to set password)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`
+      redirectTo: `${window.location.origin}/`
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Failed to invite user');
+    if (authError) {
+      console.error('Invite error:', authError);
+      throw authError;
+    }
+    
+    if (!authData.user) {
+      console.error('No user returned from invite');
+      throw new Error('Failed to invite user');
+    }
+
+    console.log('User invited:', authData.user.id);
 
     // Assign role in the same organization
     const { error: roleError } = await supabaseAdmin
@@ -60,7 +85,12 @@ serve(async (req) => {
         created_by: user.id
       });
 
-    if (roleError) throw roleError;
+    if (roleError) {
+      console.error('Role assignment error:', roleError);
+      throw roleError;
+    }
+
+    console.log('Role assigned successfully');
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -71,6 +101,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
+    console.error('Error in create-user function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
