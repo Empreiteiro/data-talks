@@ -82,7 +82,7 @@ const Account = () => {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1">
+        <div className="flex-1 border rounded-lg bg-background overflow-hidden">
           {activeSection === "usage" && <UsageMonitoring />}
           
           {activeSection === "subscription" && <SubscriptionManagement />}
