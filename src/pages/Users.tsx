@@ -75,7 +75,10 @@ const Users = () => {
       setNewUserRole('member');
     },
     onError: (error: any) => {
-      toast.error(`${t('users.addError')} ${error.message}`);
+      const errorMessage = error.message.includes('already been registered') 
+        ? t('users.emailAlreadyExists')
+        : `${t('users.addError')} ${error.message}`;
+      toast.error(errorMessage);
     },
   });
 
