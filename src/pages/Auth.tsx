@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 
 const Auth = () => {
@@ -67,7 +68,12 @@ const Auth = () => {
                 <Input name="email" id="login-email" type="email" required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="login-password">{t('auth.password')}</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="login-password">{t('auth.password')}</Label>
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                    Esqueceu a senha?
+                  </Link>
+                </div>
                 <Input name="password" id="login-password" type="password" required />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}

@@ -97,5 +97,20 @@ export function useAuth() {
     window.location.href = "/login";
   }, []);
 
-  return { user, session, isAuthenticated: !!session?.user, initializing, login, register, logout };
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const redirectUrl = `${window.location.origin}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl
+    });
+    if (error) throw new Error(error.message);
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    if (error) throw new Error(error.message);
+  }, []);
+
+  return { user, session, isAuthenticated: !!session?.user, initializing, login, register, logout, requestPasswordReset, updatePassword };
 }
