@@ -406,6 +406,8 @@ const translations = {
       'account.tabs.usage': 'Plan Usage',
       'account.tabs.subscription': 'Subscription',
       'account.tabs.credentials': 'BigQuery Credentials',
+      'account.tabs.users': 'Users',
+      'account.tabs.access': 'Workspace Access',
       'account.tabs.settings': 'Settings',
      
      // Add Source Modal
@@ -931,6 +933,8 @@ const translations = {
       'account.tabs.usage': 'Uso do Plano',
       'account.tabs.subscription': 'Assinatura',
       'account.tabs.credentials': 'Credenciais BigQuery',
+      'account.tabs.users': 'Usuários',
+      'account.tabs.access': 'Acesso aos Workspaces',
       'account.tabs.settings': 'Configurações',
      
      // Add Source Modal
