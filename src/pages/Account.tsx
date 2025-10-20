@@ -95,7 +95,7 @@ const Account = () => {
           {activeSection === "credentials" && <BigQueryCredentialsManager />}
           
           {activeSection === "settings" && (
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6">
               <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>{t('account.export')}</CardTitle>
