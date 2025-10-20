@@ -2,15 +2,24 @@ import { useState } from "react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { agentClient } from "@/services/agentClient";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import SubscriptionManagement from "@/components/SubscriptionManagement";
 import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
+import { Activity, CreditCard, Database, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const Account = () => {
   const { t } = useLanguage();
+  const [activeSection, setActiveSection] = useState("usage");
+
+  const menuItems = [
+    { id: "usage", label: t('account.tabs.usage'), icon: Activity },
+    { id: "subscription", label: t('account.tabs.subscription'), icon: CreditCard },
+    { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
+    { id: "settings", label: t('account.tabs.settings'), icon: Settings },
+  ];
 
   function exportHistory() {
     const qa = agentClient.listHistory();
@@ -33,55 +42,68 @@ const Account = () => {
       <SEO title={`${t('account.title')} | ${t('nav.tagline')}`} description="Exportar histórico, excluir conta/dados" canonical="/account" />
       <h1 className="text-3xl font-semibold mb-6">{t('account.title')}</h1>
 
-      <Tabs defaultValue="usage" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="usage">
-            {t('account.tabs.usage')}
-          </TabsTrigger>
-          <TabsTrigger value="subscription">
-            {t('account.tabs.subscription')}
-          </TabsTrigger>
-          <TabsTrigger value="credentials">
-            {t('account.tabs.credentials')}
-          </TabsTrigger>
-          <TabsTrigger value="settings">
-            {t('account.tabs.settings')}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="usage">
-          <UsageMonitoring />
-        </TabsContent>
-
-        <TabsContent value="subscription">
-          <SubscriptionManagement />
-        </TabsContent>
-
-        <TabsContent value="credentials">
-          <BigQueryCredentialsManager />
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle>{t('account.export')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={exportHistory}>{t('account.exportHistory')}</Button>
-              </CardContent>
-            </Card>
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle>{t('account.security')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button variant="destructive" onClick={deleteAll}>{t('account.deleteAccount')}</Button>
-              </CardContent>
-            </Card>
+      <div className="flex gap-6">
+        {/* Left Sidebar Menu */}
+        <div className="w-64 flex-shrink-0">
+          <div className="h-full flex flex-col bg-background border rounded-lg">
+            <div className="p-4 border-b">
+              <h2 className="font-semibold">{t('account.title')}</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="space-y-1">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveSection(item.id)}
+                      className={cn(
+                        "w-full p-3 rounded-lg transition-colors text-left flex items-center gap-3",
+                        activeSection === item.id
+                          ? "bg-primary/10 border border-primary/20 text-primary font-medium"
+                          : "hover:bg-muted/50 text-muted-foreground"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1">
+          {activeSection === "usage" && <UsageMonitoring />}
+          
+          {activeSection === "subscription" && <SubscriptionManagement />}
+          
+          {activeSection === "credentials" && <BigQueryCredentialsManager />}
+          
+          {activeSection === "settings" && (
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle>{t('account.export')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={exportHistory}>{t('account.exportHistory')}</Button>
+                </CardContent>
+              </Card>
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle>{t('account.security')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="destructive" onClick={deleteAll}>{t('account.deleteAccount')}</Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 };
