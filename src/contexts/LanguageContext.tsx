@@ -80,6 +80,16 @@ const translations = {
     'auth.registerSuccess': 'Registration successful! Check your email to confirm and then sign in.',
     'auth.forgotPassword': 'Forgot password?',
     
+    // Settings
+    'settings.title': 'Settings',
+    'settings.dashboard': 'Dashboard (deprecated)',
+    'settings.subscription': 'Manage subscription',
+    'settings.users': 'Users',
+    'settings.workspaceAccess': 'Access Control',
+    'settings.language': 'Language',
+    'settings.logout': 'Logout',
+    'settings.newWorkspace': 'New workspace',
+    
     // Dashboard
     'dashboard.title': 'Dashboard',
     'dashboard.dataSources': 'Data Sources',
@@ -361,11 +371,6 @@ const translations = {
      'pricing.needCustom': 'Need something custom?',
      'pricing.contactUs': 'Contact us',
      
-      // Settings
-      'settings.title': 'Settings',
-      'settings.manageSubscription': 'Manage subscription',
-      'settings.language': 'Language',
-      
       // Account Page Tabs
       'account.tabs.usage': 'Plan Usage',
       'account.tabs.subscription': 'Subscription',
@@ -849,10 +854,15 @@ const translations = {
      'pricing.needCustom': 'Precisa de algo personalizado?',
      'pricing.contactUs': 'Entre em contato conosco',
      
-      // Settings
-      'settings.title': 'Configurações',
-      'settings.manageSubscription': 'Gerenciar inscrição',
-      'settings.language': 'Idioma',
+     // Settings
+     'settings.title': 'Configurações',
+     'settings.dashboard': 'Dashboard (descontinuado)',
+     'settings.subscription': 'Gerenciar assinatura',
+     'settings.users': 'Usuários',
+     'settings.workspaceAccess': 'Controle de Acesso',
+     'settings.language': 'Idioma',
+     'settings.logout': 'Sair',
+     'settings.newWorkspace': 'Novo workspace',
       
       // Account Page Tabs
       'account.tabs.usage': 'Uso do Plano',

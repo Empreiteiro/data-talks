@@ -96,13 +96,13 @@ const NavBar = () => {
                     <>
                       <DropdownMenuItem asChild>
                         <Link to="/users" className="cursor-pointer">
-                          Usuários
+                          {t('settings.users')}
                         </Link>
                       </DropdownMenuItem>
                       
                       <DropdownMenuItem asChild>
                         <Link to="/workspace-access" className="cursor-pointer">
-                          Controle de Acesso
+                          {t('settings.workspaceAccess')}
                         </Link>
                       </DropdownMenuItem>
                     </>
