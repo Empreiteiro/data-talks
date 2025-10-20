@@ -12,10 +12,13 @@ import WorkspaceAccessManagement from "@/components/WorkspaceAccessManagement";
 import { Activity, CreditCard, Database, Settings, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
+import { AddSourceModal } from "@/components/AddSourceModal";
 
 const Account = () => {
   const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState("usage");
+  const [showAddSourceModal, setShowAddSourceModal] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const menuItems = [
     { id: "usage", label: t('account.tabs.usage'), icon: Activity },
@@ -85,12 +88,12 @@ const Account = () => {
           {activeSection === "subscription" && <SubscriptionManagement />}
           
           {activeSection === "sources" && (
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle>{t('account.tabs.sources')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SourcesPanel />
+            <Card className="shadow-sm h-[600px] flex flex-col">
+              <CardContent className="flex-1 p-0 overflow-hidden">
+                <SourcesPanel 
+                  onAddSource={() => setShowAddSourceModal(true)}
+                  refreshTrigger={refreshTrigger}
+                />
               </CardContent>
             </Card>
           )}
@@ -119,6 +122,12 @@ const Account = () => {
           )}
         </div>
       </div>
+
+      <AddSourceModal
+        open={showAddSourceModal}
+        onOpenChange={setShowAddSourceModal}
+        onSourceAdded={() => setRefreshTrigger(prev => prev + 1)}
+      />
     </main>
   );
 };

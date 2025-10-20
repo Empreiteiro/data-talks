@@ -34,6 +34,8 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
   useEffect(() => {
     if (agentId) {
       loadAgentSourceIds();
+    } else {
+      loadAllUserSources();
     }
   }, [agentId, refreshTrigger]); // Adicionar refreshTrigger como dependência
 
@@ -42,12 +44,49 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
     const handleFocus = () => {
       if (agentId) {
         loadAgentSourceIds();
+      } else {
+        loadAllUserSources();
       }
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [agentId]);
+
+  async function loadAllUserSources() {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: sourcesData, error: sourcesError } = await supabase
+        .from('sources')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (sourcesError) throw sourcesError;
+
+      const mappedSources = (sourcesData || []).map(source => ({
+        id: source.id,
+        name: source.name,
+        type: source.type,
+        createdAt: source.created_at,
+        metadata: source.metadata,
+      }));
+      
+      setSources(mappedSources);
+      setLoading(false);
+    } catch (error: any) {
+      console.error("Erro ao carregar sources:", error);
+      toast.error("Erro ao carregar fontes de dados");
+      setLoading(false);
+    }
+  }
 
   async function loadAgentSourceIds() {
     if (!agentId) return;
@@ -96,16 +135,16 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
 
 
   async function handleDeleteSource(sourceId: string) {
-    if (!agentId) return;
-    
     try {
-      // Remover do agent primeiro
-      const { error: updateError } = await supabase
-        .from('agents')
-        .update({ source_ids: [] })
-        .eq('id', agentId);
+      if (agentId) {
+        // Remover do agent primeiro
+        const { error: updateError } = await supabase
+          .from('agents')
+          .update({ source_ids: [] })
+          .eq('id', agentId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      }
 
       // Remover a fonte da tabela sources
       const { error: deleteError } = await supabase
@@ -116,8 +155,13 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
       if (deleteError) throw deleteError;
 
       toast.success("Fonte removida com sucesso");
-      setLinkedSourceIds([]);
-      setSources([]);
+      
+      // Recarregar as sources
+      if (agentId) {
+        loadAgentSourceIds();
+      } else {
+        loadAllUserSources();
+      }
     } catch (error: any) {
       toast.error("Erro ao remover fonte", {
         description: error.message,
@@ -138,7 +182,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
             variant="outline"
             size="sm"
             onClick={onAddSource}
-            disabled={linkedSourceIds.length > 0}
+            disabled={agentId ? linkedSourceIds.length > 0 : false}
           >
             <Plus className="h-4 w-4 mr-2" />
             {t('sources.add')}

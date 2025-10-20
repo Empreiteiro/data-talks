@@ -234,12 +234,12 @@ export function AddSourceModal({
     }
   };
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl h-[600px] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t('addSource.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto space-y-6 px-1">
           <p className="text-sm text-muted-foreground">
             {t('addSource.description')} {t('addSource.examples')}
           </p>
