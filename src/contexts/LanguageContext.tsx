@@ -405,6 +405,7 @@ const translations = {
       // Account Page Tabs
       'account.tabs.usage': 'Plan Usage',
       'account.tabs.subscription': 'Subscription',
+      'account.tabs.sources': 'Data Sources',
       'account.tabs.credentials': 'BigQuery Credentials',
       'account.tabs.users': 'Users',
       'account.tabs.access': 'Workspace Access',
@@ -932,6 +933,7 @@ const translations = {
       // Account Page Tabs
       'account.tabs.usage': 'Uso do Plano',
       'account.tabs.subscription': 'Assinatura',
+      'account.tabs.sources': 'Fontes de Dados',
       'account.tabs.credentials': 'Credenciais BigQuery',
       'account.tabs.users': 'Usuários',
       'account.tabs.access': 'Acesso aos Workspaces',
