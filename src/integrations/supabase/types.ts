@@ -362,6 +362,10 @@ export type Database = {
         Args: { _organization_id: string; _user_id: string }
         Returns: boolean
       }
+      user_can_access_agent: {
+        Args: { _agent_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_organization_id: {
         Args: { _user_id: string }
         Returns: string
