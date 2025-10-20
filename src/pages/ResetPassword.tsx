@@ -6,20 +6,30 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const ResetPassword = () => {
-  const { updatePassword, session } = useAuth();
+  const { updatePassword, initializing } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
 
   useEffect(() => {
-    if (!session) {
-      navigate('/login');
-    }
-  }, [session, navigate]);
+    // Verifica se há um token de recuperação válido
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsValidSession(true);
+      } else if (!initializing) {
+        setError('Link de recuperação inválido ou expirado. Por favor, solicite um novo.');
+      }
+    };
+
+    checkSession();
+  }, [initializing]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,6 +59,32 @@ const ResetPassword = () => {
       setError(err.message || 'Erro ao atualizar senha');
       setLoading(false);
     }
+  }
+
+
+  if (initializing) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-muted-foreground">Verificando link de recuperação...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isValidSession && error) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4">
+        <SEO title={`Redefinir Senha | ${t('nav.tagline')}`} description="Redefinir senha" canonical="/reset-password" />
+        <div className="max-w-md w-full bg-card border rounded-lg p-6 shadow-sm">
+          <h1 className="text-2xl font-semibold mb-4 text-destructive">Erro</h1>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => navigate('/forgot-password')} className="w-full">
+            Solicitar novo link
+          </Button>
+        </div>
+      </main>
+    );
   }
 
   return (
