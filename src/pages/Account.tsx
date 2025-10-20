@@ -45,14 +45,14 @@ const Account = () => {
   }
 
   return (
-    <main className="min-h-screen flex flex-col">
+    <main className="min-h-screen flex flex-col pb-6">
       <SEO title={`${t('account.title')} | ${t('nav.tagline')}`} description="Exportar histórico, excluir conta/dados" canonical="/account" />
       
       <div className="container py-6">
         <h1 className="text-3xl font-semibold mb-6">{t('account.title')}</h1>
       </div>
 
-      <div className="flex-1 flex gap-6 container pb-6">
+      <div className="flex gap-6 container flex-1">
         {/* Left Sidebar Menu */}
         <div className="w-64 flex-shrink-0">
           <div className="h-full flex flex-col bg-background border rounded-lg">
