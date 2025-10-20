@@ -78,6 +78,7 @@ const translations = {
     'auth.loginError': 'Failed to sign in. Try again.',
     'auth.registerError': 'Failed to register. Try again.',
     'auth.registerSuccess': 'Registration successful! Check your email to confirm and then sign in.',
+    'auth.forgotPassword': 'Forgot password?',
     
     // Dashboard
     'dashboard.title': 'Dashboard',
@@ -565,6 +566,7 @@ const translations = {
     'auth.loginError': 'Falha ao entrar. Tente novamente.',
     'auth.registerError': 'Falha ao registrar. Tente novamente.',
     'auth.registerSuccess': 'Cadastro realizado! Verifique seu e-mail para confirmar e então faça login.',
+    'auth.forgotPassword': 'Esqueceu a senha?',
     
     // Dashboard
     'dashboard.title': 'Dashboard',

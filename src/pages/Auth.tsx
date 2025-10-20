@@ -68,14 +68,12 @@ const Auth = () => {
                 <Input name="email" id="login-email" type="email" required />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="login-password">{t('auth.password')}</Label>
-                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-                    Esqueceu a senha?
-                  </Link>
-                </div>
+                <Label htmlFor="login-password">{t('auth.password')}</Label>
                 <Input name="password" id="login-password" type="password" required />
               </div>
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline inline-block">
+                {t('auth.forgotPassword')}
+              </Link>
               {error && <p className="text-sm text-destructive">{error}</p>}
               {info && <p className="text-sm text-green-600">{info}</p>}
               <Button type="submit" className="w-full">{t('auth.loginButton')}</Button>
