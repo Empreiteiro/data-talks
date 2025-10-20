@@ -47,17 +47,24 @@ export const supabaseClient = {
   async createAgent(name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[]) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) throw new Error('Usuário não autenticado');
 
       // Get user's organization
       const { data: userRole, error: roleError } = await supabase
         .from('user_roles')
-        .select('organization_id')
+        .select('organization_id, role')
         .eq('user_id', user.id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
-      if (roleError || !userRole?.organization_id) {
-        throw new Error('Organization not found');
+      if (roleError) {
+        console.error('Error fetching user role:', roleError);
+        throw new Error('Erro ao buscar informações do usuário');
+      }
+      
+      if (!userRole?.organization_id) {
+        throw new Error('Organização não encontrada. Entre em contato com o administrador.');
       }
 
       const { data, error } = await supabase
@@ -73,7 +80,10 @@ export const supabaseClient = {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating agent:', error);
+        throw error;
+      }
       return data;
     } catch (error) {
       const friendlyError = translateSupabaseError(error);
