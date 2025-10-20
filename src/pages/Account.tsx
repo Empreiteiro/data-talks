@@ -88,7 +88,7 @@ const Account = () => {
           {activeSection === "subscription" && <SubscriptionManagement />}
           
           {activeSection === "sources" && (
-            <Card className="shadow-none border-0 h-[600px] flex flex-col">
+            <Card className="shadow-none border-0 h-full flex flex-col">
               <CardContent className="flex-1 p-0 overflow-hidden">
                 <SourcesPanel 
                   onAddSource={() => setShowAddSourceModal(true)}
