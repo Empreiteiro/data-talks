@@ -56,6 +56,7 @@ export default function Workspace() {
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
 
   useEffect(() => {
     checkSources();
@@ -330,7 +331,8 @@ export default function Workspace() {
         <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col">
           <SourcesPanel 
             agentId={id} 
-            onAddSource={() => setAddSourceOpen(true)} 
+            onAddSource={() => setAddSourceOpen(true)}
+            refreshTrigger={sourcesRefreshTrigger}
           />
         </div>
 
@@ -569,6 +571,7 @@ export default function Workspace() {
           if (error) throw error;
           
           setAddSourceOpen(false);
+          setSourcesRefreshTrigger(prev => prev + 1); // Forçar refresh do SourcesPanel
           checkSources();
           loadAvailableColumns();
         } catch (error: any) {

@@ -19,9 +19,10 @@ interface Source {
 interface SourcesPanelProps {
   onAddSource?: () => void;
   agentId?: string;
+  refreshTrigger?: number; // Novo: trigger para forçar refresh
 }
 
-export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
+export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPanelProps) {
   const { t } = useLanguage();
   const [sources, setSources] = useState<Source[]>([]);
   const [linkedSourceIds, setLinkedSourceIds] = useState<string[]>([]);
@@ -34,7 +35,7 @@ export function SourcesPanel({ onAddSource, agentId }: SourcesPanelProps) {
     if (agentId) {
       loadAgentSourceIds();
     }
-  }, [agentId]);
+  }, [agentId, refreshTrigger]); // Adicionar refreshTrigger como dependência
 
   // Recarregar sources quando a janela recebe foco
   useEffect(() => {
