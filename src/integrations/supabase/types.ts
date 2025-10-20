@@ -21,7 +21,7 @@ export type Database = {
           id: string
           instructions: string | null
           name: string
-          organization_id: string | null
+          organization_id: string
           source_ids: string[]
           suggested_questions: string[] | null
           updated_at: string
@@ -33,7 +33,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           name: string
-          organization_id?: string | null
+          organization_id: string
           source_ids?: string[]
           suggested_questions?: string[] | null
           updated_at?: string
@@ -45,7 +45,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           name?: string
-          organization_id?: string | null
+          organization_id?: string
           source_ids?: string[]
           suggested_questions?: string[] | null
           updated_at?: string
@@ -268,7 +268,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
-          organization_id: string | null
+          organization_id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -276,7 +276,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
-          organization_id?: string | null
+          organization_id: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -284,7 +284,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
-          organization_id?: string | null
+          organization_id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
