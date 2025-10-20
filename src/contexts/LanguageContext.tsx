@@ -360,10 +360,16 @@ const translations = {
      'pricing.needCustom': 'Need something custom?',
      'pricing.contactUs': 'Contact us',
      
-     // Settings
-     'settings.title': 'Settings',
-     'settings.manageSubscription': 'Manage subscription',
-     'settings.language': 'Language',
+      // Settings
+      'settings.title': 'Settings',
+      'settings.manageSubscription': 'Manage subscription',
+      'settings.language': 'Language',
+      
+      // Account Page Tabs
+      'account.tabs.usage': 'Plan Usage',
+      'account.tabs.subscription': 'Subscription',
+      'account.tabs.credentials': 'BigQuery Credentials',
+      'account.tabs.settings': 'Settings',
      
      // Add Source Modal
      'addSource.title': 'Add sources',
@@ -841,10 +847,16 @@ const translations = {
      'pricing.needCustom': 'Precisa de algo personalizado?',
      'pricing.contactUs': 'Entre em contato conosco',
      
-     // Settings
-     'settings.title': 'Configurações',
-     'settings.manageSubscription': 'Gerenciar inscrição',
-     'settings.language': 'Idioma',
+      // Settings
+      'settings.title': 'Configurações',
+      'settings.manageSubscription': 'Gerenciar inscrição',
+      'settings.language': 'Idioma',
+      
+      // Account Page Tabs
+      'account.tabs.usage': 'Uso do Plano',
+      'account.tabs.subscription': 'Assinatura',
+      'account.tabs.credentials': 'Credenciais BigQuery',
+      'account.tabs.settings': 'Configurações',
      
      // Add Source Modal
      'addSource.title': 'Adicionar fontes',

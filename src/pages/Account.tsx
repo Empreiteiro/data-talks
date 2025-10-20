@@ -36,16 +36,16 @@ const Account = () => {
       <Tabs defaultValue="usage" className="space-y-6">
         <TabsList>
           <TabsTrigger value="usage">
-            {t('language') === 'pt' ? 'Uso do Plano' : 'Plan Usage'}
+            {t('account.tabs.usage')}
           </TabsTrigger>
           <TabsTrigger value="subscription">
-            {t('language') === 'pt' ? 'Assinatura' : 'Subscription'}
+            {t('account.tabs.subscription')}
           </TabsTrigger>
           <TabsTrigger value="credentials">
-            {t('language') === 'pt' ? 'Credenciais BigQuery' : 'BigQuery Credentials'}
+            {t('account.tabs.credentials')}
           </TabsTrigger>
           <TabsTrigger value="settings">
-            {t('language') === 'pt' ? 'Configurações' : 'Settings'}
+            {t('account.tabs.settings')}
           </TabsTrigger>
         </TabsList>
 
