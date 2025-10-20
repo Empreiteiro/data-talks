@@ -106,27 +106,14 @@ const SubscriptionManagement = () => {
     }
   };
   if (loading) {
-    return <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">
-          {language === 'pt' ? 'Assinatura' : 'Subscription'}
-        </h2>
-        <Card className="animate-pulse">
-          <CardHeader>
-            <div className="h-6 bg-muted rounded w-1/2"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-4 bg-muted rounded w-3/4 mb-4"></div>
-            <div className="h-10 bg-muted rounded w-1/3"></div>
-          </CardContent>
-        </Card>
-      </div>;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
   const pricing = getPlanPricing();
-  return <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        
-        
-      </div>
+  return <div className="h-full p-6 space-y-6 overflow-y-auto">
 
       {subscription?.subscribed ? <Card>
           <CardHeader className="flex flex-row items-center space-y-0 pb-4">
