@@ -113,7 +113,7 @@ const SubscriptionManagement = () => {
     );
   }
   const pricing = getPlanPricing();
-  return <div className="h-full p-6 space-y-6 overflow-y-auto">
+  return <div className="h-full px-6 pb-6 space-y-6 overflow-y-auto">
 
       {subscription?.subscribed ? <Card>
           <CardHeader className="flex flex-row items-center space-y-0 pb-4">
