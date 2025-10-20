@@ -174,7 +174,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
   );
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-background border rounded-lg">
       <div className="p-4 border-b flex items-center h-[57px]">
         <div className="flex items-center justify-between w-full">
           <h2 className="font-semibold">{t('sources.title')}</h2>
