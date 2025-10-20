@@ -78,22 +78,6 @@ const WorkspaceAccess = () => {
     },
   });
 
-  // Redirect if not admin
-  useEffect(() => {
-    if (currentUserRole !== undefined && currentUserRole !== 'admin') {
-      navigate('/dashboard');
-    }
-  }, [currentUserRole, navigate]);
-
-  // Show loading while checking role
-  if (currentUserRole === undefined) {
-    return null;
-  }
-
-  if (currentUserRole !== 'admin') {
-    return null;
-  }
-
   const grantAccessMutation = useMutation({
     mutationFn: async ({ workspaceId, userId }: { workspaceId: string; userId: string }) => {
       const { error } = await supabase
@@ -134,6 +118,22 @@ const WorkspaceAccess = () => {
       toast.error(`Erro ao revogar acesso: ${error.message}`);
     },
   });
+
+  // Redirect if not admin
+  useEffect(() => {
+    if (currentUserRole !== undefined && currentUserRole !== 'admin') {
+      navigate('/dashboard');
+    }
+  }, [currentUserRole, navigate]);
+
+  // Show loading while checking role
+  if (currentUserRole === undefined) {
+    return null;
+  }
+
+  if (currentUserRole !== 'admin') {
+    return null;
+  }
 
   const handleGrantAccess = () => {
     if (!selectedWorkspace || !selectedUser) {
