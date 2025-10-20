@@ -92,22 +92,6 @@ const NavBar = () => {
                     </Link>
                   </DropdownMenuItem>
                   
-                  {userRole === 'admin' && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/users" className="cursor-pointer">
-                          {t('settings.users')}
-                        </Link>
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuItem asChild>
-                        <Link to="/workspace-access" className="cursor-pointer">
-                          {t('settings.workspaceAccess')}
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
                     {t('settings.language')}
