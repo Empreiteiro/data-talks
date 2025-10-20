@@ -257,105 +257,103 @@ const UsageMonitoring = () => {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {language === 'pt' ? 'Informações do Plano' : 'Plan Information'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">
-                {language === 'pt' ? 'Plano Atual:' : 'Current Plan:'}
-              </span>
-              <Badge variant={isPro ? "default" : "secondary"}>{planName}</Badge>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {language === 'pt' ? 'Informações do Plano' : 'Plan Information'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">
+              {language === 'pt' ? 'Plano Atual:' : 'Current Plan:'}
+            </span>
+            <Badge variant={isPro ? "default" : "secondary"}>{planName}</Badge>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>{language === 'pt' ? 'Fontes de dados:' : 'Data sources:'}</span>
+              <span>{stats.sourcesCount}/{planLimits.sources}</span>
             </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>{language === 'pt' ? 'Fontes de dados:' : 'Data sources:'}</span>
-                <span>{stats.sourcesCount}/{planLimits.sources}</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full transition-all" style={{
-                width: `${Math.min(stats.sourcesCount / planLimits.sources * 100, 100)}%`
-              }}></div>
-              </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full transition-all" style={{
+              width: `${Math.min(stats.sourcesCount / planLimits.sources * 100, 100)}%`
+            }}></div>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>{language === 'pt' ? 'Agentes:' : 'Agents:'}</span>
-                <span>{stats.agentsCount}/{planLimits.agents}</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full transition-all" style={{
-                width: `${Math.min(stats.agentsCount / planLimits.agents * 100, 100)}%`
-              }}></div>
-              </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>{language === 'pt' ? 'Agentes:' : 'Agents:'}</span>
+              <span>{stats.agentsCount}/{planLimits.agents}</span>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>{language === 'pt' ? 'Perguntas mensais:' : 'Monthly questions:'}</span>
-                <span>{stats.thisMonthQuestions}/{planLimits.monthlyQuestions}</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full transition-all" style={{
-                width: `${Math.min(stats.thisMonthQuestions / planLimits.monthlyQuestions * 100, 100)}%`
-              }}></div>
-              </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full transition-all" style={{
+              width: `${Math.min(stats.agentsCount / planLimits.agents * 100, 100)}%`
+            }}></div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {language === 'pt' ? 'Perguntas por Dia (Últimos 30 dias)' : 'Questions per Day (Last 30 days)'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {dailyQuestions.length > 0 ? (
-              <ChartContainer
-                config={{
-                  count: {
-                    label: language === 'pt' ? 'Perguntas' : 'Questions',
-                    color: "hsl(var(--primary))",
-                  },
-                }}
-                className="h-[300px]"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyQuestions}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      dataKey="date" 
-                      className="text-xs"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      className="text-xs"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Bar 
-                      dataKey="count" 
-                      fill="hsl(var(--primary))" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                {language === 'pt' ? 'Nenhuma pergunta nos últimos 30 dias' : 'No questions in the last 30 days'}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>{language === 'pt' ? 'Perguntas mensais:' : 'Monthly questions:'}</span>
+              <span>{stats.thisMonthQuestions}/{planLimits.monthlyQuestions}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full transition-all" style={{
+              width: `${Math.min(stats.thisMonthQuestions / planLimits.monthlyQuestions * 100, 100)}%`
+            }}></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {language === 'pt' ? 'Perguntas por Dia (Últimos 30 dias)' : 'Questions per Day (Last 30 days)'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {dailyQuestions.length > 0 ? (
+            <ChartContainer
+              config={{
+                count: {
+                  label: language === 'pt' ? 'Perguntas' : 'Questions',
+                  color: "hsl(var(--primary))",
+                },
+              }}
+              className="h-[300px]"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyQuestions}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="date" 
+                    className="text-xs"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis 
+                    className="text-xs"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip content={<ChartTooltipContent />} />
+                  <Bar 
+                    dataKey="count" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              {language === 'pt' ? 'Nenhuma pergunta nos últimos 30 dias' : 'No questions in the last 30 days'}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>;
 };
 export default UsageMonitoring;
