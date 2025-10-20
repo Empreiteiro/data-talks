@@ -94,8 +94,19 @@ const UsageMonitoring = () => {
         .gte('created_at', thirtyDaysAgo.toISOString())
         .order('created_at', { ascending: true });
 
-      // Group questions by day
+      // Create array with all 30 days
       const dailyMap = new Map<string, number>();
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toLocaleDateString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit' 
+        });
+        dailyMap.set(dateStr, 0);
+      }
+
+      // Fill in the actual question counts
       questionsData?.forEach((q) => {
         const date = new Date(q.created_at).toLocaleDateString('pt-BR', { 
           day: '2-digit', 
@@ -309,13 +320,13 @@ const UsageMonitoring = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="flex flex-col">
         <CardHeader>
           <CardTitle>
-            {language === 'pt' ? 'Perguntas por Dia (Últimos 30 dias)' : 'Questions per Day (Last 30 days)'}
+            {language === 'pt' ? 'Perguntas por Dia' : 'Questions per Day'}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1">
           {dailyQuestions.length > 0 ? (
             <ChartContainer
               config={{
@@ -324,7 +335,7 @@ const UsageMonitoring = () => {
                   color: "hsl(var(--primary))",
                 },
               }}
-              className="h-[300px]"
+              className="h-full min-h-[400px]"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyQuestions}>
@@ -348,7 +359,7 @@ const UsageMonitoring = () => {
               </ResponsiveContainer>
             </ChartContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            <div className="h-full min-h-[400px] flex items-center justify-center text-muted-foreground">
               {language === 'pt' ? 'Nenhuma pergunta nos últimos 30 dias' : 'No questions in the last 30 days'}
             </div>
           )}
