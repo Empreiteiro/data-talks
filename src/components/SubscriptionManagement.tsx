@@ -8,29 +8,39 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard, Calendar, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
 const SubscriptionManagement = () => {
-  const { language } = useLanguage();
-  const { session } = useAuth();
-  const { toast } = useToast();
-  const { subscription, loading, checkSubscription } = useSubscription();
+  const {
+    language
+  } = useLanguage();
+  const {
+    session
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    subscription,
+    loading,
+    checkSubscription
+  } = useSubscription();
   const [actionLoading, setActionLoading] = useState(false);
-
   const createCheckout = async (plan: string) => {
     try {
       setActionLoading(true);
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('create-checkout', {
+        body: {
           plan,
           language: language === 'pt' ? 'pt' : 'en'
         },
         headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
+          Authorization: `Bearer ${session?.access_token}`
+        }
       });
-
       if (error) throw error;
-      
+
       // Marca que o usuário está indo para o Stripe
       sessionStorage.setItem('returning_from_stripe', 'true');
       // Open Stripe checkout in new tab
@@ -39,27 +49,26 @@ const SubscriptionManagement = () => {
       console.error('Error creating checkout:', error);
       toast({
         title: language === 'pt' ? 'Erro' : 'Error',
-        description: language === 'pt' 
-          ? 'Erro ao criar checkout' 
-          : 'Error creating checkout',
-        variant: 'destructive',
+        description: language === 'pt' ? 'Erro ao criar checkout' : 'Error creating checkout',
+        variant: 'destructive'
       });
     } finally {
       setActionLoading(false);
     }
   };
-
   const openCustomerPortal = async () => {
     try {
       setActionLoading(true);
-      const { data, error } = await supabase.functions.invoke('customer-portal', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('customer-portal', {
         headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
+          Authorization: `Bearer ${session?.access_token}`
+        }
       });
-
       if (error) throw error;
-      
+
       // Marca que o usuário está indo para o Stripe
       sessionStorage.setItem('returning_from_stripe', 'true');
       // Open customer portal in new tab
@@ -68,16 +77,13 @@ const SubscriptionManagement = () => {
       console.error('Error opening customer portal:', error);
       toast({
         title: language === 'pt' ? 'Erro' : 'Error',
-        description: language === 'pt' 
-          ? 'Erro ao abrir portal do cliente' 
-          : 'Error opening customer portal',
-        variant: 'destructive',
+        description: language === 'pt' ? 'Erro ao abrir portal do cliente' : 'Error opening customer portal',
+        variant: 'destructive'
       });
     } finally {
       setActionLoading(false);
     }
   };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US', {
@@ -86,7 +92,6 @@ const SubscriptionManagement = () => {
       day: 'numeric'
     });
   };
-
   const getPlanPricing = () => {
     if (language === 'pt') {
       return {
@@ -100,10 +105,8 @@ const SubscriptionManagement = () => {
       };
     }
   };
-
   if (loading) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <h2 className="text-2xl font-semibold">
           {language === 'pt' ? 'Assinatura' : 'Subscription'}
         </h2>
@@ -116,29 +119,18 @@ const SubscriptionManagement = () => {
             <div className="h-10 bg-muted rounded w-1/3"></div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
   const pricing = getPlanPricing();
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold">
-          {language === 'pt' ? 'Assinatura' : 'Subscription'}
-        </h2>
-        <Button 
-          variant="outline" 
-          onClick={() => checkSubscription(true)}
-          disabled={loading}
-        >
+        
+        <Button variant="outline" onClick={() => checkSubscription(true)} disabled={loading}>
           {language === 'pt' ? 'Atualizar' : 'Refresh'}
         </Button>
       </div>
 
-      {subscription?.subscribed ? (
-        <Card>
+      {subscription?.subscribed ? <Card>
           <CardHeader className="flex flex-row items-center space-y-0 pb-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -147,10 +139,7 @@ const SubscriptionManagement = () => {
               </CardTitle>
             </div>
             <Badge variant="default" className="ml-auto">
-              {subscription.subscription_tier} - {subscription.plan_type === 'quarterly' 
-                ? (language === 'pt' ? 'Trimestral' : 'Quarterly')
-                : (language === 'pt' ? 'Mensal' : 'Monthly')
-              }
+              {subscription.subscription_tier} - {subscription.plan_type === 'quarterly' ? language === 'pt' ? 'Trimestral' : 'Quarterly' : language === 'pt' ? 'Mensal' : 'Monthly'}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -163,18 +152,13 @@ const SubscriptionManagement = () => {
             </div>
             
             <div className="flex gap-2">
-              <Button 
-                onClick={openCustomerPortal}
-                disabled={actionLoading}
-              >
+              <Button onClick={openCustomerPortal} disabled={actionLoading}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 {language === 'pt' ? 'Gerenciar Assinatura' : 'Manage Subscription'}
               </Button>
             </div>
           </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
+        </Card> : <div className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center space-y-0 pb-4">
               <div className="flex items-center gap-2">
@@ -186,10 +170,7 @@ const SubscriptionManagement = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground mb-4">
-                {language === 'pt' 
-                  ? 'Você não possui uma assinatura ativa. Assine o Plano Pro para acessar todas as funcionalidades.' 
-                  : 'You don\'t have an active subscription. Subscribe to the Pro Plan to access all features.'
-                }
+                {language === 'pt' ? 'Você não possui uma assinatura ativa. Assine o Plano Pro para acessar todas as funcionalidades.' : 'You don\'t have an active subscription. Subscribe to the Pro Plan to access all features.'}
               </p>
             </CardContent>
           </Card>
@@ -215,19 +196,12 @@ const SubscriptionManagement = () => {
                 <li>• {language === 'pt' ? 'Suporte prioritário' : 'Priority support'}</li>
                 <li>• {language === 'pt' ? 'Canais personalizados' : 'Custom channels'}</li>
               </ul>
-              <Button 
-                className="w-full" 
-                onClick={() => createCheckout('monthly')}
-                disabled={actionLoading}
-              >
+              <Button className="w-full" onClick={() => createCheckout('monthly')} disabled={actionLoading}>
                 {language === 'pt' ? 'Assinar Plano Pro' : 'Subscribe Pro Plan'}
               </Button>
             </CardContent>
           </Card>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 };
-
 export default SubscriptionManagement;
