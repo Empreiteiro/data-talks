@@ -158,7 +158,7 @@ const UsageMonitoring = () => {
   } : {
     sources: 5,
     agents: 5,
-    monthlyQuestions: 20
+    monthlyQuestions: 50
   };
   const planName = isPro ? 'Pro' : 'Trial';
   const sourcesStatus = getUsageStatus(stats.sourcesCount, planLimits.sources);

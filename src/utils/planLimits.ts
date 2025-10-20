@@ -9,7 +9,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   trial: {
     sources: 5,
     agents: 5,
-    monthlyQuestions: 20
+    monthlyQuestions: 50
   },
   pro: {
     sources: 10,
