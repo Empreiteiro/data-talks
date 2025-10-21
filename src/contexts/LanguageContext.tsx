@@ -82,7 +82,6 @@ const translations = {
     
     // Settings
     'settings.title': 'Settings',
-    'settings.dashboard': 'Dashboard (deprecated)',
     'settings.subscription': 'Manage subscription',
     'settings.users': 'Users',
     'settings.workspaceAccess': 'Access Control',
@@ -924,7 +923,6 @@ const translations = {
      
      // Settings
      'settings.title': 'Configurações',
-     'settings.dashboard': 'Dashboard (descontinuado)',
      'settings.subscription': 'Gerenciar assinatura',
      'settings.users': 'Usuários',
      'settings.workspaceAccess': 'Controle de Acesso',
