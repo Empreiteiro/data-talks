@@ -58,7 +58,7 @@ export const usePlanLimits = (): PlanLimitsData => {
       
       const qaResult = await supabaseClient.listQASessions();
       const monthlyQuestions = qaResult.filter(qa => 
-        new Date(qa.created_at) >= startOfMonth && !qa.is_shared
+        new Date(qa.created_at) >= startOfMonth
       ).length;
 
       setUsage({
