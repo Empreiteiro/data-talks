@@ -517,6 +517,8 @@ const translations = {
       'users.removeError': 'Error removing user:',
       'users.noUsersFound': 'No users found',
       'users.validEmailError': 'Enter a valid email',
+      'users.systemUsers': 'System Users',
+      'users.inviteSuccess': 'User invited successfully! They will receive an email to set their password.',
       
       // Workspace Access Management
       'workspaceAccess.title': 'Workspace Access Control',
