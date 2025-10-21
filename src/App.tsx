@@ -10,7 +10,6 @@ import NotFound from "./pages/NotFound";
 import NavBar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import Auth from "@/pages/Auth";
-import Dashboard from "@/pages/Dashboard";
 import Sources from "@/pages/Sources";
 import AgentBriefing from "@/pages/AgentBriefing";
 import Alerts from "@/pages/Alerts";
@@ -48,7 +47,6 @@ const AppContent = () => {
           <Route path="/workspace/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
           {/* Redirect old notebook URLs to workspace */}
           <Route path="/notebook/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
-          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/sources" element={<RequireAuth><Sources /></RequireAuth>} />
           <Route path="/agents" element={<RequireAuth><Agents /></RequireAuth>} />
           <Route path="/agents/new" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
