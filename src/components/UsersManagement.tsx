@@ -103,7 +103,7 @@ const UsersManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 h-full px-6 pb-6">
       <div className="flex justify-end">
         <Button onClick={() => setIsAddUserOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
