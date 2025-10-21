@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { agentClient } from "@/services/agentClient";
 import UsageMonitoring from "@/components/UsageMonitoring";
@@ -85,7 +86,27 @@ const Account = () => {
         <div className="flex-1 bg-background overflow-hidden">
           {activeSection === "usage" && <UsageMonitoring />}
           
-          {activeSection === "subscription" && <SubscriptionManagement />}
+          {activeSection === "subscription" && (
+            <Tabs defaultValue="subscription" className="h-full">
+              <TabsList className="mb-6">
+                <TabsTrigger value="subscription">{t('account.tabs.subscription')}</TabsTrigger>
+                <TabsTrigger value="users">{t('account.tabs.users')}</TabsTrigger>
+                <TabsTrigger value="workspaceAccess">{t('account.tabs.workspaceAccess')}</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="subscription" className="h-full">
+                <SubscriptionManagement />
+              </TabsContent>
+              
+              <TabsContent value="users">
+                <UsersManagement />
+              </TabsContent>
+              
+              <TabsContent value="workspaceAccess">
+                <WorkspaceAccessManagement />
+              </TabsContent>
+            </Tabs>
+          )}
           
           {activeSection === "sources" && (
             <SourcesPanel 
