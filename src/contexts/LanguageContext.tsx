@@ -408,7 +408,7 @@ const translations = {
       'account.tabs.sources': 'Data Sources',
       'account.tabs.credentials': 'BigQuery Credentials',
       'account.tabs.users': 'Users',
-      'account.tabs.access': 'Workspace Access',
+      'account.tabs.workspaceAccess': 'Workspace Access',
       'account.tabs.settings': 'Settings',
      
      // Add Source Modal
@@ -936,7 +936,7 @@ const translations = {
       'account.tabs.sources': 'Fontes de Dados',
       'account.tabs.credentials': 'Credenciais BigQuery',
       'account.tabs.users': 'Usuários',
-      'account.tabs.access': 'Acesso aos Workspaces',
+      'account.tabs.workspaceAccess': 'Acesso aos Workspaces',
       'account.tabs.settings': 'Configurações',
      
      // Add Source Modal
