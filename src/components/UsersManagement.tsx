@@ -103,20 +103,21 @@ const UsersManagement = () => {
   };
 
   return (
-    <div className="space-y-6 h-full px-6 pb-6">
-      <div className="flex justify-end">
-        <Button onClick={() => setIsAddUserOpen(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          {t('users.addUser')}
-        </Button>
-      </div>
-
+    <div className="h-full px-6 pb-6">
       <Card>
         <CardHeader>
-          <CardTitle>{t('users.systemUsers')}</CardTitle>
-          <CardDescription>
-            {t('users.description')}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{t('users.systemUsers')}</CardTitle>
+              <CardDescription>
+                {t('users.description')}
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsAddUserOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              {t('users.addUser')}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
