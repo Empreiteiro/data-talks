@@ -2,7 +2,6 @@ import { useState } from "react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { agentClient } from "@/services/agentClient";
 import UsageMonitoring from "@/components/UsageMonitoring";
@@ -10,7 +9,7 @@ import SubscriptionManagement from "@/components/SubscriptionManagement";
 import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
 import UsersManagement from "@/components/UsersManagement";
 import WorkspaceAccessManagement from "@/components/WorkspaceAccessManagement";
-import { Activity, CreditCard, Database, Settings, FolderOpen } from "lucide-react";
+import { Activity, CreditCard, Database, Settings, FolderOpen, Users, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
@@ -24,6 +23,8 @@ const Account = () => {
   const menuItems = [
     { id: "usage", label: t('account.tabs.usage'), icon: Activity },
     { id: "subscription", label: t('account.tabs.subscription'), icon: CreditCard },
+    { id: "users", label: t('account.tabs.users'), icon: Users },
+    { id: "workspaceAccess", label: t('account.tabs.workspaceAccess'), icon: Share2 },
     { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
     { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
     { id: "settings", label: t('account.tabs.settings'), icon: Settings },
@@ -86,27 +87,11 @@ const Account = () => {
         <div className="flex-1 bg-background overflow-hidden">
           {activeSection === "usage" && <UsageMonitoring />}
           
-          {activeSection === "subscription" && (
-            <Tabs defaultValue="subscription" className="h-full">
-              <TabsList className="mb-6">
-                <TabsTrigger value="subscription">{t('account.tabs.subscription')}</TabsTrigger>
-                <TabsTrigger value="users">{t('account.tabs.users')}</TabsTrigger>
-                <TabsTrigger value="workspaceAccess">{t('account.tabs.workspaceAccess')}</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="subscription" className="h-full">
-                <SubscriptionManagement />
-              </TabsContent>
-              
-              <TabsContent value="users">
-                <UsersManagement />
-              </TabsContent>
-              
-              <TabsContent value="workspaceAccess">
-                <WorkspaceAccessManagement />
-              </TabsContent>
-            </Tabs>
-          )}
+          {activeSection === "subscription" && <SubscriptionManagement />}
+          
+          {activeSection === "users" && <UsersManagement />}
+          
+          {activeSection === "workspaceAccess" && <WorkspaceAccessManagement />}
           
           {activeSection === "sources" && (
             <SourcesPanel 
