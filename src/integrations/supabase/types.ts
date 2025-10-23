@@ -196,8 +196,10 @@ export type Database = {
       }
       sources: {
         Row: {
+          agent_id: string | null
           created_at: string
           id: string
+          is_active: boolean | null
           langflow_name: string | null
           langflow_path: string | null
           metadata: Json | null
@@ -206,8 +208,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          agent_id?: string | null
           created_at?: string
           id?: string
+          is_active?: boolean | null
           langflow_name?: string | null
           langflow_path?: string | null
           metadata?: Json | null
@@ -216,8 +220,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          agent_id?: string | null
           created_at?: string
           id?: string
+          is_active?: boolean | null
           langflow_name?: string | null
           langflow_path?: string | null
           metadata?: Json | null
@@ -225,7 +231,15 @@ export type Database = {
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sources_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscribers: {
         Row: {
@@ -343,10 +357,7 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
-      count_user_agents: {
-        Args: { _user_id: string }
-        Returns: number
-      }
+      count_user_agents: { Args: { _user_id: string }; Returns: number }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -370,10 +381,7 @@ export type Database = {
         Args: { _agent_id: string; _user_id: string }
         Returns: boolean
       }
-      user_organization_id: {
-        Args: { _user_id: string }
-        Returns: string
-      }
+      user_organization_id: { Args: { _user_id: string }; Returns: string }
       validate_user_access: {
         Args: { target_user_id: string }
         Returns: boolean

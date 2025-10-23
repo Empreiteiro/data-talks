@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, X } from "lucide-react";
+import { Plus, FileText, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,8 @@ interface Source {
   type: string;
   createdAt: string;
   metadata?: any;
+  is_active?: boolean;
+  agent_id?: string;
 }
 
 interface SourcesPanelProps {
@@ -30,6 +32,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
   const [searchQuery, setSearchQuery] = useState("");
   const [previewSource, setPreviewSource] = useState<Source | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (agentId) {
@@ -92,60 +95,70 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
     if (!agentId) return;
     
     try {
-      const { data: agent, error } = await supabase
-        .from('agents')
-        .select('source_ids')
-        .eq('id', agentId)
-        .single();
+      // Carregar todas as fontes do agent
+      const { data: sourcesData, error: sourcesError } = await supabase
+        .from('sources')
+        .select('*')
+        .eq('agent_id', agentId)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (sourcesError) throw sourcesError;
+
+      const mappedSources = (sourcesData || []).map(source => ({
+        id: source.id,
+        name: source.name,
+        type: source.type,
+        createdAt: source.created_at,
+        metadata: source.metadata,
+        is_active: source.is_active,
+        agent_id: source.agent_id,
+      }));
       
-      const sourceIds = agent?.source_ids || [];
-      setLinkedSourceIds(sourceIds);
+      // Identificar fonte ativa
+      const activeSource = mappedSources.find(s => s.is_active);
+      setActiveSourceId(activeSource?.id || null);
       
-      // Carregar apenas a fonte vinculada
-      if (sourceIds.length > 0) {
-        const { data: sourcesData, error: sourcesError } = await supabase
-          .from('sources')
-          .select('*')
-          .in('id', sourceIds)
-          .order('created_at', { ascending: false });
-
-        if (sourcesError) throw sourcesError;
-
-        const mappedSources = (sourcesData || []).map(source => ({
-          id: source.id,
-          name: source.name,
-          type: source.type,
-          createdAt: source.created_at,
-          metadata: source.metadata,
-        }));
-        console.log('Sources loaded:', mappedSources);
-        console.log('Source metadata:', mappedSources[0]?.metadata);
-        setSources(mappedSources);
-      } else {
-        setSources([]);
-      }
+      setSources(mappedSources);
       setLoading(false);
     } catch (error: any) {
-      console.error("Erro ao carregar source_ids do agente:", error);
+      console.error("Erro ao carregar sources do agente:", error);
       setLoading(false);
     }
   }
 
 
+  async function handleToggleActive(sourceId: string) {
+    if (!agentId) return;
+    
+    try {
+      // Desativar todas as fontes do agent
+      await supabase
+        .from('sources')
+        .update({ is_active: false })
+        .eq('agent_id', agentId);
+      
+      // Ativar a fonte selecionada
+      const { error } = await supabase
+        .from('sources')
+        .update({ is_active: true })
+        .eq('id', sourceId);
+        
+      if (error) throw error;
+      
+      setActiveSourceId(sourceId);
+      toast.success("Fonte ativada com sucesso");
+      
+      // Recarregar as sources
+      loadAgentSourceIds();
+    } catch (error: any) {
+      toast.error("Erro ao ativar fonte", {
+        description: error.message
+      });
+    }
+  }
+
   async function handleDeleteSource(sourceId: string) {
     try {
-      if (agentId) {
-        // Remover do agent primeiro
-        const { error: updateError } = await supabase
-          .from('agents')
-          .update({ source_ids: [] })
-          .eq('id', agentId);
-
-        if (updateError) throw updateError;
-      }
-
       // Remover a fonte da tabela sources
       const { error: deleteError } = await supabase
         .from('sources')
@@ -182,7 +195,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
             variant="outline"
             size="sm"
             onClick={onAddSource}
-            disabled={agentId ? linkedSourceIds.length > 0 : false}
+            disabled={false}
           >
             <Plus className="h-4 w-4 mr-2" />
             {t('sources.add')}
@@ -222,9 +235,17 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
                 <div className="flex items-start gap-2">
                   <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{source.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium truncate">{source.name}</p>
+                      {agentId && source.id === activeSourceId && (
+                        <Badge variant="default" className="text-xs bg-green-500 hover:bg-green-600">
+                          <Check className="h-3 w-3 mr-1" />
+                          Ativa
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="default" className="text-xs">
+                      <Badge variant="outline" className="text-xs">
                         {source.type}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
@@ -232,11 +253,25 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1">
+                    {agentId && (
+                      <Button
+                        variant={source.id === activeSourceId ? "default" : "outline"}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleActive(source.id);
+                        }}
+                        disabled={source.id === activeSourceId}
+                      >
+                        {source.id === activeSourceId ? "Ativa" : "Ativar"}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteSource(source.id);

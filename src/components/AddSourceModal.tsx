@@ -48,7 +48,7 @@ export function AddSourceModal({
   const [availableProjects, setAvailableProjects] = useState<Array<{id: string, name: string}>>([]);
   const [availableDatasets, setAvailableDatasets] = useState<Array<{id: string, name: string}>>([]);
   const [availableTables, setAvailableTables] = useState<Array<{id: string, name: string, type: string}>>([]);
-  const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const [selectedTable, setSelectedTable] = useState<string>("");
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [loadingTables, setLoadingTables] = useState(false);
@@ -176,7 +176,7 @@ export function AddSourceModal({
     setAvailableDatasets([]);
     setAvailableTables([]);
     setBigQueryData({ ...bigQueryData, credentialsFile: file, projectId: '', datasetId: '' });
-    setSelectedTables([]);
+    setSelectedTable("");
 
     try {
       const credentialsText = await file.text();
@@ -202,7 +202,7 @@ export function AddSourceModal({
     setAvailableDatasets([]);
     setAvailableTables([]);
     setBigQueryData({ ...bigQueryData, projectId: '', datasetId: '' });
-    setSelectedTables([]);
+    setSelectedTable("");
 
     try {
       const selectedCred = existingCredentials.find(c => c.langflowPath === langflowPath);
@@ -234,7 +234,7 @@ export function AddSourceModal({
     setBigQueryData(prev => ({ ...prev, projectId, datasetId: '' }));
     setAvailableDatasets([]);
     setAvailableTables([]);
-    setSelectedTables([]);
+    setSelectedTable("");
     setLoadingDatasets(true);
 
     try {
@@ -261,7 +261,7 @@ export function AddSourceModal({
   const handleDatasetSelect = async (datasetId: string) => {
     setBigQueryData(prev => ({ ...prev, datasetId }));
     setAvailableTables([]);
-    setSelectedTables([]);
+    setSelectedTable("");
     setLoadingTables(true);
 
     try {
@@ -289,12 +289,8 @@ export function AddSourceModal({
     }
   };
 
-  const handleTableToggle = (tableId: string) => {
-    setSelectedTables(prev => 
-      prev.includes(tableId) 
-        ? prev.filter(t => t !== tableId)
-        : [...prev, tableId]
-    );
+  const handleTableSelect = (tableId: string) => {
+    setSelectedTable(tableId);
   };
 
   const handleBigQueryConnect = async () => {
@@ -313,8 +309,8 @@ export function AddSourceModal({
       return;
     }
 
-    if (selectedTables.length === 0) {
-      toast.error('Por favor, selecione pelo menos uma tabela');
+    if (!selectedTable) {
+      toast.error('Por favor, selecione uma tabela');
       return;
     }
 
@@ -378,7 +374,7 @@ export function AddSourceModal({
           credentials: credentialsJson,
           projectId: bigQueryData.projectId,
           datasetId: bigQueryData.datasetId,
-          tables: selectedTables,
+          tables: [selectedTable],
           langflowPath: langflowPath,
           langflowName: langflowName,
           supabaseStoragePath: supabaseStoragePath,
@@ -555,27 +551,23 @@ export function AddSourceModal({
 
                 {availableTables.length > 0 && (
                   <div className="space-y-2">
-                    <Label>{t('addSource.allowedTables')}</Label>
-                    <div className="border rounded-md p-4 max-h-48 overflow-y-auto space-y-2">
-                      {availableTables.map((table) => (
-                        <div key={table.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`table-${table.id}`}
-                            checked={selectedTables.includes(table.id)}
-                            onCheckedChange={() => handleTableToggle(table.id)}
-                          />
-                          <label
-                            htmlFor={`table-${table.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
+                    <Label>{t('addSource.selectTable')}</Label>
+                    <Select 
+                      value={selectedTable} 
+                      onValueChange={handleTableSelect}
+                      disabled={!bigQueryData.datasetId || availableTables.length === 0}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione uma tabela" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTables.map((table) => (
+                          <SelectItem key={table.id} value={table.id}>
                             {table.name} <span className="text-muted-foreground">({table.type})</span>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedTables.length} tabela(s) selecionada(s)
-                    </p>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
                 <Button 

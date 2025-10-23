@@ -103,16 +103,17 @@ serve(async (req) => {
       agent = agentData;
     }
 
-    // Get source information to determine agent type
+    // Get active source for the agent
     const { data: sources, error: sourcesError } = await supabase
       .from('sources')
       .select('*')
-      .in('id', agent.source_ids);
+      .eq('agent_id', agent.id)
+      .eq('is_active', true);
 
-    if (sourcesError) {
+    if (sourcesError || !sources || sources.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Error fetching sources' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Nenhuma fonte ativa encontrada para este workspace' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

@@ -15,6 +15,7 @@ interface BigQueryRequest {
   langflowName?: string;
   supabaseStoragePath?: string;
   credentialsContent?: string;
+  agentId?: string;
 }
 
 serve(async (req) => {
@@ -50,7 +51,7 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id)
 
-    const { credentials, projectId, datasetId, tables, langflowPath, langflowName, supabaseStoragePath, credentialsContent } = await req.json() as BigQueryRequest
+    const { credentials, projectId, datasetId, tables, langflowPath, langflowName, supabaseStoragePath, credentialsContent, agentId } = await req.json() as BigQueryRequest
     console.log('Request data:', { 
       projectId, 
       datasetId, 
@@ -286,10 +287,12 @@ serve(async (req) => {
       .from('sources')
       .insert({
         user_id: user.id,
-        name: `BigQuery: ${projectId}.${datasetId}`,
+        agent_id: agentId || null,
+        name: `BigQuery: ${projectId}.${datasetId}.${tables[0]}`,
         type: 'bigquery',
         langflow_path: langflowPath || null,
         langflow_name: langflowName || null,
+        is_active: agentId ? true : false,
         metadata: {
           project_id: projectId,
           dataset_id: datasetId,
