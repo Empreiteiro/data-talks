@@ -284,6 +284,15 @@ serve(async (req) => {
     
     console.log('Creating source record...')
     console.log('Agent ID received:', agentId)
+    
+    // Se houver agentId, desativar outras fontes do agent antes de criar a nova
+    if (agentId) {
+      await supabaseClient
+        .from('sources')
+        .update({ is_active: false })
+        .eq('agent_id', agentId)
+    }
+    
     const { data: source, error: sourceError } = await supabaseClient
       .from('sources')
       .insert({
