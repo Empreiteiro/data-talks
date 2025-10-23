@@ -229,67 +229,59 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredSources.map((source) => (
-              <div
-                key={source.id}
-                className="group relative p-3 rounded-lg border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors cursor-pointer"
-                onClick={() => {
-                  setPreviewSource(source);
-                  setShowPreview(true);
-                }}
-              >
-                <div className="flex items-start gap-2">
-                  <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">{source.name}</p>
-                      {agentId && source.id === activeSourceId && (
-                        <Badge variant="default" className="text-xs bg-green-500 hover:bg-green-600">
-                          <Check className="h-3 w-3 mr-1" />
-                          Ativa
+            {filteredSources.map((source) => {
+              const isActive = agentId && source.id === activeSourceId;
+              
+              return (
+                <div
+                  key={source.id}
+                  className={`group relative p-3 rounded-lg border transition-all cursor-pointer ${
+                    isActive 
+                      ? 'bg-primary/15 border-primary/30 hover:bg-primary/20' 
+                      : 'bg-muted/30 border-muted hover:bg-muted/50'
+                  }`}
+                  onClick={() => {
+                    if (agentId && !isActive) {
+                      handleToggleActive(source.id);
+                    } else if (!agentId) {
+                      setPreviewSource(source);
+                      setShowPreview(true);
+                    }
+                  }}
+                >
+                  <div className="flex items-start gap-2">
+                    <FileText className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${isActive ? 'text-primary' : ''}`}>
+                        {source.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {source.type}
                         </Badge>
-                      )}
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(source.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {source.type}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(source.createdAt).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {agentId && (
+                    <div className="flex items-center gap-1">
                       <Button
-                        variant={source.id === activeSourceId ? "default" : "outline"}
-                        size="sm"
-                        className="h-7 text-xs"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleToggleActive(source.id);
+                          handleDeleteSource(source.id);
                         }}
-                        disabled={source.id === activeSourceId}
+                        title="Excluir fonte"
                       >
-                        {source.id === activeSourceId ? "Ativa" : "Ativar"}
+                        <X className="h-4 w-4 text-destructive" />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSource(source.id);
-                      }}
-                      title="Excluir fonte"
-                    >
-                      <X className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
