@@ -147,6 +147,7 @@ export type Database = {
           id: string
           latency: number | null
           question: string
+          source_id: string | null
           sql_query: string | null
           status: string | null
           table_data: Json | null
@@ -163,6 +164,7 @@ export type Database = {
           id?: string
           latency?: number | null
           question: string
+          source_id?: string | null
           sql_query?: string | null
           status?: string | null
           table_data?: Json | null
@@ -179,6 +181,7 @@ export type Database = {
           id?: string
           latency?: number | null
           question?: string
+          source_id?: string | null
           sql_query?: string | null
           status?: string | null
           table_data?: Json | null
@@ -190,6 +193,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qa_sessions_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
             referencedColumns: ["id"]
           },
         ]

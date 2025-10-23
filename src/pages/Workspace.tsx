@@ -159,7 +159,7 @@ export default function Workspace() {
     try {
       const { data, error } = await supabase
         .from('qa_sessions')
-        .select('*')
+        .select('*, sources(id, name)')
         .eq('agent_id', id)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -231,7 +231,7 @@ export default function Workspace() {
     }
   };
 
-  const handleLoadConversation = (qaSession: any) => {
+  const handleLoadConversation = async (qaSession: any) => {
     const conversationHistory = qaSession.conversation_history || [];
     
     // Reconstruir o array de mensagens a partir do formato do backend
@@ -254,6 +254,31 @@ export default function Workspace() {
     setMessages(loadedMessages);
     setCurrentSessionId(qaSession.id); // Manter o sessionId para continuar a conversa
     setIsHistoryOpen(false);
+    
+    // Ativar a fonte de dados usada nessa conversa
+    if (qaSession.source_id && id) {
+      try {
+        // Desativar todas as fontes do agent
+        await supabase
+          .from('sources')
+          .update({ is_active: false })
+          .eq('agent_id', id);
+        
+        // Ativar a fonte usada na conversa
+        const { error } = await supabase
+          .from('sources')
+          .update({ is_active: true })
+          .eq('id', qaSession.source_id);
+          
+        if (error) throw error;
+        
+        // Recarregar as sources e colunas disponíveis
+        setSourcesRefreshTrigger(prev => prev + 1);
+        loadAvailableColumns();
+      } catch (error: any) {
+        console.error("Erro ao ativar fonte da conversa:", error);
+      }
+    }
     
     toast.success("Conversa carregada", {
       description: "Você pode continuar de onde parou.",

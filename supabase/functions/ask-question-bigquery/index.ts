@@ -352,7 +352,8 @@ serve(async (req) => {
           table_data: imageUrl ? { image_url: imageUrl } : null,
           latency,
           follow_up_questions: followUpQuestions,
-          conversation_history: [initialEntry]
+          conversation_history: [initialEntry],
+          source_id: bigquerySource.id // Salvar qual fonte foi usada
         })
         .eq('id', qaSession.id);
         
