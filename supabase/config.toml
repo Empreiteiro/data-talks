@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.bigquery-connect]
 verify_jwt = true
+
+[functions.list-bigquery-resources]
+verify_jwt = true

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Upload, Link as LinkIcon, X } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabaseClient } from "@/services/supabaseClient";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +43,15 @@ export function AddSourceModal({
     datasetId: '',
     tables: ''
   });
+
+  // New state for progressive selection
+  const [availableProjects, setAvailableProjects] = useState<Array<{id: string, name: string}>>([]);
+  const [availableDatasets, setAvailableDatasets] = useState<Array<{id: string, name: string}>>([]);
+  const [availableTables, setAvailableTables] = useState<Array<{id: string, name: string, type: string}>>([]);
+  const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingDatasets, setLoadingDatasets] = useState(false);
+  const [loadingTables, setLoadingTables] = useState(false);
 
   // Fetch existing BigQuery credentials when modal opens
   useEffect(() => {
@@ -131,6 +141,162 @@ export function AddSourceModal({
     }
   };
 
+  const listBigQueryResources = async (
+    action: 'projects' | 'datasets' | 'tables',
+    options: {
+      credentials?: string;
+      supabaseStoragePath?: string;
+      credentialsContent?: string;
+      projectId?: string;
+      datasetId?: string;
+    } = {}
+  ) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('list-bigquery-resources', {
+        body: {
+          action,
+          ...options,
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      console.error(`Error listing ${action}:`, error);
+      toast.error(`Erro ao buscar ${action}`, {
+        description: error.message
+      });
+      throw error;
+    }
+  };
+
+  const handleCredentialsUpload = async (file: File) => {
+    setLoadingProjects(true);
+    setAvailableProjects([]);
+    setAvailableDatasets([]);
+    setAvailableTables([]);
+    setBigQueryData({ ...bigQueryData, credentialsFile: file, projectId: '', datasetId: '' });
+    setSelectedTables([]);
+
+    try {
+      const credentialsText = await file.text();
+      const data = await listBigQueryResources('projects', { credentials: credentialsText });
+      setAvailableProjects(data.projects || []);
+      
+      if (data.projects?.length === 1) {
+        // Auto-select if only one project
+        setBigQueryData(prev => ({ ...prev, projectId: data.projects[0].id }));
+        handleProjectSelect(data.projects[0].id, credentialsText);
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const handleExistingCredentialSelect = async (langflowPath: string) => {
+    setSelectedCredential(langflowPath);
+    setLoadingProjects(true);
+    setAvailableProjects([]);
+    setAvailableDatasets([]);
+    setAvailableTables([]);
+    setBigQueryData({ ...bigQueryData, projectId: '', datasetId: '' });
+    setSelectedTables([]);
+
+    try {
+      const selectedCred = existingCredentials.find(c => c.langflowPath === langflowPath);
+      if (!selectedCred) return;
+
+      const data = await listBigQueryResources('projects', {
+        supabaseStoragePath: selectedCred.supabaseStoragePath,
+        credentialsContent: selectedCred.credentialsContent,
+      });
+      
+      setAvailableProjects(data.projects || []);
+      
+      if (data.projects?.length === 1) {
+        setBigQueryData(prev => ({ ...prev, projectId: data.projects[0].id }));
+        handleProjectSelect(data.projects[0].id, undefined, selectedCred);
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const handleProjectSelect = async (
+    projectId: string, 
+    credentials?: string,
+    selectedCred?: any
+  ) => {
+    setBigQueryData(prev => ({ ...prev, projectId, datasetId: '' }));
+    setAvailableDatasets([]);
+    setAvailableTables([]);
+    setSelectedTables([]);
+    setLoadingDatasets(true);
+
+    try {
+      const options: any = { projectId };
+      
+      if (credentials) {
+        options.credentials = credentials;
+      } else if (selectedCred) {
+        options.supabaseStoragePath = selectedCred.supabaseStoragePath;
+        options.credentialsContent = selectedCred.credentialsContent;
+      } else if (bigQueryData.credentialsFile) {
+        options.credentials = await bigQueryData.credentialsFile.text();
+      }
+
+      const data = await listBigQueryResources('datasets', options);
+      setAvailableDatasets(data.datasets || []);
+    } catch (error) {
+      console.error('Error loading datasets:', error);
+    } finally {
+      setLoadingDatasets(false);
+    }
+  };
+
+  const handleDatasetSelect = async (datasetId: string) => {
+    setBigQueryData(prev => ({ ...prev, datasetId }));
+    setAvailableTables([]);
+    setSelectedTables([]);
+    setLoadingTables(true);
+
+    try {
+      const options: any = { 
+        projectId: bigQueryData.projectId, 
+        datasetId 
+      };
+
+      if (useExistingCredential) {
+        const selectedCred = existingCredentials.find(c => c.langflowPath === selectedCredential);
+        if (selectedCred) {
+          options.supabaseStoragePath = selectedCred.supabaseStoragePath;
+          options.credentialsContent = selectedCred.credentialsContent;
+        }
+      } else if (bigQueryData.credentialsFile) {
+        options.credentials = await bigQueryData.credentialsFile.text();
+      }
+
+      const data = await listBigQueryResources('tables', options);
+      setAvailableTables(data.tables || []);
+    } catch (error) {
+      console.error('Error loading tables:', error);
+    } finally {
+      setLoadingTables(false);
+    }
+  };
+
+  const handleTableToggle = (tableId: string) => {
+    setSelectedTables(prev => 
+      prev.includes(tableId) 
+        ? prev.filter(t => t !== tableId)
+        : [...prev, tableId]
+    );
+  };
+
   const handleBigQueryConnect = async () => {
     if (!useExistingCredential && !bigQueryData.credentialsFile) {
       toast.error('Por favor, selecione ou envie uma credencial');
@@ -144,6 +310,11 @@ export function AddSourceModal({
     
     if (!bigQueryData.projectId || !bigQueryData.datasetId) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (selectedTables.length === 0) {
+      toast.error('Por favor, selecione pelo menos uma tabela');
       return;
     }
 
@@ -207,7 +378,7 @@ export function AddSourceModal({
           credentials: credentialsJson,
           projectId: bigQueryData.projectId,
           datasetId: bigQueryData.datasetId,
-          tables: bigQueryData.tables ? bigQueryData.tables.split(',').map(t => t.trim()) : [],
+          tables: selectedTables,
           langflowPath: langflowPath,
           langflowName: langflowName,
           supabaseStoragePath: supabaseStoragePath,
@@ -292,7 +463,7 @@ export function AddSourceModal({
                     </div>
                     
                     {useExistingCredential && (
-                      <Select value={selectedCredential} onValueChange={setSelectedCredential}>
+                      <Select value={selectedCredential} onValueChange={handleExistingCredentialSelect}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder={t('sources.selectCredential')} />
                         </SelectTrigger>
@@ -315,49 +486,98 @@ export function AddSourceModal({
                       id="credentials" 
                       type="file" 
                       accept=".json"
-                      onChange={(e) => setBigQueryData({
-                        ...bigQueryData,
-                        credentialsFile: e.target.files?.[0] || null
-                      })}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleCredentialsUpload(file);
+                      }}
+                      disabled={loadingProjects}
                     />
+                    {loadingProjects && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Buscando projetos disponíveis...
+                      </p>
+                    )}
                   </div>
                 )}
+                
                 <div className="space-y-2">
                   <Label htmlFor="project">{t('addSource.project')}</Label>
-                  <Input 
-                    id="project" 
-                    placeholder={t('addSource.projectPlaceholder')}
-                    value={bigQueryData.projectId}
-                    onChange={(e) => setBigQueryData({
-                      ...bigQueryData,
-                      projectId: e.target.value
-                    })}
-                  />
+                  <Select 
+                    value={bigQueryData.projectId} 
+                    onValueChange={(value) => handleProjectSelect(value)}
+                    disabled={availableProjects.length === 0 || loadingProjects}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={availableProjects.length === 0 ? "Carregue credenciais primeiro" : "Selecione um projeto"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProjects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {loadingDatasets && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Buscando datasets...
+                    </p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="dataset">{t('addSource.dataset')}</Label>
-                  <Input 
-                    id="dataset" 
-                    placeholder={t('addSource.datasetPlaceholder')}
-                    value={bigQueryData.datasetId}
-                    onChange={(e) => setBigQueryData({
-                      ...bigQueryData,
-                      datasetId: e.target.value
-                    })}
-                  />
+                  <Select 
+                    value={bigQueryData.datasetId} 
+                    onValueChange={handleDatasetSelect}
+                    disabled={!bigQueryData.projectId || availableDatasets.length === 0 || loadingDatasets}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={!bigQueryData.projectId ? "Selecione um projeto primeiro" : availableDatasets.length === 0 ? "Nenhum dataset encontrado" : "Selecione um dataset"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableDatasets.map((dataset) => (
+                        <SelectItem key={dataset.id} value={dataset.id}>
+                          {dataset.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {loadingTables && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Buscando tabelas...
+                    </p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tables">{t('addSource.allowedTables')}</Label>
-                  <Input 
-                    id="tables" 
-                    placeholder={t('addSource.tablesPlaceholder')}
-                    value={bigQueryData.tables}
-                    onChange={(e) => setBigQueryData({
-                      ...bigQueryData,
-                      tables: e.target.value
-                    })}
-                  />
-                </div>
+
+                {availableTables.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>{t('addSource.allowedTables')}</Label>
+                    <div className="border rounded-md p-4 max-h-48 overflow-y-auto space-y-2">
+                      {availableTables.map((table) => (
+                        <div key={table.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`table-${table.id}`}
+                            checked={selectedTables.includes(table.id)}
+                            onCheckedChange={() => handleTableToggle(table.id)}
+                          />
+                          <label
+                            htmlFor={`table-${table.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            {table.name} <span className="text-muted-foreground">({table.type})</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedTables.length} tabela(s) selecionada(s)
+                    </p>
+                  </div>
+                )}
                 <Button 
                   className="w-full" 
                   onClick={handleBigQueryConnect}
