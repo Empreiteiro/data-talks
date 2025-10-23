@@ -122,6 +122,7 @@ export const supabaseClient = {
     let query = supabase
       .from('qa_sessions')
       .select('*')
+      .is('deleted_at', null)  // Filtrar soft-deleted
       .order('created_at', { ascending: false });
     
     if (agentId) {
@@ -149,7 +150,7 @@ export const supabaseClient = {
   async deleteQASession(id: string) {
     const { error } = await supabase
       .from('qa_sessions')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
     
     if (error) throw error;
@@ -158,7 +159,7 @@ export const supabaseClient = {
   async deleteQASessionsByAgent(agentId: string) {
     const { error } = await supabase
       .from('qa_sessions')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('agent_id', agentId);
     if (error) throw error;
   },

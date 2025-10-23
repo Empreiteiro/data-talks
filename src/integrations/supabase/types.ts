@@ -142,6 +142,7 @@ export type Database = {
           authorized_access: boolean | null
           conversation_history: Json | null
           created_at: string
+          deleted_at: string | null
           feedback: string | null
           follow_up_questions: Json | null
           id: string
@@ -159,6 +160,7 @@ export type Database = {
           authorized_access?: boolean | null
           conversation_history?: Json | null
           created_at?: string
+          deleted_at?: string | null
           feedback?: string | null
           follow_up_questions?: Json | null
           id?: string
@@ -176,6 +178,7 @@ export type Database = {
           authorized_access?: boolean | null
           conversation_history?: Json | null
           created_at?: string
+          deleted_at?: string | null
           feedback?: string | null
           follow_up_questions?: Json | null
           id?: string
