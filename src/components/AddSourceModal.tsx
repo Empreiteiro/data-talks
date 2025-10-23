@@ -380,7 +380,8 @@ export function AddSourceModal({
           langflowPath: langflowPath,
           langflowName: langflowName,
           supabaseStoragePath: supabaseStoragePath,
-          credentialsContent: credentialsContent
+          credentialsContent: credentialsContent,
+          agentId: agentId
         }
       });
 
