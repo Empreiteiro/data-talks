@@ -66,6 +66,17 @@ serve(async (req) => {
 
     if (authError) {
       console.error('Invite error:', authError);
+      
+      // Tratamento específico para email já existente
+      if (authError.status === 422 || authError.message?.includes('already been registered')) {
+        return new Response(JSON.stringify({ 
+          error: 'Este email já está cadastrado no sistema.' 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 422,
+        });
+      }
+      
       throw authError;
     }
     
