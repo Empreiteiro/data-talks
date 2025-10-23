@@ -7,7 +7,7 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   trial: {
-    sources: 5,
+    sources: 10,
     agents: 5,
     monthlyQuestions: 50
   },
