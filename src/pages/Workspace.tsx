@@ -558,7 +558,7 @@ export default function Workspace() {
           </div>}
       </div>
 
-      <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} onSourceAdded={async (sourceId: string) => {
+      <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} agentId={id} onSourceAdded={async (sourceId: string) => {
         if (!id) return;
         
         // Auto-vincular a fonte ao workspace (substituindo qualquer fonte anterior)

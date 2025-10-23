@@ -15,11 +15,13 @@ interface AddSourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSourceAdded?: (sourceId: string) => void;
+  agentId?: string;
 }
 export function AddSourceModal({
   open,
   onOpenChange,
-  onSourceAdded
+  onSourceAdded,
+  agentId
 }: AddSourceModalProps) {
   const {
     t
