@@ -283,6 +283,7 @@ serve(async (req) => {
     }
     
     console.log('Creating source record...')
+    console.log('Agent ID received:', agentId)
     const { data: source, error: sourceError } = await supabaseClient
       .from('sources')
       .insert({

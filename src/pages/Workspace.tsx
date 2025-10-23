@@ -73,15 +73,14 @@ export default function Workspace() {
     if (!id) return;
     
     try {
-      const { data: agent, error } = await supabase
-        .from('agents')
-        .select('source_ids')
-        .eq('id', id)
-        .single();
+      const { data: sources, error } = await supabase
+        .from('sources')
+        .select('id')
+        .eq('agent_id', id);
 
       if (error) throw error;
 
-      setHasSources(agent?.source_ids && agent.source_ids.length > 0);
+      setHasSources(sources && sources.length > 0);
     } catch (error: any) {
       console.error("Erro ao verificar fontes:", error);
     }
@@ -91,23 +90,17 @@ export default function Workspace() {
     if (!id) return;
     
     try {
-      const { data: agent, error: agentError } = await supabase
-        .from('agents')
-        .select('source_ids')
-        .eq('id', id)
-        .single();
+      // Buscar fonte ativa do agent
+      const { data: source, error: sourceError } = await supabase
+        .from('sources')
+        .select('metadata, type')
+        .eq('agent_id', id)
+        .eq('is_active', true)
+        .maybeSingle();
 
-      if (agentError) throw agentError;
+      if (sourceError) throw sourceError;
 
-      if (agent?.source_ids && agent.source_ids.length > 0) {
-        const { data: source, error: sourceError } = await supabase
-          .from('sources')
-          .select('metadata, type')
-          .eq('id', agent.source_ids[0])
-          .single();
-
-        if (sourceError) throw sourceError;
-
+      if (source) {
         const metadata = source?.metadata as any;
         console.log('Workspace - source metadata:', metadata);
         console.log('Workspace - source type:', source?.type);
@@ -127,6 +120,8 @@ export default function Workspace() {
         }
         
         setAvailableColumns(columnNames);
+      } else {
+        setAvailableColumns([]);
       }
     } catch (error: any) {
       console.error("Erro ao carregar colunas:", error);
@@ -561,25 +556,14 @@ export default function Workspace() {
       <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} agentId={id} onSourceAdded={async (sourceId: string) => {
         if (!id) return;
         
-        // Auto-vincular a fonte ao workspace (substituindo qualquer fonte anterior)
-        try {
-          const { error } = await supabase
-            .from('agents')
-            .update({ source_ids: [sourceId] })
-            .eq('id', id);
-
-          if (error) throw error;
-          
-          setAddSourceOpen(false);
-          setSourcesRefreshTrigger(prev => prev + 1); // Forçar refresh do SourcesPanel
-          checkSources();
-          loadAvailableColumns();
-        } catch (error: any) {
-          console.error("Erro ao vincular fonte:", error);
-          toast.error("Erro ao vincular fonte", {
-            description: error.message
-          });
-        }
+        console.log('Source adicionada:', sourceId, 'para agent:', id);
+        
+        // A fonte já foi vinculada ao agent no bigquery-connect
+        // Recarregar os dados
+        setAddSourceOpen(false);
+        setSourcesRefreshTrigger(prev => prev + 1);
+        checkSources();
+        loadAvailableColumns();
       }} />
       
       <AgentSettingsModal
