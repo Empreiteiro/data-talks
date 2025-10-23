@@ -22,9 +22,10 @@ interface SourcesPanelProps {
   onAddSource?: () => void;
   agentId?: string;
   refreshTrigger?: number; // Novo: trigger para forçar refresh
+  onSourceActivated?: () => void; // Callback quando uma fonte é ativada
 }
 
-export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPanelProps) {
+export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceActivated }: SourcesPanelProps) {
   const { t } = useLanguage();
   const [sources, setSources] = useState<Source[]>([]);
   const [linkedSourceIds, setLinkedSourceIds] = useState<string[]>([]);
@@ -150,6 +151,11 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger }: SourcesPa
       
       // Recarregar as sources
       loadAgentSourceIds();
+      
+      // Notificar o Workspace para recarregar os available columns
+      if (onSourceActivated) {
+        onSourceActivated();
+      }
     } catch (error: any) {
       toast.error("Erro ao ativar fonte", {
         description: error.message

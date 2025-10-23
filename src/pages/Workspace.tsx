@@ -328,6 +328,7 @@ export default function Workspace() {
             agentId={id} 
             onAddSource={() => setAddSourceOpen(true)}
             refreshTrigger={sourcesRefreshTrigger}
+            onSourceActivated={loadAvailableColumns}
           />
         </div>
 
