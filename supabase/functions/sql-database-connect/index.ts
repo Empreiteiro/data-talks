@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { Client as PostgresClient } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
-import { Client as MySQLClient } from "https://deno.land/x/mysql@v2.12.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,8 +16,8 @@ serve(async (req) => {
 
     console.log(`[sql-database-connect] Connecting to ${databaseType}, table: ${tableName || 'all'}`);
 
-    if (!connectionString || !databaseType) {
-      throw new Error('connectionString and databaseType are required');
+    if (!connectionString || !databaseType || !tableName) {
+      throw new Error('connectionString, databaseType and tableName are required');
     }
 
     const authHeader = req.headers.get('Authorization')!;
@@ -34,70 +32,79 @@ serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) throw new Error('Unauthorized');
 
-    let tableInfos: any[] = [];
+    // Get Langflow configuration
+    const langflowUrl = Deno.env.get('LANGFLOW_BASE_URL');
+    const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
+    const langflowFlowId = Deno.env.get('LANGFLOW_SQL_FLOW_ID');
+
+    if (!langflowUrl || !langflowApiKey || !langflowFlowId) {
+      throw new Error('Langflow configuration is missing');
+    }
+
+    // Call Langflow to get table schema and preview
+    const langflowPayload = {
+      input_value: "Get table schema and preview",
+      output_type: "chat",
+      input_type: "chat",
+      tweaks: {
+        "SQLComponent-9tQSf": {
+          database_url: connectionString
+        },
+        "Prompt Template-DWgjC": {
+          table: tableName
+        }
+      }
+    };
+
+    console.log('[sql-database-connect] Calling Langflow...');
+    const langflowResponse = await fetch(`${langflowUrl}/api/v1/run/${langflowFlowId}?stream=false`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${langflowApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(langflowPayload)
+    });
+
+    if (!langflowResponse.ok) {
+      throw new Error(`Langflow request failed: ${langflowResponse.statusText}`);
+    }
+
+    const langflowData = await langflowResponse.json();
+    const langflowResult = langflowData.outputs?.[0]?.outputs?.[0]?.results?.message?.text || '';
+
+    console.log('[sql-database-connect] Langflow response:', langflowResult);
+
+    // Parse Langflow response to extract columns and preview data
     let availableColumns: string[] = [];
     let previewData: any[] = [];
+    let tableInfos: any[] = [];
 
-    if (databaseType === 'postgresql') {
-      const client = new PostgresClient(connectionString);
-      await client.connect();
-
-      try {
-        if (tableName) {
-          // Get columns info
-          const columnsResult = await client.queryObject<{ column_name: string; data_type: string }>`
-            SELECT column_name, data_type 
-            FROM information_schema.columns 
-            WHERE table_name = ${tableName}
-            ORDER BY ordinal_position
-          `;
-          
-          availableColumns = columnsResult.rows.map(row => row.column_name);
-
-          // Get preview data
-          const previewResult = await client.queryObject(`SELECT * FROM ${tableName} LIMIT 5`);
-          previewData = previewResult.rows;
-
-          // Get row count
-          const countResult = await client.queryObject<{ count: number }>`SELECT COUNT(*) as count FROM ${tableName}`;
-          const rowCount = countResult.rows[0]?.count || 0;
-
-          tableInfos = [{
-            name: tableName,
-            columns: columnsResult.rows.map(row => `${row.column_name} (${row.data_type})`),
-            rowCount
-          }];
-        }
-      } finally {
-        await client.end();
+    try {
+      // Try to parse as JSON if Langflow returns structured data
+      const parsedResult = JSON.parse(langflowResult);
+      if (parsedResult.columns && Array.isArray(parsedResult.columns)) {
+        availableColumns = parsedResult.columns;
       }
-    } else if (databaseType === 'mysql') {
-      const client = await new MySQLClient().connect(connectionString);
-
-      try {
-        if (tableName) {
-          // Get columns info
-          const columnsResult = await client.query(`DESCRIBE ${tableName}`);
-          
-          availableColumns = columnsResult.map((row: any) => row.Field);
-
-          // Get preview data
-          previewData = await client.query(`SELECT * FROM ${tableName} LIMIT 5`);
-
-          // Get row count
-          const countResult = await client.query(`SELECT COUNT(*) as count FROM ${tableName}`);
-          const rowCount = countResult[0]?.count || 0;
-
-          tableInfos = [{
-            name: tableName,
-            columns: columnsResult.map((row: any) => `${row.Field} (${row.Type})`),
-            rowCount
-          }];
-        }
-      } finally {
-        await client.close();
+      if (parsedResult.preview && Array.isArray(parsedResult.preview)) {
+        previewData = parsedResult.preview;
+      }
+    } catch (e) {
+      // If not JSON, try to extract columns from text response
+      console.log('[sql-database-connect] Could not parse as JSON, using text extraction');
+      
+      // Extract columns from response text (assuming format like "Column1, Column2, Column3")
+      const columnMatch = langflowResult.match(/columns?:\s*\[?([^\]\n]+)\]?/i);
+      if (columnMatch) {
+        availableColumns = columnMatch[1].split(',').map((col: string) => col.trim().replace(/['"]/g, ''));
       }
     }
+
+    tableInfos = [{
+      name: tableName,
+      columns: availableColumns,
+      rowCount: previewData.length
+    }];
 
     // Store connection string securely in Supabase Storage
     const storagePath = `sql-connections/${user.id}/${crypto.randomUUID()}.txt`;
