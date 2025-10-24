@@ -35,13 +35,29 @@ export const supabaseClient = {
 
   // Agents
   async listAgents() {
-    const { data, error } = await supabase
+    const { data: agentsData, error } = await supabase
       .from('agents')
       .select('id, name, description, source_ids, suggested_questions, created_at, updated_at')
       .order('updated_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    
+    // Para cada agent, contar as sources reais da tabela sources
+    const agentsWithCounts = await Promise.all(
+      (agentsData || []).map(async (agent) => {
+        const { count } = await supabase
+          .from('sources')
+          .select('id', { count: 'exact', head: true })
+          .eq('agent_id', agent.id);
+        
+        return {
+          ...agent,
+          source_count: count || 0
+        };
+      })
+    );
+    
+    return agentsWithCounts;
   },
 
   async createAgent(name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[]) {

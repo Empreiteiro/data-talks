@@ -19,6 +19,7 @@ interface Agent {
   description?: string;
   source_ids: string[];
   created_at: string;
+  source_count?: number;
 }
 const Index = () => {
   const {
@@ -367,7 +368,7 @@ const Index = () => {
                 
                 <div className="mt-auto pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
-                    {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_ids?.length || 0} {agent.source_ids?.length === 1 ? t('workspace.source') : t('workspace.sources')}
+                    {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_count || 0} {(agent.source_count || 0) === 1 ? t('workspace.source') : t('workspace.sources')}
                   </p>
                 </div>
               </Card>)}
@@ -386,7 +387,7 @@ const Index = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-lg truncate mb-1">{agent.name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_ids?.length || 0} {agent.source_ids?.length === 1 ? t('workspace.source') : t('workspace.sources')}
+                    {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_count || 0} {(agent.source_count || 0) === 1 ? t('workspace.source') : t('workspace.sources')}
                   </p>
                 </div>
 
