@@ -599,7 +599,7 @@ export function AddSourceModal({
                     {loadingProjects && (
                       <p className="text-sm text-muted-foreground flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Buscando projetos disponíveis...
+                        {t('addSource.loadingProjects')}
                       </p>
                     )}
                   </div>
@@ -613,7 +613,7 @@ export function AddSourceModal({
                     disabled={availableProjects.length === 0 || loadingProjects}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder={availableProjects.length === 0 ? "Carregue credenciais primeiro" : "Selecione um projeto"} />
+                      <SelectValue placeholder={availableProjects.length === 0 ? t('addSource.loadCredentialsFirst') : t('addSource.selectProject')} />
                     </SelectTrigger>
                     <SelectContent>
                       {availableProjects.map((project) => (
@@ -626,7 +626,7 @@ export function AddSourceModal({
                   {loadingDatasets && (
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Buscando datasets...
+                      {t('addSource.loadingDatasets')}
                     </p>
                   )}
                 </div>
@@ -639,7 +639,7 @@ export function AddSourceModal({
                     disabled={!bigQueryData.projectId || availableDatasets.length === 0 || loadingDatasets}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder={!bigQueryData.projectId ? "Selecione um projeto primeiro" : availableDatasets.length === 0 ? "Nenhum dataset encontrado" : "Selecione um dataset"} />
+                      <SelectValue placeholder={!bigQueryData.projectId ? t('addSource.selectProjectFirst') : availableDatasets.length === 0 ? t('addSource.noDatasets') : t('addSource.selectDataset')} />
                     </SelectTrigger>
                     <SelectContent>
                       {availableDatasets.map((dataset) => (
@@ -652,7 +652,7 @@ export function AddSourceModal({
                   {loadingTables && (
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Buscando tabelas...
+                      {t('addSource.loadingTables')}
                     </p>
                   )}
                 </div>
@@ -666,7 +666,7 @@ export function AddSourceModal({
                       disabled={!bigQueryData.datasetId || availableTables.length === 0}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione uma tabela" />
+                        <SelectValue placeholder={t('addSource.selectTablePlaceholder')} />
                       </SelectTrigger>
                       <SelectContent>
                         {availableTables.map((table) => (
@@ -683,7 +683,7 @@ export function AddSourceModal({
                   onClick={handleBigQueryConnect}
                   disabled={connecting}
                 >
-                  {connecting ? 'Conectando...' : t('addSource.connectBigQuery')}
+                  {connecting ? t('addSource.connecting') : t('addSource.connectBigQuery')}
                 </Button>
               </div>
             </TabsContent>
