@@ -65,10 +65,7 @@ export function AddSourceModal({
   // SQL Database state
   const [sqlConnectionString, setSqlConnectionString] = useState("");
   const [sqlDatabaseType, setSqlDatabaseType] = useState<'postgresql' | 'mysql' | ''>('');
-  const [sqlTables, setSqlTables] = useState<Array<{name: string, type: string}>>([]);
-  const [selectedSqlTable, setSelectedSqlTable] = useState("");
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionTested, setConnectionTested] = useState(false);
+  const [sqlTableName, setSqlTableName] = useState("");
 
   // Fetch existing BigQuery credentials when modal opens
   useEffect(() => {
@@ -516,42 +513,8 @@ export function AddSourceModal({
     }
   };
 
-  const handleTestSqlConnection = async () => {
-    if (!sqlConnectionString || !sqlDatabaseType) {
-      toast.error(t('addSource.sqlFillFields'));
-      return;
-    }
-
-    setTestingConnection(true);
-    setSqlTables([]);
-    setSelectedSqlTable("");
-    setConnectionTested(false);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('list-sql-tables', {
-        body: {
-          connectionString: sqlConnectionString,
-          databaseType: sqlDatabaseType
-        }
-      });
-
-      if (error) throw error;
-
-      setSqlTables(data.tables || []);
-      setConnectionTested(true);
-      toast.success(t('addSource.sqlConnectionSuccess'));
-    } catch (error: any) {
-      console.error('SQL connection test error:', error);
-      toast.error(t('addSource.sqlConnectionError'), {
-        description: error.message
-      });
-    } finally {
-      setTestingConnection(false);
-    }
-  };
-
   const handleSqlConnect = async () => {
-    if (!sqlConnectionString || !sqlDatabaseType || !selectedSqlTable) {
+    if (!sqlConnectionString || !sqlDatabaseType || !sqlTableName) {
       toast.error(t('addSource.sqlFillFields'));
       return;
     }
@@ -562,7 +525,7 @@ export function AddSourceModal({
         body: {
           connectionString: sqlConnectionString,
           databaseType: sqlDatabaseType,
-          tableName: selectedSqlTable,
+          tableName: sqlTableName,
           agentId: agentId
         }
       });
@@ -843,7 +806,6 @@ export function AddSourceModal({
                   </p>
                   <ul className="text-xs space-y-1 ml-4 list-disc">
                     <li>{t('addSource.sqlIpAgent')}: <code className="bg-background px-2 py-1 rounded text-xs border">34.121.141.105</code></li>
-                    <li>{t('addSource.sqlIpSupabase')}</li>
                   </ul>
                 </div>
 
@@ -877,41 +839,21 @@ export function AddSourceModal({
                   </p>
                 </div>
 
-                <Button 
-                  className="w-full"
-                  onClick={handleTestSqlConnection}
-                  disabled={!sqlConnectionString || !sqlDatabaseType || testingConnection}
-                  variant="outline"
-                >
-                  <Database className="h-4 w-4 mr-2" />
-                  {testingConnection ? t('addSource.sqlTesting') : t('addSource.sqlTestConnection')}
-                </Button>
-
-                {sqlTables.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>{t('addSource.sqlSelectTable')}</Label>
-                    <Select 
-                      value={selectedSqlTable} 
-                      onValueChange={setSelectedSqlTable}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t('addSource.selectTablePlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sqlTables.map((table) => (
-                          <SelectItem key={table.name} value={table.name}>
-                            {table.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="sql-table">{t('addSource.sqlTableName')}</Label>
+                  <Input 
+                    id="sql-table" 
+                    type="text"
+                    placeholder={t('addSource.sqlTableNamePlaceholder')}
+                    value={sqlTableName}
+                    onChange={(e) => setSqlTableName(e.target.value)}
+                  />
+                </div>
 
                 <Button 
                   className="w-full"
                   onClick={handleSqlConnect}
-                  disabled={!selectedSqlTable || connecting}
+                  disabled={!sqlConnectionString || !sqlDatabaseType || !sqlTableName || connecting}
                 >
                   {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
                 </Button>
