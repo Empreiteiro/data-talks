@@ -30,13 +30,20 @@ serve(async (req) => {
 
     const { databaseType, table_infos, connectionStoragePath } = sqlSource.metadata;
 
+    console.log('[ask-question-sql] Connection storage path:', connectionStoragePath);
+
     // Retrieve connection string from storage
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('data-files')
       .download(connectionStoragePath);
 
-    if (downloadError) throw downloadError;
+    if (downloadError) {
+      console.error('[ask-question-sql] Error downloading connection string:', downloadError);
+      throw downloadError;
+    }
+    
     const connectionString = await fileData.text();
+    console.log('[ask-question-sql] Connection string retrieved, length:', connectionString.length);
 
     // Build schema text
     const schemaText = table_infos.map((table: any) => 
@@ -73,6 +80,8 @@ serve(async (req) => {
       };
 
       console.log('[ask-question-sql] Calling Langflow with Flow ID:', langflowFlowId);
+      console.log('[ask-question-sql] Database URL in tweak:', connectionString ? 'SET (masked)' : 'EMPTY');
+      console.log('[ask-question-sql] Tables:', table_infos.map((t: any) => t.name).join(', '));
       
       const langflowResponse = await fetch(`${langflowUrl}/api/v1/run/${langflowFlowId}?stream=false&x-api-key=${langflowApiKey}`, {
         method: 'POST',
