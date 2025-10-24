@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database, MessageSquare, Calendar, Users } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { getCurrentPlanLimits, getPlanName } from "@/utils/planLimits";
 
 interface UsageStats {
   sourcesCount: number;
@@ -151,16 +152,8 @@ const UsageMonitoring = () => {
 
   // Determine plan limits based on subscription status
   const isPro = subscription?.subscribed && subscription?.subscription_tier === 'Pro';
-  const planLimits = isPro ? {
-    sources: 10,
-    agents: 20,
-    monthlyQuestions: 1000
-  } : {
-    sources: 5,
-    agents: 5,
-    monthlyQuestions: 50
-  };
-  const planName = isPro ? 'Pro' : 'Trial';
+  const planLimits = getCurrentPlanLimits(subscription?.subscribed || false, subscription?.subscription_tier);
+  const planName = getPlanName(subscription?.subscribed || false, subscription?.subscription_tier);
   const sourcesStatus = getUsageStatus(stats.sourcesCount, planLimits.sources);
   const agentsStatus = getUsageStatus(stats.agentsCount, planLimits.agents);
   const questionsStatus = getUsageStatus(stats.thisMonthQuestions, planLimits.monthlyQuestions);
