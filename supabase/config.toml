@@ -12,8 +12,17 @@ verify_jwt = false
 [functions.ask-question-bigquery]
 verify_jwt = false
 
+[functions.ask-question-google-sheets]
+verify_jwt = false
+
 [functions.bigquery-connect]
 verify_jwt = true
 
 [functions.list-bigquery-resources]
+verify_jwt = true
+
+[functions.list-google-sheets]
+verify_jwt = true
+
+[functions.google-sheets-connect]
 verify_jwt = true

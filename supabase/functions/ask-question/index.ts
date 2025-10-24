@@ -120,8 +120,9 @@ serve(async (req) => {
     // Determine which specialized function to call based on source types
     const sourceTypes = sources.map(s => s.type);
     const isBigquery = sourceTypes.includes('bigquery');
+    const isGoogleSheets = sourceTypes.includes('google_sheets');
     
-    console.log('Routing to specialized function. BigQuery:', isBigquery);
+    console.log('Routing to specialized function. BigQuery:', isBigquery, 'Google Sheets:', isGoogleSheets);
     
     // Prepare payload for specialized function
     const payload = {
@@ -137,6 +138,8 @@ serve(async (req) => {
     let targetFunction;
     if (isBigquery) {
       targetFunction = 'ask-question-bigquery';
+    } else if (isGoogleSheets) {
+      targetFunction = 'ask-question-google-sheets';
     } else {
       targetFunction = 'ask-question-csv';
     }

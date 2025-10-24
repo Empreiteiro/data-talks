@@ -55,6 +55,13 @@ export function AddSourceModal({
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [loadingTables, setLoadingTables] = useState(false);
 
+  // Google Sheets state
+  const [sheetsUrl, setSheetsUrl] = useState("");
+  const [availableSheets, setAvailableSheets] = useState<Array<{title: string, sheetId: number}>>([]);
+  const [selectedSheet, setSelectedSheet] = useState("");
+  const [loadingSheets, setLoadingSheets] = useState(false);
+  const [spreadsheetData, setSpreadsheetData] = useState<{id: string, title: string} | null>(null);
+
   // Fetch existing BigQuery credentials when modal opens
   useEffect(() => {
     if (open) {
@@ -403,6 +410,76 @@ export function AddSourceModal({
       setConnecting(false);
     }
   };
+
+  const handleListSheets = async () => {
+    if (!sheetsUrl) {
+      toast.error('Por favor, insira a URL da planilha');
+      return;
+    }
+
+    setLoadingSheets(true);
+    setAvailableSheets([]);
+    setSelectedSheet("");
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('list-google-sheets', {
+        body: { sheetUrl: sheetsUrl }
+      });
+
+      if (error) throw error;
+
+      setSpreadsheetData({ id: data.spreadsheetId, title: data.spreadsheetTitle });
+      setAvailableSheets(data.sheets || []);
+      
+      if (data.sheets?.length === 1) {
+        setSelectedSheet(data.sheets[0].title);
+      }
+    } catch (error: any) {
+      console.error('Error listing sheets:', error);
+      toast.error('Erro ao listar planilhas', {
+        description: error.message
+      });
+    } finally {
+      setLoadingSheets(false);
+    }
+  };
+
+  const handleSheetsConnect = async () => {
+    if (!spreadsheetData || !selectedSheet) {
+      toast.error('Por favor, selecione uma planilha');
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('google-sheets-connect', {
+        body: {
+          spreadsheetId: spreadsheetData.id,
+          spreadsheetTitle: spreadsheetData.title,
+          sheetName: selectedSheet,
+          agentId: agentId
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Google Sheets conectado com sucesso!');
+      
+      if (data?.source?.id) {
+        onSourceAdded?.(data.source.id);
+      }
+      
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Google Sheets connection error:', error);
+      toast.error('Erro ao conectar Google Sheets', {
+        description: error.message
+      });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl h-[600px] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
@@ -418,7 +495,7 @@ export function AddSourceModal({
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="upload">{t('addSource.uploadTab')}</TabsTrigger>
               <TabsTrigger value="bigquery">{t('addSource.bigQueryTab')}</TabsTrigger>
-              <TabsTrigger value="sheets" disabled className="cursor-not-allowed opacity-50">{t('addSource.sheetsTab')}</TabsTrigger>
+              <TabsTrigger value="sheets">{t('addSource.sheetsTab')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-4">
@@ -588,13 +665,54 @@ export function AddSourceModal({
                 <div className="space-y-2">
                   <Label htmlFor="sheets-url">{t('addSource.sheetsUrl')}</Label>
                   <div className="flex gap-2">
-                    <Input id="sheets-url" placeholder={t('addSource.sheetsUrlPlaceholder')} className="flex-1" />
+                    <Input 
+                      id="sheets-url" 
+                      placeholder={t('addSource.sheetsUrlPlaceholder')}
+                      value={sheetsUrl}
+                      onChange={(e) => setSheetsUrl(e.target.value)}
+                      className="flex-1" 
+                    />
+                    <Button 
+                      onClick={handleListSheets}
+                      disabled={!sheetsUrl || loadingSheets}
+                    >
+                      {loadingSheets ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Listar'}
+                    </Button>
                   </div>
                 </div>
+                
+                {availableSheets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>{t('addSource.selectSheet')}</Label>
+                    <Select 
+                      value={selectedSheet} 
+                      onValueChange={setSelectedSheet}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione uma planilha" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSheets.map((sheet) => (
+                          <SelectItem key={sheet.sheetId} value={sheet.title}>
+                            {sheet.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <p className="text-sm text-muted-foreground">
                   {t('addSource.sheetsDescription')}
                 </p>
-                <Button className="w-full">{t('addSource.connectSheets')}</Button>
+                
+                <Button 
+                  className="w-full"
+                  onClick={handleSheetsConnect}
+                  disabled={!selectedSheet || connecting}
+                >
+                  {connecting ? 'Conectando...' : t('addSource.connectSheets')}
+                </Button>
               </div>
             </TabsContent>
           </Tabs>
