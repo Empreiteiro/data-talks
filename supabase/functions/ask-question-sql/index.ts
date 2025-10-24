@@ -43,54 +43,61 @@ serve(async (req) => {
       `Table: ${table.name}\nColumns: ${table.columns.join(', ')}\nRows: ${table.rowCount}`
     ).join('\n\n');
 
-    // Generate SQL query using Langflow or simple AI
+    // Generate SQL query using Langflow
     const langflowUrl = Deno.env.get('LANGFLOW_BASE_URL');
     const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
-    const langflowFlowId = Deno.env.get('LANGFLOW_CSV_FLOW_ID'); // Reuse CSV flow for simplicity
+    const langflowFlowId = '9cd26f45-dc9a-4f27-a023-e223acd53b3b';
 
     let generatedSQL = '';
     let answer = '';
+    let tableData: any = null;
 
-    if (langflowUrl && langflowApiKey && langflowFlowId) {
-      // Use Langflow to generate SQL
+    if (langflowUrl && langflowApiKey) {
+      // Use Langflow to generate and execute SQL
       const langflowPayload = {
         input_value: question,
         output_type: "chat",
         input_type: "chat",
         tweaks: {
-          "ChatInput-EzSiH": {},
-          "ChatOutput-RtZAr": {},
-          "Prompt-5jSkr": {
-            schema_text: schemaText,
-            agent_instructions: agent.instructions || 'You are a helpful data analyst.',
+          "Prompt Template-05Bvn": {
+            question: question,
+            schema: schemaText
+          },
+          "CustomComponent-LYPAw": {
+            database_url: connectionString
+          },
+          "Prompt Template-PPAl6": {
+            Table: table_infos.map((t: any) => t.name).join(', ')
           }
         }
       };
 
-      const langflowResponse = await fetch(`${langflowUrl}/api/v1/run/${langflowFlowId}?stream=false`, {
+      console.log('[ask-question-sql] Calling Langflow with Flow ID:', langflowFlowId);
+      
+      const langflowResponse = await fetch(`${langflowUrl}/api/v1/run/${langflowFlowId}?stream=false&x-api-key=${langflowApiKey}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${langflowApiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(langflowPayload)
       });
 
+      console.log('[ask-question-sql] Langflow response status:', langflowResponse.status);
+
       if (!langflowResponse.ok) {
+        const errorText = await langflowResponse.text();
+        console.error('[ask-question-sql] Langflow error:', errorText);
         throw new Error(`Langflow request failed: ${langflowResponse.statusText}`);
       }
 
       const langflowData = await langflowResponse.json();
       answer = langflowData.outputs?.[0]?.outputs?.[0]?.results?.message?.text || 'No answer generated';
-      generatedSQL = 'Generated via Langflow';
+      
+      console.log('[ask-question-sql] Langflow response received');
     } else {
-      // Simple fallback - execute basic queries
-      answer = 'SQL database integration is set up but requires Langflow configuration for AI-powered queries.';
+      throw new Error('Langflow configuration is missing');
     }
 
-    // Execute SQL query if we have one
-    let tableData: any = null;
-    
     // Save QA session
     const { data: qaSession, error: qaError } = await supabase
       .from('qa_sessions')
