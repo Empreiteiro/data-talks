@@ -56,7 +56,9 @@ serve(async (req) => {
       }
     };
 
-    console.log('[sql-database-connect] Calling Langflow...');
+    console.log('[sql-database-connect] Calling Langflow with Flow ID:', langflowFlowId);
+    console.log('[sql-database-connect] Langflow URL:', langflowUrl);
+    
     const langflowResponse = await fetch(`${langflowUrl}/api/v1/run/${langflowFlowId}?stream=false`, {
       method: 'POST',
       headers: {
@@ -66,8 +68,12 @@ serve(async (req) => {
       body: JSON.stringify(langflowPayload)
     });
 
+    console.log('[sql-database-connect] Langflow response status:', langflowResponse.status);
+    
     if (!langflowResponse.ok) {
-      throw new Error(`Langflow request failed: ${langflowResponse.statusText}`);
+      const errorText = await langflowResponse.text();
+      console.error('[sql-database-connect] Langflow error response:', errorText);
+      throw new Error(`Langflow request failed: ${langflowResponse.statusText}. Response: ${errorText}`);
     }
 
     const langflowData = await langflowResponse.json();
