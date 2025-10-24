@@ -18,13 +18,17 @@ serve(async (req) => {
       throw new Error('Unauthorized - No authorization header provided');
     }
 
+    // Extract token from header
+    const token = authHeader.replace('Bearer ', '');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    // Pass token explicitly to getUser()
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     if (authError || !user) {
       console.error('Auth error:', authError);
       throw new Error('Unauthorized - Invalid or expired token');
