@@ -115,18 +115,31 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in google-sheets-connect:', error);
     
-    let errorMessage = error.message || 'Unknown error';
+    let errorMessage = error.message || 'Erro desconhecido ao conectar a planilha';
+    let userFriendlyMessage = errorMessage;
     
-    // Provide helpful error messages
-    if (errorMessage.includes('permission') || errorMessage.includes('403')) {
-      errorMessage = 'Access denied. Make sure the spreadsheet is shared with the service account: ' + 
-        (JSON.parse(Deno.env.get('GOOGLE_SHEETS_SERVICE_ACCOUNT') || '{}').client_email || 'service account');
-    } else if (errorMessage.includes('404')) {
-      errorMessage = 'Spreadsheet not found. Please check the spreadsheet ID and make sure it exists.';
+    // Get service account email for error messages
+    const serviceAccountEmail = JSON.parse(Deno.env.get('GOOGLE_SHEETS_SERVICE_ACCOUNT') || '{}').client_email || 'conta de serviço';
+    
+    // Provide helpful error messages based on error type
+    if (errorMessage.includes('permission') || errorMessage.includes('403') || errorMessage.includes('denied')) {
+      userFriendlyMessage = `Acesso negado. A planilha precisa ser compartilhada com a conta de serviço: ${serviceAccountEmail}. Abra a planilha no Google Sheets e compartilhe com este e-mail dando permissão de visualização.`;
+    } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+      userFriendlyMessage = 'Planilha não encontrada. Verifique se o ID da planilha está correto e se ela não foi excluída.';
+    } else if (errorMessage.includes('Sheet is empty')) {
+      userFriendlyMessage = 'A aba da planilha está vazia. Adicione pelo menos uma linha de cabeçalho e alguns dados.';
+    } else if (errorMessage.includes('Failed to get access token')) {
+      userFriendlyMessage = 'Erro de autenticação com o Google. Verifique se as credenciais da conta de serviço estão configuradas corretamente.';
+    } else if (errorMessage.includes('Failed to fetch sheet data')) {
+      userFriendlyMessage = `Não foi possível acessar os dados da planilha. Certifique-se de que ela está compartilhada com: ${serviceAccountEmail}`;
     }
     
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: userFriendlyMessage,
+        details: errorMessage,
+        serviceAccount: serviceAccountEmail
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

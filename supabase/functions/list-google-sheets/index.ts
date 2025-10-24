@@ -79,18 +79,31 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in list-google-sheets:', error);
     
-    let errorMessage = error.message || 'Unknown error';
+    let errorMessage = error.message || 'Erro desconhecido ao acessar a planilha';
+    let userFriendlyMessage = errorMessage;
     
-    // Provide helpful error messages
-    if (errorMessage.includes('permission') || errorMessage.includes('403')) {
-      errorMessage = 'Access denied. Make sure the spreadsheet is shared with the service account: ' + 
-        (JSON.parse(Deno.env.get('GOOGLE_SHEETS_SERVICE_ACCOUNT') || '{}').client_email || 'service account');
-    } else if (errorMessage.includes('404')) {
-      errorMessage = 'Spreadsheet not found. Please check the spreadsheet ID and make sure it exists.';
+    // Get service account email for error messages
+    const serviceAccountEmail = JSON.parse(Deno.env.get('GOOGLE_SHEETS_SERVICE_ACCOUNT') || '{}').client_email || 'conta de serviço';
+    
+    // Provide helpful error messages based on error type
+    if (errorMessage.includes('permission') || errorMessage.includes('403') || errorMessage.includes('denied')) {
+      userFriendlyMessage = `Acesso negado. A planilha precisa ser compartilhada com a conta de serviço: ${serviceAccountEmail}. Abra a planilha no Google Sheets e compartilhe com este e-mail dando permissão de visualização.`;
+    } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+      userFriendlyMessage = 'Planilha não encontrada. Verifique se o ID da planilha está correto e se ela não foi excluída.';
+    } else if (errorMessage.includes('Invalid spreadsheet ID format')) {
+      userFriendlyMessage = 'Formato de ID de planilha inválido. O ID deve ter pelo menos 40 caracteres e pode ser encontrado na URL da planilha.';
+    } else if (errorMessage.includes('Failed to get access token')) {
+      userFriendlyMessage = 'Erro de autenticação com o Google. Verifique se as credenciais da conta de serviço estão configuradas corretamente.';
+    } else if (errorMessage.includes('No sheets found')) {
+      userFriendlyMessage = 'Nenhuma aba encontrada na planilha. Verifique se a planilha contém pelo menos uma aba.';
     }
     
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: userFriendlyMessage,
+        details: errorMessage,
+        serviceAccount: serviceAccountEmail
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

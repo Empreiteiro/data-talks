@@ -4,6 +4,23 @@ export const translateSupabaseError = (error: any): string => {
 
   const message = error.message;
 
+  // Erros do Google Sheets - mensagens mais amigáveis
+  if (message.includes('Acesso negado') || message.includes('compartilhada com a conta de serviço')) {
+    return message; // Já está formatada corretamente
+  }
+
+  if (message.includes('Planilha não encontrada')) {
+    return 'Planilha do Google Sheets não encontrada. Verifique se o link está correto e se a planilha não foi excluída.';
+  }
+
+  if (message.includes('Formato de ID de planilha inválido')) {
+    return 'Link da planilha inválido. Copie o link completo da planilha do Google Sheets.';
+  }
+
+  if (message.includes('aba da planilha está vazia')) {
+    return message;
+  }
+
   // Erros de limite do plano
   if (message.includes('Limite do plano atingido')) {
     return message.replace('% fonte(s)', 'fontes').replace('% agente(s)', 'agentes');
