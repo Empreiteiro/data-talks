@@ -85,16 +85,28 @@ serve(async (req) => {
       type: inferColumnType(rows.slice(1).map((row: any[]) => row[index]))
     }));
 
+    // Extract available columns
+    const availableColumns = headers.map((header: string) => header);
+
     // Create source metadata
     const metadata = {
       spreadsheetId,
       spreadsheetTitle,
       sheetName,
       schema,
+      availableColumns,
       preview: previewRows,
       totalRows: rows.length - 1,
       service_account_email: credentials.client_email
     };
+
+    // If associating with an agent, deactivate other sources first
+    if (agentId) {
+      await supabaseClient
+        .from('sources')
+        .update({ is_active: false })
+        .eq('agent_id', agentId);
+    }
 
     // Insert source into database
     const { data: source, error: insertError } = await supabaseClient
@@ -105,7 +117,7 @@ serve(async (req) => {
         name: `${spreadsheetTitle} - ${sheetName}`,
         type: 'google_sheets',
         metadata,
-        is_active: false,
+        is_active: agentId ? true : false,
       })
       .select()
       .single();
