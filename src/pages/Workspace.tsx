@@ -113,6 +113,11 @@ export default function Workspace() {
           columnNames = metadata.table_infos[0].columns || [];
           console.log('Workspace - BigQuery columns from table_infos:', columnNames);
         } 
+        // Para Google Sheets, buscar de availableColumns
+        else if (source?.type === 'google_sheets' && metadata?.availableColumns) {
+          columnNames = metadata.availableColumns;
+          console.log('Workspace - Google Sheets columns:', columnNames);
+        }
         // Para CSV/Excel, buscar diretamente de columns
         else if (metadata?.columns) {
           columnNames = metadata.columns;
