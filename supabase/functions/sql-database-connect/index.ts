@@ -95,14 +95,50 @@ serve(async (req) => {
         previewData = parsedResult.preview;
       }
     } catch (e) {
-      // If not JSON, try to extract columns from text response
+      // If not JSON, try to extract columns from text response (markdown table format)
       console.log('[sql-database-connect] Could not parse as JSON, using text extraction');
       
-      // Extract columns from response text (assuming format like "Column1, Column2, Column3")
-      const columnMatch = langflowResult.match(/columns?:\s*\[?([^\]\n]+)\]?/i);
-      if (columnMatch) {
-        availableColumns = columnMatch[1].split(',').map((col: string) => col.trim().replace(/['"]/g, ''));
+      // Check if it's a markdown table (| col1 | col2 | col3 |)
+      const lines = langflowResult.split('\n');
+      const firstLine = lines[0]?.trim();
+      
+      if (firstLine && firstLine.startsWith('|') && firstLine.endsWith('|')) {
+        // Extract column names from markdown table header
+        availableColumns = firstLine
+          .split('|')
+          .map((col: string) => col.trim())
+          .filter((col: string) => col.length > 0);
+        
+        console.log('[sql-database-connect] Extracted columns from table:', availableColumns);
+        
+        // Try to extract preview data from subsequent rows (skip separator line)
+        for (let i = 2; i < Math.min(lines.length, 12); i++) {
+          const line = lines[i]?.trim();
+          if (line && line.startsWith('|') && line.endsWith('|')) {
+            const values = line
+              .split('|')
+              .map((val: string) => val.trim())
+              .filter((val: string, idx: number) => idx > 0 && idx <= availableColumns.length);
+            
+            if (values.length > 0) {
+              const row: any = {};
+              availableColumns.forEach((col, idx) => {
+                row[col] = values[idx] || '';
+              });
+              previewData.push(row);
+            }
+          }
+        }
+      } else {
+        // Fallback: try to extract columns from text (assuming format like "Column1, Column2, Column3")
+        const columnMatch = langflowResult.match(/columns?:\s*\[?([^\]\n]+)\]?/i);
+        if (columnMatch) {
+          availableColumns = columnMatch[1].split(',').map((col: string) => col.trim().replace(/['"]/g, ''));
+        }
       }
+      
+      console.log('[sql-database-connect] Final extracted columns:', availableColumns);
+      console.log('[sql-database-connect] Preview data rows:', previewData.length);
     }
 
     tableInfos = [{
