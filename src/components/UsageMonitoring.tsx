@@ -193,7 +193,7 @@ const UsageMonitoring = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {language === 'pt' ? 'Agentes' : 'Agents'}
+              {language === 'pt' ? 'Workspaces' : 'Workspaces'}
             </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -278,7 +278,7 @@ const UsageMonitoring = () => {
 
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>{language === 'pt' ? 'Agentes:' : 'Agents:'}</span>
+              <span>{language === 'pt' ? 'Workspaces:' : 'Workspaces:'}</span>
               <span>{stats.agentsCount}/{planLimits.agents}</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
