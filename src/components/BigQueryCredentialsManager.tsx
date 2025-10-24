@@ -130,10 +130,20 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      // Get user's organization
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!userRole?.organization_id) throw new Error('Organização não encontrada');
+
       const { error: dbError } = await supabase
         .from('sources')
         .insert({
           user_id: user.id,
+          organization_id: userRole.organization_id,
           name: credentialName,
           type: 'bigquery',
           langflow_path: langflowData.path,

@@ -364,9 +364,21 @@ export const supabaseClient = {
         // Continue with source creation even if Langflow upload fails
       }
       
+      // Get user's organization
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!userRole?.organization_id) {
+        throw new Error('Organização não encontrada');
+      }
+
       // Create source record
       console.log('Creating source record with data:', {
         user_id: user.id,
+        organization_id: userRole.organization_id,
         name: file.name,
         type: finalFileExt === 'csv' ? 'csv' : 'xlsx',
         langflow_path: langflowPath,
@@ -377,6 +389,7 @@ export const supabaseClient = {
         .from('sources')
         .insert({
           user_id: user.id,
+          organization_id: userRole.organization_id,
           name: file.name,
           type: finalFileExt === 'csv' ? 'csv' : 'xlsx',
           langflow_path: langflowPath,

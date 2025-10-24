@@ -192,7 +192,7 @@ export default function Workspace() {
     try {
       const { error } = await supabase
         .from('qa_sessions')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', sessionId);
         
       if (error) throw error;
