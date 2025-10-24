@@ -130,6 +130,24 @@ export function AddSourceModal({
       
       console.log('Upload results:', results);
       
+      // Se estiver dentro de um workspace, associar o CSV ao agent
+      if (agentId && results.length > 0 && results[0]?.id) {
+        try {
+          const { error: updateError } = await supabase
+            .from('sources')
+            .update({ agent_id: agentId })
+            .eq('id', results[0].id);
+          
+          if (updateError) {
+            console.error('Error associating source to agent:', updateError);
+          } else {
+            console.log('Source successfully associated to agent:', agentId);
+          }
+        } catch (err) {
+          console.error('Error updating source agent_id:', err);
+        }
+      }
+      
       toast.success(t('addSource.filesUploaded'));
       
       // Passar o ID da primeira fonte criada (workspace suporta apenas 1 fonte por vez)
