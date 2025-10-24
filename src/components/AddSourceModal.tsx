@@ -557,7 +557,7 @@ export function AddSourceModal({
 
         <div className="flex-1 overflow-y-auto space-y-6 px-1">
           <p className="text-sm text-muted-foreground">
-            {t('addSource.description')} {t('addSource.examples')}
+            {t('addSource.description')}
           </p>
 
           <Tabs defaultValue="upload" className="w-full">

@@ -59,10 +59,9 @@ serve(async (req) => {
     console.log('[sql-database-connect] Calling Langflow with Flow ID:', langflowFlowId);
     console.log('[sql-database-connect] Langflow URL:', langflowUrl);
     
-    const langflowResponse = await fetch(`${langflowUrl}/api/v1/run/${langflowFlowId}?stream=false`, {
+    const langflowResponse = await fetch(`${langflowUrl}/api/v1/run/${langflowFlowId}?stream=false&x-api-key=${langflowApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${langflowApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(langflowPayload)
