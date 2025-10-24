@@ -662,6 +662,15 @@ export function AddSourceModal({
 
             <TabsContent value="sheets" className="space-y-4">
               <div className="space-y-4">
+                <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    <strong>Importante:</strong> A planilha deve estar compartilhada com o email:<br />
+                    <code className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs">
+                      talk-2-data@talk-2-data.iam.gserviceaccount.com
+                    </code>
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="sheets-url">{t('addSource.sheetsUrl')}</Label>
                   <div className="flex gap-2">
