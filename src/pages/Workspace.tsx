@@ -251,19 +251,32 @@ export default function Workspace() {
     // Reconstruir o array de mensagens a partir do formato do backend
     const loadedMessages: Array<{role: string; content: string}> = [];
     
-    conversationHistory.forEach((entry: any) => {
-      // Adicionar pergunta do usuário
+    // Se conversation_history estiver vazio mas existir question e answer, usar esses valores
+    if (conversationHistory.length === 0 && qaSession.question && qaSession.answer) {
       loadedMessages.push({
         role: "user",
-        content: entry.question
+        content: qaSession.question
       });
-      
-      // Adicionar resposta do assistente
       loadedMessages.push({
         role: "assistant",
-        content: entry.answer
+        content: qaSession.answer
       });
-    });
+    } else {
+      // Caso contrário, processar conversation_history normalmente
+      conversationHistory.forEach((entry: any) => {
+        // Adicionar pergunta do usuário
+        loadedMessages.push({
+          role: "user",
+          content: entry.question
+        });
+        
+        // Adicionar resposta do assistente
+        loadedMessages.push({
+          role: "assistant",
+          content: entry.answer
+        });
+      });
+    }
 
     setMessages(loadedMessages);
     setCurrentSessionId(qaSession.id); // Manter o sessionId para continuar a conversa
