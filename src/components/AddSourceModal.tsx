@@ -130,18 +130,28 @@ export function AddSourceModal({
       
       console.log('Upload results:', results);
       
-      // Se estiver dentro de um workspace, associar o CSV ao agent
+      // Se estiver dentro de um workspace, associar o CSV ao agent e ativá-lo
       if (agentId && results.length > 0 && results[0]?.id) {
         try {
+          // Desativar todas as fontes do agent
+          await supabase
+            .from('sources')
+            .update({ is_active: false })
+            .eq('agent_id', agentId);
+          
+          // Associar e ativar a nova fonte
           const { error: updateError } = await supabase
             .from('sources')
-            .update({ agent_id: agentId })
+            .update({ 
+              agent_id: agentId,
+              is_active: true 
+            })
             .eq('id', results[0].id);
           
           if (updateError) {
             console.error('Error associating source to agent:', updateError);
           } else {
-            console.log('Source successfully associated to agent:', agentId);
+            console.log('Source successfully associated and activated:', agentId);
           }
         } catch (err) {
           console.error('Error updating source agent_id:', err);
