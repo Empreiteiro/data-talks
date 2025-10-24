@@ -24,13 +24,11 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { sheetUrl } = await req.json();
-    console.log('Listing Google Sheets data for URL:', sheetUrl);
+    const { spreadsheetId } = await req.json();
+    console.log('Listing Google Sheets data for ID:', spreadsheetId);
 
-    // Extract spreadsheet ID from URL
-    const spreadsheetId = extractSpreadsheetId(sheetUrl);
     if (!spreadsheetId) {
-      throw new Error('Invalid Google Sheets URL');
+      throw new Error('Spreadsheet ID is required');
     }
 
     // Get service account credentials
@@ -88,11 +86,6 @@ serve(async (req) => {
     );
   }
 });
-
-function extractSpreadsheetId(url: string): string | null {
-  const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  return match ? match[1] : null;
-}
 
 async function getAccessToken(credentials: any): Promise<string> {
   const jwt = await createJWT(credentials);

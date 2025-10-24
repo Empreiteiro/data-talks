@@ -413,7 +413,7 @@ export function AddSourceModal({
 
   const handleListSheets = async () => {
     if (!sheetsUrl) {
-      toast.error('Por favor, insira a URL da planilha');
+      toast.error('Por favor, insira o ID da planilha');
       return;
     }
 
@@ -423,7 +423,7 @@ export function AddSourceModal({
     
     try {
       const { data, error } = await supabase.functions.invoke('list-google-sheets', {
-        body: { sheetUrl: sheetsUrl }
+        body: { spreadsheetId: sheetsUrl }
       });
 
       if (error) throw error;
@@ -672,13 +672,16 @@ export function AddSourceModal({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sheets-url">{t('addSource.sheetsUrl')}</Label>
+                  <Label htmlFor="sheets-id">ID da Planilha</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Exemplo: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms (encontrado na URL da planilha)
+                  </p>
                   <div className="flex gap-2">
                     <Input 
-                      id="sheets-url" 
-                      placeholder={t('addSource.sheetsUrlPlaceholder')}
+                      id="sheets-id" 
+                      placeholder="Cole o ID da planilha aqui"
                       value={sheetsUrl}
-                      onChange={(e) => setSheetsUrl(e.target.value)}
+                      onChange={(e) => setSheetsUrl(e.target.value.trim())}
                       className="flex-1" 
                     />
                     <Button 
