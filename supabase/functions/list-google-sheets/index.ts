@@ -1,6 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { ServiceAccount } from "https://googleapis.deno.dev/v1/serviceusage:v1.ts";
-import { sheets_v4 } from "https://googleapis.deno.dev/v1/sheets:v4.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,34 +32,46 @@ serve(async (req) => {
     const credentials = JSON.parse(serviceAccountJson);
     console.log('Service account email:', credentials.client_email);
 
-    // Create Google Sheets client using official library
-    const auth = ServiceAccount.fromJson(credentials);
-    const sheets = new sheets_v4.Sheets(auth);
+    // Get access token with corrected JWT
+    const accessToken = await getAccessToken(credentials);
 
-    // Get spreadsheet metadata
+    // Get spreadsheet metadata using Google Sheets API
     console.log('Fetching spreadsheet metadata...');
-    const response = await sheets.spreadsheetsGet({
-      spreadsheetId: spreadsheetId,
-    });
+    const metadataResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-    if (!response.sheets || response.sheets.length === 0) {
+    if (!metadataResponse.ok) {
+      const error = await metadataResponse.text();
+      console.error('Error fetching spreadsheet metadata:', error);
+      throw new Error('Failed to fetch spreadsheet metadata. Make sure the sheet is shared with the service account: ' + credentials.client_email);
+    }
+
+    const metadata = await metadataResponse.json();
+    
+    if (!metadata.sheets || metadata.sheets.length === 0) {
       throw new Error('No sheets found in spreadsheet. Make sure the spreadsheet ID is correct.');
     }
 
-    const sheetsList = response.sheets.map((sheet: any) => ({
+    const sheets = metadata.sheets.map((sheet: any) => ({
       title: sheet.properties.title,
       sheetId: sheet.properties.sheetId,
       rowCount: sheet.properties.gridProperties?.rowCount || 0,
       columnCount: sheet.properties.gridProperties?.columnCount || 0,
     }));
 
-    console.log('Successfully fetched sheets:', sheetsList);
+    console.log('Successfully fetched sheets:', sheets);
 
     return new Response(
       JSON.stringify({ 
         spreadsheetId,
-        spreadsheetTitle: response.properties?.title || 'Untitled Spreadsheet',
-        sheets: sheetsList
+        spreadsheetTitle: metadata.properties.title,
+        sheets 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -88,3 +98,90 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to encode base64url (RFC 4648)
+function base64UrlEncode(str: string): string {
+  const base64 = btoa(str);
+  return base64
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+async function getAccessToken(credentials: any): Promise<string> {
+  const jwt = await createJWT(credentials);
+  
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Error getting access token:', error);
+    throw new Error('Failed to get access token from Google');
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+async function createJWT(credentials: any): Promise<string> {
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: credentials.client_email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+
+  // Use base64url encoding instead of regular base64
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+
+  const privateKey = await pemToBinary(credentials.private_key);
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    privateKey,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(unsignedToken)
+  );
+
+  // Encode signature as base64url
+  const signatureArray = new Uint8Array(signature);
+  const signatureStr = String.fromCharCode(...signatureArray);
+  const encodedSignature = base64UrlEncode(signatureStr);
+  
+  return `${unsignedToken}.${encodedSignature}`;
+}
+
+async function pemToBinary(pem: string): Promise<ArrayBuffer> {
+  const pemContents = pem
+    .replace('-----BEGIN PRIVATE KEY-----', '')
+    .replace('-----END PRIVATE KEY-----', '')
+    .replace(/\s/g, '');
+  const binaryString = atob(pemContents);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
