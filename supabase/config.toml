@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.ask-question-google-sheets]
 verify_jwt = false
 
+[functions.ask-question-sql]
+verify_jwt = false
+
 [functions.bigquery-connect]
 verify_jwt = true
 
@@ -25,4 +28,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.google-sheets-connect]
+verify_jwt = true
+
+[functions.list-sql-tables]
+verify_jwt = true
+
+[functions.sql-database-connect]
 verify_jwt = true

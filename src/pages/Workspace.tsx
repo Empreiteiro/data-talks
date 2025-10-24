@@ -118,6 +118,15 @@ export default function Workspace() {
           columnNames = metadata.availableColumns;
           console.log('Workspace - Google Sheets columns:', columnNames);
         }
+        // Para SQL Database, buscar de availableColumns ou table_infos
+        else if (source?.type === 'sql_database') {
+          if (metadata?.availableColumns) {
+            columnNames = metadata.availableColumns;
+          } else if (metadata?.table_infos && metadata.table_infos.length > 0) {
+            columnNames = metadata.table_infos[0].columns || [];
+          }
+          console.log('Workspace - SQL Database columns:', columnNames);
+        }
         // Para CSV/Excel, buscar diretamente de columns
         else if (metadata?.columns) {
           columnNames = metadata.columns;

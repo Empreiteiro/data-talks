@@ -136,10 +136,14 @@ serve(async (req) => {
     };
 
     let targetFunction;
+    const isSqlDatabase = sources.some((s: Source) => s.type === 'sql_database');
+    
     if (isBigquery) {
       targetFunction = 'ask-question-bigquery';
     } else if (isGoogleSheets) {
       targetFunction = 'ask-question-google-sheets';
+    } else if (isSqlDatabase) {
+      targetFunction = 'ask-question-sql';
     } else {
       targetFunction = 'ask-question-csv';
     }

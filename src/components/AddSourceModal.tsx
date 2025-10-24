@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, Database } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,14 @@ export function AddSourceModal({
   const [selectedSheet, setSelectedSheet] = useState("");
   const [loadingSheets, setLoadingSheets] = useState(false);
   const [spreadsheetData, setSpreadsheetData] = useState<{id: string, title: string} | null>(null);
+
+  // SQL Database state
+  const [sqlConnectionString, setSqlConnectionString] = useState("");
+  const [sqlDatabaseType, setSqlDatabaseType] = useState<'postgresql' | 'mysql' | ''>('');
+  const [sqlTables, setSqlTables] = useState<Array<{name: string, type: string}>>([]);
+  const [selectedSqlTable, setSelectedSqlTable] = useState("");
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionTested, setConnectionTested] = useState(false);
 
   // Fetch existing BigQuery credentials when modal opens
   useEffect(() => {
@@ -508,6 +516,76 @@ export function AddSourceModal({
     }
   };
 
+  const handleTestSqlConnection = async () => {
+    if (!sqlConnectionString || !sqlDatabaseType) {
+      toast.error(t('addSource.sqlFillFields'));
+      return;
+    }
+
+    setTestingConnection(true);
+    setSqlTables([]);
+    setSelectedSqlTable("");
+    setConnectionTested(false);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('list-sql-tables', {
+        body: {
+          connectionString: sqlConnectionString,
+          databaseType: sqlDatabaseType
+        }
+      });
+
+      if (error) throw error;
+
+      setSqlTables(data.tables || []);
+      setConnectionTested(true);
+      toast.success(t('addSource.sqlConnectionSuccess'));
+    } catch (error: any) {
+      console.error('SQL connection test error:', error);
+      toast.error(t('addSource.sqlConnectionError'), {
+        description: error.message
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const handleSqlConnect = async () => {
+    if (!sqlConnectionString || !sqlDatabaseType || !selectedSqlTable) {
+      toast.error(t('addSource.sqlFillFields'));
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sql-database-connect', {
+        body: {
+          connectionString: sqlConnectionString,
+          databaseType: sqlDatabaseType,
+          tableName: selectedSqlTable,
+          agentId: agentId
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success(t('addSource.sqlConnectSuccess'));
+      
+      if (data?.source?.id) {
+        onSourceAdded?.(data.source.id);
+      }
+      
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('SQL database connection error:', error);
+      toast.error(t('addSource.sqlConnectError'), {
+        description: error.message
+      });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl h-[600px] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
@@ -520,10 +598,11 @@ export function AddSourceModal({
           </p>
 
           <Tabs defaultValue="upload" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="upload">{t('addSource.uploadTab')}</TabsTrigger>
               <TabsTrigger value="bigquery">{t('addSource.bigQueryTab')}</TabsTrigger>
               <TabsTrigger value="sheets">{t('addSource.sheetsTab')}</TabsTrigger>
+              <TabsTrigger value="sql">{t('addSource.sqlTab')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-4">
@@ -752,6 +831,89 @@ export function AddSourceModal({
                   disabled={!selectedSheet || connecting}
                 >
                   {connecting ? t('addSource.connecting') : t('addSource.connectSheets')}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="sql" className="space-y-4">
+              <div className="space-y-4">
+                <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
+                  <p className="text-sm">
+                    <strong>{t('addSource.sqlImportant')}</strong> {t('addSource.sqlSecurityWarning')}
+                  </p>
+                  <ul className="text-xs space-y-1 ml-4 list-disc">
+                    <li>{t('addSource.sqlIpAgent')}: <code className="bg-background px-2 py-1 rounded text-xs border">34.121.141.105</code></li>
+                    <li>{t('addSource.sqlIpSupabase')}</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sql-type">{t('addSource.sqlDatabaseType')}</Label>
+                  <Select 
+                    value={sqlDatabaseType} 
+                    onValueChange={(value: any) => setSqlDatabaseType(value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={t('addSource.sqlSelectType')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                      <SelectItem value="mysql">MySQL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sql-connection">{t('addSource.sqlConnectionString')}</Label>
+                  <Input 
+                    id="sql-connection" 
+                    type="password"
+                    placeholder={t('addSource.sqlConnectionStringPlaceholder')}
+                    value={sqlConnectionString}
+                    onChange={(e) => setSqlConnectionString(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('addSource.sqlExample')}: {sqlDatabaseType === 'mysql' ? 'mysql://user:password@host:3306/database' : 'postgresql://user:password@host:5432/database'}
+                  </p>
+                </div>
+
+                <Button 
+                  className="w-full"
+                  onClick={handleTestSqlConnection}
+                  disabled={!sqlConnectionString || !sqlDatabaseType || testingConnection}
+                  variant="outline"
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  {testingConnection ? t('addSource.sqlTesting') : t('addSource.sqlTestConnection')}
+                </Button>
+
+                {sqlTables.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>{t('addSource.sqlSelectTable')}</Label>
+                    <Select 
+                      value={selectedSqlTable} 
+                      onValueChange={setSelectedSqlTable}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t('addSource.selectTablePlaceholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sqlTables.map((table) => (
+                          <SelectItem key={table.name} value={table.name}>
+                            {table.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <Button 
+                  className="w-full"
+                  onClick={handleSqlConnect}
+                  disabled={!selectedSqlTable || connecting}
+                >
+                  {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
                 </Button>
               </div>
             </TabsContent>
