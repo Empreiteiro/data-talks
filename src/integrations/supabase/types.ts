@@ -217,6 +217,7 @@ export type Database = {
           langflow_path: string | null
           metadata: Json | null
           name: string
+          organization_id: string
           type: string
           user_id: string
         }
@@ -229,6 +230,7 @@ export type Database = {
           langflow_path?: string | null
           metadata?: Json | null
           name: string
+          organization_id: string
           type: string
           user_id: string
         }
@@ -241,6 +243,7 @@ export type Database = {
           langflow_path?: string | null
           metadata?: Json | null
           name?: string
+          organization_id?: string
           type?: string
           user_id?: string
         }
@@ -252,6 +255,13 @@ export type Database = {
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sources_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       subscribers: {
@@ -259,6 +269,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          organization_id: string
           stripe_customer_id: string | null
           subscribed: boolean
           subscription_end: string | null
@@ -270,6 +281,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          organization_id: string
           stripe_customer_id?: string | null
           subscribed?: boolean
           subscription_end?: string | null
@@ -281,6 +293,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          organization_id?: string
           stripe_customer_id?: string | null
           subscribed?: boolean
           subscription_end?: string | null
@@ -288,7 +301,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subscribers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
