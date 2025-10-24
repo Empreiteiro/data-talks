@@ -690,24 +690,24 @@ export function AddSourceModal({
 
             <TabsContent value="sheets" className="space-y-4">
               <div className="space-y-4">
-                <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    <strong>Importante:</strong> A planilha deve estar compartilhada com o email:<br />
-                    <code className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs">
-                      talk-2-data@talk-2-data.iam.gserviceaccount.com
-                    </code>
+                <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
+                  <p className="text-sm">
+                    <strong>{t('addSource.sheetsImportant')}</strong> {t('addSource.sheetsShareWith')}
                   </p>
+                  <code className="block bg-background px-3 py-2 rounded text-xs border">
+                    talk-2-data@talk-2-data.iam.gserviceaccount.com
+                  </code>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sheets-id">ID da Planilha</Label>
+                  <Label htmlFor="sheets-id">{t('addSource.sheetsId')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Exemplo: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms (encontrado na URL da planilha)
+                    {t('addSource.sheetsIdExample')}
                   </p>
                   <div className="flex gap-2">
                     <Input 
                       id="sheets-id" 
-                      placeholder="Cole o ID da planilha aqui"
+                      placeholder={t('addSource.sheetsIdPlaceholder')}
                       value={sheetsUrl}
                       onChange={(e) => setSheetsUrl(e.target.value.trim())}
                       className="flex-1" 
@@ -716,7 +716,7 @@ export function AddSourceModal({
                       onClick={handleListSheets}
                       disabled={!sheetsUrl || loadingSheets}
                     >
-                      {loadingSheets ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Listar'}
+                      {loadingSheets ? <Loader2 className="h-4 w-4 animate-spin" /> : t('addSource.listButton')}
                     </Button>
                   </div>
                 </div>
@@ -729,7 +729,7 @@ export function AddSourceModal({
                       onValueChange={setSelectedSheet}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione uma planilha" />
+                        <SelectValue placeholder={t('addSource.selectSheetPlaceholder')} />
                       </SelectTrigger>
                       <SelectContent>
                         {availableSheets.map((sheet) => (
@@ -751,7 +751,7 @@ export function AddSourceModal({
                   onClick={handleSheetsConnect}
                   disabled={!selectedSheet || connecting}
                 >
-                  {connecting ? 'Conectando...' : t('addSource.connectSheets')}
+                  {connecting ? t('addSource.connecting') : t('addSource.connectSheets')}
                 </Button>
               </div>
             </TabsContent>
