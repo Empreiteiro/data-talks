@@ -112,8 +112,13 @@ serve(async (req) => {
     }];
 
     // Store connection string securely in Supabase Storage
+    // Use service role client to bypass RLS
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    });
+    
     const storagePath = `sql-connections/${user.id}/${crypto.randomUUID()}.txt`;
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseAdmin.storage
       .from('data-files')
       .upload(storagePath, connectionString, {
         contentType: 'text/plain',
