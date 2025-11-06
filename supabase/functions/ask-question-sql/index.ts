@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { Client as PostgresClient } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
-import { Client as MySQLClient } from "https://deno.land/x/mysql@v2.12.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,7 +65,6 @@ serve(async (req) => {
         input_type: "chat",
         tweaks: {
           "Prompt Template-05Bvn": {
-            question: question,
             schema: schemaText
           },
           "CustomComponent-LYPAw": {
