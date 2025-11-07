@@ -1,5 +1,5 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const langflowApiKey = Deno.env.get('LANGFLOW_API_KEY');
@@ -225,13 +225,28 @@ serve(async (req) => {
                 imageData = imageData.replace(/^> Entering new.*?\r?\n/g, ''); // Remove chain logs
                 imageData = imageData.trim();
                 
-                // If image doesn't start with data:image, add the prefix
-                if (imageData && !imageData.startsWith('data:image/')) {
-                  imageUrl = `data:image/png;base64,${imageData}`;
-                } else {
-                  imageUrl = imageData;
+                // Validate base64 data
+                if (imageData && imageData.length > 0) {
+                  try {
+                    // If image doesn't start with data:image, add the prefix
+                    if (!imageData.startsWith('data:image/')) {
+                      // Validate base64 format
+                      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+                      if (base64Regex.test(imageData)) {
+                        imageUrl = `data:image/png;base64,${imageData}`;
+                      } else {
+                        console.error('Invalid base64 format detected');
+                        imageUrl = null;
+                      }
+                    } else {
+                      imageUrl = imageData;
+                    }
+                    console.log('Extracted image from JSON, length:', imageData.length);
+                  } catch (imageError) {
+                    console.error('Error processing image data:', imageError);
+                    imageUrl = null;
+                  }
                 }
-                console.log('Extracted image from JSON');
               }
             } catch (parseError) {
               console.error('Failed to parse JSON response:', parseError);

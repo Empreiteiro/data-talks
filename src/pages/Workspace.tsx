@@ -24,6 +24,58 @@ import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
+
+// Componente para exibir gráficos com tratamento de erro robusto
+const ChartImage = ({ imageUrl }: { imageUrl: string }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleImageError = () => {
+    console.error('Error loading chart image:', imageUrl?.substring(0, 100));
+    setImageError(true);
+  };
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    console.log('Chart image loaded successfully, dimensions:', img.naturalWidth, 'x', img.naturalHeight);
+    setImageLoaded(true);
+  };
+
+  if (imageError) {
+    return (
+      <div className="mt-4 border rounded-lg p-4 bg-muted text-center">
+        <p className="text-muted-foreground">⚠️ Erro ao carregar gráfico</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Verifique se a imagem foi gerada corretamente
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 border rounded-lg overflow-hidden bg-white">
+      {!imageLoaded && (
+        <div className="p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-sm text-muted-foreground mt-2">Carregando gráfico...</p>
+        </div>
+      )}
+      <img 
+        src={imageUrl} 
+        alt="Gráfico gerado pelo BigQuery"
+        className={`w-full h-auto block ${!imageLoaded ? 'hidden' : ''}`}
+        style={{ 
+          maxHeight: '600px', 
+          objectFit: 'contain',
+          backgroundColor: 'white'
+        }}
+        onError={handleImageError}
+        onLoad={handleImageLoad}
+      />
+    </div>
+  );
+};
+
 export default function Workspace() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -42,6 +94,7 @@ export default function Workspace() {
   const [messages, setMessages] = useState<Array<{
     role: string;
     content: string;
+    imageUrl?: string;
   }>>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [studioPanelCollapsed, setStudioPanelCollapsed] = useState(() => {
@@ -250,7 +303,7 @@ export default function Workspace() {
     const conversationHistory = qaSession.conversation_history || [];
     
     // Reconstruir o array de mensagens a partir do formato do backend
-    const loadedMessages: Array<{role: string; content: string}> = [];
+    const loadedMessages: Array<{role: string; content: string; imageUrl?: string}> = [];
     
     // Se conversation_history estiver vazio mas existir question e answer, usar esses valores
     if (conversationHistory.length === 0 && qaSession.question && qaSession.answer) {
@@ -258,9 +311,14 @@ export default function Workspace() {
         role: "user",
         content: qaSession.question
       });
+      
+      // Verificar se há imageUrl no table_data para sessões antigas
+      const imageUrl = qaSession.table_data?.image_url;
+      
       loadedMessages.push({
         role: "assistant",
-        content: qaSession.answer
+        content: qaSession.answer,
+        imageUrl: imageUrl
       });
     } else {
       // Caso contrário, processar conversation_history normalmente
@@ -271,10 +329,11 @@ export default function Workspace() {
           content: entry.question
         });
         
-        // Adicionar resposta do assistente
+        // Adicionar resposta do assistente com imageUrl se disponível
         loadedMessages.push({
           role: "assistant",
-          content: entry.answer
+          content: entry.answer,
+          imageUrl: entry.imageUrl
         });
       });
     }
@@ -345,7 +404,8 @@ export default function Workspace() {
 
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: data.answer || "Não foi possível gerar uma resposta."
+        content: data.answer || "Não foi possível gerar uma resposta.",
+        imageUrl: data.imageUrl // Incluir imageUrl se disponível
       }]);
       
       // Atualizar follow-up questions se disponíveis
@@ -544,7 +604,7 @@ export default function Workspace() {
                 )}
               </div> : <div className="space-y-4 max-w-3xl mx-auto">
                 {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`group relative rounded-lg p-4 max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                    <div className={`group relative rounded-lg p-4 ${message.imageUrl ? 'max-w-[90%]' : 'max-w-[80%]'} ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -557,6 +617,9 @@ export default function Workspace() {
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {message.content}
                         </ReactMarkdown>
+                        {message.imageUrl && (
+                          <ChartImage imageUrl={message.imageUrl} />
+                        )}
                       </div>
                     </div>
                   </div>)}
