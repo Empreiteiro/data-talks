@@ -5,8 +5,11 @@ import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -18,7 +21,8 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronRight, History, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
+import { supabaseClient } from "@/services/supabaseClient";
+import { ChevronRight, History, Layout, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -26,9 +30,12 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 // Componente para exibir gráficos com tratamento de erro robusto
-const ChartImage = ({ imageUrl }: { imageUrl: string }) => {
+const ChartImage = ({ imageUrl, qaSessionId, t }: { imageUrl: string; qaSessionId?: string; t: (key: string) => string }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [dashboards, setDashboards] = useState<any[]>([]);
+  const [addToDashboardOpen, setAddToDashboardOpen] = useState(false);
+  const [selectedDashboardId, setSelectedDashboardId] = useState<string>("");
 
   const handleImageError = () => {
     console.error('Error loading chart image:', imageUrl?.substring(0, 100));
@@ -39,6 +46,37 @@ const ChartImage = ({ imageUrl }: { imageUrl: string }) => {
     const img = e.currentTarget;
     console.log('Chart image loaded successfully, dimensions:', img.naturalWidth, 'x', img.naturalHeight);
     setImageLoaded(true);
+  };
+
+  const loadDashboards = async () => {
+    try {
+      const data = await supabaseClient.listDashboards();
+      setDashboards(data || []);
+    } catch (error: any) {
+      toast.error(t('dashboard.loadError'), {
+        description: error.message
+      });
+    }
+  };
+
+  const handleAddToDashboard = async () => {
+    if (!selectedDashboardId || !qaSessionId) return;
+    
+    try {
+      await supabaseClient.addChartToDashboard(selectedDashboardId, qaSessionId);
+      toast.success(t('dashboard.chartAddedSuccess'));
+      setAddToDashboardOpen(false);
+      setSelectedDashboardId("");
+    } catch (error: any) {
+      toast.error(t('dashboard.chartAddedError'), {
+        description: error.message
+      });
+    }
+  };
+
+  const openAddToDashboard = () => {
+    loadDashboards();
+    setAddToDashboardOpen(true);
   };
 
   if (imageError) {
@@ -53,28 +91,90 @@ const ChartImage = ({ imageUrl }: { imageUrl: string }) => {
   }
 
   return (
-    <div className="mt-4 border rounded-lg overflow-hidden bg-white">
-      {!imageLoaded && (
-        <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground mt-2">Carregando gráfico...</p>
-        </div>
-      )}
-      <img 
-        src={imageUrl} 
-        alt="Gráfico gerado pelo BigQuery"
-        className={`w-full h-auto block ${!imageLoaded ? 'hidden' : ''}`}
-        style={{ 
-          maxHeight: '600px', 
-          objectFit: 'contain',
-          backgroundColor: 'white'
-        }}
-        onError={handleImageError}
-        onLoad={handleImageLoad}
-      />
-    </div>
+    <>
+      <div className="mt-4 border rounded-lg overflow-hidden bg-white relative group">
+        {!imageLoaded && (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="text-sm text-muted-foreground mt-2">Carregando gráfico...</p>
+          </div>
+        )}
+        <img 
+          src={imageUrl} 
+          alt="Gráfico gerado pelo BigQuery"
+          className={`w-full h-auto block ${!imageLoaded ? 'hidden' : ''}`}
+          style={{ 
+            maxHeight: '600px', 
+            objectFit: 'contain',
+            backgroundColor: 'white'
+          }}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
+        />
+        
+        {/* Botão Add to Dashboard - aparece no hover */}
+        {imageLoaded && qaSessionId && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              onClick={openAddToDashboard}
+              className="bg-white/90 text-gray-900 hover:bg-white border border-gray-200 shadow-sm"
+            >
+              <Layout className="h-4 w-4 mr-2" />
+              {t('dashboard.addToDashboard')}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Dialog para selecionar dashboard */}
+      <Dialog open={addToDashboardOpen} onOpenChange={setAddToDashboardOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('dashboard.addToTitle')}</DialogTitle>
+            <DialogDescription>
+              {t('dashboard.addToDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-select">{t('dashboard.title')}</Label>
+              <Select value={selectedDashboardId} onValueChange={setSelectedDashboardId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('dashboard.selectDashboardPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {dashboards.map((dashboard) => (
+                    <SelectItem key={dashboard.id} value={dashboard.id}>
+                      {dashboard.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {dashboards.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t('dashboard.noDashboardsFound')}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddToDashboardOpen(false)}>
+              {t('dashboard.cancel')}
+            </Button>
+            <Button 
+              onClick={handleAddToDashboard} 
+              disabled={!selectedDashboardId}
+            >
+              {t('dashboard.add')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
+
 
 export default function Workspace() {
   const { t } = useLanguage();
@@ -618,7 +718,11 @@ export default function Workspace() {
                           {message.content}
                         </ReactMarkdown>
                         {message.imageUrl && (
-                          <ChartImage imageUrl={message.imageUrl} />
+                          <ChartImage 
+                            imageUrl={message.imageUrl} 
+                            qaSessionId={currentSessionId || undefined}
+                            t={t}
+                          />
                         )}
                       </div>
                     </div>

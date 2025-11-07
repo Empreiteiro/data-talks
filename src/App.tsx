@@ -1,22 +1,23 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { LanguageProvider } from "@/contexts/LanguageContext";
-import Index from "./pages/Index";
-import Pricing from "./pages/Pricing";
-import NotFound from "./pages/NotFound";
-import NavBar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
-import Auth from "@/pages/Auth";
+import NavBar from "@/components/layout/NavBar";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
+import Account from "@/pages/Account";
 import AgentBriefing from "@/pages/AgentBriefing";
 import Alerts from "@/pages/Alerts";
-import Account from "@/pages/Account";
-import Workspace from "@/pages/Workspace";
+import Auth from "@/pages/Auth";
+import Dashboard from "@/pages/Dashboard";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
-import { useAuth } from "@/hooks/useAuth";
+import Workspace from "@/pages/Workspace";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 const AppContent = () => {
   const location = useLocation();
   const isWorkspacePage = location.pathname.startsWith('/workspace/');
+  const isDashboardPage = location.pathname.startsWith('/dashboard/');
   const isIndexPage = location.pathname === '/';
 
   return (
@@ -45,6 +47,7 @@ const AppContent = () => {
           <Route path="/workspace/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
           {/* Redirect old notebook URLs to workspace */}
           <Route path="/notebook/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
+          <Route path="/dashboard/:id" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/agents/new" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
           <Route path="/agents/:id" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
           <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
@@ -53,7 +56,7 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      {!isWorkspacePage && !isIndexPage && <Footer />}
+      {!isWorkspacePage && !isDashboardPage && !isIndexPage && <Footer />}
     </div>
   );
 };

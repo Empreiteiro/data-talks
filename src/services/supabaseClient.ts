@@ -553,5 +553,153 @@ export const supabaseClient = {
     }
   },
 
+  // Dashboards
+  async listDashboards() {
+    const { data, error } = await (supabase as any)
+      .from('dashboards')
+      .select(`
+        *,
+        chart_count:dashboard_charts(count)
+      `)
+      .order('updated_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    // Process the data to get chart count
+    return (data || []).map((dashboard: any) => ({
+      ...dashboard,
+      chart_count: Array.isArray(dashboard.chart_count) ? dashboard.chart_count[0]?.count || 0 : 0
+    }));
+  },
+
+  async createDashboard(name: string, description?: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await (supabase as any)
+      .from('dashboards')
+      .insert({
+        user_id: user.id,
+        name,
+        description
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async getDashboard(id: string) {
+    const { data, error } = await (supabase as any)
+      .from('dashboards')
+      .select(`
+        *,
+        dashboard_charts (
+          *,
+          qa_sessions (
+            id,
+            question,
+            answer,
+            agent_id,
+            created_at,
+            agents (
+              id,
+              name
+            )
+          )
+        )
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async updateDashboard(id: string, name: string, description?: string) {
+    const { data, error } = await (supabase as any)
+      .from('dashboards')
+      .update({
+        name,
+        description
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteDashboard(id: string) {
+    const { error } = await (supabase as any)
+      .from('dashboards')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
+  // Dashboard Charts
+  async addChartToDashboard(dashboardId: string, qaSessionId: string, title?: string, description?: string) {
+    // First, get the QA session to extract the image_url
+    const { data: qaSession, error: qaError } = await supabase
+      .from('qa_sessions')
+      .select('table_data')
+      .eq('id', qaSessionId)
+      .single();
+    
+    if (qaError) throw qaError;
+    
+    const imageUrl = (qaSession?.table_data as any)?.image_url;
+    if (!imageUrl) {
+      throw new Error('Esta sessão não possui uma imagem para adicionar ao dashboard');
+    }
+
+    const { data, error } = await (supabase as any)
+      .from('dashboard_charts')
+      .insert({
+        dashboard_id: dashboardId,
+        qa_session_id: qaSessionId,
+        image_url: imageUrl,
+        title,
+        description
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async removeChartFromDashboard(chartId: string) {
+    const { error } = await (supabase as any)
+      .from('dashboard_charts')
+      .delete()
+      .eq('id', chartId);
+    
+    if (error) throw error;
+  },
+
+  async updateDashboardChart(chartId: string, updates: {
+    title?: string;
+    description?: string;
+    position_x?: number;
+    position_y?: number;
+    width?: number;
+    height?: number;
+  }) {
+    const { data, error } = await (supabase as any)
+      .from('dashboard_charts')
+      .update(updates)
+      .eq('id', chartId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
 };
 

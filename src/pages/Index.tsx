@@ -1,18 +1,17 @@
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Plus, Grid3x3, List, MoreVertical, Pencil, Database, MessageSquare, BarChart3, Bell, Shield, Zap, Users } from "lucide-react";
-import { supabaseClient } from "@/services/supabaseClient";
-import { toast } from "sonner";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
+import { supabaseClient } from "@/services/supabaseClient";
+import { BarChart3, Bell, Database, Grid3x3, Layout, List, MessageSquare, MoreVertical, Pencil, Plus, Shield, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 interface Agent {
   id: string;
   name: string;
@@ -20,6 +19,14 @@ interface Agent {
   source_ids: string[];
   created_at: string;
   source_count?: number;
+}
+
+interface Dashboard {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  chart_count?: number;
 }
 const Index = () => {
   const {
@@ -31,18 +38,23 @@ const Index = () => {
   } = useLanguage();
   const navigate = useNavigate();
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [newName, setNewName] = useState("");
+  const [createDashboardDialogOpen, setCreateDashboardDialogOpen] = useState(false);
+  const [newDashboardName, setNewDashboardName] = useState("");
+  const [newDashboardDescription, setNewDashboardDescription] = useState("");
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo(0, 0);
     
     if (!initializing && isAuthenticated) {
       loadAgents();
+      loadDashboards();
     }
   }, [isAuthenticated, initializing]);
   async function loadAgents() {
@@ -57,12 +69,63 @@ const Index = () => {
       setLoading(false);
     }
   }
+
+  async function loadDashboards() {
+    try {
+      const data = await supabaseClient.listDashboards();
+      setDashboards((data || []) as Dashboard[]);
+    } catch (error: any) {
+      toast.error(t('dashboard.loadError'), {
+        description: error.message
+      });
+    }
+  }
   const handleCreateWorkspace = async () => {
     try {
       const newAgent = await supabaseClient.createAgent(t('workspace.newWorkspace'), [], "", []);
       navigate(`/workspace/${newAgent.id}?openAddSource=true`);
     } catch (error: any) {
       toast.error(t('workspace.errorCreatingWorkspace'), {
+        description: error.message
+      });
+    }
+  };
+
+  const handleCreateDashboard = async () => {
+    if (!newDashboardName.trim()) return;
+    
+    try {
+      const dashboard = await supabaseClient.createDashboard(
+        newDashboardName.trim(),
+        newDashboardDescription.trim() || undefined
+      );
+      
+      toast.success(t('dashboard.createSuccess'));
+      setCreateDashboardDialogOpen(false);
+      setNewDashboardName("");
+      setNewDashboardDescription("");
+      loadDashboards();
+      navigate(`/dashboard/${dashboard.id}`);
+    } catch (error: any) {
+      toast.error(t('dashboard.createError'), {
+        description: error.message
+      });
+    }
+  };
+
+  const handleDeleteDashboard = async (dashboardId: string, dashboardName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm(t('dashboard.deleteConfirm', { name: dashboardName }))) {
+      return;
+    }
+    
+    try {
+      await supabaseClient.deleteDashboard(dashboardId);
+      toast.success(t('dashboard.deleteSuccess'));
+      loadDashboards();
+    } catch (error: any) {
+      toast.error(t('dashboard.deleteError'), {
         description: error.message
       });
     }
@@ -327,7 +390,6 @@ const Index = () => {
           </div>
         </div>
 
-
         {viewMode === "grid" ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Create new card */}
             <Card className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]" onClick={handleCreateWorkspace}>
@@ -415,6 +477,145 @@ const Index = () => {
                 </DropdownMenu>
               </Card>)}
           </div>}
+
+        {/* Dashboards Section */}
+        <div className="mt-16">
+          <div className="flex items-center mb-8">
+            <h1 className="text-2xl font-semibold">{t('dashboard.title')}</h1>
+
+            <div className="flex items-center gap-2 ml-auto">
+              <Button onClick={() => setCreateDashboardDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('dashboard.createNew')}
+              </Button>
+            </div>
+          </div>
+
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Create new dashboard card */}
+              <Card 
+                className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]" 
+                onClick={() => setCreateDashboardDialogOpen(true)}
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
+                  <Layout className="h-6 w-6 text-blue-500" />
+                </div>
+                <p className="font-medium">{t('dashboard.createNewDashboard')}</p>
+              </Card>
+
+              {dashboards.map((dashboard, index) => (
+                <Card 
+                  key={dashboard.id} 
+                  className="p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[200px] flex flex-col" 
+                  onClick={() => navigate(`/dashboard/${dashboard.id}`)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="text-3xl">📊</div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={e => {
+                          e.stopPropagation();
+                          navigate(`/dashboard/${dashboard.id}`);
+                        }}>
+                          {t('dashboard.view')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={e => {
+                          e.stopPropagation();
+                          // TODO: Implement rename dashboard
+                        }}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          {t('dashboard.rename')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive" 
+                          onClick={e => handleDeleteDashboard(dashboard.id, dashboard.name, e)}
+                        >
+                          {t('dashboard.delete')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <h3 className="font-semibold text-lg mb-2 line-clamp-2">{dashboard.name}</h3>
+                  {dashboard.description && (
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{dashboard.description}</p>
+                  )}
+                  
+                  <div className="mt-auto pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(dashboard.created_at).toLocaleDateString()} • {dashboard.chart_count || 0} {(dashboard.chart_count || 0) === 1 ? t('dashboard.chart') : t('dashboard.charts')}
+                    </p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* Create new dashboard list item */}
+              <Card 
+                className="p-4 flex items-center gap-4 cursor-pointer hover:bg-accent/50 transition-colors" 
+                onClick={() => setCreateDashboardDialogOpen(true)}
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <Layout className="h-5 w-5 text-blue-500" />
+                </div>
+                <p className="font-medium">{t('dashboard.createNewDashboard')}</p>
+              </Card>
+
+              {dashboards.map((dashboard) => (
+                <Card 
+                  key={dashboard.id} 
+                  className="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" 
+                  onClick={() => navigate(`/dashboard/${dashboard.id}`)}
+                >
+                  <div className="text-2xl flex-shrink-0">📊</div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg truncate mb-1">{dashboard.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(dashboard.created_at).toLocaleDateString()} • {dashboard.chart_count || 0} {(dashboard.chart_count || 0) === 1 ? t('dashboard.chart') : t('dashboard.charts')}
+                    </p>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={e => {
+                        e.stopPropagation();
+                        navigate(`/dashboard/${dashboard.id}`);
+                      }}>
+                        {t('dashboard.view')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={e => {
+                        e.stopPropagation();
+                        // TODO: Implement rename dashboard
+                      }}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        {t('dashboard.rename')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive" 
+                        onClick={e => handleDeleteDashboard(dashboard.id, dashboard.name, e)}
+                      >
+                        {t('dashboard.delete')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Rename Dialog */}
@@ -442,6 +643,56 @@ const Index = () => {
             </Button>
             <Button onClick={handleConfirmRename} disabled={!newName.trim()}>
               {t('workspace.rename')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Dashboard Dialog */}
+      <Dialog open={createDashboardDialogOpen} onOpenChange={setCreateDashboardDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('dashboard.createNewDashboard')}</DialogTitle>
+            <DialogDescription>
+              {t('dashboard.createDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-name">{t('dashboard.name')}</Label>
+              <Input 
+                id="dashboard-name" 
+                value={newDashboardName} 
+                onChange={e => setNewDashboardName(e.target.value)} 
+                placeholder={t('dashboard.namePlaceholder')}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleCreateDashboard();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-description">{t('dashboard.descriptionOptional')}</Label>
+              <Input 
+                id="dashboard-description" 
+                value={newDashboardDescription} 
+                onChange={e => setNewDashboardDescription(e.target.value)} 
+                placeholder={t('dashboard.descriptionPlaceholder')}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setCreateDashboardDialogOpen(false);
+              setNewDashboardName("");
+              setNewDashboardDescription("");
+            }}>
+              {t('dashboard.cancel')}
+            </Button>
+            <Button onClick={handleCreateDashboard} disabled={!newDashboardName.trim()}>
+              {t('dashboard.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
