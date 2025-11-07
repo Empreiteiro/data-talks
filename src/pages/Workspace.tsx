@@ -325,11 +325,18 @@ export default function Workspace() {
     setIsLoading(true);
 
     try {
+      // Validar que o usuário está autenticado
+      if (!user?.id) {
+        toast.error("Você precisa estar autenticado para fazer perguntas");
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('ask-question', {
         body: {
           question: userMessage,
           agentId: id,
-          userId: user?.id,
+          userId: user.id,
           sessionId: currentSessionId // Enviar sessionId se existir para continuar conversa
         }
       });

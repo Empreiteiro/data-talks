@@ -29,6 +29,14 @@ serve(async (req) => {
       );
     }
 
+    // Validate userId for non-shared requests
+    if (!isShared && !userId) {
+      return new Response(
+        JSON.stringify({ error: 'User ID is required for authenticated requests' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Validate CSV configuration
     if (!langflowApiKey || !langflowBaseUrl || !langflowCsvFlowId) {
       return new Response(

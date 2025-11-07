@@ -12,7 +12,16 @@ serve(async (req) => {
   }
 
   try {
-    const { question, sources, agentInstructions } = await req.json();
+    const { question, sources, agentInstructions, userId } = await req.json();
+    
+    // Validate userId is present
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'User ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     console.log('Processing Google Sheets question:', question);
 
     const supabaseClient = createClient(

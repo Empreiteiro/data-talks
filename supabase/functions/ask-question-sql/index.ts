@@ -14,6 +14,14 @@ serve(async (req) => {
   try {
     const { question, agent, sources, sessionId, userId } = await req.json();
 
+    // Validate userId is present
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'User ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`[ask-question-sql] Question: "${question}" for agent: ${agent.id}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
