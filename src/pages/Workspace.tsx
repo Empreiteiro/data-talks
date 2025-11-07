@@ -193,8 +193,8 @@ export default function Workspace() {
       const { error } = await supabase
         .from('qa_sessions')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', sessionId)
-        .eq('user_id', user.id);
+        .eq('id', sessionId);
+        // Removido .eq('user_id', user.id) para permitir soft delete por membros da organização
         
       if (error) throw error;
       
