@@ -1,14 +1,12 @@
-import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { SourcesPanel } from "@/components/SourcesPanel";
-import { StudioPanel } from "@/components/StudioPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { AgentSettingsModal } from "@/components/AgentSettingsModal";
+import { SEO } from "@/components/SEO";
+import { SourcesPanel } from "@/components/SourcesPanel";
+import { StudioPanel } from "@/components/StudioPanel";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, ChevronRight, History, X, Table, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
   SheetContent,
@@ -17,13 +15,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { SEO } from "@/components/SEO";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { ChevronRight, History, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { useParams, useSearchParams } from "react-router-dom";
+import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
 export default function Workspace() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -175,7 +175,7 @@ export default function Workspace() {
         .from('qa_sessions')
         .select('*, sources(id, name)')
         .eq('agent_id', id)
-        .eq('user_id', user.id)
+        .is('deleted_at', null)  // Filtrar registros não deletados
         .order('created_at', { ascending: false });
 
       if (error) throw error;
