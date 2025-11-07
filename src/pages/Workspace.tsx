@@ -193,7 +193,8 @@ export default function Workspace() {
       const { error } = await supabase
         .from('qa_sessions')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
         
       if (error) throw error;
       
