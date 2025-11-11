@@ -87,7 +87,7 @@ serve(async (req) => {
     // Execute CSV flow
     const payload = {
       output_type: 'chat',
-      input_type: 'text',
+      input_type: 'chat',
       input_value: question,
       session_id: langflowSessionId,
       tweaks: {
