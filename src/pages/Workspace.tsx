@@ -703,30 +703,38 @@ export default function Workspace() {
                   </Button>
                 )}
               </div> : <div className="space-y-4 max-w-3xl mx-auto">
-                {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`group relative rounded-lg p-4 ${message.imageUrl ? 'max-w-[90%]' : 'max-w-[80%]'} ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => handleDeleteMessage(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {message.content}
-                        </ReactMarkdown>
-                        {message.imageUrl && (
+                {messages.map((message, index) => (
+                  <div key={index} className="space-y-3">
+                    <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div className={`group relative rounded-lg p-4 max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => handleDeleteMessage(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {message.content}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    </div>
+                    {message.imageUrl && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[90%]">
                           <ChartImage 
                             imageUrl={message.imageUrl} 
                             qaSessionId={currentSessionId || undefined}
                             t={t}
                           />
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </div>)}
+                    )}
+                  </div>
+                ))}
                 {isLoading && (
                   <div className="flex justify-start">
                     <div className="rounded-lg p-4 bg-muted">
