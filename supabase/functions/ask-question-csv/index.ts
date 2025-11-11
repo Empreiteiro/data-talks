@@ -99,6 +99,7 @@ serve(async (req) => {
         },
         'Prompt Template-b14Tn': {
           description: agent.description || '',
+          question: question,
           file_path: langflowPaths[0] || '',
           schema: csvSchema
         },
