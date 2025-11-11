@@ -1,10 +1,10 @@
-# T2D - Table to Data
+# Data Talk
 
 Uma plataforma inteligente para análise de dados que permite conectar fontes de dados, configurar agentes de IA e obter insights através de perguntas em linguagem natural.
 
 ## 🚀 Visão Geral
 
-O T2D é uma aplicação web que transforma a forma como você interage com seus dados. Através de uma interface intuitiva, você pode:
+O Data Talk é uma aplicação web que transforma a forma como você interage com seus dados. Através de uma interface intuitiva, você pode:
 
 - **Conectar fontes de dados** (CSV, XLSX, BigQuery)
 - **Configurar agentes de IA** personalizados
@@ -65,7 +65,7 @@ O T2D é uma aplicação web que transforma a forma como você interage com seus
 ## 📁 Estrutura do Projeto
 
 ```
-t2d/
+data-talk/
 ├── src/
 │   ├── components/          # Componentes reutilizáveis
 │   │   ├── layout/         # Componentes de layout (NavBar, Footer)
@@ -94,7 +94,7 @@ t2d/
 1. **Clone o repositório**
    ```bash
    git clone <URL_DO_REPOSITORIO>
-   cd t2d
+   cd data-talk
    ```
 
 2. **Instale as dependências**
@@ -200,4 +200,4 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 ---
 
-**T2D** - Transformando dados em insights através de IA conversacional 🚀
+**Data Talk** - Transformando dados em insights através de IA conversacional 🦜
