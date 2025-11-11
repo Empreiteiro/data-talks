@@ -101,10 +101,12 @@ serve(async (req) => {
           description: agent.description || '',
           question: question,
           file_path: langflowPaths[0] || '',
-          schema: csvSchema
         },
         'Memory-dPQjb': {
           session_id: langflowSessionId
+        },
+        'TextInput-nGp6X': {
+          input_value: csvSchema
         }
       }
     };
