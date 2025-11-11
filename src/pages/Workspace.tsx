@@ -732,7 +732,7 @@ export default function Workspace() {
                     <div className="rounded-lg p-4 bg-muted">
                       <div className="flex items-center gap-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        <p className="text-sm text-muted-foreground">Processando...</p>
+                        <p className="text-sm text-muted-foreground">{t('questions.processing')}</p>
                       </div>
                     </div>
                   </div>

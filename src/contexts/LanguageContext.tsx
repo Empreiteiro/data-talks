@@ -578,6 +578,7 @@ const translations = {
 
       // Dashboards (Modal)
       'dashboardModal.title': 'Dashboards',
+      'dashboard.createNew': 'Create dashboard',
       'dashboard.createNewDashboard': 'Create new dashboard',
       'dashboard.createDescription': 'Create a dashboard to organize your charts and visualizations.',
       'dashboard.name': 'Dashboard name',
@@ -1203,6 +1204,7 @@ const translations = {
 
       // Dashboards (Modal)
       'dashboardModal.title': 'Dashboards',
+      'dashboard.createNew': 'Criar dashboard',
       'dashboard.createNewDashboard': 'Criar novo dashboard',
       'dashboard.createDescription': 'Crie um dashboard para organizar seus gráficos e visualizações.',
       'dashboard.name': 'Nome do dashboard',
