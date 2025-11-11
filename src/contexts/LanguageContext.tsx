@@ -576,9 +576,8 @@ const translations = {
       'workspaceAccess.accessRevokedSuccess': 'Access revoked successfully',
       'workspaceAccess.accessRevokedError': 'Error revoking access:',
 
-      // Dashboards
-      'dashboard.title': 'Dashboards',
-      'dashboard.createNew': 'Create new dashboard',
+      // Dashboards (Modal)
+      'dashboardModal.title': 'Dashboards',
       'dashboard.createNewDashboard': 'Create new dashboard',
       'dashboard.createDescription': 'Create a dashboard to organize your charts and visualizations.',
       'dashboard.name': 'Dashboard name',
@@ -1202,9 +1201,8 @@ const translations = {
       'workspaceAccess.accessRevokedSuccess': 'Acesso revogado com sucesso',
       'workspaceAccess.accessRevokedError': 'Erro ao revogar acesso:',
 
-      // Dashboards
-      'dashboard.title': 'Dashboards',
-      'dashboard.createNew': 'Criar novo dashboard',
+      // Dashboards (Modal)
+      'dashboardModal.title': 'Dashboards',
       'dashboard.createNewDashboard': 'Criar novo dashboard',
       'dashboard.createDescription': 'Crie um dashboard para organizar seus gráficos e visualizações.',
       'dashboard.name': 'Nome do dashboard',
