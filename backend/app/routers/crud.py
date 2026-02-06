@@ -4,10 +4,11 @@ Compatible with frontend expectations (camelCase field names where needed).
 """
 import uuid
 import os
+import math
 from pathlib import Path
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional, Any
@@ -18,6 +19,46 @@ from app.auth import require_user
 from app.config import get_settings
 
 router = APIRouter(tags=["crud"])
+
+def _safe_float(value: float | int | None) -> float | None:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _build_sample_profile(df) -> dict:
+    sample_rows = len(df)
+    profile = {
+        "sample_rows": sample_rows,
+        "columns": {},
+    }
+    if sample_rows == 0:
+        return profile
+    for col in df.columns:
+        series = df[col]
+        col_profile = {
+            "type": str(series.dtype),
+            "missing": int(series.isna().sum()),
+        }
+        if series.dtype.kind in ("i", "u", "f"):
+            numeric = series.dropna()
+            if not numeric.empty:
+                col_profile["numeric"] = {
+                    "min": _safe_float(numeric.min()),
+                    "max": _safe_float(numeric.max()),
+                    "mean": _safe_float(numeric.mean()),
+                    "median": _safe_float(numeric.median()),
+                }
+        else:
+            counts = series.dropna().astype(str).value_counts().head(3)
+            if not counts.empty:
+                col_profile["top_values"] = counts.to_dict()
+        profile["columns"][str(col)] = col_profile
+    return profile
 
 
 # --- Sources ---
@@ -103,19 +144,23 @@ async def upload_source(
     full.parent.mkdir(parents=True, exist_ok=True)
     with open(full, "wb") as f:
         f.write(await file.read())
-    meta = {"file_path": path, "columns": [], "preview_rows": [], "row_count": 0}
+    meta = {"file_path": path, "columns": [], "preview_rows": [], "row_count": 0, "sample_profile": {}, "sample_row_count": 0}
     if ext == "csv":
         import pandas as pd
         df = pd.read_csv(full, nrows=1000)
         meta["columns"] = list(df.columns)
         meta["preview_rows"] = df.head(5).to_dict(orient="records")
         meta["row_count"] = len(df)
+        meta["sample_row_count"] = len(df)
+        meta["sample_profile"] = _build_sample_profile(df)
     else:
         import pandas as pd
         df = pd.read_excel(full, nrows=1000)
         meta["columns"] = list(df.columns)
         meta["preview_rows"] = df.head(5).to_dict(orient="records")
         meta["row_count"] = len(df)
+        meta["sample_row_count"] = len(df)
+        meta["sample_profile"] = _build_sample_profile(df)
     source_id = str(uuid.uuid4())
     source = Source(
         id=source_id,
@@ -178,10 +223,15 @@ async def list_agents(db: AsyncSession = Depends(get_db), user: User = Depends(r
     agents = list(r.scalars().all())
     out = []
     for a in agents:
-        count = 0
         if a.source_ids:
-            r2 = await db.execute(select(Source).where(Source.id.in_(a.source_ids)))
-            count = len(list(r2.scalars().all()))
+            q = select(Source.id).where(
+                Source.user_id == user.id,
+                or_(Source.id.in_(a.source_ids), Source.agent_id == a.id),
+            )
+        else:
+            q = select(Source.id).where(Source.user_id == user.id, Source.agent_id == a.id)
+        r2 = await db.execute(q)
+        count = len(list(r2.scalars().all()))
         out.append({
             "id": a.id,
             "name": a.name,

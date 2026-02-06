@@ -3,6 +3,7 @@ Answer questions about an SQL database using an LLM (generates/executes SQL when
 Replaces ask-question-sql without Langflow.
 """
 from typing import Any
+import json
 
 
 async def ask_sql(
@@ -24,7 +25,11 @@ async def ask_sql(
 
     system = (
         "You are an assistant that answers questions about an SQL database. "
-        "You may suggest SQL queries when safe (SELECT only)."
+        "When the question requires precise filtering or aggregation, you MUST provide a SQL query "
+        "(SELECT only, in a fenced ```sql``` block). "
+        "Then explain the expected result briefly. "
+        "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of strings). "
+        "Do not include any extra text outside the JSON."
     )
     if agent_description:
         system += f"\nContext: {agent_description}"
@@ -33,6 +38,23 @@ async def ask_sql(
         {"role": "system", "content": system},
         {"role": "user", "content": f"Schema: {schema_text}\n\nQuestion: {question}"},
     ]
-    answer = await chat_completion(messages, max_tokens=2048)
-    follow_up = [line.strip() for line in answer.split("\n") if line.strip().endswith("?") and len(line.strip()) > 15][:3]
+    raw_answer = await chat_completion(messages, max_tokens=2048)
+    parsed = _parse_llm_json(raw_answer)
+    answer = parsed["answer"] or raw_answer
+    follow_up = parsed["followUpQuestions"]
     return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up}
+
+
+def _parse_llm_json(raw: str) -> dict[str, Any]:
+    try:
+        data = json.loads(raw)
+        answer = data.get("answer") if isinstance(data, dict) else None
+        follow_up = data.get("followUpQuestions") if isinstance(data, dict) else None
+        if not isinstance(answer, str):
+            answer = ""
+        if not isinstance(follow_up, list):
+            follow_up = []
+        follow_up = [q for q in follow_up if isinstance(q, str) and q.strip()]
+        return {"answer": answer, "followUpQuestions": follow_up[:3]}
+    except json.JSONDecodeError:
+        return {"answer": "", "followUpQuestions": []}

@@ -139,20 +139,16 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
           </div>
         </div>
 
-        <div className="border-t pt-4">
-          <p className="text-xs text-muted-foreground mb-3">
-            {t('studio.outputDescription')}
-          </p>
-        </div>
       </div>
 
       <div className="p-4 border-t">
         <Button
           variant="outline"
-          className="w-full h-12"
+          className="w-full h-12 opacity-50 cursor-not-allowed"
           onClick={onAddNote}
+          disabled
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Lock className="h-4 w-4 mr-2" />
           {t('studio.addNote')}
         </Button>
       </div>

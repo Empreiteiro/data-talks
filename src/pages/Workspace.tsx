@@ -21,7 +21,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/supabaseClient";
-import { ChevronRight, History, Layout, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
+import { ChevronRight, History, Layout, Lock, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -178,6 +178,19 @@ const ChartImage = ({ imageUrl, qaSessionId, t }: { imageUrl: string; qaSessionI
 export default function Workspace() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const isAgentSettingsLocked = true;
+  const stripFollowUpsFromAnswer = (answer: string, followUps?: string[]) => {
+    if (!answer) return answer;
+    if (!followUps || followUps.length === 0) return answer;
+    const followUpSet = new Set(followUps.map((q) => q.trim()).filter(Boolean));
+    if (followUpSet.size === 0) return answer;
+    return answer
+      .split("\n")
+      .filter((line) => !followUpSet.has(line.trim()))
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
   const {
     id
   } = useParams();
@@ -357,7 +370,7 @@ export default function Workspace() {
       
       loadedMessages.push({
         role: "assistant",
-        content: qaSession.answer,
+        content: stripFollowUpsFromAnswer(qaSession.answer, qaSession.follow_up_questions),
         imageUrl: imageUrl
       });
     } else {
@@ -372,7 +385,7 @@ export default function Workspace() {
         // Adicionar resposta do assistente com imageUrl se disponível
         loadedMessages.push({
           role: "assistant",
-          content: entry.answer,
+          content: stripFollowUpsFromAnswer(entry.answer, entry.followUpQuestions),
           imageUrl: entry.imageUrl
         });
       });
@@ -423,7 +436,10 @@ export default function Workspace() {
 
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: data.answer || "Não foi possível gerar uma resposta.",
+        content: stripFollowUpsFromAnswer(
+          data.answer || "Não foi possível gerar uma resposta.",
+          data.followUpQuestions
+        ),
         imageUrl: data.imageUrl
       }]);
       
@@ -491,10 +507,16 @@ export default function Workspace() {
               <Button 
                 variant="outline" 
                 size="icon"
-                onClick={() => setIsSettingsOpen(true)}
-                title={t('agentSettings.title')}
+                onClick={() => !isAgentSettingsLocked && setIsSettingsOpen(true)}
+                title={isAgentSettingsLocked ? "Indisponível" : t('agentSettings.title')}
+                disabled={isAgentSettingsLocked}
+                className={isAgentSettingsLocked ? "opacity-50 cursor-not-allowed" : ""}
               >
-                <SlidersHorizontal className="h-4 w-4" />
+                {isAgentSettingsLocked ? (
+                  <Lock className="h-4 w-4" />
+                ) : (
+                  <SlidersHorizontal className="h-4 w-4" />
+                )}
               </Button>
               <SheetContent className="w-[400px] sm:w-[540px]">
                 <SheetHeader>

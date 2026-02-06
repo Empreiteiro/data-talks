@@ -47,7 +47,8 @@ async def ask_question(
     if not sources:
         raise HTTPException(400, "No active source found for this workspace")
 
-    source = sources[0]
+    active_sources = [s for s in sources if s.is_active]
+    source = active_sources[0] if active_sources else sources[0]
     settings = get_settings()
     data_files_dir = settings.data_files_dir
 
@@ -63,6 +64,8 @@ async def ask_question(
             agent_description=agent.description or "",
             columns=meta.get("columns"),
             preview_rows=meta.get("preview_rows"),
+            sample_profile=meta.get("sample_profile"),
+            sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
             data_files_dir=data_files_dir,
         )
     elif source.type == "google_sheets":
