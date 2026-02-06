@@ -116,7 +116,9 @@ async def ask_question(
             qa.follow_up_questions = result.get("followUpQuestions", [])
             await db.flush()
             session_id = str(qa.id)
-    else:
+        else:
+            session_id = None
+    if not session_id:
         qa = QASession(
             id=str(uuid.uuid4()),
             user_id=user.id,
