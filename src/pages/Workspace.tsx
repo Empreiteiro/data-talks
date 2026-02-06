@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { supabaseClient } from "@/services/supabaseClient";
 import { ChevronRight, History, Layout, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -224,15 +223,8 @@ export default function Workspace() {
 
   async function checkSources() {
     if (!id) return;
-    
     try {
-      const { data: sources, error } = await supabase
-        .from('sources')
-        .select('id')
-        .eq('agent_id', id);
-
-      if (error) throw error;
-
+      const sources = await supabaseClient.listSources(id);
       setHasSources(sources && sources.length > 0);
     } catch (error: any) {
       console.error("Erro ao verificar fontes:", error);
@@ -241,49 +233,30 @@ export default function Workspace() {
 
   async function loadAvailableColumns() {
     if (!id) return;
-    
     try {
-      // Buscar fonte ativa do agent
-      const { data: source, error: sourceError } = await supabase
-        .from('sources')
-        .select('metadata, type')
-        .eq('agent_id', id)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (sourceError) throw sourceError;
-
+      const sources = await supabaseClient.listSources(id, true);
+      const source = sources && sources[0];
       if (source) {
-        const metadata = source?.metadata as any;
-        console.log('Workspace - source metadata:', metadata);
-        console.log('Workspace - source type:', source?.type);
-        
+        const metadata = source?.metaJSON as any;
         let columnNames: string[] = [];
-        
-        // Para BigQuery, buscar de table_infos
         if (source?.type === 'bigquery' && metadata?.table_infos && metadata.table_infos.length > 0) {
           // Pegar as colunas da primeira tabela
           columnNames = metadata.table_infos[0].columns || [];
           console.log('Workspace - BigQuery columns from table_infos:', columnNames);
         } 
         // Para Google Sheets, buscar de availableColumns
-        else if (source?.type === 'google_sheets' && metadata?.availableColumns) {
+        else if (source.type === 'google_sheets' && metadata?.availableColumns) {
           columnNames = metadata.availableColumns;
-          console.log('Workspace - Google Sheets columns:', columnNames);
         }
-        // Para SQL Database, buscar de availableColumns ou table_infos
-        else if (source?.type === 'sql_database') {
+        else if (source.type === 'sql_database') {
           if (metadata?.availableColumns) {
             columnNames = metadata.availableColumns;
           } else if (metadata?.table_infos && metadata.table_infos.length > 0) {
             columnNames = metadata.table_infos[0].columns || [];
           }
-          console.log('Workspace - SQL Database columns:', columnNames);
         }
-        // Para CSV/Excel, buscar diretamente de columns
         else if (metadata?.columns) {
           columnNames = metadata.columns;
-          console.log('Workspace - CSV/Excel columns:', columnNames);
         }
         
         setAvailableColumns(columnNames);
@@ -297,16 +270,8 @@ export default function Workspace() {
 
   async function loadWarmupQuestions() {
     if (!id) return;
-    
     try {
-      const { data: agent, error } = await supabase
-        .from('agents')
-        .select('suggested_questions')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-
+      const agent = await supabaseClient.getAgent(id);
       setWarmupQuestions(agent?.suggested_questions || []);
     } catch (error: any) {
       console.error("Erro ao carregar perguntas de aquecimento:", error);
@@ -322,17 +287,8 @@ export default function Workspace() {
 
   async function loadHistory() {
     if (!id || !user) return;
-    
     try {
-      const { data, error } = await supabase
-        .from('qa_sessions')
-        .select('*, sources(id, name)')
-        .eq('agent_id', id)
-        .is('deleted_at', null)  // Filtrar registros não deletados
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
+      const data = await supabaseClient.listQASessions(id);
       setHistory(data || []);
     } catch (error: any) {
       console.error("Erro ao carregar histórico:", error);
@@ -340,16 +296,9 @@ export default function Workspace() {
   }
 
   const handleDeleteHistory = async (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Evitar que o card seja clicado
-    
+    e.stopPropagation();
     try {
-      const { error } = await supabase
-        .from('qa_sessions')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', sessionId);
-        // Removido .eq('user_id', user.id) para permitir soft delete por membros da organização
-        
-      if (error) throw error;
+      await supabaseClient.deleteQASession(sessionId);
       
       // Se a conversa excluída é a atual, limpar o chat
       if (currentSessionId === sessionId) {
@@ -370,10 +319,8 @@ export default function Workspace() {
     const updatedMessages = messages.filter((_, i) => i !== index);
     setMessages(updatedMessages);
     
-    // Se temos um sessionId, atualizar no backend
     if (currentSessionId) {
       try {
-        // Reconstruir conversation_history a partir das mensagens atualizadas
         const conversationHistory = [];
         for (let i = 0; i < updatedMessages.length; i += 2) {
           if (updatedMessages[i]?.role === "user" && updatedMessages[i + 1]?.role === "assistant") {
@@ -383,14 +330,7 @@ export default function Workspace() {
             });
           }
         }
-        
-        const { error } = await supabase
-          .from('qa_sessions')
-          .update({ conversation_history: conversationHistory })
-          .eq('id', currentSessionId);
-          
-        if (error) throw error;
-        
+        await supabaseClient.updateQASession(currentSessionId, { conversation_history: conversationHistory });
         toast.success("Mensagem excluída");
       } catch (error: any) {
         console.error("Erro ao atualizar histórico:", error);
@@ -442,24 +382,12 @@ export default function Workspace() {
     setCurrentSessionId(qaSession.id); // Manter o sessionId para continuar a conversa
     setIsHistoryOpen(false);
     
-    // Ativar a fonte de dados usada nessa conversa
     if (qaSession.source_id && id) {
       try {
-        // Desativar todas as fontes do agent
-        await supabase
-          .from('sources')
-          .update({ is_active: false })
-          .eq('agent_id', id);
-        
-        // Ativar a fonte usada na conversa
-        const { error } = await supabase
-          .from('sources')
-          .update({ is_active: true })
-          .eq('id', qaSession.source_id);
-          
-        if (error) throw error;
-        
-        // Recarregar as sources e colunas disponíveis
+        const sources = await supabaseClient.listSources(id);
+        for (const s of sources) {
+          await supabaseClient.updateSource(s.id, { is_active: s.id === qaSession.source_id });
+        }
         setSourcesRefreshTrigger(prev => prev + 1);
         loadAvailableColumns();
       } catch (error: any) {
@@ -491,34 +419,20 @@ export default function Workspace() {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('ask-question', {
-        body: {
-          question: userMessage,
-          agentId: id,
-          userId: user.id,
-          sessionId: currentSessionId // Enviar sessionId se existir para continuar conversa
-        }
-      });
-
-      if (error) throw error;
+      const data = await supabaseClient.askQuestion(id, userMessage, currentSessionId || undefined);
 
       setMessages(prev => [...prev, {
         role: "assistant",
         content: data.answer || "Não foi possível gerar uma resposta.",
-        imageUrl: data.imageUrl // Incluir imageUrl se disponível
+        imageUrl: data.imageUrl
       }]);
       
-      // Atualizar follow-up questions se disponíveis
-      console.log('Follow-up questions from API:', data.followUpQuestions);
       if (data.followUpQuestions && Array.isArray(data.followUpQuestions)) {
-        console.log('Setting follow-up questions:', data.followUpQuestions);
         setFollowUpQuestions(data.followUpQuestions);
       } else {
-        console.log('No follow-up questions or invalid format');
         setFollowUpQuestions([]);
       }
       
-      // Atualizar sessionId se for uma nova conversa
       if (data.sessionId && !currentSessionId) {
         setCurrentSessionId(data.sessionId);
       }

@@ -1,17 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import { translateSupabaseError } from '@/utils/errorHandling';
+import { usePythonBackend } from '@/config';
+import { apiClient } from '@/services/apiClient';
 
-export const supabaseClient = {
+const realSupabaseClient = {
   // Sources
-  async listSources() {
-    const { data, error } = await supabase
+  async listSources(agentId?: string, isActive?: boolean) {
+    let query = supabase
       .from('sources')
       .select('*')
       .order('created_at', { ascending: false });
-    
+    if (agentId) query = query.eq('agent_id', agentId);
+    if (isActive !== undefined) query = query.eq('is_active', isActive);
+    const { data, error } = await query;
     if (error) throw error;
-    
-    // Map database fields to expected interface
     return (data || []).map(source => ({
       id: source.id,
       name: source.name,
@@ -24,6 +26,11 @@ export const supabaseClient = {
     }));
   },
 
+  async updateSource(id: string, body: { agent_id?: string; is_active?: boolean }) {
+    const { error } = await supabase.from('sources').update(body).eq('id', id);
+    if (error) throw error;
+  },
+
   async deleteSource(id: string) {
     const { error } = await supabase
       .from('sources')
@@ -31,6 +38,12 @@ export const supabaseClient = {
       .eq('id', id);
     
     if (error) throw error;
+  },
+
+  async getAgent(agentId: string) {
+    const { data, error } = await supabase.from('agents').select('id, name, description, source_ids, suggested_questions').eq('id', agentId).single();
+    if (error) throw error;
+    return data;
   },
 
   // Agents
@@ -161,6 +174,11 @@ export const supabaseClient = {
     }));
     
     return processedData;
+  },
+
+  async updateQASession(id: string, body: { conversation_history?: any[] }) {
+    const { error } = await supabase.from('qa_sessions').update(body).eq('id', id);
+    if (error) throw error;
   },
 
   async deleteQASession(id: string) {
@@ -702,4 +720,6 @@ export const supabaseClient = {
   },
 
 };
+
+export const supabaseClient = usePythonBackend() ? apiClient : realSupabaseClient;
 

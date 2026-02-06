@@ -30,9 +30,9 @@ const NavBar = () => {
   return (
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
       <nav className="w-full flex items-center justify-between h-16 px-6">
-        <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight" aria-label="Data Talk">
-          <span role="img" aria-label="Logo Data Talk" className="text-xl leading-none">🦜</span>
-          <span className="hidden sm:inline">Data Talk</span>
+        <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight" aria-label="Data Talks">
+          <span role="img" aria-label="Logo Data Talks" className="text-xl leading-none">🦜</span>
+          <span className="hidden sm:inline">Data Talks</span>
         </Link>
         
         <div className="flex items-center gap-4 ml-auto">

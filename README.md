@@ -1,203 +1,181 @@
-# Data Talk
+# Data Talks
 
-Uma plataforma inteligente para análise de dados que permite conectar fontes de dados, configurar agentes de IA e obter insights através de perguntas em linguagem natural.
+An intelligent data analysis platform that lets you connect data sources, configure AI agents, and get insights through natural language questions.
 
-## 🚀 Visão Geral
+## Overview
 
-O Data Talk é uma aplicação web que transforma a forma como você interage com seus dados. Através de uma interface intuitiva, você pode:
+Data Talks is a web app that changes how you work with your data. Through a simple interface you can:
 
-- **Conectar fontes de dados** (CSV, XLSX, BigQuery)
-- **Configurar agentes de IA** personalizados
-- **Fazer perguntas** em linguagem natural sobre seus dados
-- **Receber respostas visuais** com gráficos e tabelas
-- **Configurar alertas** para monitoramento contínuo
+- **Connect data sources** (CSV, XLSX, BigQuery)
+- **Configure custom AI agents**
+- **Ask questions** in natural language about your data
+- **Get visual answers** with charts and tables
+- **Set up alerts** for ongoing monitoring
 
-## ✨ Funcionalidades Principais
+## Main features
 
-### 🔗 Gerenciamento de Fontes de Dados
-- **Upload de arquivos**: Suporte para CSV e XLSX
-- **Conexão BigQuery**: Integração direta com Google BigQuery
-- **Metadados automáticos**: Detecção automática de colunas e tipos de dados
-- **Visualização de dados**: Preview das primeiras linhas dos dados
+### Data source management
+- **File upload**: CSV and XLSX support
+- **BigQuery**: Direct Google BigQuery integration
+- **Automatic metadata**: Column and type detection
+- **Data preview**: First rows preview
 
-### 🤖 Agentes de IA
-- **Configuração personalizada**: Nome, descrição e fontes de dados
-- **Perguntas sugeridas**: Sugestões automáticas baseadas nos dados
-- **Histórico de conversas**: Rastreamento completo das interações
-- **Compartilhamento**: Opção de tornar agentes públicos ou privados
+### AI agents
+- **Custom setup**: Name, description, and data sources
+- **Suggested questions**: Auto-suggestions from your data
+- **Conversation history**: Full interaction history
+- **Sharing**: Public or private agents
 
-### 💬 Sistema de Perguntas e Respostas
-- **Interface conversacional**: Faça perguntas em português ou inglês
-- **Respostas visuais**: Gráficos e tabelas gerados automaticamente
-- **Perguntas de acompanhamento**: Sugestões para aprofundar a análise
-- **Feedback do usuário**: Sistema de avaliação das respostas
+### Q&A
+- **Conversational UI**: Ask in Portuguese or English
+- **Visual answers**: Auto-generated charts and tables
+- **Follow-up questions**: Suggestions to dig deeper
+- **User feedback**: Answer rating
 
-### 🔔 Sistema de Alertas
-- **Monitoramento contínuo**: Configure alertas recorrentes
-- **Frequência personalizável**: Diário, semanal ou mensal
-- **Notificações**: Receba alertas sobre mudanças nos dados
+### Alerts
+- **Ongoing monitoring**: Recurring alerts
+- **Flexible schedule**: Daily, weekly, or monthly
+- **Notifications**: Alerts when data changes
 
-### 🌐 Internacionalização
-- **Suporte multilíngue**: Português e Inglês
-- **Persistência de idioma**: Lembra sua preferência entre sessões
-- **Interface adaptativa**: Todos os textos são traduzidos dinamicamente
+### Internationalization
+- **Multilingual**: Portuguese and English
+- **Language persistence**: Preference saved across sessions
+- **Adaptive UI**: All text translated dynamically
 
-## 🛠️ Tecnologias Utilizadas
+## Tech stack
 
 ### Frontend
-- **React 18**: Biblioteca para construção de interfaces
-- **TypeScript**: Tipagem estática para maior confiabilidade
-- **Vite**: Build tool rápido para desenvolvimento
-- **Tailwind CSS**: Framework CSS utilitário
-- **shadcn/ui**: Componentes de UI modernos e acessíveis
+- **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, **shadcn/ui**
 
-### Backend & Infraestrutura
-- **Supabase**: Backend-as-a-Service com PostgreSQL
-- **Edge Functions**: Funções serverless para processamento
-- **BigQuery**: Integração com Google Cloud para análise de dados
-- **LangFlow**: Integração para processamento de linguagem natural
+### Backend & infrastructure
+- **Supabase** (optional): Backend-as-a-Service, PostgreSQL
+- **Python backend** (optional): FastAPI, SQLite, LLM (OpenAI or Ollama), no Supabase/Langflow
 
-### Estado & Gerenciamento
-- **React Context API**: Gerenciamento de estado global
-- **React Query**: Gerenciamento de estado do servidor
-- **Local Storage**: Persistência de preferências do usuário
+### State
+- **React Context API**, **React Query**, **Local Storage**
 
-## 📁 Estrutura do Projeto
+## Project structure
 
 ```
-data-talk/
-├── src/
-│   ├── components/          # Componentes reutilizáveis
-│   │   ├── layout/         # Componentes de layout (NavBar, Footer)
-│   │   └── ui/            # Componentes de UI (botões, formulários, etc.)
-│   ├── contexts/           # Contextos React (LanguageContext)
-│   ├── hooks/              # Hooks customizados
-│   ├── integrations/       # Integrações externas (Supabase)
-│   ├── lib/                # Utilitários e helpers
-│   ├── pages/              # Páginas da aplicação
-│   └── services/           # Serviços e clientes de API
-├── supabase/               # Configurações e funções Supabase
-│   ├── functions/          # Edge Functions
-│   └── migrations/         # Migrações do banco de dados
-└── public/                 # Arquivos estáticos
+data-talks/
+├── src/                    # Frontend
+│   ├── components/         # Reusable components
+│   ├── contexts/           # React contexts (e.g. LanguageContext)
+│   ├── hooks/              # Custom hooks
+│   ├── lib/                # Utilities
+│   ├── pages/              # Pages
+│   └── services/            # API clients
+├── backend/                # Optional Python backend (no Supabase/Langflow)
+│   ├── app/                # FastAPI, JWT auth, CRUD, per-source-type scripts
+│   └── requirements.txt
+├── supabase/               # (Legacy) Supabase config and functions
+└── public/                 # Static assets
 ```
 
-## 🚀 Como Executar
+## How to run
 
-### Pré-requisitos
-- Node.js 18+ e npm
-- Conta Supabase
-- (Opcional) Projeto Google Cloud com BigQuery habilitado
+### Option A: Python backend (recommended — no Supabase/Langflow)
 
-### Instalação
+Run the app with a **Python** backend that uses **per-source-type scripts** (CSV, Google Sheets, SQL, BigQuery) and an **LLM** (OpenAI API or local Ollama). No data is sent to Supabase or Langflow.
 
-1. **Clone o repositório**
+1. **Backend**
    ```bash
-   git clone <URL_DO_REPOSITORIO>
-   cd data-talk
+   cd backend
+   python -m venv .venv
+   .venv\Scripts\activate   # Windows
+   pip install -r requirements.txt
+   cp .env.example .env    # Edit and set OPENAI_API_KEY or Ollama
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
-2. **Instale as dependências**
+2. **Frontend** (from project root)
    ```bash
    npm install
    ```
-
-3. **Configure as variáveis de ambiente**
-   Crie um arquivo `.env.local` na raiz do projeto:
+   Create `.env.local`:
    ```env
-   VITE_SUPABASE_URL=sua_url_supabase
-   VITE_SUPABASE_ANON_KEY=sua_chave_anonima_supabase
+   VITE_API_URL=http://localhost:8000
    ```
-
-4. **Execute o projeto**
+   Then:
    ```bash
    npm run dev
    ```
 
-5. **Acesse a aplicação**
-   Abra [http://localhost:8080](http://localhost:8080) no seu navegador
+3. Open [http://localhost:8080](http://localhost:8080). Login, signup, and questions are handled by the Python backend.
 
-## 📖 Como Usar
+### Option B: Supabase + Langflow (legacy)
 
-### 1. Primeiro Acesso
-- Crie uma conta ou faça login
-- Selecione seu idioma preferido (PT/EN)
+1. Clone the repo and install dependencies:
+   ```bash
+   git clone https://github.com/Empreiteiro/data-talks.git
+   cd data-talks
+   npm install
+   ```
 
-### 2. Configurar Fontes de Dados
-- Vá para a página "Sources" (/sources)
-- Faça upload de arquivos CSV/XLSX ou conecte ao BigQuery
-- Verifique se os metadados foram detectados corretamente
+2. Create `.env.local` (do **not** set `VITE_API_URL`):
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_anon_key
+   ```
+   For production (e.g. email invites), set `SITE_URL` in Supabase to your app URL.
 
-### 3. Criar um Agente
-- Acesse a página "Agent" (/agent)
-- Configure o nome, descrição e selecione as fontes de dados
-- Adicione perguntas sugeridas para facilitar o uso
+3. Run:
+   ```bash
+   npm run dev
+   ```
 
-### 4. Fazer Perguntas
-- Vá para a página "Questions" (/questions)
-- Selecione o agente desejado
-- Digite sua pergunta em linguagem natural
-- Receba respostas com visualizações automáticas
+4. Open [http://localhost:8080](http://localhost:8080).
 
-### 5. Configurar Alertas (Opcional)
-- Acesse a página "Alerts" (/alerts)
-- Configure alertas recorrentes para monitoramento
-- Defina frequência e condições
+## How to use
 
-## 🔧 Scripts Disponíveis
+1. **First use**: Create an account or log in; choose language (PT/EN).
+2. **Data sources**: Go to Sources, upload CSV/XLSX or connect BigQuery.
+3. **Agent**: Create an agent, set name, description, and data sources; add suggested questions.
+4. **Questions**: Open a workspace, ask in natural language, get answers and charts.
+5. **Alerts** (optional): Configure recurring alerts and conditions.
+
+## Scripts
 
 ```bash
-npm run dev          # Inicia o servidor de desenvolvimento
-npm run build        # Gera build de produção
-npm run preview      # Preview do build de produção
-npm run lint         # Executa o linter
+npm run dev      # Development server
+npm run build    # Production build
+npm run preview  # Preview production build
+npm run lint     # Lint
 ```
 
-## 🌍 Internacionalização
+## Internationalization
 
-O projeto suporta português e inglês através de um sistema de traduções centralizado:
+The app supports Portuguese and English via a central translation layer:
 
-- **Contexto**: `src/contexts/LanguageContext.tsx`
-- **Hook**: `useLanguage()` para acessar traduções
-- **Função**: `t('chave.traducao')` para traduzir textos
-- **Persistência**: Idioma salvo no localStorage
+- **Context**: `src/contexts/LanguageContext.tsx`
+- **Hook**: `useLanguage()` for translations
+- **Usage**: `t('key.subkey')` in components
+- **Storage**: Language preference in localStorage
 
-### Adicionando Novas Traduções
+## Deploy
 
-1. Adicione as chaves em `LanguageContext.tsx`
-2. Use `t('chave.nova')` nos componentes
-3. As traduções são aplicadas automaticamente
+Connect the repo [Empreiteiro/data-talks](https://github.com/Empreiteiro/data-talks) to Vercel, Netlify, or similar; set env vars; deploy on push.
 
-## 🚀 Deploy
+## Contributing
 
-### Via Lovable
-1. Acesse [Lovable](https://lovable.dev)
-2. Conecte seu repositório
-3. Clique em "Share → Publish"
+1. Fork the project.
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`).
+3. Commit changes (`git commit -m 'Add AmazingFeature'`).
+4. Push the branch (`git push origin feature/AmazingFeature`).
+5. Open a Pull Request.
 
-### Via Vercel/Netlify
-1. Conecte o repositório ao serviço de deploy
-2. Configure as variáveis de ambiente
-3. Deploy automático a cada push
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the project standard (e.g. **documentation and comments in English**).
 
-## 🤝 Contribuindo
+## License
 
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+This project is under the Apache 2.0 license. See [LICENSE](LICENSE) for details.
 
-## 📝 Licença
+## Support
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
-
-## 🆘 Suporte
-
-- **Issues**: Use o sistema de issues do GitHub
-- **Documentação**: Consulte os comentários no código
-- **Comunidade**: Participe das discussões no repositório
+- **Repository**: [github.com/Empreiteiro/data-talks](https://github.com/Empreiteiro/data-talks)
+- **Issues**: GitHub Issues
+- **Docs**: In-code comments and this README
 
 ---
 
-**Data Talk** - Transformando dados em insights através de IA conversacional 🦜
+**Data Talks** — Turn data into insights with conversational AI.

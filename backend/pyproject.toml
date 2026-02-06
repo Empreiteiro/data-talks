@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "data-talks"
+version = "1.0.0"
+description = "Data Talks backend - FastAPI, SQLite/PostgreSQL, LLM (OpenAI or Ollama). No Supabase."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.6",
+    "uvicorn[standard]>=0.32.1",
+    "python-multipart>=0.0.17",
+    "pydantic>=2.10.3",
+    "pydantic-settings>=2.6.1",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "sqlalchemy>=2.0.36",
+    "aiosqlite>=0.20.0",
+    "alembic>=1.14.0",
+    "asyncpg>=0.30.0",
+    "psycopg2-binary>=2.9.10",
+    "openai>=1.55.3",
+    "httpx>=0.28.1",
+    "pandas>=2.2.3",
+    "openpyxl>=3.1.5",
+]
+
+[project.scripts]
+data-talks = "app.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
