@@ -3,7 +3,7 @@ import { useLanguage, Language } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Link } from "react-router-dom";
-import { Settings, Globe, Linkedin, Mail } from "lucide-react";
+import { Settings, Globe } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,37 +36,6 @@ const NavBar = () => {
         </Link>
         
         <div className="flex items-center gap-4 ml-auto">
-          {/* Links principais */}
-          {!user && (
-            <>
-              <Button asChild variant="ghost" size="sm" className="text-sm font-normal">
-                <Link to="/pricing">{t('pricing.title')}</Link>
-              </Button>
-            </>
-          )}
-          
-          {/* Social Links - sempre visível para não-logados */}
-          {!user && (
-            <>
-              <a
-                href="mailto:democh@oriontech.me"
-                className="text-muted-foreground hover:text-foreground transition-colors p-2"
-                aria-label="Email"
-              >
-                <Mail className="h-4 w-4" />
-              </a>
-              <a
-                href="https://www.linkedin.com/in/lucas-democh-goularte-8b290356/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors p-2"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="h-4 w-4" />
-              </a>
-            </>
-          )}
-          
           {/* Language & Auth */}
           {user ? (
             <>

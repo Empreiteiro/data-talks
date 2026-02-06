@@ -48,37 +48,76 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [loginRequired, setLoginRequired] = useState(false);
   const useApi = usePythonBackend();
 
   useEffect(() => {
     if (useApi) {
       const token = getToken();
-      if (!token) {
+      const base = getApiUrl()!;
+      const timeoutMs = 12000;
+      let cancelled = false;
+      const timer = setTimeout(() => {
+        if (cancelled) return;
+        cancelled = true;
+        setLoginRequired(true);
         setUser(null);
         setSession(null);
         setInitializing(false);
-        return;
-      }
-      fetch(`${getApiUrl()}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data) {
-            const u = toUserFromApi(data);
-            setUser(u);
-            setSession({ user: u } as Session);
-          } else {
-            setToken(null);
-            setUser(null);
-            setSession(null);
+      }, timeoutMs);
+      fetch(`${base}/api/config`)
+        .then((r) => (r.ok ? r.json() : { loginRequired: true }))
+        .then((config: { loginRequired?: boolean }) => {
+          if (cancelled) return;
+          setLoginRequired(!!config.loginRequired);
+          if (token) {
+            return fetch(`${base}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+              .then((res) => (res.ok ? res.json() : null))
+              .then((data) => {
+                if (cancelled) return;
+                if (data) {
+                  const u = toUserFromApi(data);
+                  setUser(u);
+                  setSession({ user: u } as Session);
+                } else {
+                  setToken(null);
+                  setUser(null);
+                  setSession(null);
+                }
+              });
           }
-        })
-        .catch(() => {
-          setToken(null);
+          if (!config.loginRequired) {
+            return fetch(`${base}/api/auth/me`)
+              .then((res) => (res.ok ? res.json() : null))
+              .then((data) => {
+                if (cancelled) return;
+                if (data) {
+                  const u = toUserFromApi(data);
+                  setUser(u);
+                  setSession({ user: u } as Session);
+                }
+              });
+          }
           setUser(null);
           setSession(null);
         })
-        .finally(() => setInitializing(false));
-      return;
+        .catch(() => {
+          if (cancelled) return;
+          setToken(null);
+          setUser(null);
+          setSession(null);
+          setLoginRequired(true);
+        })
+        .finally(() => {
+          if (cancelled) return;
+          cancelled = true;
+          clearTimeout(timer);
+          setInitializing(false);
+        });
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -120,6 +159,26 @@ export function useAuth() {
     setSession(data.session);
     setUser(toSafeUser(data.session));
     return toSafeUser(data.session);
+  }, [useApi]);
+
+  const loginWithUsername = useCallback(async (username: string, password: string) => {
+    cleanupAuthState();
+    if (!useApi) throw new Error("Username login only supported with Python backend");
+    const res = await fetch(`${getApiUrl()}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Login failed");
+    }
+    const data = await res.json();
+    setToken(data.access_token);
+    const u = toUserFromApi(data.user);
+    setUser(u);
+    setSession({ user: u } as Session);
+    return u;
   }, [useApi]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
@@ -166,13 +225,13 @@ export function useAuth() {
       setToken(null);
       setUser(null);
       setSession(null);
-      window.location.href = "/login";
+      window.location.href = loginRequired ? "/login" : "/";
       return;
     }
     try { await supabase.auth.signOut({ scope: "global" }); } catch {}
     cleanupAuthState();
     window.location.href = "/login";
-  }, [useApi]);
+  }, [useApi, loginRequired]);
 
   const requestPasswordReset = useCallback(async (email: string) => {
     if (useApi) throw new Error("Password reset not available on Python backend.");
@@ -191,5 +250,17 @@ export function useAuth() {
     if (error) throw new Error(error.message);
   }, [useApi]);
 
-  return { user, session, isAuthenticated: !!user, initializing, login, register, logout, requestPasswordReset, updatePassword };
+  return {
+    user,
+    session,
+    isAuthenticated: !!user,
+    initializing,
+    loginRequired,
+    login,
+    loginWithUsername,
+    register,
+    logout,
+    requestPasswordReset,
+    updatePassword,
+  };
 }

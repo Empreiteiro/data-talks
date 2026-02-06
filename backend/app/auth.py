@@ -1,4 +1,4 @@
-"""JWT authentication (replaces Supabase Auth)."""
+"""JWT authentication (replaces Supabase Auth). Optional login via ENABLE_LOGIN."""
 from datetime import datetime, timedelta
 from uuid import uuid4
 from jose import JWTError, jwt
@@ -12,12 +12,22 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import User
 
+# Fixed IDs for single-user modes (no login = guest, login = admin)
+GUEST_USER_ID = "00000000-0000-0000-0000-000000000001"
+ADMIN_USER_ID = "00000000-0000-0000-0000-000000000002"
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{get_settings().api_prefix}/auth/login", auto_error=False)
 http_bearer = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
+    # bcrypt rejects empty string and accepts at most 72 bytes on some platforms
+    if not password:
+        password = "unused"
+    raw = password.encode("utf-8")
+    if len(raw) > 72:
+        password = raw[:72].decode("utf-8", errors="ignore") or "unused"
     return pwd_context.hash(password)
 
 
@@ -45,15 +55,19 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
     cred: HTTPAuthorizationCredentials | None = Depends(http_bearer),
 ) -> User | None:
-    if not cred or not cred.credentials:
-        return None
-    payload = decode_token(cred.credentials)
-    if not payload or "sub" not in payload:
-        return None
-    user_id = payload["sub"]
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    return user
+    settings = get_settings()
+    if cred and cred.credentials:
+        payload = decode_token(cred.credentials)
+        if payload and "sub" in payload:
+            result = await db.execute(select(User).where(User.id == payload["sub"]))
+            user = result.scalar_one_or_none()
+            if user:
+                return user
+    # When login is disabled, treat missing/invalid token as guest user
+    if not settings.enable_login:
+        result = await db.execute(select(User).where(User.id == GUEST_USER_ID))
+        return result.scalar_one_or_none()
+    return None
 
 
 async def require_user(user: User | None = Depends(get_current_user)) -> User:

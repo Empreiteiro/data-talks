@@ -15,6 +15,13 @@ class UserLogin(BaseModel):
     password: str
 
 
+class LoginBody(BaseModel):
+    """Login: when ENABLE_LOGIN use username+password; else email+password."""
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: str
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

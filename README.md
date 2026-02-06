@@ -47,9 +47,10 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 ### Frontend
 - **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, **shadcn/ui**
 
-### Backend & infrastructure
-- **Supabase** (optional): Backend-as-a-Service, PostgreSQL
-- **Python backend** (optional): FastAPI, SQLite, LLM (OpenAI or Ollama), no Supabase/Langflow
+### Backend
+- **Python**: FastAPI, SQLite (default) or PostgreSQL, Alembic migrations
+- **LLM**: OpenAI API or local Ollama
+- **Per-source scripts**: CSV, Google Sheets, SQL, BigQuery
 
 ### State
 - **React Context API**, **React Query**, **Local Storage**
@@ -64,67 +65,68 @@ data-talks/
 │   ├── hooks/              # Custom hooks
 │   ├── lib/                # Utilities
 │   ├── pages/              # Pages
-│   └── services/            # API clients
-├── backend/                # Optional Python backend (no Supabase/Langflow)
-│   ├── app/                # FastAPI, JWT auth, CRUD, per-source-type scripts
-│   └── requirements.txt
-├── supabase/               # (Legacy) Supabase config and functions
+│   └── services/           # API clients
+├── backend/                # Python API (FastAPI, JWT auth, CRUD, scripts)
+│   ├── app/                # FastAPI app, routers, per-source-type scripts
+│   ├── alembic/            # Database migrations (SQLite + PostgreSQL)
+│   └── pyproject.toml
 └── public/                 # Static assets
 ```
 
 ## How to run
 
-### Option A: Python backend (recommended — no Supabase/Langflow)
+### Run the app at a single URL (recommended)
 
-Run the app with a **Python** backend that uses **per-source-type scripts** (CSV, Google Sheets, SQL, BigQuery) and an **LLM** (OpenAI API or local Ollama). No data is sent to Supabase or Langflow.
+To open the UI at **http://localhost:8000** (backend only):
 
-1. **Backend**
+1. **Project root** — install the frontend and build with the API URL:
+   ```bash
+   npm install
+   npm run build
+   ```
+2. **Backend** — configure and start the API (it will serve the frontend at `/`):
    ```bash
    cd backend
-   python -m venv .venv
-   .venv\Scripts\activate   # Windows
-   pip install -r requirements.txt
-   cp .env.example .env    # Edit and set OPENAI_API_KEY or Ollama
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   uv pip install -e .
+   uv run data-talks run
    ```
+3. Open in the browser: [http://localhost:8000](http://localhost:8000). Login, signup, and Q&A use the Python backend.
 
-2. **Frontend** (from project root)
-   ```bash
-   npm install
-   ```
-   Create `.env.local`:
-   ```env
-   VITE_API_URL=http://localhost:8000
-   ```
-   Then:
-   ```bash
-   npm run dev
-   ```
+If the `dist/` folder does not exist, visiting http://localhost:8000 will show a JSON message with instructions; run `npm run build` from the project root and restart the backend.
 
-3. Open [http://localhost:8080](http://localhost:8080). Login, signup, and questions are handled by the Python backend.
+### Backend only (API)
 
-### Option B: Supabase + Langflow (legacy)
+From the **backend** directory:
 
-1. Clone the repo and install dependencies:
-   ```bash
-   git clone https://github.com/Empreiteiro/data-talks.git
-   cd data-talks
-   npm install
-   ```
+**With [uv](https://docs.astral.sh/uv/):**
+```bash
+cd backend
+uv pip install -e .
+cp .env.example .env
+uv run data-talks run
+```
 
-2. Create `.env.local` (do **not** set `VITE_API_URL`):
-   ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_anon_key
-   ```
-   For production (e.g. email invites), set `SITE_URL` in Supabase to your app URL.
+**With pip + venv:**
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+pip install -e .
+cp .env.example .env
+data-talks run
+```
 
-3. Run:
-   ```bash
-   npm run dev
-   ```
+- **`data-talks run`** — starts the API on `0.0.0.0:8000`. Use `--host` and `--port` to override.
+- **`data-talks migrate`** — runs database migrations.
+- API: [http://localhost:8000](http://localhost:8000) · Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-4. Open [http://localhost:8080](http://localhost:8080).
+### Frontend in dev mode (hot reload)
+
+To develop the frontend with hot reload:
+
+1. Backend running (as above).
+2. From the project root: create `.env.local` with `VITE_API_URL=http://localhost:8000`, then `npm install` and `npm run dev`.
+3. Open [http://localhost:8080](http://localhost:8080).
 
 ## How to use
 

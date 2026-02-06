@@ -17,13 +17,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
-  const { isAuthenticated, initializing } = useAuth();
+  const { isAuthenticated, initializing, loginRequired } = useAuth();
   if (initializing) return null;
+  if (!loginRequired) return children;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 };
@@ -43,7 +43,6 @@ const AppContent = () => {
           <Route path="/login" element={<Auth />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/pricing" element={<Pricing />} />
           <Route path="/workspace/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
           {/* Redirect old notebook URLs to workspace */}
           <Route path="/notebook/:id" element={<RequireAuth><Workspace /></RequireAuth>} />

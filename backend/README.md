@@ -57,6 +57,12 @@ OPENAI_API_KEY=sk-...
 # Auth (change in production)
 SECRET_KEY=your-strong-secret-key
 
+# Optional login: if ENABLE_LOGIN=true, show login screen and require admin credentials.
+# If false (default), app opens directly with no login.
+# ENABLE_LOGIN=true
+# ADMIN_USERNAME=admin
+# ADMIN_PASSWORD=your-password
+
 # Database: default is SQLite (no .env needed). For PostgreSQL set:
 # DATABASE_URL=postgresql+asyncpg://user:password@host:5432/dbname
 # Optional

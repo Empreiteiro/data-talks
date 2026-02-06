@@ -2,12 +2,14 @@
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
 python-multipart==0.0.17
-pydantic==2.10.3
+pydantic[email]==2.10.3
 pydantic-settings==2.6.1
+email-validator>=2.0.0
 
-# Auth
+# Auth (bcrypt<4.1 required for passlib compatibility on Windows)
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt>=4.0,<4.1
 
 # DB: SQLite default (aiosqlite). For PostgreSQL set DATABASE_URL and use asyncpg + psycopg2-binary
 sqlalchemy==2.0.36

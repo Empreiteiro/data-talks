@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 1 week
+    # Optional login: if False, no login required (single guest user). If True, use ADMIN_USERNAME + ADMIN_PASSWORD.
+    enable_login: bool = False
+    admin_username: str = ""
+    admin_password: str = ""
 
     # DB: default SQLite; set DATABASE_URL in .env for PostgreSQL (e.g. postgresql+asyncpg://user:pass@host:5432/dbname)
     database_url: str = "sqlite+aiosqlite:///./data_talks.db"
