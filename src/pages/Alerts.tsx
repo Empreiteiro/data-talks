@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/supabaseClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -27,12 +27,12 @@ const Alerts = () => {
 
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
-    queryFn: () => supabaseClient.listAgents()
+    queryFn: () => dataClient.listAgents()
   });
 
   const { data: alerts = [] } = useQuery({
     queryKey: ['alerts', agentId],
-    queryFn: () => supabaseClient.listAlerts(agentId || undefined)
+    queryFn: () => dataClient.listAlerts(agentId || undefined)
   });
 
   // Set default agent when agents load
@@ -52,7 +52,7 @@ const Alerts = () => {
     
     try {
       setIsCreating(true);
-      await supabaseClient.createAlert(
+      await dataClient.createAlert(
         agentId, 
         alertName, 
         question, 
@@ -238,7 +238,7 @@ const Alerts = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => supabaseClient.deleteAlert(a.id).then(() => {
+                        onClick={() => dataClient.deleteAlert(a.id).then(() => {
                           queryClient.invalidateQueries({ queryKey: ['alerts'] });
                           toast({
                             title: t('alerts.success'), 

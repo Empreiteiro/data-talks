@@ -37,6 +37,7 @@ async def list_sources(agent_id: Optional[str] = None, is_active: Optional[bool]
             "type": s.type,
             "ownerId": s.user_id,
             "agent_id": s.agent_id,
+            "is_active": s.is_active,
             "createdAt": s.created_at.isoformat() if s.created_at else None,
             "metaJSON": s.metadata_,
             "langflowPath": s.langflow_path,
@@ -44,6 +45,46 @@ async def list_sources(agent_id: Optional[str] = None, is_active: Optional[bool]
         }
         for s in rows
     ]
+
+
+class SourceCreate(BaseModel):
+    name: str
+    type: str  # bigquery | google_sheets | sql_database
+    metadata: dict = {}
+    agent_id: Optional[str] = None
+
+
+@router.post("/sources")
+async def create_source(
+    body: SourceCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Create a non-file source (BigQuery, Google Sheets, SQL). Credentials stored locally in metadata."""
+    if body.type not in ("bigquery", "google_sheets", "sql_database"):
+        raise HTTPException(400, "type must be bigquery, google_sheets, or sql_database")
+    source_id = str(uuid.uuid4())
+    source = Source(
+        id=source_id,
+        user_id=user.id,
+        organization_id=user.organization_id or str(uuid.uuid4()),
+        agent_id=body.agent_id,
+        name=body.name,
+        type=body.type,
+        metadata_=body.metadata,
+    )
+    db.add(source)
+    await db.commit()
+    return {
+        "id": source.id,
+        "name": source.name,
+        "type": source.type,
+        "ownerId": source.user_id,
+        "createdAt": source.created_at.isoformat(),
+        "metaJSON": source.metadata_,
+        "langflowPath": None,
+        "langflowName": None,
+    }
 
 
 @router.post("/sources/upload")

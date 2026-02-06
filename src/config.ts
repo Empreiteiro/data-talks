@@ -1,15 +1,19 @@
 /**
  * Backend configuration.
- * When VITE_API_URL is set, the app uses the Python backend (no Supabase/Langflow).
+ * When VITE_API_URL is set (or app is served from backend), use the Python API (no Supabase).
  */
 const API_URL = import.meta.env.VITE_API_URL as string | undefined;
 
-export function getApiUrl(): string | undefined {
-  return API_URL ? API_URL.replace(/\/$/, '') : undefined;
+export function getApiUrl(): string {
+  const fromEnv = API_URL ? API_URL.replace(/\/$/, '') : '';
+  if (fromEnv) return fromEnv;
+  // When app is served from the backend (e.g. localhost:8000), use same origin so API is always used
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
+  return '';
 }
 
 export function usePythonBackend(): boolean {
-  return !!getApiUrl();
+  return true;
 }
 
 const TOKEN_KEY = 'data_talks_token';

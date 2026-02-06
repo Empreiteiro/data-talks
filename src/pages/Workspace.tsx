@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { supabaseClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/supabaseClient";
 import { ChevronRight, History, Layout, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -49,7 +49,7 @@ const ChartImage = ({ imageUrl, qaSessionId, t }: { imageUrl: string; qaSessionI
 
   const loadDashboards = async () => {
     try {
-      const data = await supabaseClient.listDashboards();
+      const data = await dataClient.listDashboards();
       setDashboards(data || []);
     } catch (error: any) {
       toast.error(t('dashboard.loadError'), {
@@ -62,7 +62,7 @@ const ChartImage = ({ imageUrl, qaSessionId, t }: { imageUrl: string; qaSessionI
     if (!selectedDashboardId || !qaSessionId) return;
     
     try {
-      await supabaseClient.addChartToDashboard(selectedDashboardId, qaSessionId);
+      await dataClient.addChartToDashboard(selectedDashboardId, qaSessionId);
       toast.success(t('dashboard.chartAddedSuccess'));
       setAddToDashboardOpen(false);
       setSelectedDashboardId("");
@@ -224,7 +224,7 @@ export default function Workspace() {
   async function checkSources() {
     if (!id) return;
     try {
-      const sources = await supabaseClient.listSources(id);
+      const sources = await dataClient.listSources(id);
       setHasSources(sources && sources.length > 0);
     } catch (error: any) {
       console.error("Erro ao verificar fontes:", error);
@@ -234,7 +234,7 @@ export default function Workspace() {
   async function loadAvailableColumns() {
     if (!id) return;
     try {
-      const sources = await supabaseClient.listSources(id, true);
+      const sources = await dataClient.listSources(id, true);
       const source = sources && sources[0];
       if (source) {
         const metadata = source?.metaJSON as any;
@@ -271,7 +271,7 @@ export default function Workspace() {
   async function loadWarmupQuestions() {
     if (!id) return;
     try {
-      const agent = await supabaseClient.getAgent(id);
+      const agent = await dataClient.getAgent(id);
       setWarmupQuestions(agent?.suggested_questions || []);
     } catch (error: any) {
       console.error("Erro ao carregar perguntas de aquecimento:", error);
@@ -288,7 +288,7 @@ export default function Workspace() {
   async function loadHistory() {
     if (!id || !user) return;
     try {
-      const data = await supabaseClient.listQASessions(id);
+      const data = await dataClient.listQASessions(id);
       setHistory(data || []);
     } catch (error: any) {
       console.error("Erro ao carregar histórico:", error);
@@ -298,7 +298,7 @@ export default function Workspace() {
   const handleDeleteHistory = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await supabaseClient.deleteQASession(sessionId);
+      await dataClient.deleteQASession(sessionId);
       
       // Se a conversa excluída é a atual, limpar o chat
       if (currentSessionId === sessionId) {
@@ -330,7 +330,7 @@ export default function Workspace() {
             });
           }
         }
-        await supabaseClient.updateQASession(currentSessionId, { conversation_history: conversationHistory });
+        await dataClient.updateQASession(currentSessionId, { conversation_history: conversationHistory });
         toast.success("Mensagem excluída");
       } catch (error: any) {
         console.error("Erro ao atualizar histórico:", error);
@@ -384,9 +384,9 @@ export default function Workspace() {
     
     if (qaSession.source_id && id) {
       try {
-        const sources = await supabaseClient.listSources(id);
+        const sources = await dataClient.listSources(id);
         for (const s of sources) {
-          await supabaseClient.updateSource(s.id, { is_active: s.id === qaSession.source_id });
+          await dataClient.updateSource(s.id, { is_active: s.id === qaSession.source_id });
         }
         setSourcesRefreshTrigger(prev => prev + 1);
         loadAvailableColumns();
@@ -419,7 +419,7 @@ export default function Workspace() {
         return;
       }
 
-      const data = await supabaseClient.askQuestion(id, userMessage, currentSessionId || undefined);
+      const data = await dataClient.askQuestion(id, userMessage, currentSessionId || undefined);
 
       setMessages(prev => [...prev, {
         role: "assistant",

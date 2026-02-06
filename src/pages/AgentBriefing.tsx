@@ -12,17 +12,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
 import { agentClient, Agent, Source } from "@/services/agentClient";
-import { supabaseClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/supabaseClient";
 import { useAuth } from "@/hooks/useAuth";
-import { usePlanLimits } from "@/hooks/usePlanLimits";
-import { PlanLimitAlert } from "@/components/PlanLimitAlert";
 
 export default function AgentBriefing() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { limits, usage, planName, canCreateAgent, isLoading: limitsLoading } = usePlanLimits();
-
   const [agent, setAgent] = useState<Agent | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [name, setName] = useState('');
@@ -42,11 +38,11 @@ export default function AgentBriefing() {
   async function loadData() {
     setLoading(true);
     try {
-      const sourcesData = await supabaseClient.listSources();
+      const sourcesData = await dataClient.listSources();
       setSources(sourcesData);
 
       if (isEditing) {
-        const agentsData = await supabaseClient.listAgents();
+        const agentsData = await dataClient.listAgents();
         const agentData = agentsData.find(a => a.id === id);
         if (!agentData) {
           toast.error("Agente não encontrado");
@@ -91,19 +87,12 @@ export default function AgentBriefing() {
       return;
     }
 
-    if (isCreating && !canCreateAgent) {
-      toast.error("Limite de agentes atingido", {
-        description: `Você atingiu o limite de ${limits.agents} agentes do plano ${planName}.`,
-      });
-      return;
-    }
-
     setSaving(true);
     try {
       const filteredQuestions = suggestedQuestions.filter(q => q.trim());
       
       if (isEditing && agent) {
-        await supabaseClient.updateAgent(
+        await dataClient.updateAgent(
           agent.id, 
           name, 
           selectedSourceIds, 
@@ -114,7 +103,7 @@ export default function AgentBriefing() {
           description: "Agente atualizado com sucesso.",
         });
       } else {
-        await supabaseClient.createAgent(
+        await dataClient.createAgent(
           name, 
           selectedSourceIds, 
           description || undefined, 
@@ -140,7 +129,7 @@ export default function AgentBriefing() {
     
     setSaving(true);
     try {
-      await supabaseClient.deleteAgent(agent.id);
+      await dataClient.deleteAgent(agent.id);
       toast.success("Agente removido", {
         description: "Agente removido com sucesso.",
       });
@@ -169,7 +158,7 @@ export default function AgentBriefing() {
     setSuggestedQuestions(updated);
   };
 
-  if (loading || limitsLoading) {
+  if (loading) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -203,20 +192,11 @@ export default function AgentBriefing() {
               Remover
             </Button>
           )}
-          <Button onClick={handleSave} disabled={saving || (isCreating && !canCreateAgent)}>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Salvando...' : isEditing ? 'Atualizar' : 'Criar'}
           </Button>
         </div>
       </div>
-
-      {isCreating && !canCreateAgent && (
-        <PlanLimitAlert
-          type="agents"
-          limit={limits.agents}
-          planName={planName}
-          className="mb-6"
-        />
-      )}
 
       <div className="grid gap-6">
         <Card>

@@ -54,7 +54,11 @@ const NavBar = () => {
                       {t('settings.subscription')}
                     </Link>
                   </DropdownMenuItem>
-                  
+                  <DropdownMenuItem asChild>
+                    <Link to="/flows" className="cursor-pointer">
+                      {language === 'pt' ? 'Fluxos (como funciona)' : 'Flows (how it works)'}
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
                     {t('settings.language')}

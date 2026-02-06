@@ -66,7 +66,21 @@ async def get_current_user(
     # When login is disabled, treat missing/invalid token as guest user
     if not settings.enable_login:
         result = await db.execute(select(User).where(User.id == GUEST_USER_ID))
-        return result.scalar_one_or_none()
+        guest = result.scalar_one_or_none()
+        if guest:
+            return guest
+        # Create guest on demand if missing (e.g. DB existed before guest was added)
+        guest = User(
+            id=GUEST_USER_ID,
+            email="guest@local",
+            hashed_password=hash_password("guest-no-login"),
+            organization_id=GUEST_USER_ID,
+            role="user",
+        )
+        db.add(guest)
+        await db.commit()
+        await db.refresh(guest)
+        return guest
     return None
 
 

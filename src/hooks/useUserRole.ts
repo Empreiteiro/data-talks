@@ -1,24 +1,25 @@
+import { getApiUrl, getToken } from "@/config";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 export type UserRole = 'admin' | 'member' | null;
 
 export const useUserRole = (userId: string | undefined) => {
   return useQuery({
     queryKey: ['user-role', userId],
-    queryFn: async () => {
+    queryFn: async (): Promise<UserRole> => {
       if (!userId) return null;
-      
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data?.role as UserRole;
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${getApiUrl()}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return 'member';
+        const data = await res.json();
+        return (data.role as UserRole) ?? 'member';
+      } catch {
+        return 'member';
+      }
     },
     enabled: !!userId,
   });

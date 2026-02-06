@@ -1,5 +1,6 @@
 
-export const translateSupabaseError = (error: any): string => {
+/** Translates API/backend errors into user-friendly messages. */
+export const translateApiError = (error: any): string => {
   if (!error?.message) return 'Erro desconhecido';
 
   const message = error.message;

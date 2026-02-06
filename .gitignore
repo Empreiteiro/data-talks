@@ -25,3 +25,5 @@ dist-ssr
 .env
 .env.*
 env
+
+backend/data_files

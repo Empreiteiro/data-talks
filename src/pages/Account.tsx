@@ -1,15 +1,10 @@
 import { useState } from "react";
 import { SEO } from "@/components/SEO";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { agentClient } from "@/services/agentClient";
 import UsageMonitoring from "@/components/UsageMonitoring";
-import SubscriptionManagement from "@/components/SubscriptionManagement";
 import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
 import UsersManagement from "@/components/UsersManagement";
-import WorkspaceAccessManagement from "@/components/WorkspaceAccessManagement";
-import { Activity, CreditCard, Database, Settings, FolderOpen, Users, Share2 } from "lucide-react";
+import { Activity, Database, FolderOpen, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
@@ -22,33 +17,14 @@ const Account = () => {
 
   const menuItems = [
     { id: "usage", label: t('account.tabs.usage'), icon: Activity },
-    { id: "subscription", label: t('account.tabs.subscription'), icon: CreditCard },
     { id: "users", label: t('account.tabs.users'), icon: Users },
-    { id: "workspaceAccess", label: t('account.tabs.workspaceAccess'), icon: Share2 },
     { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
     { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
-    { id: "settings", label: t('account.tabs.settings'), icon: Settings },
   ];
-
-  function exportHistory() {
-    const qa = agentClient.listHistory();
-    const blob = new Blob([JSON.stringify(qa, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'qa-history.json'; a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function deleteAll() {
-    if (confirm(t('account.deleteConfirm'))) {
-      localStorage.clear();
-      location.href = '/';
-    }
-  }
 
   return (
     <main className="min-h-screen flex flex-col pb-6">
-      <SEO title={`${t('account.title')} | ${t('nav.tagline')}`} description="Exportar histórico, excluir conta/dados" canonical="/account" />
+      <SEO title={`${t('account.title')} | ${t('nav.tagline')}`} description="Gerenciar conta" canonical="/account" />
       
       <div className="container py-6">
         <h1 className="text-3xl font-semibold mb-6">{t('account.title')}</h1>
@@ -87,11 +63,7 @@ const Account = () => {
         <div className="flex-1 bg-background overflow-hidden">
           {activeSection === "usage" && <UsageMonitoring />}
           
-          {activeSection === "subscription" && <SubscriptionManagement />}
-          
           {activeSection === "users" && <UsersManagement />}
-          
-          {activeSection === "workspaceAccess" && <WorkspaceAccessManagement />}
           
           {activeSection === "sources" && (
             <SourcesPanel 
@@ -101,27 +73,6 @@ const Account = () => {
           )}
           
           {activeSection === "credentials" && <BigQueryCredentialsManager />}
-          
-          {activeSection === "settings" && (
-            <div className="grid gap-6">
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>{t('account.export')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button onClick={exportHistory}>{t('account.exportHistory')}</Button>
-                </CardContent>
-              </Card>
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>{t('account.security')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="destructive" onClick={deleteAll}>{t('account.deleteAccount')}</Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
         </div>
       </div>
 

@@ -3,7 +3,7 @@ import { Plus, FileText, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/services/supabaseClient";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { DataPreviewModal } from "@/components/DataPreviewModal";
@@ -60,29 +60,14 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
   async function loadAllUserSources() {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: sourcesData, error: sourcesError } = await supabase
-        .from('sources')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (sourcesError) throw sourcesError;
-
-      const mappedSources = (sourcesData || []).map(source => ({
-        id: source.id,
-        name: source.name,
-        type: source.type,
-        createdAt: source.created_at,
-        metadata: source.metadata,
+      const sourcesData = await dataClient.listSources();
+      const mappedSources = (sourcesData || []).map((s: { id: string; name: string; type: string; createdAt: string; metaJSON?: any }) => ({
+        id: s.id,
+        name: s.name,
+        type: s.type,
+        createdAt: s.createdAt,
+        metadata: s.metaJSON,
       }));
-      
       setSources(mappedSources);
       setLoading(false);
     } catch (error: any) {
@@ -94,35 +79,25 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
 
   async function loadAgentSourceIds() {
     if (!agentId) return;
-    
     try {
-      // Carregar todas as fontes do agent
-      const { data: sourcesData, error: sourcesError } = await supabase
-        .from('sources')
-        .select('*')
-        .eq('agent_id', agentId)
-        .order('created_at', { ascending: false });
-
-      if (sourcesError) throw sourcesError;
-
-      const mappedSources = (sourcesData || []).map(source => ({
-        id: source.id,
-        name: source.name,
-        type: source.type,
-        createdAt: source.created_at,
-        metadata: source.metadata,
-        is_active: source.is_active,
-        agent_id: source.agent_id,
+      setLoading(true);
+      const sourcesData = await dataClient.listSources(agentId);
+      const mappedSources = (sourcesData || []).map((s: { id: string; name: string; type: string; createdAt: string; metaJSON?: any; is_active?: boolean; agent_id?: string }) => ({
+        id: s.id,
+        name: s.name,
+        type: s.type,
+        createdAt: s.createdAt,
+        metadata: s.metaJSON,
+        is_active: s.is_active,
+        agent_id: s.agent_id,
       }));
-      
-      // Identificar fonte ativa
       const activeSource = mappedSources.find(s => s.is_active);
       setActiveSourceId(activeSource?.id || null);
-      
       setSources(mappedSources);
-      setLoading(false);
     } catch (error: any) {
       console.error("Erro ao carregar sources do agente:", error);
+      toast.error("Erro ao carregar fontes");
+    } finally {
       setLoading(false);
     }
   }
@@ -130,61 +105,33 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
 
   async function handleToggleActive(sourceId: string) {
     if (!agentId) return;
-    
     try {
-      // Desativar todas as fontes do agent
-      await supabase
-        .from('sources')
-        .update({ is_active: false })
-        .eq('agent_id', agentId);
-      
-      // Ativar a fonte selecionada
-      const { error } = await supabase
-        .from('sources')
-        .update({ is_active: true })
-        .eq('id', sourceId);
-        
-      if (error) throw error;
-      
+      const existingSources = await dataClient.listSources(agentId);
+      await Promise.all(
+        existingSources.map((s: { id: string }) =>
+          dataClient.updateSource(s.id, { is_active: s.id === sourceId })
+        )
+      );
       setActiveSourceId(sourceId);
       toast.success("Fonte ativada com sucesso");
-      
-      // Recarregar as sources
       loadAgentSourceIds();
-      
-      // Notificar o Workspace para recarregar os available columns
-      if (onSourceActivated) {
-        onSourceActivated();
-      }
+      if (onSourceActivated) onSourceActivated();
     } catch (error: any) {
-      toast.error("Erro ao ativar fonte", {
-        description: error.message
-      });
+      toast.error("Erro ao ativar fonte", { description: error.message });
     }
   }
 
   async function handleDeleteSource(sourceId: string) {
     try {
-      // Remover a fonte da tabela sources
-      const { error: deleteError } = await supabase
-        .from('sources')
-        .delete()
-        .eq('id', sourceId);
-
-      if (deleteError) throw deleteError;
-
+      await dataClient.deleteSource(sourceId);
       toast.success("Fonte removida com sucesso");
-      
-      // Recarregar as sources
       if (agentId) {
         loadAgentSourceIds();
       } else {
         loadAllUserSources();
       }
     } catch (error: any) {
-      toast.error("Erro ao remover fonte", {
-        description: error.message,
-      });
+      toast.error("Erro ao remover fonte", { description: error.message });
     }
   }
 

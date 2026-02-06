@@ -37,24 +37,30 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
     token = create_access_token(data={"sub": user.id})
-    return Token(access_token=token, user=UserOut(id=user.id, email=user.email, role=user.role, organization_id=user.organization_id))
+    user_out = UserOut(id=user.id, email=user.email, role=user.role, organization_id=user.organization_id)
+    return Token(access_token=token, user=user_out.model_dump())
 
 
 @router.post("/login")
 async def login(body: LoginBody, db: AsyncSession = Depends(get_db)):
     settings = get_settings()
     if settings.enable_login:
-        # Admin login: username + password from env
-        if not body.username or not body.password:
+        # Admin login: username + password from env (strip input to match env)
+        username = (body.username or "").strip()
+        password = (body.password or "").strip()
+        if not username or not password:
             raise HTTPException(400, "Username and password required")
-        if not _constant_time_compare(body.username, settings.admin_username) or not _constant_time_compare(body.password, settings.admin_password):
+        if not settings.admin_username or not settings.admin_password:
+            raise HTTPException(500, "ADMIN_USERNAME and ADMIN_PASSWORD must be set in backend/.env when ENABLE_LOGIN=true")
+        if not _constant_time_compare(username, settings.admin_username) or not _constant_time_compare(password, settings.admin_password):
             raise HTTPException(401, "Invalid username or password")
         r = await db.execute(select(User).where(User.id == ADMIN_USER_ID))
         user = r.scalar_one_or_none()
         if not user:
             raise HTTPException(500, "Admin user not initialized")
         token = create_access_token(data={"sub": user.id})
-        return Token(access_token=token, user=UserOut(id=user.id, email=user.email, role=user.role, organization_id=user.organization_id))
+        user_out = UserOut(id=user.id, email=user.email, role=user.role, organization_id=user.organization_id)
+        return Token(access_token=token, user=user_out.model_dump())
     # Email + password (when login not required)
     if not body.email or not body.password:
         raise HTTPException(400, "Email and password required")
@@ -63,7 +69,8 @@ async def login(body: LoginBody, db: AsyncSession = Depends(get_db)):
     if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(401, "Invalid email or password")
     token = create_access_token(data={"sub": user.id})
-    return Token(access_token=token, user=UserOut(id=user.id, email=user.email, role=user.role, organization_id=user.organization_id))
+    user_out = UserOut(id=user.id, email=user.email, role=user.role, organization_id=user.organization_id)
+    return Token(access_token=token, user=user_out.model_dump())
 
 
 @router.get("/me", response_model=UserOut)

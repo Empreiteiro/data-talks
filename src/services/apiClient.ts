@@ -3,16 +3,15 @@
  * Used when VITE_API_URL is set; replaces Supabase/Langflow.
  */
 import { getApiUrl, getToken } from '@/config';
-import { translateSupabaseError } from '@/utils/errorHandling';
 
 async function api<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
   const base = getApiUrl();
-  if (!base) throw new Error('VITE_API_URL is not set');
+  const url = base ? `${base}${path}` : path;
   const token = getToken();
-  const res = await fetch(`${base}${path}`, {
+  const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -29,9 +28,9 @@ async function api<T>(
 
 async function apiFormData<T>(path: string, formData: FormData): Promise<T> {
   const base = getApiUrl();
-  if (!base) throw new Error('VITE_API_URL is not set');
+  const url = base ? `${base}${path}` : path;
   const token = getToken();
-  const res = await fetch(`${base}${path}`, {
+  const res = await fetch(url, {
     method: 'POST',
     body: formData,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -49,12 +48,14 @@ export const apiClient = {
     if (agentId) params.set('agent_id', agentId);
     if (isActive !== undefined) params.set('is_active', String(isActive));
     const path = params.toString() ? `/api/sources?${params}` : '/api/sources';
-    const data = await api<Array<{ id: string; name: string; type: string; ownerId: string; agent_id?: string; createdAt: string; metaJSON: any; langflowPath?: string; langflowName?: string }>>(path);
+    const data = await api<Array<{ id: string; name: string; type: string; ownerId: string; agent_id?: string; is_active?: boolean; createdAt: string; metaJSON: any; langflowPath?: string; langflowName?: string }>>(path);
     return (data || []).map((s) => ({
       id: s.id,
       name: s.name,
       type: s.type as 'csv' | 'xlsx' | 'bigquery' | 'google_sheets' | 'sql_database',
       ownerId: s.ownerId,
+      agent_id: s.agent_id,
+      is_active: s.is_active,
       createdAt: s.createdAt,
       metaJSON: s.metaJSON,
       langflowPath: s.langflowPath,
@@ -68,6 +69,21 @@ export const apiClient = {
 
   async deleteSource(id: string) {
     await api(`/api/sources/${id}`, { method: 'DELETE' });
+  },
+
+  async createSource(name: string, type: 'bigquery' | 'google_sheets' | 'sql_database', metadata: Record<string, unknown>, agentId?: string) {
+    const data = await api<{ id: string; name: string; type: string; ownerId: string; createdAt: string; metaJSON: any }>('/api/sources', {
+      method: 'POST',
+      body: JSON.stringify({ name, type, metadata, agent_id: agentId ?? null }),
+    });
+    return {
+      id: data.id,
+      name: data.name,
+      type: data.type,
+      metadata: data.metaJSON,
+      user_id: data.ownerId,
+      created_at: data.createdAt,
+    };
   },
 
   async getAgent(id: string) {

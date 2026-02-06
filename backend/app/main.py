@@ -64,6 +64,9 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
     await _ensure_single_user()
+    settings = get_settings()
+    import logging
+    logging.getLogger("uvicorn.error").info(f"ENABLE_LOGIN={settings.enable_login}")
     yield
 
 

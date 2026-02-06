@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { X, Plus } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/services/supabaseClient";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -34,18 +34,16 @@ export function AgentSettingsModal({
     }
   }, [open, agentId]);
 
+  const [agentName, setAgentName] = useState("");
+  const [sourceIds, setSourceIds] = useState<string[]>([]);
+
   const loadSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('instructions, suggested_questions')
-        .eq('id', agentId)
-        .single();
-
-      if (error) throw error;
-
-      setInstructions(data?.instructions || "");
-      setWarmupQuestions(data?.suggested_questions || []);
+      const agent = await dataClient.getAgent(agentId);
+      setInstructions(agent?.description || "");
+      setWarmupQuestions(agent?.suggested_questions || []);
+      setAgentName(agent?.name || "");
+      setSourceIds(agent?.source_ids || []);
     } catch (error: any) {
       console.error("Erro ao carregar configurações:", error);
       toast.error(t('agentSettings.loadError'));
@@ -55,17 +53,7 @@ export function AgentSettingsModal({
   const handleSave = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('agents')
-        .update({
-          instructions,
-          suggested_questions: warmupQuestions,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', agentId);
-
-      if (error) throw error;
-
+      await dataClient.updateAgent(agentId, agentName, sourceIds, instructions, warmupQuestions);
       toast.success(t('agentSettings.saveSuccess'));
       onSettingsUpdated?.();
       onOpenChange(false);

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { supabaseClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/supabaseClient";
 import { ArrowLeft, Layout, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -75,7 +75,7 @@ const Dashboard = () => {
     if (!id) return;
     
     try {
-      const data = await supabaseClient.getDashboard(id);
+      const data = await dataClient.getDashboard(id);
       setDashboard(data);
     } catch (error: any) {
       toast.error(t('dashboard.loadError'), {
@@ -98,7 +98,7 @@ const Dashboard = () => {
     if (!dashboard || !editName.trim()) return;
     
     try {
-      await supabaseClient.updateDashboard(
+      await dataClient.updateDashboard(
         dashboard.id,
         editName.trim(),
         editDescription.trim() || undefined
@@ -122,7 +122,7 @@ const Dashboard = () => {
     }
     
     try {
-      await supabaseClient.deleteDashboard(dashboard.id);
+      await dataClient.deleteDashboard(dashboard.id);
       toast.success(t('dashboard.deleteSuccess'));
       navigate('/');
     } catch (error: any) {
@@ -143,7 +143,7 @@ const Dashboard = () => {
     if (!selectedChart) return;
     
     try {
-      await supabaseClient.updateDashboardChart(selectedChart.id, {
+      await dataClient.updateDashboardChart(selectedChart.id, {
         title: chartTitle.trim() || undefined,
         description: chartDescription.trim() || undefined
       });
@@ -164,7 +164,7 @@ const Dashboard = () => {
     }
     
     try {
-      await supabaseClient.removeChartFromDashboard(chartId);
+      await dataClient.removeChartFromDashboard(chartId);
       toast.success(t('dashboard.chartRemovedSuccess'));
       loadDashboard();
     } catch (error: any) {

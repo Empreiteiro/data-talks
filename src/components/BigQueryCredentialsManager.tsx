@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/services/supabaseClient";
 import { Trash2, Upload, Key } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -30,8 +30,6 @@ import {
 interface Credential {
   id: string;
   name: string;
-  langflowPath: string;
-  langflowName: string;
   createdAt: string;
   projectId?: string;
 }
@@ -50,31 +48,14 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
 
   const fetchCredentials = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('sources')
-        .select('id, name, langflow_path, langflow_name, created_at, metadata')
-        .eq('user_id', user.id)
-        .eq('type', 'bigquery')
-        .not('langflow_path', 'is', null)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const formattedCredentials: Credential[] = (data || []).map(item => {
-        const metadata = item.metadata as Record<string, any> | null;
-        return {
-          id: item.id,
-          name: item.name,
-          langflowPath: item.langflow_path || '',
-          langflowName: item.langflow_name || '',
-          createdAt: item.created_at,
-          projectId: metadata?.project || metadata?.project_id
-        };
-      });
-
+      const sources = await dataClient.listSources();
+      const bigquery = sources.filter((s: { type: string }) => s.type === 'bigquery');
+      const formattedCredentials: Credential[] = bigquery.map((s: { id: string; name: string; createdAt: string; metaJSON?: any }) => ({
+        id: s.id,
+        name: s.name,
+        createdAt: s.createdAt,
+        projectId: s.metaJSON?.projectId || s.metaJSON?.project_id,
+      }));
       setCredentials(formattedCredentials);
     } catch (error) {
       console.error('Error fetching credentials:', error);
@@ -106,7 +87,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
     setUploading(true);
     try {
       const credentialsJson = await credentialsFile.text();
-      let parsedCredentials;
+      let parsedCredentials: { project_id?: string };
       try {
         parsedCredentials = JSON.parse(credentialsJson);
       } catch {
@@ -114,49 +95,16 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
         return;
       }
 
-      // Upload to Langflow
-      const formData = new FormData();
-      formData.append('file', credentialsFile);
-
-      const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
-        'upload-to-langflow',
-        { body: formData }
+      await dataClient.createSource(
+        credentialName.trim(),
+        'bigquery',
+        {
+          credentialsContent: credentialsJson,
+          projectId: parsedCredentials.project_id || '',
+          datasetId: '',
+          tables: [],
+        }
       );
-
-      if (langflowError) throw langflowError;
-      if (!langflowData?.path) throw new Error('Falha ao fazer upload para Langflow');
-
-      // Save to Supabase
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
-
-      // Get user's organization
-      const { data: userRole } = await supabase
-        .from('user_roles')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!userRole?.organization_id) throw new Error('Organização não encontrada');
-
-      const { error: dbError } = await supabase
-        .from('sources')
-        .insert({
-          user_id: user.id,
-          organization_id: userRole.organization_id,
-          name: credentialName,
-          type: 'bigquery',
-          langflow_path: langflowData.path,
-          langflow_name: langflowData.name,
-          metadata: {
-            project: parsedCredentials.project_id,
-            project_id: parsedCredentials.project_id,
-            credentials_content: langflowData.credentialsContent,
-            supabase_storage_path: langflowData.supabaseStoragePath
-          }
-        });
-
-      if (dbError) throw dbError;
 
       toast.success(t('bigquery.success.added'));
       setCredentialName('');
@@ -165,9 +113,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       onSourceAdded?.();
     } catch (error: any) {
       console.error('Error uploading credential:', error);
-      toast.error(t('bigquery.errors.uploadFailed'), {
-        description: error.message
-      });
+      toast.error(t('bigquery.errors.uploadFailed'), { description: error.message });
     } finally {
       setUploading(false);
     }
@@ -175,20 +121,12 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('sources')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await dataClient.deleteSource(id);
       toast.success(t('bigquery.success.deleted'));
       fetchCredentials();
     } catch (error: any) {
       console.error('Error deleting credential:', error);
-      toast.error(t('bigquery.errors.deleteFailed'), {
-        description: error.message
-      });
+      toast.error(t('bigquery.errors.deleteFailed'), { description: error.message });
     }
   };
 
@@ -263,7 +201,6 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
                 <TableRow>
                   <TableHead>{t('bigquery.configured.name')}</TableHead>
                   <TableHead>{t('bigquery.configured.projectId')}</TableHead>
-                  <TableHead>{t('bigquery.configured.langflowPath')}</TableHead>
                   <TableHead>{t('bigquery.configured.createdAt')}</TableHead>
                   <TableHead className="text-right">{t('bigquery.configured.actions')}</TableHead>
                 </TableRow>
@@ -274,9 +211,6 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
                     <TableCell className="font-medium">{cred.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {cred.projectId || 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-sm font-mono text-muted-foreground">
-                      {cred.langflowPath || 'N/A'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(cred.createdAt).toLocaleDateString()}

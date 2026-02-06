@@ -1,60 +1,23 @@
-import { useState } from "react";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Check } from "lucide-react";
 
 const Pricing = () => {
   const { t, language } = useLanguage();
-  const { session } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
 
-  const createCheckout = async (plan: string) => {
-    if (!session) {
-      toast({
-        title: language === 'pt' ? 'Login necessário' : 'Login required',
-        description: language === 'pt' 
-          ? 'Você precisa estar logado para assinar' 
-          : 'You need to be logged in to subscribe',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
-          plan,
-          language: language === 'pt' ? 'pt' : 'en'
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-      
-      // Open Stripe checkout in new tab
-      window.open(data.url, '_blank');
-    } catch (error) {
-      console.error('Error creating checkout:', error);
-      toast({
-        title: language === 'pt' ? 'Erro' : 'Error',
-        description: language === 'pt' 
-          ? 'Erro ao criar checkout' 
-          : 'Error creating checkout',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+  const createCheckout = async (_plan: string) => {
+    toast({
+      title: language === 'pt' ? 'Indisponível' : 'Unavailable',
+      description: language === 'pt'
+        ? 'Esta versão é open-source. Não há planos pagos.'
+        : 'This is the open-source version. No paid plans.',
+      variant: 'default',
+    });
   };
 
   // Pro plan details
@@ -148,7 +111,7 @@ const Pricing = () => {
                 variant="default"
                 size="lg"
                 onClick={() => createCheckout(proPlan.planType)}
-                disabled={loading}
+                disabled={false}
               >
                 {language === 'pt' ? 'Assinar Agora' : 'Subscribe Now'}
               </Button>

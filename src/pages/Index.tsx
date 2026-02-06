@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { supabaseClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/supabaseClient";
 import { BarChart3, Grid3x3, Layout, List, MoreVertical, Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import Auth from "@/pages/Auth";
 import { toast } from "sonner";
 interface Agent {
   id: string;
@@ -28,6 +29,10 @@ interface Dashboard {
   created_at: string;
   chart_count?: number;
 }
+
+/** Set to true to show Dashboard section on the home page. */
+const SHOW_DASHBOARDS = false;
+
 const Index = () => {
   const { isAuthenticated, initializing, loginRequired } = useAuth();
   const { t } = useLanguage();
@@ -47,7 +52,7 @@ const Index = () => {
     window.scrollTo(0, 0);
     if (!initializing && isAuthenticated) {
       loadAgents();
-      loadDashboards();
+      if (SHOW_DASHBOARDS) loadDashboards();
     } else if (!initializing) {
       setLoading(false);
     }
@@ -55,7 +60,7 @@ const Index = () => {
 
   async function loadAgents() {
     try {
-      const data = await supabaseClient.listAgents();
+      const data = await dataClient.listAgents();
       setAgents(data || []);
     } catch (error: any) {
       toast.error("Erro ao carregar workspaces", {
@@ -68,8 +73,8 @@ const Index = () => {
 
   async function loadDashboards() {
     try {
-      const data = await supabaseClient.listDashboards();
-      setDashboards((data || []) as Dashboard[]);
+      const data = await dataClient.listDashboards();
+      setDashboards((data || []) as unknown as Dashboard[]);
     } catch (error: any) {
       toast.error(t('dashboard.loadError'), {
         description: error.message
@@ -78,7 +83,7 @@ const Index = () => {
   }
   const handleCreateWorkspace = async () => {
     try {
-      const newAgent = await supabaseClient.createAgent(t('workspace.newWorkspace'), [], "", []);
+      const newAgent = await dataClient.createAgent(t('workspace.newWorkspace'), [], "", []) as { id: string };
       navigate(`/workspace/${newAgent.id}?openAddSource=true`);
     } catch (error: any) {
       toast.error(t('workspace.errorCreatingWorkspace'), {
@@ -91,10 +96,10 @@ const Index = () => {
     if (!newDashboardName.trim()) return;
     
     try {
-      const dashboard = await supabaseClient.createDashboard(
+      const dashboard = await dataClient.createDashboard(
         newDashboardName.trim(),
         newDashboardDescription.trim() || undefined
-      );
+      ) as { id: string };
       
       toast.success(t('dashboard.createSuccess'));
       setCreateDashboardDialogOpen(false);
@@ -117,7 +122,7 @@ const Index = () => {
     }
     
     try {
-      await supabaseClient.deleteDashboard(dashboardId);
+      await dataClient.deleteDashboard(dashboardId);
       toast.success(t('dashboard.deleteSuccess'));
       loadDashboards();
     } catch (error: any) {
@@ -135,7 +140,7 @@ const Index = () => {
   const handleConfirmRename = async () => {
     if (!selectedAgent || !newName.trim()) return;
     try {
-      await supabaseClient.updateAgent(selectedAgent.id, newName, selectedAgent.source_ids, selectedAgent.description || "", []);
+      await dataClient.updateAgent(selectedAgent.id, newName, selectedAgent.source_ids, selectedAgent.description || "", []);
       toast.success(t('workspace.renameSuccess'));
       loadAgents();
       setRenameDialogOpen(false);
@@ -151,7 +156,7 @@ const Index = () => {
       return;
     }
     try {
-      await supabaseClient.deleteAgent(agentId);
+      await dataClient.deleteAgent(agentId);
       toast.success(t('workspace.deleteSuccess'));
       loadAgents();
     } catch (error: any) {
@@ -177,7 +182,7 @@ const Index = () => {
     }
   });
   if (!isAuthenticated && !initializing && loginRequired) {
-    return <Navigate to="/login" replace />;
+    return <Auth />;
   }
   if (loading || initializing) {
     return <div className="min-h-screen flex items-center justify-center">
@@ -190,7 +195,7 @@ const Index = () => {
   return <div className="min-h-screen bg-background">
       <SEO title={t('workspace.title')} description={t('workspace.description')} canonical="/" />
       
-      <div className="w-full max-w-7xl mx-auto px-6 py-8">
+      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center mb-8">
           <h1 className="text-2xl font-semibold">{t('workspace.title')}</h1>
 
@@ -230,7 +235,7 @@ const Index = () => {
           </div>
         </div>
 
-        {viewMode === "grid" ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {viewMode === "grid" ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
             {/* Create new card */}
             <Card className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]" onClick={handleCreateWorkspace}>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
@@ -318,7 +323,9 @@ const Index = () => {
               </Card>)}
           </div>}
 
-        {/* Dashboards Section */}
+        {SHOW_DASHBOARDS && (
+        <>
+        {/* Dashboards Section - hidden when SHOW_DASHBOARDS is false */}
         <div className="mt-16">
           <div className="flex items-center mb-8">
             <h1 className="text-2xl font-semibold">{t('dashboard.title')}</h1>
@@ -332,7 +339,7 @@ const Index = () => {
           </div>
 
           {viewMode === "grid" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
               {/* Create new dashboard card */}
               <Card 
                 className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]" 
@@ -456,6 +463,8 @@ const Index = () => {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* Rename Dialog */}
@@ -488,7 +497,7 @@ const Index = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Create Dashboard Dialog */}
+      {SHOW_DASHBOARDS && (
       <Dialog open={createDashboardDialogOpen} onOpenChange={setCreateDashboardDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -537,6 +546,7 @@ const Index = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
     </div>;
 };
 export default Index;

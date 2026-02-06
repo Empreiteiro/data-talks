@@ -1,16 +1,14 @@
-import { useState, useEffect } from "react";
-import { Upload, Loader2, Database } from "lucide-react";
-import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabaseClient } from "@/services/supabaseClient";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/services/supabaseClient";
+import { Loader2, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 interface AddSourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,12 +28,12 @@ export function AddSourceModal({
   const [uploading, setUploading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [existingCredentials, setExistingCredentials] = useState<Array<{
-    langflowPath: string;
-    langflowName: string;
+    id: string;
     sourceName: string;
-    metadata?: any;
-    supabaseStoragePath?: string;
     credentialsContent?: string;
+    projectId?: string;
+    datasetId?: string;
+    tables?: string[];
   }>>([]);
   const [useExistingCredential, setUseExistingCredential] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<string>("");
@@ -43,17 +41,13 @@ export function AddSourceModal({
     credentialsFile: null as File | null,
     projectId: '',
     datasetId: '',
-    tables: ''
+    tables: ''  // comma-separated table names, stored locally
   });
-
-  // New state for progressive selection
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [availableProjects, setAvailableProjects] = useState<Array<{id: string, name: string}>>([]);
   const [availableDatasets, setAvailableDatasets] = useState<Array<{id: string, name: string}>>([]);
   const [availableTables, setAvailableTables] = useState<Array<{id: string, name: string, type: string}>>([]);
   const [selectedTable, setSelectedTable] = useState<string>("");
-  const [loadingProjects, setLoadingProjects] = useState(false);
-  const [loadingDatasets, setLoadingDatasets] = useState(false);
-  const [loadingTables, setLoadingTables] = useState(false);
 
   // Google Sheets state
   const [sheetsUrl, setSheetsUrl] = useState("");
@@ -76,29 +70,17 @@ export function AddSourceModal({
 
   const fetchExistingCredentials = async () => {
     try {
-      const { data: sources, error } = await supabase
-        .from('sources')
-        .select('name, langflow_path, langflow_name, metadata')
-        .eq('type', 'bigquery')
-        .not('langflow_path', 'is', null);
-
-      if (error) throw error;
-
-      const credentials = sources?.map(source => ({
-        langflowPath: source.langflow_path!,
-        langflowName: source.langflow_name || source.langflow_path!.split('/').pop()!,
-        sourceName: source.langflow_name || source.langflow_path!.split('/').pop()!.replace('.json', ''),
-        metadata: source.metadata,
-        supabaseStoragePath: (source.metadata as any)?.supabase_storage_path,
-        credentialsContent: (source.metadata as any)?.credentials_content
-      })) || [];
-
-      // Remove duplicates based on langflowPath
-      const uniqueCredentials = credentials.filter((cred, index, self) =>
-        index === self.findIndex((c) => c.langflowPath === cred.langflowPath)
-      );
-
-      setExistingCredentials(uniqueCredentials);
+      const sources = await dataClient.listSources();
+      const bigquery = (sources || []).filter((s: { type: string }) => s.type === 'bigquery');
+      const credentials = bigquery.map((s: { id: string; name: string; metaJSON?: any }) => ({
+        id: s.id,
+        sourceName: s.name,
+        credentialsContent: s.metaJSON?.credentialsContent,
+        projectId: s.metaJSON?.projectId,
+        datasetId: s.metaJSON?.datasetId,
+        tables: s.metaJSON?.tables,
+      }));
+      setExistingCredentials(credentials);
     } catch (error) {
       console.error('Error fetching existing credentials:', error);
     }
@@ -130,42 +112,34 @@ export function AddSourceModal({
   const handleFiles = async (files: File[]) => {
     setUploading(true);
     try {
-      const uploadPromises = files.map(file => supabaseClient.uploadFile(file));
+      const uploadPromises = files.map(file => dataClient.uploadFile(file));
       const results = await Promise.all(uploadPromises);
       
       console.log('Upload results:', results);
       
-      // Se estiver dentro de um workspace, associar o CSV ao agent e ativá-lo
-      if (agentId && results.length > 0 && results[0]?.id) {
+      // Se estiver dentro de um workspace, associar as fontes ao agent via API
+      if (agentId && results.length > 0) {
         try {
-          // Desativar todas as fontes do agent
-          await supabase
-            .from('sources')
-            .update({ is_active: false })
-            .eq('agent_id', agentId);
-          
-          // Associar e ativar a nova fonte
-          const { error: updateError } = await supabase
-            .from('sources')
-            .update({ 
+          const newIds = results.map((r) => r?.id).filter(Boolean) as string[];
+          const existingSources = await dataClient.listSources(agentId);
+          // Desativar fontes já existentes do agent
+          await Promise.all(
+            existingSources.map((s) => dataClient.updateSource(s.id, { is_active: false }))
+          );
+          // Associar e ativar a primeira nova fonte; demais ficam inativas
+          for (let i = 0; i < newIds.length; i++) {
+            await dataClient.updateSource(newIds[i], {
               agent_id: agentId,
-              is_active: true 
-            })
-            .eq('id', results[0].id);
-          
-          if (updateError) {
-            console.error('Error associating source to agent:', updateError);
-          } else {
-            console.log('Source successfully associated and activated:', agentId);
+              is_active: i === 0,
+            });
           }
         } catch (err) {
-          console.error('Error updating source agent_id:', err);
+          console.error('Error associating source to agent:', err);
         }
       }
-      
+
       toast.success(t('addSource.filesUploaded'));
-      
-      // Passar o ID da primeira fonte criada (workspace suporta apenas 1 fonte por vez)
+
       if (results.length > 0 && results[0]?.id) {
         onSourceAdded?.(results[0].id);
       } else {
@@ -183,156 +157,21 @@ export function AddSourceModal({
     }
   };
 
-  const listBigQueryResources = async (
-    action: 'projects' | 'datasets' | 'tables',
-    options: {
-      credentials?: string;
-      supabaseStoragePath?: string;
-      credentialsContent?: string;
-      projectId?: string;
-      datasetId?: string;
-    } = {}
-  ) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('list-bigquery-resources', {
-        body: {
-          action,
-          ...options,
-        }
-      });
-
-      if (error) throw error;
-      return data;
-    } catch (error: any) {
-      console.error(`Error listing ${action}:`, error);
-      toast.error(`Erro ao buscar ${action}`, {
-        description: error.message
-      });
-      throw error;
-    }
+  const handleCredentialsUpload = (file: File) => {
+    setBigQueryData(prev => ({ ...prev, credentialsFile: file, projectId: '', datasetId: '', tables: '' }));
   };
 
-  const handleCredentialsUpload = async (file: File) => {
-    setLoadingProjects(true);
-    setAvailableProjects([]);
-    setAvailableDatasets([]);
-    setAvailableTables([]);
-    setBigQueryData({ ...bigQueryData, credentialsFile: file, projectId: '', datasetId: '' });
-    setSelectedTable("");
-
-    try {
-      const credentialsText = await file.text();
-      const data = await listBigQueryResources('projects', { credentials: credentialsText });
-      setAvailableProjects(data.projects || []);
-      
-      if (data.projects?.length === 1) {
-        // Auto-select if only one project
-        setBigQueryData(prev => ({ ...prev, projectId: data.projects[0].id }));
-        handleProjectSelect(data.projects[0].id, credentialsText);
-      }
-    } catch (error) {
-      console.error('Error loading projects:', error);
-    } finally {
-      setLoadingProjects(false);
+  const handleExistingCredentialSelect = (credId: string) => {
+    setSelectedCredential(credId);
+    const selectedCred = existingCredentials.find(c => c.id === credId);
+    if (selectedCred) {
+      setBigQueryData(prev => ({
+        ...prev,
+        projectId: selectedCred.projectId || '',
+        datasetId: selectedCred.datasetId || '',
+        tables: Array.isArray(selectedCred.tables) ? selectedCred.tables.join(', ') : '',
+      }));
     }
-  };
-
-  const handleExistingCredentialSelect = async (langflowPath: string) => {
-    setSelectedCredential(langflowPath);
-    setLoadingProjects(true);
-    setAvailableProjects([]);
-    setAvailableDatasets([]);
-    setAvailableTables([]);
-    setBigQueryData({ ...bigQueryData, projectId: '', datasetId: '' });
-    setSelectedTable("");
-
-    try {
-      const selectedCred = existingCredentials.find(c => c.langflowPath === langflowPath);
-      if (!selectedCred) return;
-
-      const data = await listBigQueryResources('projects', {
-        supabaseStoragePath: selectedCred.supabaseStoragePath,
-        credentialsContent: selectedCred.credentialsContent,
-      });
-      
-      setAvailableProjects(data.projects || []);
-      
-      if (data.projects?.length === 1) {
-        setBigQueryData(prev => ({ ...prev, projectId: data.projects[0].id }));
-        handleProjectSelect(data.projects[0].id, undefined, selectedCred);
-      }
-    } catch (error) {
-      console.error('Error loading projects:', error);
-    } finally {
-      setLoadingProjects(false);
-    }
-  };
-
-  const handleProjectSelect = async (
-    projectId: string, 
-    credentials?: string,
-    selectedCred?: any
-  ) => {
-    setBigQueryData(prev => ({ ...prev, projectId, datasetId: '' }));
-    setAvailableDatasets([]);
-    setAvailableTables([]);
-    setSelectedTable("");
-    setLoadingDatasets(true);
-
-    try {
-      const options: any = { projectId };
-      
-      if (credentials) {
-        options.credentials = credentials;
-      } else if (selectedCred) {
-        options.supabaseStoragePath = selectedCred.supabaseStoragePath;
-        options.credentialsContent = selectedCred.credentialsContent;
-      } else if (bigQueryData.credentialsFile) {
-        options.credentials = await bigQueryData.credentialsFile.text();
-      }
-
-      const data = await listBigQueryResources('datasets', options);
-      setAvailableDatasets(data.datasets || []);
-    } catch (error) {
-      console.error('Error loading datasets:', error);
-    } finally {
-      setLoadingDatasets(false);
-    }
-  };
-
-  const handleDatasetSelect = async (datasetId: string) => {
-    setBigQueryData(prev => ({ ...prev, datasetId }));
-    setAvailableTables([]);
-    setSelectedTable("");
-    setLoadingTables(true);
-
-    try {
-      const options: any = { 
-        projectId: bigQueryData.projectId, 
-        datasetId 
-      };
-
-      if (useExistingCredential) {
-        const selectedCred = existingCredentials.find(c => c.langflowPath === selectedCredential);
-        if (selectedCred) {
-          options.supabaseStoragePath = selectedCred.supabaseStoragePath;
-          options.credentialsContent = selectedCred.credentialsContent;
-        }
-      } else if (bigQueryData.credentialsFile) {
-        options.credentials = await bigQueryData.credentialsFile.text();
-      }
-
-      const data = await listBigQueryResources('tables', options);
-      setAvailableTables(data.tables || []);
-    } catch (error) {
-      console.error('Error loading tables:', error);
-    } finally {
-      setLoadingTables(false);
-    }
-  };
-
-  const handleTableSelect = (tableId: string) => {
-    setSelectedTable(tableId);
   };
 
   const handleBigQueryConnect = async () => {
@@ -340,174 +179,89 @@ export function AddSourceModal({
       toast.error('Por favor, selecione ou envie uma credencial');
       return;
     }
-    
     if (useExistingCredential && !selectedCredential) {
       toast.error('Por favor, selecione uma credencial existente');
       return;
     }
-    
     if (!bigQueryData.projectId || !bigQueryData.datasetId) {
-      toast.error('Por favor, preencha todos os campos obrigatórios');
-      return;
-    }
-
-    if (!selectedTable) {
-      toast.error('Por favor, selecione uma tabela');
+      toast.error('Por favor, preencha Project ID e Dataset ID');
       return;
     }
 
     setConnecting(true);
     try {
-      let langflowPath = null;
-      let langflowName = null;
-      let supabaseStoragePath = null;
-      let credentialsContent = null;
-      let credentialsJson = '';
-
+      let credentialsContent: string | undefined;
       if (useExistingCredential) {
-        // Use existing credential
-        const selectedCred = existingCredentials.find(c => c.langflowPath === selectedCredential);
-        if (selectedCred) {
-          langflowPath = selectedCred.langflowPath;
-          langflowName = selectedCred.langflowName;
-          supabaseStoragePath = selectedCred.supabaseStoragePath;
-          credentialsContent = selectedCred.credentialsContent;
-          // We don't need the actual credentials JSON when reusing
-          credentialsJson = '';
-        }
+        const selectedCred = existingCredentials.find(c => c.id === selectedCredential);
+        credentialsContent = selectedCred?.credentialsContent;
       } else {
-        // Upload new credential
-        credentialsJson = await bigQueryData.credentialsFile!.text();
-
-        try {
-          const formData = new FormData();
-          formData.append('file', bigQueryData.credentialsFile!);
-          
-          const { data: langflowData, error: langflowError } = await supabase.functions.invoke(
-            'upload-to-langflow',
-            {
-              body: formData,
-            }
-          );
-
-          if (langflowError) {
-            console.error('Langflow upload error:', langflowError);
-          } else if (langflowData) {
-            langflowPath = langflowData.path;
-            langflowName = langflowData.name;
-            supabaseStoragePath = langflowData.supabaseStoragePath;
-            credentialsContent = langflowData.credentialsContent;
-            console.log('Credentials uploaded to Langflow:', { 
-              path: langflowPath, 
-              name: langflowName,
-              supabaseStoragePath,
-              hasCredentialsContent: !!credentialsContent
-            });
-          }
-        } catch (error) {
-          console.error('Error uploading to Langflow:', error);
-          // Continue with connection even if Langflow upload fails
-        }
+        credentialsContent = await bigQueryData.credentialsFile!.text();
+      }
+      if (!credentialsContent) {
+        toast.error('Credenciais não disponíveis');
+        return;
       }
 
-      // Call BigQuery connect edge function with Langflow info
-      const { data, error } = await supabase.functions.invoke('bigquery-connect', {
-        body: {
-          credentials: credentialsJson,
-          projectId: bigQueryData.projectId,
-          datasetId: bigQueryData.datasetId,
-          tables: [selectedTable],
-          langflowPath: langflowPath,
-          langflowName: langflowName,
-          supabaseStoragePath: supabaseStoragePath,
-          credentialsContent: credentialsContent,
-          agentId: agentId
-        }
-      });
+      const tablesList = bigQueryData.tables
+        ? bigQueryData.tables.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+      const name = `BigQuery ${bigQueryData.projectId}/${bigQueryData.datasetId}`;
+      const metadata = {
+        credentialsContent,
+        projectId: bigQueryData.projectId,
+        datasetId: bigQueryData.datasetId,
+        tables: tablesList,
+      };
 
-      if (error) throw error;
+      const source = await dataClient.createSource(name, 'bigquery', metadata, agentId);
+      if (agentId && source?.id) {
+        const existingSources = await dataClient.listSources(agentId);
+        await Promise.all(
+          existingSources.filter((s: { id: string }) => s.id !== source.id).map((s: { id: string }) =>
+            dataClient.updateSource(s.id, { is_active: false })
+          )
+        );
+        await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
+      }
 
       toast.success('BigQuery conectado com sucesso!');
-      
-      if (data?.sourceId) {
-        onSourceAdded?.(data.sourceId);
-      }
-      
+      onSourceAdded?.(source.id);
       onOpenChange(false);
     } catch (error: any) {
       console.error('BigQuery connection error:', error);
-      toast.error('Erro ao conectar BigQuery', {
-        description: error.message
-      });
+      toast.error('Erro ao conectar BigQuery', { description: error.message });
     } finally {
       setConnecting(false);
     }
   };
 
-  const handleListSheets = async () => {
-    if (!sheetsUrl) {
-      toast.error('Por favor, insira o ID da planilha');
-      return;
-    }
-
-    setLoadingSheets(true);
-    setAvailableSheets([]);
-    setSelectedSheet("");
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('list-google-sheets', {
-        body: { spreadsheetId: sheetsUrl }
-      });
-
-      if (error) throw error;
-
-      setSpreadsheetData({ id: data.spreadsheetId, title: data.spreadsheetTitle });
-      setAvailableSheets(data.sheets || []);
-      
-      if (data.sheets?.length === 1) {
-        setSelectedSheet(data.sheets[0].title);
-      }
-    } catch (error: any) {
-      console.error('Error listing sheets:', error);
-      toast.error('Erro ao listar planilhas', {
-        description: error.message
-      });
-    } finally {
-      setLoadingSheets(false);
-    }
-  };
-
   const handleSheetsConnect = async () => {
-    if (!spreadsheetData || !selectedSheet) {
-      toast.error('Por favor, selecione uma planilha');
+    const spreadsheetId = sheetsUrl.trim() || spreadsheetData?.id;
+    if (!spreadsheetId || !selectedSheet) {
+      toast.error('Por favor, insira o ID da planilha e o nome da aba');
       return;
     }
 
     setConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('google-sheets-connect', {
-        body: {
-          spreadsheetId: spreadsheetData.id,
-          spreadsheetTitle: spreadsheetData.title,
-          sheetName: selectedSheet,
-          agentId: agentId
-        }
-      });
-
-      if (error) throw error;
-
-      toast.success('Google Sheets conectado com sucesso!');
-      
-      if (data?.source?.id) {
-        onSourceAdded?.(data.source.id);
+      const name = `Google Sheets ${spreadsheetId}`;
+      const metadata = { spreadsheetId, sheetName: selectedSheet };
+      const source = await dataClient.createSource(name, 'google_sheets', metadata, agentId);
+      if (agentId && source?.id) {
+        const existingSources = await dataClient.listSources(agentId);
+        await Promise.all(
+          existingSources.filter((s: { id: string }) => s.id !== source.id).map((s: { id: string }) =>
+            dataClient.updateSource(s.id, { is_active: false })
+          )
+        );
+        await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
       }
-      
+      toast.success('Google Sheets conectado com sucesso!');
+      onSourceAdded?.(source.id);
       onOpenChange(false);
     } catch (error: any) {
       console.error('Google Sheets connection error:', error);
-      toast.error('Erro ao conectar Google Sheets', {
-        description: error.message
-      });
+      toast.error('Erro ao conectar Google Sheets', { description: error.message });
     } finally {
       setConnecting(false);
     }
@@ -521,29 +275,27 @@ export function AddSourceModal({
 
     setConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sql-database-connect', {
-        body: {
-          connectionString: sqlConnectionString,
-          databaseType: sqlDatabaseType,
-          tableName: sqlTableName,
-          agentId: agentId
-        }
-      });
-
-      if (error) throw error;
-
-      toast.success(t('addSource.sqlConnectSuccess'));
-      
-      if (data?.source?.id) {
-        onSourceAdded?.(data.source.id);
+      const name = `SQL ${sqlTableName}`;
+      const metadata = {
+        connectionString: sqlConnectionString,
+        table_infos: [{ table: sqlTableName }],
+      };
+      const source = await dataClient.createSource(name, 'sql_database', metadata, agentId);
+      if (agentId && source?.id) {
+        const existingSources = await dataClient.listSources(agentId);
+        await Promise.all(
+          existingSources.filter((s: { id: string }) => s.id !== source.id).map((s: { id: string }) =>
+            dataClient.updateSource(s.id, { is_active: false })
+          )
+        );
+        await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
       }
-      
+      toast.success(t('addSource.sqlConnectSuccess'));
+      onSourceAdded?.(source.id);
       onOpenChange(false);
     } catch (error: any) {
       console.error('SQL database connection error:', error);
-      toast.error(t('addSource.sqlConnectError'), {
-        description: error.message
-      });
+      toast.error(t('addSource.sqlConnectError'), { description: error.message });
     } finally {
       setConnecting(false);
     }
@@ -615,7 +367,7 @@ export function AddSourceModal({
                         </SelectTrigger>
                         <SelectContent>
                           {existingCredentials.map((cred) => (
-                            <SelectItem key={cred.langflowPath} value={cred.langflowPath}>
+                            <SelectItem key={cred.id} value={cred.id}>
                               {cred.sourceName}
                             </SelectItem>
                           ))}
@@ -649,77 +401,33 @@ export function AddSourceModal({
                 
                 <div className="space-y-2">
                   <Label htmlFor="project">{t('addSource.project')}</Label>
-                  <Select 
-                    value={bigQueryData.projectId} 
-                    onValueChange={(value) => handleProjectSelect(value)}
-                    disabled={availableProjects.length === 0 || loadingProjects}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={availableProjects.length === 0 ? t('addSource.loadCredentialsFirst') : t('addSource.selectProject')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {loadingDatasets && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t('addSource.loadingDatasets')}
-                    </p>
-                  )}
+                  <Input
+                    id="project"
+                    placeholder={t('addSource.projectPlaceholder')}
+                    value={bigQueryData.projectId}
+                    onChange={(e) => setBigQueryData(prev => ({ ...prev, projectId: e.target.value.trim() }))}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="dataset">{t('addSource.dataset')}</Label>
-                  <Select 
-                    value={bigQueryData.datasetId} 
-                    onValueChange={handleDatasetSelect}
-                    disabled={!bigQueryData.projectId || availableDatasets.length === 0 || loadingDatasets}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={!bigQueryData.projectId ? t('addSource.selectProjectFirst') : availableDatasets.length === 0 ? t('addSource.noDatasets') : t('addSource.selectDataset')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableDatasets.map((dataset) => (
-                        <SelectItem key={dataset.id} value={dataset.id}>
-                          {dataset.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {loadingTables && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t('addSource.loadingTables')}
-                    </p>
-                  )}
+                  <Input
+                    id="dataset"
+                    placeholder={t('addSource.datasetPlaceholder')}
+                    value={bigQueryData.datasetId}
+                    onChange={(e) => setBigQueryData(prev => ({ ...prev, datasetId: e.target.value.trim() }))}
+                  />
                 </div>
 
-                {availableTables.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>{t('addSource.selectTable')}</Label>
-                    <Select 
-                      value={selectedTable} 
-                      onValueChange={handleTableSelect}
-                      disabled={!bigQueryData.datasetId || availableTables.length === 0}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t('addSource.selectTablePlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTables.map((table) => (
-                          <SelectItem key={table.id} value={table.id}>
-                            {table.name} <span className="text-muted-foreground">({table.type})</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="tables">{t('addSource.allowedTables')}</Label>
+                  <Input
+                    id="tables"
+                    placeholder={t('addSource.tablesPlaceholder')}
+                    value={bigQueryData.tables}
+                    onChange={(e) => setBigQueryData(prev => ({ ...prev, tables: e.target.value }))}
+                  />
+                </div>
                 <Button 
                   className="w-full" 
                   onClick={handleBigQueryConnect}
@@ -746,52 +454,29 @@ export function AddSourceModal({
                   <p className="text-xs text-muted-foreground">
                     {t('addSource.sheetsIdExample')}
                   </p>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="sheets-id" 
-                      placeholder={t('addSource.sheetsIdPlaceholder')}
-                      value={sheetsUrl}
-                      onChange={(e) => setSheetsUrl(e.target.value.trim())}
-                      className="flex-1" 
-                    />
-                    <Button 
-                      onClick={handleListSheets}
-                      disabled={!sheetsUrl || loadingSheets}
-                    >
-                      {loadingSheets ? <Loader2 className="h-4 w-4 animate-spin" /> : t('addSource.listButton')}
-                    </Button>
-                  </div>
+                  <Input 
+                    id="sheets-id" 
+                    placeholder={t('addSource.sheetsIdPlaceholder')}
+                    value={sheetsUrl}
+                    onChange={(e) => setSheetsUrl(e.target.value.trim())}
+                  />
                 </div>
-                
-                {availableSheets.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>{t('addSource.selectSheet')}</Label>
-                    <Select 
-                      value={selectedSheet} 
-                      onValueChange={setSelectedSheet}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t('addSource.selectSheetPlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableSheets.map((sheet) => (
-                          <SelectItem key={sheet.sheetId} value={sheet.title}>
-                            {sheet.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
+                <div className="space-y-2">
+                  <Label htmlFor="sheet-name">{t('addSource.selectSheet')}</Label>
+                  <Input
+                    id="sheet-name"
+                    placeholder="Sheet1"
+                    value={selectedSheet}
+                    onChange={(e) => setSelectedSheet(e.target.value)}
+                  />
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {t('addSource.sheetsDescription')}
                 </p>
-                
                 <Button 
                   className="w-full"
                   onClick={handleSheetsConnect}
-                  disabled={!selectedSheet || connecting}
+                  disabled={!sheetsUrl.trim() || !selectedSheet || connecting}
                 >
                   {connecting ? t('addSource.connecting') : t('addSource.connectSheets')}
                 </Button>

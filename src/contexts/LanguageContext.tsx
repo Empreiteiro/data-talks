@@ -83,7 +83,7 @@ const translations = {
     
     // Settings
     'settings.title': 'Settings',
-    'settings.subscription': 'Manage subscription',
+    'settings.subscription': 'Account',
     'settings.users': 'Users',
     'settings.workspaceAccess': 'Access Control',
     'settings.language': 'Language',
@@ -316,11 +316,6 @@ const translations = {
     
     // Account
     'account.title': 'Account',
-    'account.export': 'Export',
-    'account.exportHistory': 'Export History',
-    'account.security': 'Security',
-    'account.deleteAccount': 'Delete Account and Data',
-    'account.deleteConfirm': 'Are you sure you want to delete your account and local data?',
     
     // BigQuery Credentials
     'bigquery.addCredential.title': 'Add New BigQuery Credential',
@@ -402,14 +397,11 @@ const translations = {
      'pricing.needCustom': 'Need something custom?',
      'pricing.contactUs': 'Contact us',
      
-      // Account Page Tabs
-      'account.tabs.usage': 'Plan Usage',
-      'account.tabs.subscription': 'Subscription',
+     // Account Page Tabs
+     'account.tabs.usage': 'Usage',
       'account.tabs.sources': 'Data Sources',
       'account.tabs.credentials': 'BigQuery Credentials',
       'account.tabs.users': 'Users',
-      'account.tabs.workspaceAccess': 'Workspace Access',
-      'account.tabs.settings': 'Settings',
      
      // Add Source Modal
      'addSource.title': 'Add sources',
@@ -934,11 +926,6 @@ const translations = {
     
     // Account
     'account.title': 'Conta',
-    'account.export': 'Exportação',
-    'account.exportHistory': 'Exportar histórico',
-    'account.security': 'Segurança',
-    'account.deleteAccount': 'Excluir conta e dados',
-    'account.deleteConfirm': 'Tem certeza que deseja excluir sua conta e dados locais?',
     
     // BigQuery Credentials
     'bigquery.addCredential.title': 'Adicionar Nova Credencial BigQuery',
@@ -1022,7 +1009,7 @@ const translations = {
      
      // Settings
      'settings.title': 'Configurações',
-     'settings.subscription': 'Gerenciar assinatura',
+     'settings.subscription': 'Conta',
      'settings.users': 'Usuários',
      'settings.workspaceAccess': 'Controle de Acesso',
      'settings.language': 'Idioma',
@@ -1030,13 +1017,10 @@ const translations = {
      'settings.newWorkspace': 'Novo workspace',
       
       // Account Page Tabs
-      'account.tabs.usage': 'Uso do Plano',
-      'account.tabs.subscription': 'Assinatura',
+      'account.tabs.usage': 'Uso',
       'account.tabs.sources': 'Fontes de Dados',
       'account.tabs.credentials': 'Credenciais BigQuery',
       'account.tabs.users': 'Usuários',
-      'account.tabs.workspaceAccess': 'Acesso aos Workspaces',
-      'account.tabs.settings': 'Configurações',
      
      // Add Source Modal
      'addSource.title': 'Adicionar fontes',
