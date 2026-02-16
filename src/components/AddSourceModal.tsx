@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { dataClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/dataClient";
 import { Loader2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";

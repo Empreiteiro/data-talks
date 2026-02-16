@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Source
+from app.routers.crud import _sanitize_for_json
 
 router = APIRouter(prefix="/bigquery", tags=["bigquery"])
 
@@ -173,7 +174,7 @@ async def refresh_source_metadata(
             entry["preview_rows"] = preview_rows
         result_infos.append(entry)
     meta["table_infos"] = result_infos
-    source.metadata_ = meta
+    source.metadata_ = _sanitize_for_json(meta)
     await db.commit()
     await db.refresh(source)
     return {"metaJSON": source.metadata_}

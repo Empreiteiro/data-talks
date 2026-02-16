@@ -7,7 +7,7 @@ const stub = new Proxy(
   {
     get() {
       throw new Error(
-        'Supabase is not used in this version. Use dataClient from @/services/supabaseClient and the Python API for auth.'
+        'Supabase is not used in this version. Use dataClient from @/services/dataClient and the Python API for auth.'
       );
     },
   }

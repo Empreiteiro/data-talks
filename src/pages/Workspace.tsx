@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { dataClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/dataClient";
 import { ChevronRight, History, Layout, Lock, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";

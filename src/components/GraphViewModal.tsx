@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { dataClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/dataClient";
 import { Loader2, Network } from "lucide-react";
 
 const ForceGraph2D = lazy(() => import("react-force-graph-2d"));

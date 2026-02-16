@@ -1,20 +1,12 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { dataClient } from "@/services/supabaseClient";
-import { Trash2, Upload, Key } from "lucide-react";
+import { dataClient } from "@/services/dataClient";
+import { Trash2, Plus, Key } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +18,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Credential {
   id: string;
@@ -43,6 +43,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [credentialName, setCredentialName] = useState("");
   const [credentialsFile, setCredentialsFile] = useState<File | null>(null);
 
@@ -113,6 +114,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       toast.success(t('bigquery.success.added'));
       setCredentialName('');
       setCredentialsFile(null);
+      setAddDialogOpen(false);
       await fetchCredentials();
       onSourceAdded?.();
     } catch (error: any) {
@@ -136,123 +138,144 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            {t('bigquery.addCredential.title')}
-          </CardTitle>
-          <CardDescription>
-            {t('bigquery.addCredential.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="credential-name">{t('bigquery.addCredential.nameLabel')}</Label>
-            <Input
-              id="credential-name"
-              placeholder={t('bigquery.addCredential.namePlaceholder')}
-              value={credentialName}
-              onChange={(e) => setCredentialName(e.target.value)}
-              disabled={uploading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="credential-file">{t('bigquery.addCredential.fileLabel')}</Label>
-            <Input
-              id="credential-file"
-              type="file"
-              accept=".json"
-              onChange={handleFileChange}
-              disabled={uploading}
-            />
-            {credentialsFile && (
-              <p className="text-sm text-muted-foreground">
-                {t('bigquery.addCredential.fileSelected')} {credentialsFile.name}
-              </p>
-            )}
-          </div>
+    <div className="h-full flex flex-col bg-background border rounded-lg">
+      <div className="p-4 border-b flex items-center h-[57px]">
+        <div className="flex items-center justify-between w-full">
+          <h2 className="font-semibold">{t('bigquery.configured.title')}</h2>
           <Button
-            onClick={handleUpload}
-            disabled={uploading || !credentialsFile || !credentialName.trim()}
-            className="w-full"
+            variant="outline"
+            size="sm"
+            onClick={() => setAddDialogOpen(true)}
           >
-            {uploading ? t('bigquery.addCredential.uploading') : t('bigquery.addCredential.uploadButton')}
+            <Plus className="h-4 w-4 mr-2" />
+            {t('bigquery.addCredential.uploadButton')}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            {t('bigquery.configured.title')}
-          </CardTitle>
-          <CardDescription>
-            {t('bigquery.configured.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">{t('bigquery.configured.loading')}</p>
-          ) : credentials.length === 0 ? (
+      <div className="flex-1 overflow-y-auto p-4">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">{t('bigquery.configured.loading')}</p>
+            </div>
+          </div>
+        ) : credentials.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <Key className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">
               {t('bigquery.configured.empty')}
             </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('bigquery.configured.name')}</TableHead>
-                  <TableHead>{t('bigquery.configured.projectId')}</TableHead>
-                  <TableHead>{t('bigquery.configured.createdAt')}</TableHead>
-                  <TableHead className="text-right">{t('bigquery.configured.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {credentials.map((cred) => (
-                  <TableRow key={cred.id}>
-                    <TableCell className="font-medium">{cred.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {cred.projectId || 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {cred.createdAt ? new Date(cred.createdAt).toLocaleDateString() : '—'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t('bigquery.delete.title')}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t('bigquery.delete.description', { name: cred.name })}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t('bigquery.delete.cancel')}</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(cred.id)}
-                              className="bg-destructive text-destructive-foreground"
-                            >
-                              {t('bigquery.delete.confirm')}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-xs text-muted-foreground mt-2">
+              {t('bigquery.addCredential.description')}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {credentials.map((cred) => (
+              <div
+                key={cred.id}
+                className="group relative p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50"
+              >
+                <div className="flex items-start gap-2">
+                  <Key className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{cred.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {cred.projectId || 'N/A'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {cred.createdAt ? new Date(cred.createdAt).toLocaleDateString('pt-BR') : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          title={t('bigquery.delete.title')}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t('bigquery.delete.title')}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('bigquery.delete.description', { name: cred.name })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t('bigquery.delete.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(cred.id)}
+                            className="bg-destructive text-destructive-foreground"
+                          >
+                            {t('bigquery.delete.confirm')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('bigquery.addCredential.title')}</DialogTitle>
+            <DialogDescription>{t('bigquery.addCredential.description')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="credential-name">{t('bigquery.addCredential.nameLabel')}</Label>
+              <Input
+                id="credential-name"
+                placeholder={t('bigquery.addCredential.namePlaceholder')}
+                value={credentialName}
+                onChange={(e) => setCredentialName(e.target.value)}
+                disabled={uploading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="credential-file">{t('bigquery.addCredential.fileLabel')}</Label>
+              <Input
+                id="credential-file"
+                type="file"
+                accept=".json"
+                onChange={handleFileChange}
+                disabled={uploading}
+              />
+              {credentialsFile && (
+                <p className="text-sm text-muted-foreground">
+                  {t('bigquery.addCredential.fileSelected')} {credentialsFile.name}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)} disabled={uploading}>
+              {t('bigquery.delete.cancel')}
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={uploading || !credentialsFile || !credentialName.trim()}
+            >
+              {uploading ? t('bigquery.addCredential.uploading') : t('bigquery.addCredential.uploadButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

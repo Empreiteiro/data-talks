@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { dataClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/dataClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 

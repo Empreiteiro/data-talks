@@ -6,7 +6,7 @@ import uuid
 import os
 import math
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,13 +31,15 @@ def _safe_float(value: float | int | None) -> float | None:
 
 
 def _sanitize_for_json(obj: Any) -> Any:
-    """Recursively replace NaN/inf and numpy scalars so JSON serialization never fails."""
+    """Recursively make values JSON-serializable (NaN/inf, numpy, date, datetime, Decimal)."""
     if obj is None:
         return None
     if isinstance(obj, dict):
         return {k: _sanitize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_sanitize_for_json(v) for v in obj]
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
     if isinstance(obj, float):
         if math.isnan(obj) or not math.isfinite(obj):
             return None
@@ -47,6 +49,17 @@ def _sanitize_for_json(obj: Any) -> Any:
             return _sanitize_for_json(obj.item())
         except (ValueError, AttributeError):
             return None
+    try:
+        from decimal import Decimal
+        if isinstance(obj, Decimal):
+            try:
+                if getattr(obj, "is_finite", lambda: True)() and not getattr(obj, "is_nan", lambda: False)():
+                    return float(obj)
+            except (ValueError, OverflowError, TypeError):
+                pass
+            return str(obj)
+    except ImportError:
+        pass
     return obj
 
 

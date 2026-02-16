@@ -3,7 +3,7 @@ import { Plus, FileText, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { dataClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/dataClient";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { DataPreviewModal } from "@/components/DataPreviewModal";

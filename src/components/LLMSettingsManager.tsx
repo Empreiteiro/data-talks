@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { dataClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/dataClient";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Bot, Loader2, RefreshCw } from "lucide-react";
 

@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
 import { agentClient, Agent, Source } from "@/services/agentClient";
-import { dataClient } from "@/services/supabaseClient";
+import { dataClient } from "@/services/dataClient";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function AgentBriefing() {
