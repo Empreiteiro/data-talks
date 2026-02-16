@@ -58,6 +58,7 @@ async def generate_table_summary_bigquery(
     Returns: { "report": str (markdown), "queries_run": [ { "query": str, "rows": list }, ... ] }
     """
     from app.llm.client import chat_completion
+    from app.llm.logs import record_log
 
     loop = asyncio.get_event_loop()
     client = await loop.run_in_executor(None, lambda: _get_bigquery_client(credentials_content))
@@ -73,7 +74,6 @@ async def generate_table_summary_bigquery(
         )
 
     schema_text = _schema_text(project_id, dataset_id, table_infos)
-    full_table_ref = f"`{project_id}.{dataset_id}.{table_infos[0]['table']}`" if table_infos else ""
 
     # Step 1: LLM suggests 3-5 analytical queries (SELECT only)
     system_queries = (
@@ -88,10 +88,18 @@ async def generate_table_summary_bigquery(
         f"Schema:\n{schema_text}\n\nGenerate 3-5 analytical SELECT queries for this table. "
         'Return JSON with key "queries" (array of SELECT query strings).'
     )
-    raw_queries = await chat_completion(
+    raw_queries, usage1 = await chat_completion(
         [{"role": "system", "content": system_queries}, {"role": "user", "content": msg_queries}],
         max_tokens=1024,
         llm_overrides=llm_overrides,
+    )
+    await record_log(
+        action="summary",
+        provider=usage1.get("provider", ""),
+        model=usage1.get("model", ""),
+        input_tokens=usage1.get("input_tokens", 0),
+        output_tokens=usage1.get("output_tokens", 0),
+        context=f"BigQuery queries: {source_name or (table_infos[0].get('table') if table_infos else '')}",
     )
     queries = _parse_queries_json(raw_queries)
 
@@ -134,10 +142,18 @@ async def generate_table_summary_bigquery(
         f"Query results:\n{results_text}\n\n"
         "Write the executive summary (Markdown only, no preamble)."
     )
-    report = await chat_completion(
+    report, usage2 = await chat_completion(
         [{"role": "system", "content": system_report}, {"role": "user", "content": user_report}],
         max_tokens=2048,
         llm_overrides=llm_overrides,
+    )
+    await record_log(
+        action="summary",
+        provider=usage2.get("provider", ""),
+        model=usage2.get("model", ""),
+        input_tokens=usage2.get("input_tokens", 0),
+        output_tokens=usage2.get("output_tokens", 0),
+        context=f"BigQuery report: {source_name or (table_infos[0].get('table') if table_infos else '')}",
     )
     report = (report or "").strip()
 

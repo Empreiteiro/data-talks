@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
-from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, summary_router
+from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, summary_router, logs_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -90,6 +90,7 @@ app.include_router(users_router.router, prefix=prefix)
 app.include_router(settings_router.router, prefix=prefix)
 app.include_router(bigquery_router.router, prefix=prefix)
 app.include_router(summary_router.router, prefix=prefix)
+app.include_router(logs_router.router, prefix=prefix)
 
 
 @app.get(prefix + "/config")

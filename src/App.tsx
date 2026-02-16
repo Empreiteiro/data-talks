@@ -1,4 +1,5 @@
 import Footer from "@/components/layout/Footer";
+import { LogsPanel } from "@/components/LogsPanel";
 import NavBar from "@/components/layout/NavBar";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -58,6 +59,7 @@ const AppContent = () => {
         </Routes>
       </main>
       {!isWorkspacePage && !isDashboardPage && !isIndexPage && <Footer />}
+      <LogsPanel />
     </div>
   );
 };

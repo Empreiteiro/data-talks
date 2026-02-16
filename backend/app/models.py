@@ -117,6 +117,19 @@ class Alert(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class PlatformLog(Base):
+    """Platform-wide LLM activity log (pergunta, summary, etc.). Persisted in DB."""
+    __tablename__ = "platform_logs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    action: Mapped[str] = mapped_column(String(50))  # pergunta | summary
+    provider: Mapped[str] = mapped_column(String(50))  # openai | ollama | litellm
+    model: Mapped[str] = mapped_column(String(128))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)  # question preview, source name
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class TableSummary(Base):
     """Studio Summary: executive report for a table/source, generated via LLM + analytical queries."""
     __tablename__ = "table_summaries"

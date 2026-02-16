@@ -345,4 +345,18 @@ export const apiClient = {
   async deleteTableSummary(summaryId: string) {
     return api<{ ok: boolean }>(`/api/table_summaries/${summaryId}`, { method: 'DELETE' });
   },
+
+  // Platform logs (LLM activity across all workspaces)
+  async listPlatformLogs(limit?: number) {
+    const params = limit != null ? `?limit=${limit}` : '';
+    return api<Array<{
+      action: string;
+      timestamp: string;
+      provider: string;
+      model: string;
+      input_tokens: number;
+      output_tokens: number;
+      context?: string;
+    }>>(`/api/logs${params}`);
+  },
 };

@@ -9,6 +9,7 @@ import json
 import math
 import pandas as pd
 from app.llm.client import chat_completion
+from app.llm.logs import record_log
 
 
 async def ask_csv(
@@ -74,7 +75,15 @@ async def ask_csv(
         {"role": "system", "content": system},
         {"role": "user", "content": user_content},
     ]
-    raw_answer = await chat_completion(messages, max_tokens=1024, llm_overrides=llm_overrides)
+    raw_answer, usage = await chat_completion(messages, max_tokens=1024, llm_overrides=llm_overrides)
+    await record_log(
+        action="pergunta",
+        provider=usage.get("provider", ""),
+        model=usage.get("model", ""),
+        input_tokens=usage.get("input_tokens", 0),
+        output_tokens=usage.get("output_tokens", 0),
+        context=(question[:100] + "..." if len(question) > 100 else question),
+    )
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]
