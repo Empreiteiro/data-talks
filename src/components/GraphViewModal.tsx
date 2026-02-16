@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
 import { Loader2, Network } from "lucide-react";
@@ -26,10 +27,11 @@ interface GraphViewModalProps {
   workspaceId: string;
 }
 
-type GraphNode = { id: string; name?: string };
+type GraphNode = { id: string; name?: string; group?: string };
 type GraphLink = { source: string; target: string };
 
-function buildGraphFromTable(
+/** Mode 1: Column pair - values as nodes, source→target edges per row */
+function buildGraphColumnPair(
   rows: Record<string, unknown>[],
   sourceCol: string,
   targetCol: string
@@ -53,6 +55,80 @@ function buildGraphFromTable(
   return { nodes, links };
 }
 
+/** Mode 2: Property graph - rows as nodes, FK-style edges when A[source]=B[target] */
+function buildGraphPropertyModel(
+  rows: Record<string, unknown>[],
+  sourceCol: string,
+  targetCol: string
+): { nodes: GraphNode[]; links: GraphLink[] } {
+  const nodes: GraphNode[] = [];
+  const links: GraphLink[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowId = `row_${i}`;
+    const labelParts: string[] = [];
+    for (const col of [sourceCol, targetCol]) {
+      const v = row[col];
+      if (v != null && String(v).trim()) labelParts.push(String(v).trim());
+    }
+    const label = labelParts.length > 0 ? labelParts.join(" · ") : rowId;
+    nodes.push({ id: rowId, name: label, group: "entity" });
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const srcVal = rows[i][sourceCol];
+    const srcStr = srcVal != null ? String(srcVal).trim() : "";
+    if (!srcStr) continue;
+    for (let j = 0; j < rows.length; j++) {
+      if (i === j) continue;
+      const tgtVal = rows[j][targetCol];
+      const tgtStr = tgtVal != null ? String(tgtVal).trim() : "";
+      if (srcStr === tgtStr) {
+        links.push({ source: `row_${i}`, target: `row_${j}` });
+      }
+    }
+  }
+
+  return { nodes, links };
+}
+
+/** Mode 3: Bipartite - entity nodes (rows) + value nodes, row→value when row[col]=value */
+function buildGraphBipartite(
+  rows: Record<string, unknown>[],
+  valueCol: string
+): { nodes: GraphNode[]; links: GraphLink[] } {
+  const entityNodes: GraphNode[] = [];
+  const valueNodeIds = new Set<string>();
+  const links: GraphLink[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowId = `row_${i}`;
+    const val = row[valueCol];
+    const valStr = val != null ? String(val).trim() : "";
+    if (!valStr) continue;
+    const valueId = `val:${valueCol}:${valStr}`;
+    valueNodeIds.add(valueId);
+    entityNodes.push({
+      id: rowId,
+      name: `Row ${i + 1}`,
+      group: "entity",
+    });
+    links.push({ source: rowId, target: valueId });
+  }
+
+  const valueNodes: GraphNode[] = Array.from(valueNodeIds).map((id) => ({
+    id,
+    name: id.replace(`val:${valueCol}:`, ""),
+    group: "value",
+  }));
+
+  return { nodes: [...entityNodes, ...valueNodes], links };
+}
+
+export type GraphMode = "columnPair" | "property" | "bipartite";
+
 export function GraphViewModal({
   open,
   onOpenChange,
@@ -63,8 +139,10 @@ export function GraphViewModal({
   const [sourceName, setSourceName] = useState("");
   const [columns, setColumns] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<Record<string, unknown>[]>([]);
+  const [graphMode, setGraphMode] = useState<GraphMode>("columnPair");
   const [sourceColumn, setSourceColumn] = useState<string>("");
   const [targetColumn, setTargetColumn] = useState<string>("");
+  const [valueColumn, setValueColumn] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -107,12 +185,14 @@ export function GraphViewModal({
         setSourceName(source.name || "");
         setColumns(cols);
         setPreviewRows(rows);
-        if (cols.length >= 2 && !sourceColumn && !targetColumn) {
+        if (cols.length >= 2) {
           setSourceColumn(cols[0]);
           setTargetColumn(cols[1]);
+          setValueColumn(cols[0]);
         } else if (cols.length >= 1) {
           setSourceColumn(cols[0]);
-          setTargetColumn(cols[cols.length > 1 ? 1 : 0]);
+          setTargetColumn(cols[0]);
+          setValueColumn(cols[0]);
         }
       })
       .catch((err: Error) => {
@@ -132,10 +212,18 @@ export function GraphViewModal({
   }, [open, workspaceId]);
 
   const graphData = useMemo(() => {
-    if (!sourceColumn || !targetColumn || previewRows.length === 0)
-      return { nodes: [] as GraphNode[], links: [] as GraphLink[] };
-    return buildGraphFromTable(previewRows, sourceColumn, targetColumn);
-  }, [previewRows, sourceColumn, targetColumn]);
+    if (previewRows.length === 0) return { nodes: [] as GraphNode[], links: [] as GraphLink[] };
+    if (graphMode === "bipartite") {
+      if (!valueColumn) return { nodes: [] as GraphNode[], links: [] as GraphLink[] };
+      return buildGraphBipartite(previewRows, valueColumn);
+    }
+    if (graphMode === "property") {
+      if (!sourceColumn || !targetColumn) return { nodes: [] as GraphNode[], links: [] as GraphLink[] };
+      return buildGraphPropertyModel(previewRows, sourceColumn, targetColumn);
+    }
+    if (!sourceColumn || !targetColumn) return { nodes: [] as GraphNode[], links: [] as GraphLink[] };
+    return buildGraphColumnPair(previewRows, sourceColumn, targetColumn);
+  }, [previewRows, graphMode, sourceColumn, targetColumn, valueColumn]);
 
   const hasData = graphData.nodes.length > 0 || graphData.links.length > 0;
 
@@ -166,49 +254,100 @@ export function GraphViewModal({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>{t("graph.sourceColumn")}</Label>
-                <Select
-                  value={sourceColumn}
-                  onValueChange={(v) => {
-                    setSourceColumn(v);
-                    if (targetColumn === v) setTargetColumn(columns.filter((c) => c !== v)[0] || "");
-                  }}
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <Label>{t("graph.modeLabel")}</Label>
+                <RadioGroup
+                  value={graphMode}
+                  onValueChange={(v) => setGraphMode(v as GraphMode)}
+                  className="grid gap-3 sm:grid-cols-3"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("graph.selectSource")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {columns.map((col) => (
-                      <SelectItem key={col} value={col}>
-                        {col}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <div className="flex items-start space-x-3 rounded-lg border p-4 has-[[data-state=checked]]:border-primary">
+                    <RadioGroupItem value="columnPair" id="mode-columnPair" />
+                    <label htmlFor="mode-columnPair" className="cursor-pointer flex-1">
+                      <span className="font-medium">{t("graph.modeColumnPair")}</span>
+                      <p className="text-xs text-muted-foreground mt-1">{t("graph.modeColumnPairDesc")}</p>
+                    </label>
+                  </div>
+                  <div className="flex items-start space-x-3 rounded-lg border p-4 has-[[data-state=checked]]:border-primary">
+                    <RadioGroupItem value="property" id="mode-property" />
+                    <label htmlFor="mode-property" className="cursor-pointer flex-1">
+                      <span className="font-medium">{t("graph.modeProperty")}</span>
+                      <p className="text-xs text-muted-foreground mt-1">{t("graph.modePropertyDesc")}</p>
+                    </label>
+                  </div>
+                  <div className="flex items-start space-x-3 rounded-lg border p-4 has-[[data-state=checked]]:border-primary">
+                    <RadioGroupItem value="bipartite" id="mode-bipartite" />
+                    <label htmlFor="mode-bipartite" className="cursor-pointer flex-1">
+                      <span className="font-medium">{t("graph.modeBipartite")}</span>
+                      <p className="text-xs text-muted-foreground mt-1">{t("graph.modeBipartiteDesc")}</p>
+                    </label>
+                  </div>
+                </RadioGroup>
               </div>
-              <div className="space-y-2">
-                <Label>{t("graph.targetColumn")}</Label>
-                <Select
-                  value={targetColumn}
-                  onValueChange={(v) => {
-                    setTargetColumn(v);
-                    if (sourceColumn === v) setSourceColumn(columns.filter((c) => c !== v)[0] || "");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("graph.selectTarget")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {columns.map((col) => (
-                      <SelectItem key={col} value={col}>
-                        {col}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+              {graphMode === "bipartite" ? (
+                <div className="space-y-2">
+                  <Label>{t("graph.valueColumn")}</Label>
+                  <Select value={valueColumn} onValueChange={setValueColumn}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("graph.selectValueColumn")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {columns.map((col) => (
+                        <SelectItem key={col} value={col}>
+                          {col}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t("graph.sourceColumn")}</Label>
+                    <Select
+                      value={sourceColumn}
+                      onValueChange={(v) => {
+                        setSourceColumn(v);
+                        if (targetColumn === v) setTargetColumn(columns.filter((c) => c !== v)[0] || "");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("graph.selectSource")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columns.map((col) => (
+                          <SelectItem key={col} value={col}>
+                            {col}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("graph.targetColumn")}</Label>
+                    <Select
+                      value={targetColumn}
+                      onValueChange={(v) => {
+                        setTargetColumn(v);
+                        if (sourceColumn === v) setSourceColumn(columns.filter((c) => c !== v)[0] || "");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("graph.selectTarget")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columns.map((col) => (
+                          <SelectItem key={col} value={col}>
+                            {col}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {sourceName && (
@@ -234,7 +373,7 @@ export function GraphViewModal({
                   width={containerRef.current?.offsetWidth ?? 700}
                   height={400}
                   nodeLabel="name"
-                  nodeAutoColorBy="id"
+                  nodeAutoColorBy={graphData.nodes.some((n) => n.group) ? "group" : "id"}
                   linkDirectionalArrowLength={4}
                   linkDirectionalArrowRelPos={1}
                   backgroundColor="hsl(var(--background))"
@@ -261,7 +400,9 @@ export function GraphViewModal({
                 </Suspense>
               ) : (
                 <div className="flex h-[400px] items-center justify-center text-muted-foreground">
-                  {sourceColumn && targetColumn
+                  {graphMode === "bipartite"
+                    ? (valueColumn ? t("graph.noEdges") : t("graph.selectValueColumn"))
+                    : sourceColumn && targetColumn
                     ? t("graph.noEdges")
                     : t("graph.selectColumns")}
                 </div>
