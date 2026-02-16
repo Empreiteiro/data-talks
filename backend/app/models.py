@@ -115,3 +115,16 @@ class Alert(Base):
     day_of_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     next_run: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TableSummary(Base):
+    """Studio Summary: executive report for a table/source, generated via LLM + analytical queries."""
+    __tablename__ = "table_summaries"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    source_id: Mapped[str] = mapped_column(String(36))
+    source_name: Mapped[str] = mapped_column(String(255))
+    report: Mapped[str] = mapped_column(Text)  # markdown executive summary
+    queries_run: Mapped[list] = mapped_column(JSON, default=list)  # [{ "query": "...", "rows": [...] }]
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
