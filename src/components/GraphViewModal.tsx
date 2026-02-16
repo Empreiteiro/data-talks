@@ -15,9 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
-import { Loader2, Network } from "lucide-react";
+import { Loader2, Network, Maximize2, Minimize2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const ForceGraph2D = lazy(() => import("react-force-graph-2d"));
 
@@ -144,10 +146,16 @@ export function GraphViewModal({
   const [targetColumn, setTargetColumn] = useState<string>("");
   const [valueColumn, setValueColumn] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [maximized, setMaximized] = useState(false);
+  const [graphSize, setGraphSize] = useState({ width: 700, height: 400 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open || !workspaceId) return;
+    if (!open) {
+      setMaximized(false);
+      return;
+    }
+    if (!workspaceId) return;
 
     let cancelled = false;
     setError(null);
@@ -157,7 +165,7 @@ export function GraphViewModal({
 
     dataClient
       .listSources(workspaceId, true)
-      .then((sources) => {
+      .then(async (sources) => {
         if (cancelled || !sources?.length) {
           setColumns([]);
           setPreviewRows([]);
@@ -173,7 +181,21 @@ export function GraphViewModal({
         let cols: string[] = [];
         let rows: Record<string, unknown>[] = [];
 
-        if (tableInfos?.[0]) {
+        if (source.type === "bigquery" && source.id) {
+          try {
+            const fullTable = await dataClient.fetchBigQueryFullTable(source.id);
+            cols = fullTable?.columns || tableInfos?.[0]?.columns || [];
+            rows = fullTable?.rows || [];
+          } catch {
+            if (tableInfos?.[0]) {
+              cols = tableInfos[0].columns || [];
+              rows = tableInfos[0].preview_rows || [];
+            } else {
+              cols = (meta?.columns as string[]) || [];
+              rows = (meta?.preview_rows as Record<string, unknown>[]) || [];
+            }
+          }
+        } else if (tableInfos?.[0]) {
           cols = tableInfos[0].columns || [];
           rows = tableInfos[0].preview_rows || [];
         } else {
@@ -227,15 +249,53 @@ export function GraphViewModal({
 
   const hasData = graphData.nodes.length > 0 || graphData.links.length > 0;
 
+  // Update graph dimensions when container resizes (e.g. on maximize toggle)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0]?.contentRect ?? { width: 700, height: 400 };
+      setGraphSize({ width: Math.round(width), height: Math.round(height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open, maximized]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent
+        className={cn(
+          "max-w-4xl max-h-[90vh] flex flex-col",
+          maximized &&
+            "fixed inset-4 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] h-[calc(100vh-2rem)]"
+        )}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Network className="h-5 w-5" />
-            {t("graph.title")}
-          </DialogTitle>
-          <DialogDescription>{t("graph.description")}</DialogDescription>
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <div className="space-y-1.5">
+              <DialogTitle className="flex items-center gap-2">
+                <Network className="h-5 w-5" />
+                {t("graph.title")}
+              </DialogTitle>
+              <DialogDescription>{t("graph.description")}</DialogDescription>
+            </div>
+            {!loading && !error && columns.length > 0 && previewRows.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setMaximized((m) => !m)}
+                title={maximized ? t("graph.restore") : t("graph.maximize")}
+                className="shrink-0"
+              >
+                {maximized ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -253,8 +313,8 @@ export function GraphViewModal({
             <p className="text-sm mt-1">{t("graph.noData")}</p>
           </div>
         ) : (
-          <>
-            <div className="space-y-4">
+          <div className={cn("flex flex-col gap-4 min-h-0", maximized && "flex-1 overflow-auto")}>
+            <div className="space-y-4 shrink-0">
               <div className="space-y-3">
                 <Label>{t("graph.modeLabel")}</Label>
                 <RadioGroup
@@ -358,7 +418,10 @@ export function GraphViewModal({
 
             <div
               ref={containerRef}
-              className="min-h-[400px] w-full rounded-lg border bg-background overflow-hidden"
+              className={cn(
+                "w-full rounded-lg border bg-background overflow-hidden",
+                maximized ? "flex-1 min-h-0" : "min-h-[400px]"
+              )}
             >
               {hasData ? (
                 <Suspense
@@ -370,8 +433,8 @@ export function GraphViewModal({
                 >
                   <ForceGraph2D
                   graphData={graphData}
-                  width={containerRef.current?.offsetWidth ?? 700}
-                  height={400}
+                  width={graphSize.width}
+                  height={graphSize.height}
                   nodeLabel="name"
                   nodeAutoColorBy={graphData.nodes.some((n) => n.group) ? "group" : "id"}
                   linkDirectionalArrowLength={4}
@@ -410,11 +473,11 @@ export function GraphViewModal({
             </div>
 
             {hasData && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground shrink-0">
                 {graphData.nodes.length} {t("graph.nodes")} · {graphData.links.length} {t("graph.links")}
               </p>
             )}
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

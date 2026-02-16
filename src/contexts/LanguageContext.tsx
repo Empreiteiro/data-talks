@@ -576,6 +576,8 @@ const translations = {
       // Graph (Studio)
       'graph.title': 'Graph / Data as Graph',
       'graph.description': 'Transform your table into a graph. Choose source and target columns to build nodes and edges.',
+      'graph.maximize': 'Maximize for better view',
+      'graph.restore': 'Restore window',
       'graph.sourceColumn': 'Source column (from)',
       'graph.targetColumn': 'Target column (to)',
       'graph.selectSource': 'Select source column',
@@ -1273,6 +1275,8 @@ const translations = {
        // Graph (Studio)
        'graph.title': 'Grafo / Dados como Grafo',
        'graph.description': 'Transforme sua tabela em um grafo. Escolha as colunas de origem e destino para construir nós e arestas.',
+       'graph.maximize': 'Maximizar para melhor visualização',
+       'graph.restore': 'Restaurar janela',
        'graph.sourceColumn': 'Coluna de origem (de)',
        'graph.targetColumn': 'Coluna de destino (para)',
        'graph.selectSource': 'Selecione a coluna de origem',
@@ -1944,6 +1948,8 @@ const translations = {
     // Graph (Studio)
     'graph.title': 'Grafo / Datos como Grafo',
     'graph.description': 'Transforma tu tabla en un grafo. Elige columnas de origen y destino para construir nodos y aristas.',
+    'graph.maximize': 'Maximizar para mejor visualización',
+    'graph.restore': 'Restaurar ventana',
     'graph.sourceColumn': 'Columna de origen (desde)',
     'graph.targetColumn': 'Columna de destino (hacia)',
     'graph.selectSource': 'Seleccionar columna de origen',
