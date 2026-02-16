@@ -29,3 +29,4 @@ env
 
 backend/data_files
 backend/.venv
+backend/*.db

@@ -117,6 +117,12 @@ export const apiClient = {
   async refreshSourceBigQueryMetadata(sourceId: string) {
     return api<{ metaJSON: any }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  async fetchBigQueryFullTable(sourceId: string, limit?: number) {
+    return api<{ columns: string[]; rows: Record<string, unknown>[] }>(
+      `/api/bigquery/sources/${sourceId}/full-table`,
+      { method: 'POST', body: JSON.stringify(limit != null ? { limit } : {}) }
+    );
+  },
 
   async getAgent(id: string) {
     return api<{ id: string; name: string; description: string; source_ids: string[]; suggested_questions: string[] }>(`/api/agents/${id}`);

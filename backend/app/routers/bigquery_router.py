@@ -178,3 +178,46 @@ async def refresh_source_metadata(
     await db.commit()
     await db.refresh(source)
     return {"metaJSON": source.metadata_}
+
+
+@router.post("/sources/{source_id}/full-table")
+async def fetch_full_table(
+    source_id: str,
+    body: dict | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Fetch full BigQuery table data (up to limit rows). For graphs and full preview. Body: { limit?: number } default 50000."""
+    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    source = r.scalar_one_or_none()
+    if not source:
+        raise HTTPException(404, "Source not found")
+    if source.type != "bigquery":
+        raise HTTPException(400, "Source is not BigQuery")
+    meta = dict(source.metadata_ or {})
+    creds = meta.get("credentialsContent") or meta.get("credentials_content")
+    if not creds:
+        raise HTTPException(400, "Source has no credentials")
+    project_id = meta.get("projectId", "")
+    dataset_id = meta.get("datasetId", "")
+    tables = meta.get("tables") or []
+    table_infos = meta.get("table_infos") or []
+    if not project_id or not dataset_id or not tables:
+        raise HTTPException(400, "Source missing projectId, datasetId, or tables")
+    table_name = tables[0] if tables else (table_infos[0].get("table", "") if table_infos else "")
+    if not table_name:
+        raise HTTPException(400, "No table selected")
+    cols = table_infos[0].get("columns", []) if table_infos else []
+    if not cols:
+        raise HTTPException(400, "Table schema not loaded. Refresh source metadata first.")
+    from app.scripts.ask_bigquery import _get_bigquery_client, _run_query_sync
+    limit = int(body.get("limit", 50000)) if body else 50000
+    limit = min(max(limit, 1), 100000)  # clamp 1..100000
+    loop = asyncio.get_event_loop()
+    try:
+        client = await loop.run_in_executor(None, lambda: _get_bigquery_client(creds))
+        q = f"SELECT * FROM `{project_id}.{dataset_id}.{table_name}` LIMIT {limit}"
+        rows = await loop.run_in_executor(None, lambda: _run_query_sync(client, q))
+    except Exception as e:
+        raise HTTPException(400, str(e))
+    return {"columns": cols, "rows": _sanitize_for_json(rows)}
