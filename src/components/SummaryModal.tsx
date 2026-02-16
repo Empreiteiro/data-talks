@@ -58,10 +58,10 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
         ]);
         setSources(sourceList || []);
         setSummaries(summaryList || []);
-        const bigquerySources = (sourceList || []).filter((s) => s.type === "bigquery");
-        const active = bigquerySources.find((s) => s.is_active) || bigquerySources[0];
+        const list = sourceList || [];
+        const active = list.find((s) => s.is_active) || list[0];
         if (active && !selectedSourceId) setSelectedSourceId(active.id);
-        else if (bigquerySources.length && !selectedSourceId) setSelectedSourceId(bigquerySources[0].id);
+        else if (list.length && !selectedSourceId) setSelectedSourceId(list[0].id);
       } catch (e) {
         console.error(e);
         toast.error(t("studio.summaryLoadError"));
@@ -69,8 +69,7 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
     })();
   }, [open, workspaceId, t]);
 
-  const bigquerySources = sources.filter((s) => s.type === "bigquery");
-  const canGenerate = bigquerySources.length > 0 && selectedSourceId && !loading;
+  const canGenerate = sources.length > 0 && selectedSourceId && !loading;
 
   const handleGenerate = async () => {
     if (!workspaceId || !selectedSourceId) return;
@@ -139,8 +138,8 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
           {/* Generate section */}
           <div className="space-y-2">
             <Label>{t("studio.summarySource")}</Label>
-            {bigquerySources.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("studio.summaryNoBigQuerySource")}</p>
+            {sources.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("studio.summaryNoSource")}</p>
             ) : (
               <div className="flex gap-2">
                 <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
@@ -148,9 +147,9 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
                     <SelectValue placeholder={t("studio.summarySelectSource")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {bigquerySources.map((s) => (
+                    {sources.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.name}
+                        {s.name} ({s.type})
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -11,7 +11,11 @@ from typing import Optional
 from app.database import get_db
 from app.models import User, Agent, Source, TableSummary, LlmSettings
 from app.auth import require_user
+from app.config import get_settings
 from app.scripts.summary_bigquery import generate_table_summary_bigquery
+from app.scripts.summary_csv import generate_table_summary_csv
+from app.scripts.summary_sql import generate_table_summary_sql
+from app.scripts.summary_google_sheets import generate_table_summary_google_sheets
 
 
 def _user_llm_overrides(llm_row: LlmSettings | None) -> dict | None:
@@ -73,28 +77,62 @@ async def generate_summary(
     if not source:
         raise HTTPException(400, "No source found for this workspace")
 
-    if source.type != "bigquery":
-        raise HTTPException(400, "Table summary is only supported for BigQuery sources")
-
     meta = source.metadata_ or {}
-    creds = meta.get("credentialsContent") or meta.get("credentials_content")
-    if not creds:
-        raise HTTPException(400, "BigQuery source missing credentials")
-
-    # User LLM overrides
     r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
     llm_row = r_llm.scalar_one_or_none()
     llm_overrides = _user_llm_overrides(llm_row)
+    settings = get_settings()
 
-    result = await generate_table_summary_bigquery(
-        credentials_content=creds,
-        project_id=meta.get("projectId", ""),
-        dataset_id=meta.get("datasetId", ""),
-        tables=meta.get("tables", []),
-        table_infos=meta.get("table_infos"),
-        source_name=source.name,
-        llm_overrides=llm_overrides,
-    )
+    if source.type == "bigquery":
+        creds = meta.get("credentialsContent") or meta.get("credentials_content")
+        if not creds:
+            raise HTTPException(400, "BigQuery source missing credentials")
+        result = await generate_table_summary_bigquery(
+            credentials_content=creds,
+            project_id=meta.get("projectId", ""),
+            dataset_id=meta.get("datasetId", ""),
+            tables=meta.get("tables", []),
+            table_infos=meta.get("table_infos"),
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+        )
+    elif source.type in ("csv", "xlsx"):
+        file_path = meta.get("file_path")
+        if not file_path:
+            raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
+        result = await generate_table_summary_csv(
+            file_path=file_path,
+            source_name=source.name,
+            data_files_dir=settings.data_files_dir,
+            columns=meta.get("columns"),
+            preview_rows=meta.get("preview_rows"),
+            sample_profile=meta.get("sample_profile"),
+            sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
+            llm_overrides=llm_overrides,
+        )
+    elif source.type == "sql_database":
+        connection_string = meta.get("connectionString") or meta.get("connection_string")
+        if not connection_string:
+            raise HTTPException(400, "SQL source missing connectionString in metadata")
+        table_infos = meta.get("table_infos")
+        if not table_infos:
+            raise HTTPException(400, "SQL source missing table_infos (schema) in metadata")
+        result = await generate_table_summary_sql(
+            connection_string=connection_string,
+            table_infos=table_infos,
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+        )
+    elif source.type == "google_sheets":
+        result = await generate_table_summary_google_sheets(
+            spreadsheet_id=meta.get("spreadsheetId", "") or meta.get("spreadsheet_id", ""),
+            sheet_name=meta.get("sheetName", "Sheet1") or meta.get("sheet_name", "Sheet1"),
+            available_columns=meta.get("availableColumns") or meta.get("available_columns"),
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+        )
+    else:
+        raise HTTPException(400, f"Table summary not supported for source type: {source.type}")
 
     summary_id = str(uuid.uuid4())
     summary = TableSummary(
