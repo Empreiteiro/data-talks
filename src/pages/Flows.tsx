@@ -19,66 +19,54 @@ type TocSection = { id: string; title: string; subs: { id: string; title: string
 function getDocStructure(isPt: boolean): TocSection[] {
   return [
     {
-      id: "overview",
-      title: isPt ? "Visão geral" : "Overview",
+      id: "data-sources",
+      title: isPt ? "Fontes de dados" : "Data sources",
       subs: [
-        { id: "overview-1", title: isPt ? "Frontend: adicionar fonte" : "Frontend: add source" },
-        { id: "overview-2", title: isPt ? "API: criar fonte e vincular ao agente" : "API: create source and link to agent" },
-        { id: "overview-3", title: isPt ? "Frontend: usuário envia pergunta" : "Frontend: user sends question" },
-        { id: "overview-4", title: isPt ? "Backend: carregar agente e fontes" : "Backend: load agent and sources" },
-        { id: "overview-5", title: isPt ? "Backend: rotear por tipo de fonte" : "Backend: route by source type" },
-        { id: "overview-6", title: isPt ? "LLM: gerar resposta" : "LLM: generate answer" },
-        { id: "overview-7", title: isPt ? "Backend: salvar sessão e retornar" : "Backend: save session and return" },
+        { id: "data-sources-add", title: isPt ? "Adicionar e vincular fontes" : "Adding and linking sources" },
+        { id: "data-sources-types", title: isPt ? "Tipos de fonte" : "Source types" },
       ],
+    },
+    {
+      id: "asking-questions",
+      title: isPt ? "Perguntas" : "Asking questions",
+      subs: [],
+    },
+    {
+      id: "answers-sessions",
+      title: isPt ? "Respostas e sessões" : "Answers & sessions",
+      subs: [],
     },
     {
       id: "csv-xlsx",
       title: "CSV / XLSX",
       subs: [
-        { id: "csv-1", title: isPt ? "Upload no frontend" : "Upload on frontend" },
-        { id: "csv-2", title: isPt ? "Backend: salvar arquivo" : "Backend: save file" },
-        { id: "csv-3", title: isPt ? "Pergunta: roteamento" : "Question: routing" },
-        { id: "csv-4", title: isPt ? "Script CSV: contexto para o LLM" : "Script CSV: context for LLM" },
-        { id: "csv-5", title: isPt ? "Retorno" : "Return" },
+        { id: "csv-xlsx-storage", title: isPt ? "Upload e armazenamento" : "Upload & storage" },
+        { id: "csv-xlsx-context", title: isPt ? "Contexto para o LLM" : "Context for the LLM" },
       ],
     },
     {
       id: "bigquery",
       title: "BigQuery",
       subs: [
-        { id: "bq-1", title: isPt ? "Configuração no frontend" : "Frontend setup" },
-        { id: "bq-2", title: isPt ? "Armazenamento" : "Storage" },
-        { id: "bq-3", title: isPt ? "Pergunta: roteamento" : "Question: routing" },
-        { id: "bq-4", title: isPt ? "Script BigQuery: contexto para o LLM" : "Script BigQuery: context for LLM" },
-        { id: "bq-5", title: isPt ? "Retorno" : "Return" },
+        { id: "bigquery-config", title: isPt ? "Configuração e armazenamento" : "Configuration & storage" },
+        { id: "bigquery-context", title: isPt ? "Contexto para o LLM" : "Context for the LLM" },
       ],
     },
     {
       id: "google-sheets",
       title: "Google Sheets",
       subs: [
-        { id: "gs-1", title: isPt ? "Configuração no frontend" : "Frontend setup" },
-        { id: "gs-2", title: isPt ? "Armazenamento" : "Storage" },
-        { id: "gs-3", title: isPt ? "Pergunta: roteamento" : "Question: routing" },
-        { id: "gs-4", title: isPt ? "Script Google Sheets: contexto para o LLM" : "Script Google Sheets: context for LLM" },
-        { id: "gs-5", title: isPt ? "Retorno" : "Return" },
+        { id: "google-sheets-config", title: isPt ? "Configuração" : "Configuration" },
+        { id: "google-sheets-context", title: isPt ? "Contexto para o LLM" : "Context for the LLM" },
       ],
     },
     {
       id: "sql-database",
       title: "SQL Database",
       subs: [
-        { id: "sql-1", title: isPt ? "Configuração no frontend" : "Frontend setup" },
-        { id: "sql-2", title: isPt ? "Armazenamento" : "Storage" },
-        { id: "sql-3", title: isPt ? "Pergunta: roteamento" : "Question: routing" },
-        { id: "sql-4", title: isPt ? "Script SQL: contexto para o LLM" : "Script SQL: context for LLM" },
-        { id: "sql-5", title: isPt ? "Retorno" : "Return" },
+        { id: "sql-config", title: isPt ? "Configuração" : "Configuration" },
+        { id: "sql-context", title: isPt ? "Contexto para o LLM" : "Context for the LLM" },
       ],
-    },
-    {
-      id: "common",
-      title: isPt ? "Comum a todos os tipos" : "Common to all types",
-      subs: [],
     },
   ];
 }
@@ -97,31 +85,11 @@ function filterToc(sections: TocSection[], query: string): TocSection[] {
     .filter((s): s is TocSection => s !== null);
 }
 
-function Step({
-  id,
-  num,
-  title,
-  children,
-  icon: Icon,
-}: {
-  id: string;
-  num: number;
-  title: string;
-  children: React.ReactNode;
-  icon?: React.ComponentType<{ className?: string }>;
-}) {
+function DocSubsection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <div id={id} className="flex gap-4 scroll-mt-24">
-      <div className="flex flex-col items-center">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-background">
-          {Icon ? <Icon className="h-5 w-5 text-primary" /> : <span className="text-sm font-bold">{num}</span>}
-        </div>
-        {num < 99 && <div className="mt-1 h-full w-0.5 flex-1 bg-border" />}
-      </div>
-      <div className="pb-8">
-        <h3 className="font-semibold text-base">{title}</h3>
-        <div className="mt-1 text-sm text-muted-foreground">{children}</div>
-      </div>
+    <div id={id} className="scroll-mt-24 mb-6">
+      <h3 className="text-base font-semibold mb-2">{title}</h3>
+      <div className="text-sm text-muted-foreground space-y-2">{children}</div>
     </div>
   );
 }
@@ -255,50 +223,61 @@ export default function Flows() {
           </header>
 
           <div className="space-y-8">
-            {/* Overview */}
+            {/* Data sources */}
             <DocSection
-              id="overview"
-              title={isPt ? "Visão geral" : "Overview"}
-              description={isPt ? "Fluxo único até o roteamento por tipo de fonte." : "Single flow until routing by source type."}
+              id="data-sources"
+              title={isPt ? "Fontes de dados" : "Data sources"}
+              description={isPt ? "Como conectar e gerenciar suas fontes de dados." : "How to connect and manage your data sources."}
               icon={Server}
             >
-              <div className="space-y-0">
-                <Step id="overview-1" num={1} title={isPt ? "Frontend: adicionar fonte" : "Frontend: add source"}>
-            {isPt
-              ? "Usuário abre o modal de fontes no workspace, faz upload (CSV/XLSX) ou preenche credenciais (BigQuery, Sheets, SQL)."
-              : "User opens the source modal in the workspace, uploads a file (CSV/XLSX) or enters credentials (BigQuery, Sheets, SQL)."}
-                </Step>
-                <Step id="overview-2" num={2} title={isPt ? "API: criar fonte e vincular ao agente" : "API: create source and link to agent"}>
+              <DocSubsection
+                id="data-sources-add"
+                title={isPt ? "Adicionar e vincular fontes" : "Adding and linking sources"}
+              >
+                <p>
                   {isPt
-                    ? "POST /api/sources/upload (arquivo) ou POST /api/sources (body: name, type, metadata). A fonte é salva no banco com user_id. Em seguida PATCH /api/sources/{id} com agent_id e is_active para vincular ao workspace."
-                    : "POST /api/sources/upload (file) or POST /api/sources (body: name, type, metadata). Source is saved in DB with user_id. Then PATCH /api/sources/{id} with agent_id and is_active to link to the workspace."}
-                </Step>
-                <Step id="overview-3" num={3} title={isPt ? "Frontend: usuário envia pergunta" : "Frontend: user sends question"}>
+                    ? "No workspace, o usuário abre o modal de fontes e adiciona uma fonte: upload de arquivo (CSV/XLSX) ou preenchimento de credenciais (BigQuery, Google Sheets, SQL). O backend expõe POST /api/sources/upload para arquivos e POST /api/sources para fontes com type e metadata. Cada fonte é salva com user_id; em seguida, PATCH /api/sources/{id} com agent_id e is_active vincula a fonte ao agente do workspace."
+                    : "In the workspace, the user opens the source modal and adds a source: file upload (CSV/XLSX) or entering credentials (BigQuery, Google Sheets, SQL). The backend exposes POST /api/sources/upload for files and POST /api/sources for sources with type and metadata. Each source is saved with user_id; then PATCH /api/sources/{id} with agent_id and is_active links the source to the workspace agent."}
+                </p>
+              </DocSubsection>
+              <DocSubsection
+                id="data-sources-types"
+                title={isPt ? "Tipos de fonte" : "Source types"}
+              >
+                <p>
                   {isPt
-                    ? "No workspace, o usuário digita a pergunta. O frontend chama POST /api/ask-question com { question, agentId, sessionId? }."
-                    : "In the workspace, the user types the question. The frontend calls POST /api/ask-question with { question, agentId, sessionId? }."}
-                </Step>
-                <Step id="overview-4" num={4} title={isPt ? "Backend: carregar agente e fontes" : "Backend: load agent and sources"}>
-                  {isPt
-                    ? "O endpoint carrega o Agent pelo agentId e as fontes: por source_ids no agente ou por agent_id na tabela sources. Usa a primeira fonte (ativa) para responder."
-                    : "The endpoint loads the Agent by agentId and sources: either by agent.source_ids or by source.agent_id. It uses the first (active) source to answer."}
-                </Step>
-                <Step id="overview-5" num={5} title={isPt ? "Backend: rotear por tipo de fonte" : "Backend: route by source type"}>
-                  {isPt
-                    ? "Conforme source.type (csv, xlsx, google_sheets, sql_database, bigquery), chama o script correspondente passando pergunta, descrição do agente e metadados da fonte."
-                    : "According to source.type (csv, xlsx, google_sheets, sql_database, bigquery), it calls the corresponding script with question, agent description, and source metadata."}
-                </Step>
-                <Step id="overview-6" num={6} title={isPt ? "LLM: gerar resposta" : "LLM: generate answer"}>
-                  {isPt
-                    ? "Cada script monta o contexto (schema, amostra de dados, etc.), envia para o modelo (OpenAI/Ollama) e devolve answer, followUpQuestions e opcionalmente imageUrl."
-                    : "Each script builds the context (schema, sample data, etc.), sends it to the model (OpenAI/Ollama), and returns answer, followUpQuestions, and optionally imageUrl."}
-                </Step>
-                <Step id="overview-7" num={7} title={isPt ? "Backend: salvar sessão e retornar" : "Backend: save session and return"}>
-                  {isPt
-                    ? "Cria ou atualiza QASession (conversation_history, follow_up_questions). Commit no banco. Retorna AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions)."
-                    : "Creates or updates QASession (conversation_history, follow_up_questions). Commits to DB. Returns AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions)."}
-                </Step>
-              </div>
+                    ? "O Data Talks suporta: CSV e XLSX (arquivos locais), BigQuery (credenciais e metadados no backend), Google Sheets (ID da planilha e aba), e SQL (connection string e informações de tabela). O backend roteia cada pergunta conforme o type da fonte ativa para o script correspondente."
+                    : "Data Talks supports: CSV and XLSX (local files), BigQuery (credentials and metadata on the backend), Google Sheets (spreadsheet ID and sheet name), and SQL (connection string and table info). The backend routes each question by the active source type to the corresponding script."}
+                </p>
+              </DocSubsection>
+            </DocSection>
+
+            {/* Asking questions */}
+            <DocSection
+              id="asking-questions"
+              title={isPt ? "Perguntas" : "Asking questions"}
+              description={isPt ? "Como as perguntas são enviadas e processadas." : "How questions are sent and processed."}
+              icon={Server}
+            >
+              <p className="text-sm text-muted-foreground">
+                {isPt
+                  ? "O usuário digita a pergunta no workspace. O frontend chama POST /api/ask-question com { question, agentId, sessionId? }. O backend carrega o agente e as fontes (por source_ids no agente ou agent_id na tabela sources), usa a primeira fonte ativa e, conforme o type (csv, xlsx, bigquery, google_sheets, sql_database), chama o script correspondente com a pergunta, a descrição do agente e os metadados da fonte."
+                  : "The user types the question in the workspace. The frontend calls POST /api/ask-question with { question, agentId, sessionId? }. The backend loads the agent and sources (by agent.source_ids or source.agent_id), uses the first active source, and according to type (csv, xlsx, bigquery, google_sheets, sql_database) calls the corresponding script with the question, agent description, and source metadata."}
+              </p>
+            </DocSection>
+
+            {/* Answers & sessions */}
+            <DocSection
+              id="answers-sessions"
+              title={isPt ? "Respostas e sessões" : "Answers & sessions"}
+              description={isPt ? "Como o LLM gera respostas e como as sessões são guardadas." : "How the LLM generates answers and how sessions are stored."}
+              icon={Save}
+            >
+              <p className="text-sm text-muted-foreground">
+                {isPt
+                  ? "Cada script monta o contexto (schema, amostra de dados, etc.) e envia ao modelo (OpenAI, Ollama ou LiteLLM), que devolve answer, followUpQuestions e opcionalmente imageUrl. O backend cria ou atualiza a QASession (conversation_history, follow_up_questions) e retorna AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). O frontend atualiza o chat e o histórico; as follow-ups aparecem como sugestões."
+                  : "Each script builds the context (schema, sample data, etc.) and sends it to the model (OpenAI, Ollama, or LiteLLM), which returns answer, followUpQuestions, and optionally imageUrl. The backend creates or updates the QASession (conversation_history, follow_up_questions) and returns AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). The frontend updates the chat and history; follow-ups appear as suggestions."}
+              </p>
             </DocSection>
 
             {/* CSV / XLSX */}
@@ -308,28 +287,23 @@ export default function Flows() {
               description={isPt ? "Arquivos enviados e armazenados localmente." : "Files uploaded and stored locally."}
               icon={FileSpreadsheet}
             >
-              <div className="space-y-0">
-                <Step id="csv-1" num={1} title={isPt ? "Upload no frontend" : "Upload on frontend"}>
-            {isPt ? "Arquivo enviado via FormData para POST /api/sources/upload." : "File sent via FormData to POST /api/sources/upload."}
-                </Step>
-                <Step id="csv-2" num={2} title={isPt ? "Backend: salvar arquivo" : "Backend: save file"}>
+              <DocSubsection id="csv-xlsx-storage" title={isPt ? "Upload e armazenamento" : "Upload & storage"}>
+                <p>
                   {isPt
-                    ? "Arquivo gravado em data_files/{user_id}/{uuid}.csv (ou .xlsx). Pandas lê para extrair columns e preview (5 linhas). Metadados guardados em Source.metadata (file_path, columns, preview_rows, row_count)."
-                    : "File written to data_files/{user_id}/{uuid}.csv (or .xlsx). Pandas reads to extract columns and preview (5 rows). Metadata stored in Source.metadata (file_path, columns, preview_rows, row_count)."}
-                </Step>
-                <Step id="csv-3" num={3} title={isPt ? "Pergunta: roteamento" : "Question: routing"}>
-                  <code className="rounded bg-muted px-1">ask_csv(file_path, question, agent_description, columns, preview_rows, data_files_dir)</code>
-                  {isPt ? " — caminho relativo a data_files; colunas e preview vêm do metadata da fonte." : " — path relative to data_files; columns and preview from source metadata."}
-                </Step>
-                <Step id="csv-4" num={4} title={isPt ? "Script CSV: contexto para o LLM" : "Script CSV: context for LLM"}>
+                    ? "O arquivo é enviado via FormData para POST /api/sources/upload e gravado em data_files/{user_id}/{uuid}.csv (ou .xlsx). O backend usa Pandas para extrair colunas e uma prévia de 5 linhas; os metadados (file_path, columns, preview_rows, row_count) são guardados em Source.metadata."
+                    : "The file is sent via FormData to POST /api/sources/upload and written to data_files/{user_id}/{uuid}.csv (or .xlsx). The backend uses Pandas to extract columns and a 5-row preview; metadata (file_path, columns, preview_rows, row_count) is stored in Source.metadata."}
+                </p>
+              </DocSubsection>
+              <DocSubsection id="csv-xlsx-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
+                <p>
                   {isPt
-                    ? "Monta schema (colunas) e amostra (até 10 linhas). System prompt: assistente de dados tabulares; User prompt: schema + sample + pergunta. Resposta pode incluir linhas com '?' como follow-up."
-                    : "Builds schema (columns) and sample (up to 10 rows). System prompt: tabular data assistant; User prompt: schema + sample + question. Answer may include lines ending with '?' as follow-ups."}
-                </Step>
-                <Step id="csv-5" num={5} title={isPt ? "Retorno" : "Return"}>
-                  {isPt ? "{ answer, imageUrl: null, followUpQuestions }." : "{ answer, imageUrl: null, followUpQuestions }."}
-                </Step>
-              </div>
+                    ? "Ao responder uma pergunta, o backend chama ask_csv(file_path, question, agent_description, columns, preview_rows, data_files_dir), com caminho relativo a data_files e metadados da fonte. O script monta o schema (colunas) e uma amostra (até 10 linhas), usa um system prompt de assistente de dados tabulares e user prompt com schema + amostra + pergunta. A resposta pode incluir follow-up questions (linhas terminando em '?')."
+                    : "When answering a question, the backend calls ask_csv(file_path, question, agent_description, columns, preview_rows, data_files_dir), with path relative to data_files and source metadata. The script builds the schema (columns) and a sample (up to 10 rows), uses a tabular data assistant system prompt and user prompt with schema + sample + question. The answer may include follow-up questions (lines ending with '?')."}
+                </p>
+                <code className="block rounded bg-muted p-2 text-xs mt-2">
+                  ask_csv(file_path, question, agent_description, columns, preview_rows, data_files_dir)
+                </code>
+              </DocSubsection>
             </DocSection>
 
             {/* BigQuery */}
@@ -339,28 +313,23 @@ export default function Flows() {
               description={isPt ? "Credenciais e metadados armazenados localmente." : "Credentials and metadata stored locally."}
               icon={Database}
             >
-              <div className="space-y-0">
-                <Step id="bq-1" num={1} title={isPt ? "Configuração no frontend" : "Frontend setup"}>
-            {isPt
-              ? "Usuário envia JSON de credenciais (ou escolhe existente), informa Project ID, Dataset ID e tabelas (lista ou texto separado por vírgula). POST /api/sources com type: bigquery e metadata: { credentialsContent, projectId, datasetId, tables }."
-                  : "User uploads credentials JSON (or selects existing), enters Project ID, Dataset ID, and tables (list or comma-separated). POST /api/sources with type: bigquery and metadata: { credentialsContent, projectId, datasetId, tables }."}
-                </Step>
-                <Step id="bq-2" num={2} title={isPt ? "Armazenamento" : "Storage"}>
-                  {isPt ? "Source criada no banco com type=bigquery; metadata guarda credentialsContent (JSON string), projectId, datasetId, tables. Nada é enviado à nuvem além do que o backend usar para consultas." : "Source created in DB with type=bigquery; metadata holds credentialsContent (JSON string), projectId, datasetId, tables. Nothing is sent to the cloud except what the backend uses for queries."}
-                </Step>
-                <Step id="bq-3" num={3} title={isPt ? "Pergunta: roteamento" : "Question: routing"}>
-                  <code className="rounded bg-muted px-1">ask_bigquery(credentials_content, project_id, dataset_id, tables, question, agent_description, table_infos)</code>
-                  {isPt ? " — metadados vêm do Source.metadata." : " — metadata from Source.metadata."}
-                </Step>
-                <Step id="bq-4" num={4} title={isPt ? "Script BigQuery: contexto para o LLM" : "Script BigQuery: context for LLM"}>
+              <DocSubsection id="bigquery-config" title={isPt ? "Configuração e armazenamento" : "Configuration & storage"}>
+                <p>
                   {isPt
-                    ? "Schema: project, dataset, tables; se houver table_infos, adiciona colunas por tabela. System: assistente BigQuery, pode sugerir SQL (SELECT). User: schema + pergunta. Resposta e follow-ups como nas outras fontes."
-                    : "Schema: project, dataset, tables; if table_infos present, adds columns per table. System: BigQuery assistant, may suggest SQL (SELECT). User: schema + question. Answer and follow-ups as in other sources."}
-                </Step>
-                <Step id="bq-5" num={5} title={isPt ? "Retorno" : "Return"}>
-                  {isPt ? "{ answer, imageUrl: null, followUpQuestions }." : "{ answer, imageUrl: null, followUpQuestions }."}
-                </Step>
-              </div>
+                    ? "O usuário envia o JSON de credenciais (ou escolhe um existente), informa Project ID, Dataset ID e tabelas (lista ou texto separado por vírgula). POST /api/sources com type: bigquery e metadata: { credentialsContent, projectId, datasetId, tables }. A fonte é criada no banco com type=bigquery; os metadados ficam apenas no backend — nada é enviado à nuvem além do que o backend usa nas consultas."
+                    : "The user uploads the credentials JSON (or selects an existing one), enters Project ID, Dataset ID, and tables (list or comma-separated). POST /api/sources with type: bigquery and metadata: { credentialsContent, projectId, datasetId, tables }. The source is created in the DB with type=bigquery; metadata stays on the backend only — nothing is sent to the cloud except what the backend uses for queries."}
+                </p>
+              </DocSubsection>
+              <DocSubsection id="bigquery-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
+                <p>
+                  {isPt
+                    ? "O backend chama ask_bigquery(credentials_content, project_id, dataset_id, tables, question, agent_description, table_infos) com dados do Source.metadata. O script monta o schema (project, dataset, tabelas; se houver table_infos, inclui colunas por tabela), usa um system prompt de assistente BigQuery (pode sugerir SQL SELECT) e user prompt com schema + pergunta. Resposta e follow-ups no mesmo formato das outras fontes."
+                    : "The backend calls ask_bigquery(credentials_content, project_id, dataset_id, tables, question, agent_description, table_infos) with data from Source.metadata. The script builds the schema (project, dataset, tables; if table_infos is present, includes columns per table), uses a BigQuery assistant system prompt (may suggest SELECT SQL) and user prompt with schema + question. Answer and follow-ups in the same format as other sources."}
+                </p>
+                <code className="block rounded bg-muted p-2 text-xs mt-2">
+                  ask_bigquery(..., question, agent_description, table_infos)
+                </code>
+              </DocSubsection>
             </DocSection>
 
             {/* Google Sheets */}
@@ -370,28 +339,23 @@ export default function Flows() {
               description={isPt ? "Spreadsheet ID e nome da aba no metadata." : "Spreadsheet ID and sheet name in metadata."}
               icon={Sheet}
             >
-              <div className="space-y-0">
-<Step id="gs-1" num={1} title={isPt ? "Configuração no frontend" : "Frontend setup"}>
+              <DocSubsection id="google-sheets-config" title={isPt ? "Configuração" : "Configuration"}>
+                <p>
                   {isPt
-                    ? "Usuário informa ID da planilha e nome da aba. POST /api/sources com type: google_sheets e metadata: { spreadsheetId, sheetName }."
-                    : "User enters spreadsheet ID and sheet name. POST /api/sources with type: google_sheets and metadata: { spreadsheetId, sheetName }."}
-                </Step>
-                <Step id="gs-2" num={2} title={isPt ? "Armazenamento" : "Storage"}>
-                  {isPt ? "Source no banco com type=google_sheets; metadata guarda apenas spreadsheetId e sheetName. Credenciais do Google (serviço) vêm de variável de ambiente no backend." : "Source in DB with type=google_sheets; metadata only stores spreadsheetId and sheetName. Google (service) credentials come from backend env."}
-                </Step>
-                <Step id="gs-3" num={3} title={isPt ? "Pergunta: roteamento" : "Question: routing"}>
-                  <code className="rounded bg-muted px-1">ask_google_sheets(spreadsheet_id, sheet_name, question, agent_description)</code>
-                  {isPt ? " — IDs vêm do metadata; credenciais de GOOGLE_SHEETS_SERVICE_ACCOUNT." : " — IDs from metadata; credentials from GOOGLE_SHEETS_SERVICE_ACCOUNT."}
-                </Step>
-                <Step id="gs-4" num={4} title={isPt ? "Script Google Sheets: contexto para o LLM" : "Script Google Sheets: context for LLM"}>
+                    ? "O usuário informa o ID da planilha e o nome da aba. POST /api/sources com type: google_sheets e metadata: { spreadsheetId, sheetName }. A fonte é salva no banco; o metadata guarda apenas esses identificadores. As credenciais do Google (conta de serviço) vêm da variável de ambiente no backend."
+                    : "The user enters the spreadsheet ID and sheet name. POST /api/sources with type: google_sheets and metadata: { spreadsheetId, sheetName }. The source is stored in the DB; metadata only holds these identifiers. Google (service account) credentials come from the backend environment variable."}
+                </p>
+              </DocSubsection>
+              <DocSubsection id="google-sheets-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
+                <p>
                   {isPt
-                    ? "Contexto: spreadsheet_id e sheet_name; amostra pode ser obtida via API Google (quando implementado). Hoje o prompt usa apenas o contexto básico. System: assistente de planilhas; User: contexto + pergunta."
-                    : "Context: spreadsheet_id and sheet_name; sample can be fetched via Google API (when implemented). Currently the prompt uses only basic context. System: sheets assistant; User: context + question."}
-                </Step>
-                <Step id="gs-5" num={5} title={isPt ? "Retorno" : "Return"}>
-                  {isPt ? "{ answer, imageUrl: null, followUpQuestions }." : "{ answer, imageUrl: null, followUpQuestions }."}
-                </Step>
-              </div>
+                    ? "O backend chama ask_google_sheets(spreadsheet_id, sheet_name, question, agent_description); os IDs vêm do metadata e as credenciais de GOOGLE_SHEETS_SERVICE_ACCOUNT. O contexto enviado ao LLM inclui spreadsheet_id e sheet_name; a amostra de dados pode ser obtida via API Google (quando implementado). Atualmente o prompt usa o contexto básico; system prompt de assistente de planilhas e user prompt com contexto + pergunta."
+                    : "The backend calls ask_google_sheets(spreadsheet_id, sheet_name, question, agent_description); IDs come from metadata and credentials from GOOGLE_SHEETS_SERVICE_ACCOUNT. The context sent to the LLM includes spreadsheet_id and sheet_name; sample data can be fetched via Google API (when implemented). Currently the prompt uses basic context; system prompt is a sheets assistant and user prompt is context + question."}
+                </p>
+                <code className="block rounded bg-muted p-2 text-xs mt-2">
+                  ask_google_sheets(spreadsheet_id, sheet_name, question, agent_description)
+                </code>
+              </DocSubsection>
             </DocSection>
 
             {/* SQL Database */}
@@ -401,56 +365,24 @@ export default function Flows() {
               description={isPt ? "Connection string e informações de tabela no metadata." : "Connection string and table info in metadata."}
               icon={Database}
             >
-              <div className="space-y-0">
-                <Step id="sql-1" num={1} title={isPt ? "Configuração no frontend" : "Frontend setup"}>
+              <DocSubsection id="sql-config" title={isPt ? "Configuração" : "Configuration"}>
+                <p>
                   {isPt
-                    ? "Usuário informa connection string, tipo (postgresql/mysql) e nome da tabela. POST /api/sources com type: sql_database e metadata: { connectionString, table_infos: [{ table, columns? }] }."
-                    : "User enters connection string, type (postgresql/mysql), and table name. POST /api/sources with type: sql_database and metadata: { connectionString, table_infos: [{ table, columns? }] }."}
-                </Step>
-                <Step id="sql-2" num={2} title={isPt ? "Armazenamento" : "Storage"}>
-                  {isPt ? "Source no banco com type=sql_database; metadata guarda connectionString e table_infos (para contexto do LLM). Credenciais ficam apenas no backend." : "Source in DB with type=sql_database; metadata holds connectionString and table_infos (for LLM context). Credentials stay on backend only."}
-                </Step>
-                <Step id="sql-3" num={3} title={isPt ? "Pergunta: roteamento" : "Question: routing"}>
-                  <code className="rounded bg-muted px-1">ask_sql(connection_string, question, agent_description, table_infos)</code>
-                  {isPt ? " — connection_string e table_infos do Source.metadata." : " — connection_string and table_infos from Source.metadata."}
-                </Step>
-                <Step id="sql-4" num={4} title={isPt ? "Script SQL: contexto para o LLM" : "Script SQL: context for LLM"}>
+                    ? "O usuário informa a connection string, o tipo (postgresql/mysql) e o nome da tabela. POST /api/sources com type: sql_database e metadata: { connectionString, table_infos: [{ table, columns? }] }. A fonte é salva no banco; o metadata guarda connectionString e table_infos para o contexto do LLM. As credenciais ficam apenas no backend."
+                    : "The user enters the connection string, type (postgresql/mysql), and table name. POST /api/sources with type: sql_database and metadata: { connectionString, table_infos: [{ table, columns? }] }. The source is stored in the DB; metadata holds connectionString and table_infos for LLM context. Credentials stay on the backend only."}
+                </p>
+              </DocSubsection>
+              <DocSubsection id="sql-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
+                <p>
                   {isPt
-                    ? "Schema montado a partir de table_infos (tabela + colunas). System: assistente SQL, pode sugerir queries (SELECT). User: schema + pergunta. Não executa SQL automaticamente; o LLM sugere quando apropriado."
-                    : "Schema built from table_infos (table + columns). System: SQL assistant, may suggest queries (SELECT). User: schema + question. Does not execute SQL automatically; LLM suggests when appropriate."}
-                </Step>
-                <Step id="sql-5" num={5} title={isPt ? "Retorno" : "Return"}>
-                  {isPt ? "{ answer, imageUrl: null, followUpQuestions }." : "{ answer, imageUrl: null, followUpQuestions }."}
-                </Step>
-              </div>
+                    ? "O backend chama ask_sql(connection_string, question, agent_description, table_infos) com dados do Source.metadata. O script monta o schema a partir de table_infos (tabela + colunas), usa um system prompt de assistente SQL (pode sugerir queries SELECT) e user prompt com schema + pergunta. O LLM não executa SQL automaticamente; sugere quando apropriado. Resposta e follow-ups no mesmo formato das outras fontes."
+                    : "The backend calls ask_sql(connection_string, question, agent_description, table_infos) with data from Source.metadata. The script builds the schema from table_infos (table + columns), uses a SQL assistant system prompt (may suggest SELECT queries) and user prompt with schema + question. The LLM does not execute SQL automatically; it suggests when appropriate. Answer and follow-ups in the same format as other sources."}
+                </p>
+                <code className="block rounded bg-muted p-2 text-xs mt-2">
+                  ask_sql(connection_string, question, agent_description, table_infos)
+                </code>
+              </DocSubsection>
             </DocSection>
-
-            {/* Common: after answer */}
-            <section id="common" className="scroll-mt-24">
-              <Card className="border-dashed">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                      <Save className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-semibold tracking-tight">{isPt ? "Comum a todos os tipos" : "Common to all types"}</h2>
-                      <CardDescription>{isPt ? "Após o script retornar a resposta." : "After the script returns the answer."}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                    <li>{isPt ? "Backend cria ou atualiza QASession (agent_id, source_id, question, answer, conversation_history, follow_up_questions)." : "Backend creates or updates QASession (agent_id, source_id, question, answer, conversation_history, follow_up_questions)."}
-                    </li>
-                    <li>{isPt ? "Resposta enviada ao frontend (answer, sessionId, followUpQuestions, imageUrl opcional)." : "Response sent to frontend (answer, sessionId, followUpQuestions, optional imageUrl)."}
-                    </li>
-                    <li>{isPt ? "Frontend atualiza o chat e o histórico; follow-ups aparecem como sugestões." : "Frontend updates chat and history; follow-ups appear as suggestions."}
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </section>
           </div>
         </div>
       </div>
