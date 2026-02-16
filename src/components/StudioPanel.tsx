@@ -121,7 +121,8 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, collapsed, 
                     )}
                   </div>
                   <div>
-                    <p className="text-xs font-medium">{option.description}</p>
+                    <p className="text-sm font-semibold">{option.title}</p>
+                    <p className="text-xs font-medium text-muted-foreground">{option.description}</p>
                   </div>
                 </div>
               </Card>
