@@ -30,6 +30,26 @@ def _safe_float(value: float | int | None) -> float | None:
     return v if math.isfinite(v) else None
 
 
+def _sanitize_for_json(obj: Any) -> Any:
+    """Recursively replace NaN/inf and numpy scalars so JSON serialization never fails."""
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_for_json(v) for v in obj]
+    if isinstance(obj, float):
+        if math.isnan(obj) or not math.isfinite(obj):
+            return None
+        return obj
+    if hasattr(obj, "item"):  # numpy scalar
+        try:
+            return _sanitize_for_json(obj.item())
+        except (ValueError, AttributeError):
+            return None
+    return obj
+
+
 def _build_sample_profile(df) -> dict:
     sample_rows = len(df)
     profile = {
@@ -80,7 +100,7 @@ async def list_sources(agent_id: Optional[str] = None, is_active: Optional[bool]
             "agent_id": s.agent_id,
             "is_active": s.is_active,
             "createdAt": s.created_at.isoformat() if s.created_at else None,
-            "metaJSON": s.metadata_,
+            "metaJSON": _sanitize_for_json(s.metadata_) if s.metadata_ else {},
             "langflowPath": s.langflow_path,
             "langflowName": s.langflow_name,
         }
@@ -122,7 +142,7 @@ async def create_source(
         "type": source.type,
         "ownerId": source.user_id,
         "createdAt": source.created_at.isoformat(),
-        "metaJSON": source.metadata_,
+        "metaJSON": _sanitize_for_json(source.metadata_) if source.metadata_ else {},
         "langflowPath": None,
         "langflowName": None,
     }
@@ -149,7 +169,7 @@ async def upload_source(
         import pandas as pd
         df = pd.read_csv(full, nrows=1000)
         meta["columns"] = list(df.columns)
-        meta["preview_rows"] = df.head(5).to_dict(orient="records")
+        meta["preview_rows"] = _sanitize_for_json(df.head(5).to_dict(orient="records"))
         meta["row_count"] = len(df)
         meta["sample_row_count"] = len(df)
         meta["sample_profile"] = _build_sample_profile(df)
@@ -157,10 +177,11 @@ async def upload_source(
         import pandas as pd
         df = pd.read_excel(full, nrows=1000)
         meta["columns"] = list(df.columns)
-        meta["preview_rows"] = df.head(5).to_dict(orient="records")
+        meta["preview_rows"] = _sanitize_for_json(df.head(5).to_dict(orient="records"))
         meta["row_count"] = len(df)
         meta["sample_row_count"] = len(df)
         meta["sample_profile"] = _build_sample_profile(df)
+    meta = _sanitize_for_json(meta) or meta
     source_id = str(uuid.uuid4())
     source = Source(
         id=source_id,
@@ -179,7 +200,7 @@ async def upload_source(
         "type": source.type,
         "ownerId": source.user_id,
         "createdAt": source.created_at.isoformat(),
-        "metaJSON": source.metadata_,
+        "metaJSON": _sanitize_for_json(source.metadata_) if source.metadata_ else {},
         "langflowPath": None,
         "langflowName": None,
     }

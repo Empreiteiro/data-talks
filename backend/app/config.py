@@ -53,12 +53,15 @@ class Settings(BaseSettings):
     # Local file storage
     data_files_dir: str = "./data_files"
 
-    # LLM: OpenAI or Ollama (local)
-    llm_provider: str = "openai"  # "openai" | "ollama"
+    # LLM: OpenAI, Ollama, or LiteLLM proxy (OpenAI-compatible)
+    llm_provider: str = "openai"  # "openai" | "ollama" | "litellm"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
+    litellm_base_url: str = "http://localhost:4000"
+    litellm_model: str = "gpt-4o-mini"
+    litellm_api_key: str = ""
 
     class Config:
         env_file = str(_ENV_FILE) if _ENV_FILE.exists() else ".env"

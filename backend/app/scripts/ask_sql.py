@@ -12,6 +12,7 @@ async def ask_sql(
     question: str,
     agent_description: str = "",
     table_infos: list[dict] | None = None,
+    llm_overrides: dict | None = None,
 ) -> dict[str, Any]:
     """
     connection_string: database URL (e.g. postgresql://...).
@@ -40,7 +41,7 @@ async def ask_sql(
         {"role": "system", "content": system},
         {"role": "user", "content": f"Schema: {schema_text}\n\nQuestion: {question}"},
     ]
-    raw_answer = await chat_completion(messages, max_tokens=2048)
+    raw_answer = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]

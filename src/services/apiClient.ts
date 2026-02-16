@@ -21,7 +21,12 @@ async function api<T>(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || err.error || String(res.status));
+    const msg = err.detail != null
+      ? Array.isArray(err.detail)
+        ? (err.detail[0]?.msg ?? err.detail[0]?.loc?.join?.(' ') ?? JSON.stringify(err.detail))
+        : err.detail
+      : err.error || res.statusText || String(res.status);
+    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
   }
   return res.json();
 }
@@ -37,7 +42,12 @@ async function apiFormData<T>(path: string, formData: FormData): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || err.error || String(res.status));
+    const msg = err.detail != null
+      ? Array.isArray(err.detail)
+        ? (err.detail[0]?.msg ?? err.detail[0]?.loc?.join?.(' ') ?? JSON.stringify(err.detail))
+        : err.detail
+      : err.error || res.statusText || String(res.status);
+    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
   }
   return res.json();
 }
@@ -84,6 +94,28 @@ export const apiClient = {
       user_id: data.ownerId,
       created_at: data.createdAt,
     };
+  },
+
+  async bigqueryListProjects(body: { credentialsContent?: string; sourceId?: string }) {
+    return api<{ projects: Array<{ id: string; name: string }> }>('/api/bigquery/projects', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async bigqueryListDatasets(body: { credentialsContent?: string; sourceId?: string; projectId: string }) {
+    return api<{ datasets: Array<{ id: string; name: string }> }>('/api/bigquery/datasets', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async bigqueryListTables(body: { credentialsContent?: string; sourceId?: string; projectId: string; datasetId: string }) {
+    return api<{ tables: Array<{ id: string; name: string }> }>('/api/bigquery/tables', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async refreshSourceBigQueryMetadata(sourceId: string) {
+    return api<{ metaJSON: any }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
 
   async getAgent(id: string) {
@@ -216,5 +248,50 @@ export const apiClient = {
 
   async connectBigQuery(_credentials: string, _projectId: string, _datasetId: string, _tables: string[]) {
     throw new Error('BigQuery via Python backend coming soon. Use CSV/XLSX only for now.');
+  },
+
+  async getLlmSettings() {
+    return api<{
+      llm_provider: string;
+      openai_api_key?: string;
+      openai_model?: string;
+      ollama_base_url?: string;
+      ollama_model?: string;
+      litellm_base_url?: string;
+      litellm_model?: string;
+      litellm_api_key?: string;
+    }>('/api/settings/llm');
+  },
+
+  async updateLlmSettings(body: {
+    llm_provider?: string;
+    openai_api_key?: string;
+    openai_model?: string;
+    ollama_base_url?: string;
+    ollama_model?: string;
+    litellm_base_url?: string;
+    litellm_model?: string;
+    litellm_api_key?: string;
+  }) {
+    return api<{
+      llm_provider: string;
+      openai_api_key?: string;
+      openai_model?: string;
+      ollama_base_url?: string;
+      ollama_model?: string;
+      litellm_base_url?: string;
+      litellm_model?: string;
+      litellm_api_key?: string;
+    }>('/api/settings/llm', { method: 'PATCH', body: JSON.stringify(body) });
+  },
+
+  async listLiteLLMModels(baseUrl?: string) {
+    const params = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : '';
+    return api<{ models: string[]; error?: string }>(`/api/settings/litellm/models${params}`);
+  },
+
+  async listOllamaModels(baseUrl?: string) {
+    const params = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : '';
+    return api<{ models: string[]; error?: string }>(`/api/settings/ollama/models${params}`);
   },
 };

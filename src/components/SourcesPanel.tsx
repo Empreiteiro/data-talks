@@ -187,11 +187,20 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                       ? 'bg-primary/15 border-primary/30 hover:bg-primary/20' 
                       : 'bg-muted/30 border-muted hover:bg-muted/50'
                   }`}
-                  onClick={() => {
+                  onClick={async () => {
                     if (agentId && !isActive) {
                       handleToggleActive(source.id);
                     } else if (!agentId) {
-                      setPreviewSource(source);
+                      let previewMeta = source.metadata;
+                      if (source.type === 'bigquery' && (!previewMeta?.table_infos || previewMeta.table_infos.length === 0)) {
+                        try {
+                          const res = await dataClient.refreshSourceBigQueryMetadata(source.id);
+                          previewMeta = res?.metaJSON ?? previewMeta;
+                        } catch (_) {}
+                        setPreviewSource({ ...source, metadata: previewMeta });
+                      } else {
+                        setPreviewSource(source);
+                      }
                       setShowPreview(true);
                     }
                   }}

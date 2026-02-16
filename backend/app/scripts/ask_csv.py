@@ -20,6 +20,7 @@ async def ask_csv(
     sample_profile: dict | None = None,
     sample_row_count: int | None = None,
     data_files_dir: str = "./data_files",
+    llm_overrides: dict | None = None,
 ) -> dict[str, Any]:
     """
     file_path: path relative to data_files (e.g. user_id/timestamp.csv).
@@ -73,7 +74,7 @@ async def ask_csv(
         {"role": "system", "content": system},
         {"role": "user", "content": user_content},
     ]
-    raw_answer = await chat_completion(messages, max_tokens=1024)
+    raw_answer = await chat_completion(messages, max_tokens=1024, llm_overrides=llm_overrides)
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]

@@ -49,17 +49,19 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
   const fetchCredentials = async () => {
     try {
       const sources = await dataClient.listSources();
-      const bigquery = sources.filter((s: { type: string }) => s.type === 'bigquery');
-      const formattedCredentials: Credential[] = bigquery.map((s: { id: string; name: string; createdAt: string; metaJSON?: any }) => ({
+      const list = Array.isArray(sources) ? sources : [];
+      const bigquery = list.filter((s: { type?: string }) => s.type === 'bigquery');
+      const formattedCredentials: Credential[] = bigquery.map((s: { id: string; name: string; createdAt?: string; metaJSON?: any }) => ({
         id: s.id,
-        name: s.name,
-        createdAt: s.createdAt,
-        projectId: s.metaJSON?.projectId || s.metaJSON?.project_id,
+        name: s.name ?? '',
+        createdAt: s.createdAt ?? '',
+        projectId: s.metaJSON?.projectId ?? s.metaJSON?.project_id,
       }));
       setCredentials(formattedCredentials);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching credentials:', error);
-      toast.error(t('bigquery.errors.loadFailed'));
+      const message = error?.message ?? t('bigquery.errors.loadFailed');
+      toast.error(t('bigquery.errors.loadFailed'), { description: message });
     } finally {
       setLoading(false);
     }
@@ -71,7 +73,9 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type === 'application/json') {
+    if (!file) return;
+    const isJson = file.type === 'application/json' || file.name?.toLowerCase().endsWith('.json');
+    if (isJson) {
       setCredentialsFile(file);
     } else {
       toast.error(t('bigquery.errors.invalidFile'));
@@ -113,7 +117,8 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       onSourceAdded?.();
     } catch (error: any) {
       console.error('Error uploading credential:', error);
-      toast.error(t('bigquery.errors.uploadFailed'), { description: error.message });
+      const message = error?.message ?? (typeof error === 'string' ? error : t('bigquery.errors.uploadFailed'));
+      toast.error(t('bigquery.errors.uploadFailed'), { description: message });
     } finally {
       setUploading(false);
     }
@@ -213,7 +218,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
                       {cred.projectId || 'N/A'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(cred.createdAt).toLocaleDateString()}
+                      {cred.createdAt ? new Date(cred.createdAt).toLocaleDateString() : '—'}
                     </TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>

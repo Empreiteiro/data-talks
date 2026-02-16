@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { useLanguage, Language } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
 import { Link } from "react-router-dom";
-import { Settings, Globe } from "lucide-react";
+import { Settings, BookOpen } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,16 +11,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import LanguageSelector from "@/components/ui/language-selector";
 
 const NavBar = () => {
   const { user, logout } = useAuth();
-  const { data: userRole } = useUserRole(user?.id);
-  const { t, language, setLanguage } = useLanguage();
-  
-  const languages = [
-    { code: 'en' as Language, name: 'English', flag: '🇺🇸' },
-    { code: 'pt' as Language, name: 'Português', flag: '🇧🇷' },
-  ];
+  const { t } = useLanguage();
 
   const handleLogout = async () => {
     await logout();
@@ -34,81 +28,39 @@ const NavBar = () => {
           <span role="img" aria-label="Logo Data Talks" className="text-xl leading-none">🦜</span>
           <span className="hidden sm:inline">Data Talks</span>
         </Link>
-        
+
         <div className="flex items-center gap-4 ml-auto">
-          {/* Language & Auth */}
+          <Link
+            to="/flows"
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <BookOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('nav.documentation')}</span>
+          </Link>
+          <LanguageSelector />
           {user ? (
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>{t('settings.title')}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  
-                  <DropdownMenuItem asChild>
-                    <Link to="/account" className="cursor-pointer">
-                      {t('settings.subscription')}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/flows" className="cursor-pointer">
-                      {language === 'pt' ? 'Fluxos (como funciona)' : 'Flows (how it works)'}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                    {t('settings.language')}
-                  </DropdownMenuLabel>
-                  
-                  {languages.map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
-                      className={language === lang.code ? "bg-accent" : ""}
-                    >
-                      <span className="mr-2">{lang.flag}</span>
-                      {lang.name}
-                    </DropdownMenuItem>
-                  ))}
-                  
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    {t('nav.logout')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Globe className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {languages.map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
-                      className={language === lang.code ? "bg-accent" : ""}
-                    >
-                      <span className="mr-2">{lang.flag}</span>
-                      {lang.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              <Button asChild className="rounded-full">
-                <Link to="/login">{t('nav.getStarted')}</Link>
-              </Button>
-            </>
-          )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>{t('settings.title')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem asChild>
+                  <Link to="/account" className="cursor-pointer">
+                    {t('settings.subscription')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  {t('nav.logout')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </nav>
     </header>

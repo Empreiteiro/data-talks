@@ -88,3 +88,10 @@ async def require_user(user: User | None = Depends(get_current_user)) -> User:
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return user
+
+
+async def require_admin(user: User = Depends(require_user)) -> User:
+    """Require current user to have admin role (super user)."""
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user

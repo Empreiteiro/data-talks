@@ -13,7 +13,7 @@ from app.database import Base
 from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert
 from app.config import get_settings
 
-config = context.config()
+config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

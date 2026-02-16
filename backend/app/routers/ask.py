@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Agent, Source, QASession
+from app.models import Agent, Source, QASession, LlmSettings
 from app.auth import require_user
 from app.models import User
 from app.schemas import AskQuestionRequest, AskQuestionResponse
@@ -19,6 +19,30 @@ from app.scripts.ask_bigquery import ask_bigquery
 from app.config import get_settings
 
 router = APIRouter(prefix="/ask-question", tags=["ask"])
+
+
+def _user_llm_overrides(llm_row: LlmSettings | None) -> dict | None:
+    """Build overrides dict from user's LlmSettings for chat_completion."""
+    if not llm_row:
+        return None
+    overrides = {}
+    if llm_row.llm_provider:
+        overrides["llm_provider"] = llm_row.llm_provider
+    if llm_row.openai_api_key:
+        overrides["openai_api_key"] = llm_row.openai_api_key
+    if llm_row.openai_model:
+        overrides["openai_model"] = llm_row.openai_model
+    if llm_row.ollama_base_url:
+        overrides["ollama_base_url"] = llm_row.ollama_base_url
+    if llm_row.ollama_model:
+        overrides["ollama_model"] = llm_row.ollama_model
+    if llm_row.litellm_base_url:
+        overrides["litellm_base_url"] = llm_row.litellm_base_url
+    if llm_row.litellm_model:
+        overrides["litellm_model"] = llm_row.litellm_model
+    if llm_row.litellm_api_key:
+        overrides["litellm_api_key"] = llm_row.litellm_api_key
+    return overrides if overrides else None
 
 
 @router.post("", response_model=AskQuestionResponse)
@@ -52,6 +76,11 @@ async def ask_question(
     settings = get_settings()
     data_files_dir = settings.data_files_dir
 
+    # User LLM overrides (from settings)
+    r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
+    llm_row = r_llm.scalar_one_or_none()
+    llm_overrides = _user_llm_overrides(llm_row)
+
     # Route by source type
     if source.type in ("csv", "xlsx"):
         file_path = (source.metadata_ or {}).get("file_path")
@@ -67,6 +96,7 @@ async def ask_question(
             sample_profile=meta.get("sample_profile"),
             sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
             data_files_dir=data_files_dir,
+            llm_overrides=llm_overrides,
         )
     elif source.type == "google_sheets":
         meta = source.metadata_ or {}
@@ -75,6 +105,7 @@ async def ask_question(
             sheet_name=meta.get("sheetName", "Sheet1"),
             question=body.question,
             agent_description=agent.description or "",
+            llm_overrides=llm_overrides,
         )
     elif source.type == "sql_database":
         meta = source.metadata_ or {}
@@ -83,17 +114,22 @@ async def ask_question(
             question=body.question,
             agent_description=agent.description or "",
             table_infos=meta.get("table_infos"),
+            llm_overrides=llm_overrides,
         )
     elif source.type == "bigquery":
         meta = source.metadata_ or {}
+        creds = meta.get("credentialsContent") or meta.get("credentials_content")
+        if not creds:
+            raise HTTPException(400, "BigQuery source missing credentialsContent in metadata")
         result = await ask_bigquery(
-            credentials_content=meta.get("credentialsContent"),
+            credentials_content=creds,
             project_id=meta.get("projectId", ""),
             dataset_id=meta.get("datasetId", ""),
             tables=meta.get("tables", []),
             question=body.question,
             agent_description=agent.description or "",
             table_infos=meta.get("table_infos"),
+            llm_overrides=llm_overrides,
         )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")

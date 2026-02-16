@@ -4,10 +4,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
 import UsersManagement from "@/components/UsersManagement";
-import { Activity, Database, FolderOpen, Users } from "lucide-react";
+import { Activity, Bot, Database, FolderOpen, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
+import { LLMSettingsManager } from "@/components/LLMSettingsManager";
 
 const Account = () => {
   const { t } = useLanguage();
@@ -17,6 +18,7 @@ const Account = () => {
 
   const menuItems = [
     { id: "usage", label: t('account.tabs.usage'), icon: Activity },
+    { id: "llm", label: t('account.tabs.llm'), icon: Bot },
     { id: "users", label: t('account.tabs.users'), icon: Users },
     { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
     { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
@@ -62,6 +64,8 @@ const Account = () => {
         {/* Main Content Area */}
         <div className="flex-1 bg-background overflow-hidden">
           {activeSection === "usage" && <UsageMonitoring />}
+
+          {activeSection === "llm" && <LLMSettingsManager />}
           
           {activeSection === "users" && <UsersManagement />}
           

@@ -1,4 +1,4 @@
-import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus, ChevronRight } from "lucide-react";
+import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus, ChevronRight, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -6,14 +6,28 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 interface StudioPanelProps {
   onAddNote?: () => void;
+  onOpenGraph?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
-  const studioOptions = [
+  const studioOptions: Array<{
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    description: string;
+    locked: boolean;
+    onClick?: () => void;
+  }> = [
+    {
+      icon: GitBranch,
+      title: "Graph",
+      description: t('studio.graphDescription'),
+      locked: false,
+      onClick: onOpenGraph,
+    },
     {
       icon: AudioWaveform,
       title: "Audio",
@@ -87,7 +101,7 @@ export function StudioPanel({ onAddNote, collapsed, onToggleCollapse }: StudioPa
                     ? "opacity-50 hover:opacity-75"
                     : "hover:shadow-md"
                 }`}
-                onClick={option.locked ? handleLockedClick : undefined}
+                onClick={option.locked ? handleLockedClick : option.onClick}
               >
                 <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
                   <div className="relative">

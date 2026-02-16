@@ -15,6 +15,7 @@ async def ask_google_sheets(
     question: str,
     agent_description: str = "",
     credentials_json: str | None = None,
+    llm_overrides: dict | None = None,
 ) -> dict[str, Any]:
     """
     Fetch sheet data (via Google API), send context to LLM, return answer.
@@ -48,7 +49,7 @@ async def ask_google_sheets(
         {"role": "system", "content": system},
         {"role": "user", "content": f"Context: {schema_text}\nSample: {sample_json}\n\nQuestion: {question}"},
     ]
-    raw_answer = await chat_completion(messages, max_tokens=2048)
+    raw_answer = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]

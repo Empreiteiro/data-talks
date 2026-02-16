@@ -86,6 +86,21 @@ class DashboardChart(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class LlmSettings(Base):
+    """Per-user LLM configuration. Falls back to env vars when not set."""
+    __tablename__ = "llm_settings"
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
+    llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm
+    openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ollama_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    ollama_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    litellm_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    litellm_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    litellm_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Alert(Base):
     __tablename__ = "alerts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

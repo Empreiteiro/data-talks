@@ -44,9 +44,11 @@ export function AddSourceModal({
     tables: ''  // comma-separated table names, stored locally
   });
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingDatasets, setLoadingDatasets] = useState(false);
+  const [loadingTables, setLoadingTables] = useState(false);
   const [availableProjects, setAvailableProjects] = useState<Array<{id: string, name: string}>>([]);
   const [availableDatasets, setAvailableDatasets] = useState<Array<{id: string, name: string}>>([]);
-  const [availableTables, setAvailableTables] = useState<Array<{id: string, name: string, type: string}>>([]);
+  const [availableTables, setAvailableTables] = useState<Array<{id: string, name: string}>>([]);
   const [selectedTable, setSelectedTable] = useState<string>("");
 
   // Google Sheets state
@@ -65,8 +67,95 @@ export function AddSourceModal({
   useEffect(() => {
     if (open) {
       fetchExistingCredentials();
+      setAvailableProjects([]);
+      setAvailableDatasets([]);
+      setAvailableTables([]);
     }
   }, [open]);
+
+  // Load projects when credential is available (existing or from file)
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    async function load() {
+      if (useExistingCredential && selectedCredential) {
+        setLoadingProjects(true);
+        try {
+          const res = await dataClient.bigqueryListProjects({ sourceId: selectedCredential });
+          if (!cancelled) setAvailableProjects(res.projects || []);
+        } catch (e) {
+          if (!cancelled) setAvailableProjects([]);
+        } finally {
+          if (!cancelled) setLoadingProjects(false);
+        }
+        return;
+      }
+      if (!useExistingCredential && bigQueryData.credentialsFile) {
+        setLoadingProjects(true);
+        try {
+          const credentialsContent = await bigQueryData.credentialsFile.text();
+          const res = await dataClient.bigqueryListProjects({ credentialsContent });
+          if (!cancelled) setAvailableProjects(res.projects || []);
+        } catch (e) {
+          if (!cancelled) setAvailableProjects([]);
+        } finally {
+          if (!cancelled) setLoadingProjects(false);
+        }
+      } else {
+        setAvailableProjects([]);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [open, useExistingCredential, selectedCredential, bigQueryData.credentialsFile]);
+
+  // Load datasets when project is selected
+  useEffect(() => {
+    if (!open || !bigQueryData.projectId) {
+      setAvailableDatasets([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingDatasets(true);
+    (async () => {
+      try {
+        const body = useExistingCredential && selectedCredential
+          ? { sourceId: selectedCredential, projectId: bigQueryData.projectId }
+          : { credentialsContent: bigQueryData.credentialsFile ? await bigQueryData.credentialsFile.text() : '', projectId: bigQueryData.projectId };
+        const res = await dataClient.bigqueryListDatasets(body);
+        if (!cancelled) setAvailableDatasets(res.datasets || []);
+      } catch (e) {
+        if (!cancelled) setAvailableDatasets([]);
+      } finally {
+        if (!cancelled) setLoadingDatasets(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, bigQueryData.projectId, useExistingCredential, selectedCredential, bigQueryData.credentialsFile]);
+
+  // Load tables when dataset is selected
+  useEffect(() => {
+    if (!open || !bigQueryData.projectId || !bigQueryData.datasetId) {
+      setAvailableTables([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingTables(true);
+    (async () => {
+      try {
+        const body = useExistingCredential && selectedCredential
+          ? { sourceId: selectedCredential, projectId: bigQueryData.projectId, datasetId: bigQueryData.datasetId }
+          : { credentialsContent: bigQueryData.credentialsFile ? await bigQueryData.credentialsFile.text() : '', projectId: bigQueryData.projectId, datasetId: bigQueryData.datasetId };
+        const res = await dataClient.bigqueryListTables(body);
+        if (!cancelled) setAvailableTables(res.tables || []);
+      } catch (e) {
+        if (!cancelled) setAvailableTables([]);
+      } finally {
+        if (!cancelled) setLoadingTables(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, bigQueryData.projectId, bigQueryData.datasetId, useExistingCredential, selectedCredential, bigQueryData.credentialsFile]);
 
   const fetchExistingCredentials = async () => {
     try {
@@ -165,11 +254,14 @@ export function AddSourceModal({
     setSelectedCredential(credId);
     const selectedCred = existingCredentials.find(c => c.id === credId);
     if (selectedCred) {
+      const tablesArr = Array.isArray(selectedCred.tables) ? selectedCred.tables : [];
+      const tablesStr = tablesArr.join(', ');
+      setSelectedTable(tablesArr[0] || '');
       setBigQueryData(prev => ({
         ...prev,
         projectId: selectedCred.projectId || '',
         datasetId: selectedCred.datasetId || '',
-        tables: Array.isArray(selectedCred.tables) ? selectedCred.tables.join(', ') : '',
+        tables: tablesStr,
       }));
     }
   };
@@ -184,7 +276,7 @@ export function AddSourceModal({
       return;
     }
     if (!bigQueryData.projectId || !bigQueryData.datasetId) {
-      toast.error('Por favor, preencha Project ID e Dataset ID');
+      toast.error('Por favor, selecione o projeto e o dataset');
       return;
     }
 
@@ -204,7 +296,12 @@ export function AddSourceModal({
 
       const tablesList = bigQueryData.tables
         ? bigQueryData.tables.split(',').map(s => s.trim()).filter(Boolean)
-        : [];
+        : selectedTable ? [selectedTable] : [];
+      if (tablesList.length === 0) {
+        toast.error('Por favor, selecione pelo menos uma tabela');
+        setConnecting(false);
+        return;
+      }
       const name = `BigQuery ${bigQueryData.projectId}/${bigQueryData.datasetId}`;
       const metadata = {
         credentialsContent,
@@ -213,7 +310,8 @@ export function AddSourceModal({
         tables: tablesList,
       };
 
-      const source = await dataClient.createSource(name, 'bigquery', metadata, agentId);
+      // Create source without agent_id first so it is saved for reuse in credentials list
+      const source = await dataClient.createSource(name, 'bigquery', metadata, undefined);
       if (agentId && source?.id) {
         const existingSources = await dataClient.listSources(agentId);
         await Promise.all(
@@ -222,6 +320,12 @@ export function AddSourceModal({
           )
         );
         await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
+      }
+      // Refresh metadata (table_infos with columns and preview) so workspace and preview show columns
+      try {
+        await dataClient.refreshSourceBigQueryMetadata(source.id);
+      } catch (_) {
+        // non-blocking
       }
 
       toast.success('BigQuery conectado com sucesso!');
@@ -400,38 +504,68 @@ export function AddSourceModal({
                 )}
                 
                 <div className="space-y-2">
-                  <Label htmlFor="project">{t('addSource.project')}</Label>
-                  <Input
-                    id="project"
-                    placeholder={t('addSource.projectPlaceholder')}
-                    value={bigQueryData.projectId}
-                    onChange={(e) => setBigQueryData(prev => ({ ...prev, projectId: e.target.value.trim() }))}
-                  />
+                  <Label>{t('addSource.project')}</Label>
+                  <Select
+                    value={bigQueryData.projectId || undefined}
+                    onValueChange={(v) => setBigQueryData(prev => ({ ...prev, projectId: v || '', datasetId: '', tables: '' }))}
+                    disabled={loadingProjects || (availableProjects.length === 0 && !bigQueryData.projectId)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingProjects ? t('addSource.loadingProjects') : t('addSource.projectPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProjects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name || p.id}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="dataset">{t('addSource.dataset')}</Label>
-                  <Input
-                    id="dataset"
-                    placeholder={t('addSource.datasetPlaceholder')}
-                    value={bigQueryData.datasetId}
-                    onChange={(e) => setBigQueryData(prev => ({ ...prev, datasetId: e.target.value.trim() }))}
-                  />
+                  <Label>{t('addSource.dataset')}</Label>
+                  <Select
+                    value={bigQueryData.datasetId || undefined}
+                    onValueChange={(v) => {
+                      setSelectedTable('');
+                      setBigQueryData(prev => ({ ...prev, datasetId: v || '', tables: '' }));
+                    }}
+                    disabled={loadingDatasets || !bigQueryData.projectId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingDatasets ? t('addSource.loadingDatasets') : t('addSource.datasetPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableDatasets.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name || d.id}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tables">{t('addSource.allowedTables')}</Label>
-                  <Input
-                    id="tables"
-                    placeholder={t('addSource.tablesPlaceholder')}
-                    value={bigQueryData.tables}
-                    onChange={(e) => setBigQueryData(prev => ({ ...prev, tables: e.target.value }))}
-                  />
+                  <Label>{t('addSource.allowedTables')}</Label>
+                  <Select
+                    value={selectedTable || bigQueryData.tables || undefined}
+                    onValueChange={(v) => {
+                      setSelectedTable(v || '');
+                      setBigQueryData(prev => ({ ...prev, tables: v || '' }));
+                    }}
+                    disabled={loadingTables || !bigQueryData.datasetId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingTables ? t('addSource.loadingTables') : t('addSource.tablesPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTables.map((tbl) => (
+                        <SelectItem key={tbl.id} value={tbl.id}>{tbl.name || tbl.id}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button 
                   className="w-full" 
                   onClick={handleBigQueryConnect}
-                  disabled={connecting}
+                  disabled={connecting || !bigQueryData.projectId || !bigQueryData.datasetId || (!bigQueryData.tables?.trim() && !selectedTable)}
                 >
                   {connecting ? t('addSource.connecting') : t('addSource.connectBigQuery')}
                 </Button>

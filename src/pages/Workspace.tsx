@@ -1,5 +1,6 @@
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { AgentSettingsModal } from "@/components/AgentSettingsModal";
+import { GraphViewModal } from "@/components/GraphViewModal";
 import { SEO } from "@/components/SEO";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
@@ -221,6 +222,7 @@ export default function Workspace() {
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [graphModalOpen, setGraphModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
 
   useEffect(() => {
@@ -247,31 +249,36 @@ export default function Workspace() {
   async function loadAvailableColumns() {
     if (!id) return;
     try {
-      const sources = await dataClient.listSources(id, true);
+      let sources = await dataClient.listSources(id, true);
       const source = sources && sources[0];
       if (source) {
-        const metadata = source?.metaJSON as any;
+        let metadata = source?.metaJSON as any;
         let columnNames: string[] = [];
-        if (source?.type === 'bigquery' && metadata?.table_infos && metadata.table_infos.length > 0) {
-          // Pegar as colunas da primeira tabela
-          columnNames = metadata.table_infos[0].columns || [];
-          console.log('Workspace - BigQuery columns from table_infos:', columnNames);
-        } 
-        // Para Google Sheets, buscar de availableColumns
-        else if (source.type === 'google_sheets' && metadata?.availableColumns) {
-          columnNames = metadata.availableColumns;
-        }
-        else if (source.type === 'sql_database') {
-          if (metadata?.availableColumns) {
-            columnNames = metadata.availableColumns;
-          } else if (metadata?.table_infos && metadata.table_infos.length > 0) {
-            columnNames = metadata.table_infos[0].columns || [];
+        if (source?.type === 'bigquery') {
+          const hasTableInfos = metadata?.table_infos && metadata.table_infos.length > 0;
+          if (!hasTableInfos && source.id) {
+            try {
+              const refreshed = await dataClient.refreshSourceBigQueryMetadata(source.id);
+              metadata = refreshed?.metaJSON ?? metadata;
+              sources = await dataClient.listSources(id, true);
+              const updated = sources?.[0];
+              if (updated?.metaJSON?.table_infos?.length) {
+                columnNames = updated.metaJSON.table_infos[0].columns || [];
+              }
+            } catch (_) {
+              columnNames = metadata?.table_infos?.[0]?.columns || [];
+            }
+          } else {
+            columnNames = metadata?.table_infos?.[0]?.columns || [];
           }
-        }
-        else if (metadata?.columns) {
+        } else if (source.type === 'google_sheets' && metadata?.availableColumns) {
+          columnNames = metadata.availableColumns;
+        } else if (source.type === 'sql_database') {
+          if (metadata?.availableColumns) columnNames = metadata.availableColumns;
+          else if (metadata?.table_infos?.length) columnNames = metadata.table_infos[0].columns || [];
+        } else if (metadata?.columns) {
           columnNames = metadata.columns;
         }
-        
         setAvailableColumns(columnNames);
       } else {
         setAvailableColumns([]);
@@ -714,7 +721,11 @@ export default function Workspace() {
 
         {/* Studio Panel - Right */}
         {!studioPanelCollapsed && <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col">
-            <StudioPanel collapsed={studioPanelCollapsed} onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)} />
+            <StudioPanel
+              collapsed={studioPanelCollapsed}
+              onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)}
+              onOpenGraph={() => setGraphModalOpen(true)}
+            />
           </div>}
 
         {/* Collapsed Studio Panel Button */}
@@ -746,6 +757,12 @@ export default function Workspace() {
           loadWarmupQuestions();
           toast.success("Configurações atualizadas");
         }}
+      />
+
+      <GraphViewModal
+        open={graphModalOpen}
+        onOpenChange={setGraphModalOpen}
+        workspaceId={id || ''}
       />
     </div>;
 }

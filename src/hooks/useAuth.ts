@@ -5,6 +5,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  role?: string;
 }
 
 export interface AuthSession {
@@ -29,10 +30,11 @@ const cleanupAuthState = () => {
   } catch {}
 };
 
-const toUserFromApi = (u: { id: string; email?: string }) => ({
+const toUserFromApi = (u: { id: string; email?: string; role?: string }) => ({
   id: u.id,
   email: (u as { email?: string }).email ?? "",
   name: ((u as { email?: string }).email ?? "").split("@")[0] || "User",
+  role: (u as { role?: string }).role ?? "user",
 });
 
 export function useAuth() {
@@ -191,6 +193,7 @@ export function useAuth() {
     user,
     session,
     isAuthenticated: !!user,
+    isAdmin: !!user && user.role === "admin",
     initializing,
     loginRequired,
     login,
