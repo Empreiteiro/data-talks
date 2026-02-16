@@ -31,7 +31,7 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, collapsed, 
     },
     {
       icon: FileBarChart,
-      title: "Summary",
+      title: t('studio.summaryTitle'),
       description: t('studio.summaryCardDescription'),
       locked: false,
       onClick: onOpenSummary,

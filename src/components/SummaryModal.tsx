@@ -183,7 +183,7 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
                     <span>{t("studio.summaryGenerating")}</span>
                   </div>
                 ) : (
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <div className="table-summary-markdown prose prose-sm md:prose-base max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:tracking-tight prose-p:leading-relaxed prose-ul:my-3 prose-ol:my-3 prose-li:my-0.5 prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:rounded-lg prose-blockquote:border-l-4 prose-blockquote:italic prose-table:border-collapse prose-th:border prose-th:bg-muted prose-th:px-3 prose-th:py-2 prose-td:border prose-td:px-3 prose-td:py-2">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayReport || ""}</ReactMarkdown>
                   </div>
                 )}
