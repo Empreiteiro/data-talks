@@ -4,6 +4,7 @@ import { GraphViewModal } from "@/components/GraphViewModal";
 import { SEO } from "@/components/SEO";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
+import { SummaryModal } from "@/components/SummaryModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -223,6 +224,7 @@ export default function Workspace() {
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [graphModalOpen, setGraphModalOpen] = useState(false);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
 
   useEffect(() => {
@@ -725,6 +727,7 @@ export default function Workspace() {
               collapsed={studioPanelCollapsed}
               onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)}
               onOpenGraph={() => setGraphModalOpen(true)}
+              onOpenSummary={() => setSummaryModalOpen(true)}
             />
           </div>}
 
@@ -762,6 +765,12 @@ export default function Workspace() {
       <GraphViewModal
         open={graphModalOpen}
         onOpenChange={setGraphModalOpen}
+        workspaceId={id || ''}
+      />
+
+      <SummaryModal
+        open={summaryModalOpen}
+        onOpenChange={setSummaryModalOpen}
         workspaceId={id || ''}
       />
     </div>;

@@ -1,4 +1,4 @@
-import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus, ChevronRight, GitBranch } from "lucide-react";
+import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus, ChevronRight, GitBranch, FileBarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -7,11 +7,12 @@ import { useLanguage } from "@/contexts/LanguageContext";
 interface StudioPanelProps {
   onAddNote?: () => void;
   onOpenGraph?: () => void;
+  onOpenSummary?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -27,6 +28,13 @@ export function StudioPanel({ onAddNote, onOpenGraph, collapsed, onToggleCollaps
       description: t('studio.graphDescription'),
       locked: false,
       onClick: onOpenGraph,
+    },
+    {
+      icon: FileBarChart,
+      title: "Summary",
+      description: t('studio.summaryCardDescription'),
+      locked: false,
+      onClick: onOpenSummary,
     },
     {
       icon: AudioWaveform,

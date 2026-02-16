@@ -294,4 +294,49 @@ export const apiClient = {
     const params = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : '';
     return api<{ models: string[]; error?: string }>(`/api/settings/ollama/models${params}`);
   },
+
+  // Studio Summary (table executive reports)
+  async generateTableSummary(agentId: string, sourceId?: string) {
+    return api<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      report: string;
+      queriesRun: Array<{ query: string; rows: unknown[]; error?: string }>;
+      createdAt: string;
+    }>('/api/table_summaries', {
+      method: 'POST',
+      body: JSON.stringify({ agentId, sourceId }),
+    });
+  },
+
+  async listTableSummaries(agentId?: string) {
+    const path = agentId ? `/api/table_summaries?agent_id=${encodeURIComponent(agentId)}` : '/api/table_summaries';
+    return api<Array<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      report: string;
+      queriesRun: unknown[];
+      createdAt: string;
+    }>>(path);
+  },
+
+  async getTableSummary(summaryId: string) {
+    return api<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      report: string;
+      queriesRun: unknown[];
+      createdAt: string;
+    }>(`/api/table_summaries/${summaryId}`);
+  },
+
+  async deleteTableSummary(summaryId: string) {
+    return api<{ ok: boolean }>(`/api/table_summaries/${summaryId}`, { method: 'DELETE' });
+  },
 };
