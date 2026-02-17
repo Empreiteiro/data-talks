@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Database, FileSpreadsheet, Save, Server, Sheet } from "lucide-react";
+import { Bot, Database, FileSpreadsheet, FileText, Save, Server, Sheet } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { isDocTopicId } from "./docStructure";
 
@@ -132,9 +132,69 @@ function getTopicContent(topic: string, isPt: boolean) {
           >
             <p className="text-sm text-muted-foreground">
               {isPt
-                ? "Cada script monta o contexto (schema, amostra de dados, etc.) e envia ao modelo (OpenAI, Ollama ou LiteLLM), que devolve answer, followUpQuestions e opcionalmente imageUrl. O backend cria ou atualiza a QASession (conversation_history, follow_up_questions) e retorna AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). O frontend atualiza o chat e o histórico; as follow-ups aparecem como sugestões."
-                : "Each script builds the context (schema, sample data, etc.) and sends it to the model (OpenAI, Ollama, or LiteLLM), which returns answer, followUpQuestions, and optionally imageUrl. The backend creates or updates the QASession (conversation_history, follow_up_questions) and returns AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). The frontend updates the chat and history; follow-ups appear as suggestions."}
+                ? "Cada script monta o contexto (schema, amostra de dados, etc.) e envia ao modelo. O provedor e o modelo são definidos pela configuração do usuário (Conta → LLM) ou por um LlmConfig vinculado ao agente (llm_config_id). Suporta OpenAI, Ollama e LiteLLM. O modelo devolve answer, followUpQuestions e opcionalmente imageUrl. O backend cria ou atualiza a QASession (conversation_history, follow_up_questions) e retorna AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). O frontend atualiza o chat e o histórico; as follow-ups aparecem como sugestões."
+                : "Each script builds the context (schema, sample data, etc.) and sends it to the model. The provider and model are determined by the user's settings (Account → LLM) or by an LlmConfig linked to the agent (llm_config_id). Supports OpenAI, Ollama, and LiteLLM. The model returns answer, followUpQuestions, and optionally imageUrl. The backend creates or updates the QASession (conversation_history, follow_up_questions) and returns AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). The frontend updates the chat and history; follow-ups appear as suggestions."}
             </p>
+          </DocSection>
+        ),
+      };
+
+    case "llm-configuration":
+      return {
+        title: isPt ? "Configuração do LLM" : "LLM configuration",
+        node: (
+          <DocSection
+            title={isPt ? "Configuração do LLM" : "LLM configuration"}
+            description={isPt ? "Provedores de modelo e configuração por usuário ou por agente." : "Model providers and per-user or per-agent configuration."}
+            icon={Bot}
+          >
+            <DocSubsection id="llm-providers" title={isPt ? "Provedores (OpenAI, Ollama, LiteLLM)" : "Providers (OpenAI, Ollama, LiteLLM)"}>
+              <p>
+                {isPt
+                  ? "O Data Talks suporta três provedores: OpenAI (API key e modelo, ex. gpt-4o-mini), Ollama (URL base e modelo local, ex. llama3.2) e LiteLLM (URL do proxy OpenAI-compatível, modelo e opcional API key). Os valores padrão vêm das variáveis de ambiente (OPENAI_API_KEY, OLLAMA_BASE_URL, LITELLM_BASE_URL, etc.). O usuário pode sobrescrever em Conta → LLM; as configurações salvas em llm_settings têm prioridade sobre o env."
+                  : "Data Talks supports three providers: OpenAI (API key and model, e.g. gpt-4o-mini), Ollama (base URL and local model, e.g. llama3.2), and LiteLLM (proxy URL, model, and optional API key). Defaults come from environment variables (OPENAI_API_KEY, OLLAMA_BASE_URL, LITELLM_BASE_URL, etc.). The user can override in Account → LLM; saved llm_settings take precedence over env."}
+              </p>
+            </DocSubsection>
+            <DocSubsection id="llm-settings-api" title={isPt ? "API de configuração" : "Settings API"}>
+              <p>
+                {isPt
+                  ? "GET /api/settings/llm retorna a configuração atual (chaves mascaradas). PATCH /api/settings/llm atualiza llm_provider, openai_api_key, openai_model, ollama_base_url, ollama_model, litellm_base_url, litellm_model, litellm_api_key. Opcionalmente, um agente pode usar uma configuração específica (llm_config_id) em vez da configuração padrão do usuário; os LlmConfigs são gerenciados via API de configurações."
+                  : "GET /api/settings/llm returns the current configuration (keys masked). PATCH /api/settings/llm updates llm_provider, openai_api_key, openai_model, ollama_base_url, ollama_model, litellm_base_url, litellm_model, litellm_api_key. Optionally, an agent can use a specific config (llm_config_id) instead of the user's default; LlmConfigs are managed via the settings API."}
+              </p>
+              <code className="block rounded bg-muted p-2 text-xs mt-2">
+                GET /api/settings/llm · PATCH /api/settings/llm
+              </code>
+            </DocSubsection>
+          </DocSection>
+        ),
+      };
+
+    case "table-summaries":
+      return {
+        title: isPt ? "Resumos de tabela (Studio)" : "Table summaries (Studio)",
+        node: (
+          <DocSection
+            title={isPt ? "Resumos de tabela (Studio)" : "Table summaries (Studio)"}
+            description={isPt ? "Relatórios executivos gerados por LLM a partir da fonte de dados." : "Executive reports generated by the LLM from the data source."}
+            icon={FileText}
+          >
+            <DocSubsection id="table-summaries-generate" title={isPt ? "Gerar resumo" : "Generate summary"}>
+              <p>
+                {isPt
+                  ? "No Studio do workspace, o usuário pode abrir o modal de Resumo da Tabela, escolher uma fonte (do workspace) e gerar um resumo. O backend chama o script de summary correspondente ao tipo da fonte (CSV/XLSX, BigQuery, SQL, Google Sheets). O script usa o LLM (com as mesmas overrides do usuário) e, quando aplicável, executa consultas analíticas para obter estatísticas; o resultado é um relatório em markdown (report) e opcionalmente uma lista de queries_run. O resumo é salvo em table_summaries e exibido no modal."
+                  : "In the workspace Studio, the user can open the Table Summary modal, select a source (from the workspace), and generate a summary. The backend calls the summary script for the source type (CSV/XLSX, BigQuery, SQL, Google Sheets). The script uses the LLM (with the same user overrides) and, when applicable, runs analytical queries to get statistics; the result is a markdown report and optionally a list of queries_run. The summary is stored in table_summaries and shown in the modal."}
+              </p>
+            </DocSubsection>
+            <DocSubsection id="table-summaries-api" title={isPt ? "API" : "API"}>
+              <p>
+                {isPt
+                  ? "POST /api/table_summaries com { agentId, sourceId? } gera um novo resumo (sourceId opcional; se omitido, usa a fonte ativa do agente). GET /api/table_summaries?agent_id=... lista resumos do workspace. GET /api/table_summaries/{id} retorna um resumo. DELETE /api/table_summaries/{id} remove o resumo. A resposta de geração inclui id, agentId, sourceId, sourceName, report, queriesRun, createdAt."
+                  : "POST /api/table_summaries with { agentId, sourceId? } generates a new summary (sourceId optional; if omitted, uses the agent's active source). GET /api/table_summaries?agent_id=... lists summaries for the workspace. GET /api/table_summaries/{id} returns one summary. DELETE /api/table_summaries/{id} removes it. The generate response includes id, agentId, sourceId, sourceName, report, queriesRun, createdAt."}
+              </p>
+              <code className="block rounded bg-muted p-2 text-xs mt-2">
+                POST /api/table_summaries · GET /api/table_summaries · GET/DELETE /api/table_summaries/{id}
+              </code>
+            </DocSubsection>
           </DocSection>
         ),
       };
@@ -184,6 +244,16 @@ function getTopicContent(topic: string, isPt: boolean) {
                   ? "O usuário envia o JSON de credenciais (ou escolhe um existente), informa Project ID, Dataset ID e tabelas (lista ou texto separado por vírgula). POST /api/sources com type: bigquery e metadata: { credentialsContent, projectId, datasetId, tables }. A fonte é criada no banco com type=bigquery; os metadados ficam apenas no backend — nada é enviado à nuvem além do que o backend usa nas consultas."
                   : "The user uploads the credentials JSON (or selects an existing one), enters Project ID, Dataset ID, and tables (list or comma-separated). POST /api/sources with type: bigquery and metadata: { credentialsContent, projectId, datasetId, tables }. The source is created in the DB with type=bigquery; metadata stays on the backend only — nothing is sent to the cloud except what the backend uses for queries."}
               </p>
+            </DocSubsection>
+            <DocSubsection id="bigquery-discovery" title={isPt ? "Discovery e atualização de metadata" : "Discovery & metadata refresh"}>
+              <p>
+                {isPt
+                  ? "O backend expõe endpoints para listar projetos, datasets e tabelas do BigQuery e para atualizar o metadata da fonte com table_infos (schema com colunas). POST /api/bigquery/projects com credentialsContent ou sourceId retorna os projetos. POST /api/bigquery/datasets com credentialsContent/sourceId e projectId retorna os datasets. POST /api/bigquery/tables com credentialsContent/sourceId, projectId e datasetId retorna as tabelas. POST /api/bigquery/refresh_source atualiza a fonte com table_infos (e opcionalmente preview), permitindo que o LLM tenha contexto completo do schema."
+                  : "The backend exposes endpoints to list BigQuery projects, datasets, and tables and to refresh source metadata with table_infos (schema with columns). POST /api/bigquery/projects with credentialsContent or sourceId returns projects. POST /api/bigquery/datasets with credentialsContent/sourceId and projectId returns datasets. POST /api/bigquery/tables with credentialsContent/sourceId, projectId, and datasetId returns tables. POST /api/bigquery/refresh_source updates the source with table_infos (and optional preview), so the LLM has full schema context."}
+              </p>
+              <code className="block rounded bg-muted p-2 text-xs mt-2">
+                POST /api/bigquery/projects · /datasets · /tables · /refresh_source
+              </code>
             </DocSubsection>
             <DocSubsection id="bigquery-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
               <p>

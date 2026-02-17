@@ -4,6 +4,8 @@ export const DOC_TOPIC_IDS = [
   "data-sources",
   "asking-questions",
   "answers-sessions",
+  "llm-configuration",
+  "table-summaries",
   "csv-xlsx",
   "bigquery",
   "google-sheets",
@@ -33,6 +35,22 @@ export function getDocStructure(isPt: boolean): TocSection[] {
       subs: [],
     },
     {
+      id: "llm-configuration",
+      title: isPt ? "Configuração do LLM" : "LLM configuration",
+      subs: [
+        { id: "llm-providers", title: isPt ? "Provedores (OpenAI, Ollama, LiteLLM)" : "Providers (OpenAI, Ollama, LiteLLM)" },
+        { id: "llm-settings-api", title: isPt ? "API de configuração" : "Settings API" },
+      ],
+    },
+    {
+      id: "table-summaries",
+      title: isPt ? "Resumos de tabela (Studio)" : "Table summaries (Studio)",
+      subs: [
+        { id: "table-summaries-generate", title: isPt ? "Gerar resumo" : "Generate summary" },
+        { id: "table-summaries-api", title: isPt ? "API" : "API" },
+      ],
+    },
+    {
       id: "csv-xlsx",
       title: "CSV / XLSX",
       subs: [
@@ -45,6 +63,7 @@ export function getDocStructure(isPt: boolean): TocSection[] {
       title: "BigQuery",
       subs: [
         { id: "bigquery-config", title: isPt ? "Configuração e armazenamento" : "Configuration & storage" },
+        { id: "bigquery-discovery", title: isPt ? "Discovery e atualização de metadata" : "Discovery & metadata refresh" },
         { id: "bigquery-context", title: isPt ? "Contexto para o LLM" : "Context for the LLM" },
       ],
     },
