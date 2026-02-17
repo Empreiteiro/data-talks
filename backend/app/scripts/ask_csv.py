@@ -1,15 +1,19 @@
 """
 Answer questions about CSV/XLSX data using an LLM (OpenAI or Ollama).
-Replaces the ask-question-csv edge function and Langflow flow.
+Generates and executes SQL on the full dataset for accurate answers.
 """
 from pathlib import Path
 from typing import Any
 import re
 import json
 import math
+import sqlite3
 import pandas as pd
 from app.llm.client import chat_completion
 from app.llm.logs import record_log
+
+# Max rows to load into SQLite (memory safety)
+MAX_CSV_ROWS = 100_000
 
 
 async def ask_csv(
@@ -33,40 +37,40 @@ async def ask_csv(
     if not full_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    # Use provided columns/preview from source metadata if available; otherwise read file
-    if columns and preview_rows is not None:
-        schema_text = _format_schema(columns, preview_rows)
-        sample_json = str(preview_rows[:5])
-    else:
-        df = pd.read_csv(full_path, nrows=200)
-        columns = list(df.columns)
-        preview = df.head(10).to_dict(orient="records")
-        schema_text = _format_schema(columns, preview)
-        sample_json = str(preview[:5])
-        sample_profile = _build_sample_profile(df)
-        sample_row_count = len(df)
-
+    # Load full file for SQL execution (CSV or XLSX)
+    df_full = _load_full_dataframe(full_path)
+    columns = list(df_full.columns)
+    full_row_count = len(df_full)
+    preview = df_full.head(10).to_dict(orient="records")
+    schema_text = _format_schema(columns, preview)
+    sample_json = str(preview[:5])
+    sample_profile = _build_sample_profile(df_full.head(1000))
     profile_text = _format_profile(sample_profile)
-    sample_rows_text = f"Sample size: {sample_row_count} rows (partial sample, not full dataset)."
+
+    # Create in-memory SQLite with table "data" for SQL execution
+    conn = sqlite3.connect(":memory:")
+    df_full.to_sql("data", conn, index=False, if_exists="replace")
+
+    schema_for_sql = (
+        f"Table 'data' with columns: {', '.join(columns)}. "
+        "Use SELECT ... FROM data. Quote column names with double quotes if they have spaces or special chars (e.g. \"Release Year\")."
+    )
 
     system = (
         "You are an assistant that answers questions about tabular data (CSV/spreadsheet). "
-        "Answer clearly and concisely. Use only the columns, sample data, and sample profile provided. "
-        "Do not assume you have access to the full dataset. "
-        "If the question requires precise filtering or aggregation on the full dataset, you MUST provide a SQL query "
-        "(in a fenced ```sql``` block) that would answer it exactly. "
-        "In that case, also state that the answer requires executing the SQL on the full dataset. "
-        "If an exact answer is not possible from the sample, provide an approximate answer based on the sample. "
+        "The full dataset is loaded in a table named 'data'. "
+        "For questions requiring precise filtering, counting, or aggregation, you MUST provide a SQL query in sqlQuery. "
+        "Use standard SQL: SELECT ... FROM data. Quote column names with double quotes if they have spaces or special chars. "
         "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of strings), "
-        "sqlQuery (string or null). "
+        "sqlQuery (string or null). The sqlQuery will be executed on the full data for accurate results. "
         "Do not include any extra text outside the JSON."
     )
     if agent_description:
         system += f"\nAgent context: {agent_description}"
 
     user_content = (
-        f"Schema and columns: {schema_text}\n\n"
-        f"{sample_rows_text}\n"
+        f"{schema_for_sql}\n\n"
+        f"Total rows: {full_row_count}\n"
         f"Sample profile:\n{profile_text}\n\n"
         f"Sample data (up to 5 rows):\n{sample_json}\n\n"
         f"User question: {question}"
@@ -76,7 +80,7 @@ async def ask_csv(
         {"role": "system", "content": system},
         {"role": "user", "content": user_content},
     ]
-    raw_answer, usage, trace = await chat_completion(messages, max_tokens=1024, llm_overrides=llm_overrides)
+    raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
     await record_log(
         action="pergunta",
         provider=usage.get("provider", ""),
@@ -89,6 +93,29 @@ async def ask_csv(
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]
+    sql_query = _extract_sql_from_field(parsed.get("sqlQuery") or "")
+
+    try:
+        # Execute SQL on full CSV and enrich answer with real results
+        if sql_query and sql_query.upper().strip().startswith("SELECT"):
+            try:
+                rows = _run_sql_on_csv(conn, sql_query)
+                if rows is not None:
+                    if len(rows) > 0:
+                        if len(rows) == 1 and len(rows[0]) == 1:
+                            val = list(rows[0].values())[0]
+                            answer = f"{answer}\n\n**Resultado da consulta:** {val}"
+                        elif len(rows) <= 15:
+                            answer = f"{answer}\n\n**Resultado ({len(rows)} linha(s)):**\n{_format_rows(rows)}"
+                        else:
+                            answer = f"{answer}\n\n**Resultado (primeiras 15 de {len(rows)} linhas):**\n{_format_rows(rows[:15])}"
+                    else:
+                        answer = f"{answer}\n\n**Resultado da consulta:** 0 linhas."
+            except Exception as e:
+                answer = f"{answer}\n\n*Erro ao executar a consulta SQL: {e}*"
+    finally:
+        conn.close()
+
     if not parsed["parsed_ok"]:
         if not answer:
             answer = raw_answer
@@ -97,9 +124,54 @@ async def ask_csv(
 
     return {
         "answer": answer,
-        "imageUrl": None,  # Optional: add chart generation (matplotlib/plotly → base64)
+        "imageUrl": None,
         "followUpQuestions": follow_up,
     }
+
+
+def _load_full_dataframe(full_path: Path) -> pd.DataFrame:
+    """Load full CSV or XLSX into a DataFrame (up to MAX_CSV_ROWS)."""
+    ext = full_path.suffix.lower()
+    if ext == ".csv":
+        return pd.read_csv(full_path, nrows=MAX_CSV_ROWS)
+    if ext in (".xlsx", ".xls"):
+        return pd.read_excel(full_path, nrows=MAX_CSV_ROWS)
+    raise ValueError(f"Unsupported file type: {ext}")
+
+
+def _extract_sql_from_field(s: str) -> str:
+    """Extract SQL from sqlQuery field, stripping ```sql ... ``` if present."""
+    s = (s or "").strip()
+    if not s:
+        return ""
+    m = re.search(r"```(?:sql)?\s*([\s\S]*?)```", s, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    return s
+
+
+def _run_sql_on_csv(conn: sqlite3.Connection, query: str) -> list[dict] | None:
+    """Execute SELECT-only query on SQLite. Returns list of dicts or None."""
+    q = query.strip().upper()
+    if not q.startswith("SELECT"):
+        raise ValueError("Only SELECT queries are allowed")
+    for forbidden in ("DELETE", "UPDATE", "INSERT", "DROP", "ALTER", "TRUNCATE", "CREATE"):
+        if forbidden in q:
+            raise ValueError("Only SELECT queries are allowed")
+    cur = conn.execute(query)
+    cols = [d[0] for d in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+def _format_rows(rows: list[dict]) -> str:
+    """Format rows for display in the answer."""
+    if not rows:
+        return ""
+    lines = []
+    for i, row in enumerate(rows, 1):
+        parts = [f"{k}: {v}" for k, v in row.items()]
+        lines.append(f"  {i}. " + ", ".join(parts))
+    return "\n".join(lines)
 
 
 def _format_schema(columns: list[str], preview_rows: list[dict]) -> str:
