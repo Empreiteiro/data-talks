@@ -74,7 +74,9 @@ async def ask_bigquery(
     table_infos: [{ "table": "x", "columns": [...] }] for context. Fetched from BigQuery if missing.
     """
     from app.llm.client import chat_completion
+    from app.llm.elaborate import elaborate_answer_with_results
     from app.llm.logs import record_log
+    from app.scripts.sql_utils import extract_sql_from_field
 
     loop = asyncio.get_event_loop()
 
@@ -126,24 +128,22 @@ async def ask_bigquery(
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]
-    sql_query = (parsed.get("sqlQuery") or "").strip()
+    sql_query = extract_sql_from_field(parsed.get("sqlQuery") or "")
 
-    # Execute SELECT and enrich answer with real results when possible
+    # Execute SELECT and have LLM elaborate answer from results
     if sql_query and sql_query.upper().startswith("SELECT"):
         try:
             rows = await loop.run_in_executor(None, lambda: _run_query_sync(client, sql_query))
-            if rows is not None and len(rows) > 0:
-                # Build a short summary for the user
-                if len(rows) == 1 and len(rows[0]) == 1:
-                    # Single value (e.g. COUNT(*))
-                    val = list(rows[0].values())[0]
-                    answer = f"{answer}\n\n**Resultado da consulta:** {val}"
-                elif len(rows) <= 10:
-                    answer = f"{answer}\n\n**Resultado ({len(rows)} linha(s)):**\n" + _format_rows(rows)
-                else:
-                    answer = f"{answer}\n\n**Resultado (primeiras 10 de {len(rows)} linhas):**\n" + _format_rows(rows[:10])
-            elif rows is not None and len(rows) == 0:
-                answer = f"{answer}\n\n**Resultado da consulta:** 0 linhas."
+            if rows is not None:
+                elaborated = await elaborate_answer_with_results(
+                    question=question,
+                    query_results=rows,
+                    agent_description=agent_description,
+                    source_name=source_name,
+                    llm_overrides=llm_overrides,
+                )
+                answer = elaborated["answer"]
+                follow_up = elaborated["followUpQuestions"] or follow_up
         except Exception as e:
             answer = f"{answer}\n\n*Erro ao executar a consulta no BigQuery: {e}*"
 

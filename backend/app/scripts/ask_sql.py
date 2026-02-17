@@ -3,8 +3,29 @@ Answer questions about an SQL database using an LLM (generates/executes SQL when
 Replaces ask-question-sql without Langflow.
 """
 from typing import Any
+import asyncio
 import json
 import re
+
+MAX_ROWS_FETCH = 500
+
+
+def _run_query_sync(connection_string: str, query: str) -> list[dict]:
+    """Execute SELECT-only query and return rows (up to MAX_ROWS_FETCH)."""
+    from sqlalchemy import create_engine, text
+
+    q = query.strip().upper()
+    if not q.startswith("SELECT"):
+        raise ValueError("Only SELECT queries are allowed")
+    for forbidden in ("DELETE", "UPDATE", "INSERT", "DROP", "ALTER", "TRUNCATE"):
+        if forbidden in q:
+            raise ValueError("Only SELECT queries are allowed")
+
+    engine = create_engine(connection_string)
+    with engine.connect() as conn:
+        result = conn.execute(text(query))
+        rows = result.mappings().fetchmany(MAX_ROWS_FETCH)
+    return [dict(r) for r in rows]
 
 
 async def ask_sql(
@@ -20,7 +41,11 @@ async def ask_sql(
     table_infos: [{ "table": "x", "columns": [...] }] for LLM context.
     """
     from app.llm.client import chat_completion
+    from app.llm.elaborate import elaborate_answer_with_results
     from app.llm.logs import record_log
+    from app.scripts.sql_utils import extract_sql_from_field
+
+    loop = asyncio.get_event_loop()
 
     schema_text = ""
     if table_infos:
@@ -56,6 +81,27 @@ async def ask_sql(
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]
+    sql_query = extract_sql_from_field(parsed.get("sqlQuery") or "")
+
+    # Execute SELECT and have LLM elaborate answer from results
+    if sql_query and sql_query.upper().startswith("SELECT"):
+        try:
+            rows = await loop.run_in_executor(
+                None, lambda: _run_query_sync(connection_string, sql_query)
+            )
+            if rows is not None:
+                elaborated = await elaborate_answer_with_results(
+                    question=question,
+                    query_results=rows,
+                    agent_description=agent_description,
+                    source_name=source_name,
+                    llm_overrides=llm_overrides,
+                )
+                answer = elaborated["answer"]
+                follow_up = elaborated["followUpQuestions"] or follow_up
+        except Exception as e:
+            answer = f"{answer}\n\n*Erro ao executar a consulta SQL: {e}*"
+
     if not parsed["parsed_ok"]:
         if not answer:
             answer = raw_answer

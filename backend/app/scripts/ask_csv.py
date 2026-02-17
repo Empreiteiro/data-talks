@@ -10,7 +10,9 @@ import math
 import sqlite3
 import pandas as pd
 from app.llm.client import chat_completion
+from app.llm.elaborate import elaborate_answer_with_results
 from app.llm.logs import record_log
+from app.scripts.sql_utils import extract_sql_from_field
 
 # Max rows to load into SQLite (memory safety)
 MAX_CSV_ROWS = 100_000
@@ -93,24 +95,23 @@ async def ask_csv(
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
     follow_up = parsed["followUpQuestions"]
-    sql_query = _extract_sql_from_field(parsed.get("sqlQuery") or "")
+    sql_query = extract_sql_from_field(parsed.get("sqlQuery") or "")
 
     try:
-        # Execute SQL on full CSV and enrich answer with real results
+        # Execute SQL and have LLM elaborate answer from results
         if sql_query and sql_query.upper().strip().startswith("SELECT"):
             try:
                 rows = _run_sql_on_csv(conn, sql_query)
                 if rows is not None:
-                    if len(rows) > 0:
-                        if len(rows) == 1 and len(rows[0]) == 1:
-                            val = list(rows[0].values())[0]
-                            answer = f"{answer}\n\n**Resultado da consulta:** {val}"
-                        elif len(rows) <= 15:
-                            answer = f"{answer}\n\n**Resultado ({len(rows)} linha(s)):**\n{_format_rows(rows)}"
-                        else:
-                            answer = f"{answer}\n\n**Resultado (primeiras 15 de {len(rows)} linhas):**\n{_format_rows(rows[:15])}"
-                    else:
-                        answer = f"{answer}\n\n**Resultado da consulta:** 0 linhas."
+                    elaborated = await elaborate_answer_with_results(
+                        question=question,
+                        query_results=rows,
+                        agent_description=agent_description,
+                        source_name=source_name,
+                        llm_overrides=llm_overrides,
+                    )
+                    answer = elaborated["answer"]
+                    follow_up = elaborated["followUpQuestions"] or follow_up
             except Exception as e:
                 answer = f"{answer}\n\n*Erro ao executar a consulta SQL: {e}*"
     finally:
@@ -137,17 +138,6 @@ def _load_full_dataframe(full_path: Path) -> pd.DataFrame:
     if ext in (".xlsx", ".xls"):
         return pd.read_excel(full_path, nrows=MAX_CSV_ROWS)
     raise ValueError(f"Unsupported file type: {ext}")
-
-
-def _extract_sql_from_field(s: str) -> str:
-    """Extract SQL from sqlQuery field, stripping ```sql ... ``` if present."""
-    s = (s or "").strip()
-    if not s:
-        return ""
-    m = re.search(r"```(?:sql)?\s*([\s\S]*?)```", s, re.IGNORECASE)
-    if m:
-        return m.group(1).strip()
-    return s
 
 
 def _run_sql_on_csv(conn: sqlite3.Connection, query: str) -> list[dict] | None:
