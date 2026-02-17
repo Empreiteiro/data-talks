@@ -1,4 +1,6 @@
 """LLM and app settings API."""
+import json
+import os
 import httpx
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -152,6 +154,26 @@ async def list_litellm_models(
         return {"models": models}
     except Exception as e:
         return {"models": [], "error": str(e)}
+
+
+@router.get("/google-sheets-service-email")
+async def get_google_sheets_service_email(
+    user: User = Depends(require_user),
+):
+    """
+    Return the service account client_email from GOOGLE_SHEETS_SERVICE_ACCOUNT (JSON).
+    Used by the frontend to show which email users must share their Google Sheet with.
+    Returns null if not configured or invalid.
+    """
+    raw = os.environ.get("GOOGLE_SHEETS_SERVICE_ACCOUNT")
+    if not raw or not raw.strip():
+        return {"email": None}
+    try:
+        data = json.loads(raw.strip())
+        email = (data or {}).get("client_email") if isinstance(data, dict) else None
+        return {"email": email if isinstance(email, str) and email.strip() else None}
+    except (json.JSONDecodeError, TypeError):
+        return {"email": None}
 
 
 @router.get("/ollama/models")

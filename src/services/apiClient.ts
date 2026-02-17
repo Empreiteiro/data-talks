@@ -117,6 +117,10 @@ export const apiClient = {
   async refreshSourceBigQueryMetadata(sourceId: string) {
     return api<{ metaJSON: any }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  async getGoogleSheetsServiceEmail(): Promise<string | null> {
+    const data = await api<{ email: string | null }>('/api/settings/google-sheets-service-email');
+    return data?.email ?? null;
+  },
   async fetchBigQueryFullTable(sourceId: string, limit?: number) {
     return api<{ columns: string[]; rows: Record<string, unknown>[] }>(
       `/api/bigquery/sources/${sourceId}/full-table`,

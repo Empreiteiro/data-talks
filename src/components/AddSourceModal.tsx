@@ -57,19 +57,24 @@ export function AddSourceModal({
   const [selectedSheet, setSelectedSheet] = useState("");
   const [loadingSheets, setLoadingSheets] = useState(false);
   const [spreadsheetData, setSpreadsheetData] = useState<{id: string, title: string} | null>(null);
+  const [sheetsServiceEmail, setSheetsServiceEmail] = useState<string | null | undefined>(undefined);
 
   // SQL Database state
   const [sqlConnectionString, setSqlConnectionString] = useState("");
   const [sqlDatabaseType, setSqlDatabaseType] = useState<'postgresql' | 'mysql' | ''>('');
   const [sqlTableName, setSqlTableName] = useState("");
 
-  // Fetch existing BigQuery credentials when modal opens
+  // Fetch existing BigQuery credentials and Google Sheets service email when modal opens
   useEffect(() => {
     if (open) {
       fetchExistingCredentials();
       setAvailableProjects([]);
       setAvailableDatasets([]);
       setAvailableTables([]);
+      setSheetsServiceEmail(undefined);
+      dataClient.getGoogleSheetsServiceEmail()
+        .then((email) => setSheetsServiceEmail(email ?? null))
+        .catch(() => setSheetsServiceEmail(null));
     }
   }, [open]);
 
@@ -574,14 +579,26 @@ export function AddSourceModal({
 
             <TabsContent value="sheets" className="space-y-4">
               <div className="space-y-4">
-                <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
-                  <p className="text-sm">
-                    <strong>{t('addSource.sheetsImportant')}</strong> {t('addSource.sheetsShareWith')}
-                  </p>
-                  <code className="block bg-background px-3 py-2 rounded text-xs border">
-                    talk-2-data@talk-2-data.iam.gserviceaccount.com
-                  </code>
-                </div>
+                {sheetsServiceEmail === undefined ? (
+                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
+                    <p className="text-sm text-muted-foreground">{t('addSource.sheetsLoadingEmail')}</p>
+                  </div>
+                ) : sheetsServiceEmail ? (
+                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
+                    <p className="text-sm">
+                      <strong>{t('addSource.sheetsImportant')}</strong> {t('addSource.sheetsShareWith')}
+                    </p>
+                    <code className="block bg-background px-3 py-2 rounded text-xs border break-all">
+                      {sheetsServiceEmail}
+                    </code>
+                  </div>
+                ) : (
+                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
+                    <p className="text-sm text-amber-600 dark:text-amber-500">
+                      {t('addSource.sheetsNotConfigured')}
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="sheets-id">{t('addSource.sheetsId')}</Label>
