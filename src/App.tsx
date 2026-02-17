@@ -64,7 +64,7 @@ const AppContent = () => {
         </Routes>
       </main>
       {!isWorkspacePage && !isDashboardPage && !isIndexPage && <Footer />}
-      <LogsPanel />
+      {!isWorkspacePage && <LogsPanel />}
     </div>
   );
 };

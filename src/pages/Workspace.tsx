@@ -4,6 +4,7 @@ import { GraphViewModal } from "@/components/GraphViewModal";
 import { SEO } from "@/components/SEO";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
+import { LogsModal } from "@/components/LogsModal";
 import { SummaryModal } from "@/components/SummaryModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { ChevronRight, History, Layout, Lock, RotateCcw, Send, SlidersHorizontal, Table, Upload, X } from "lucide-react";
+import { ChevronRight, History, Layout, Lock, RotateCcw, Send, SlidersHorizontal, Table, Terminal, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -225,6 +226,7 @@ export default function Workspace() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [graphModalOpen, setGraphModalOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
 
   useEffect(() => {
@@ -739,6 +741,19 @@ export default function Workspace() {
           </div>}
       </div>
 
+      {/* Bottom bar - Logs (estilo n8n) */}
+      <div className="flex items-center justify-between h-11 px-4 py-2 mt-2 -mx-4 border-t bg-muted/30 rounded-b-xl shrink-0">
+        <div className="flex items-center gap-2" />
+        <button
+          type="button"
+          onClick={() => setLogsModalOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+        >
+          <Terminal className="h-4 w-4" />
+          Logs
+        </button>
+      </div>
+
       <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} agentId={id} onSourceAdded={async (sourceId: string) => {
         if (!id) return;
         
@@ -773,5 +788,7 @@ export default function Workspace() {
         onOpenChange={setSummaryModalOpen}
         workspaceId={id || ''}
       />
+
+      <LogsModal open={logsModalOpen} onOpenChange={setLogsModalOpen} />
     </div>;
 }
