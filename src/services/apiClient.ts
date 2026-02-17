@@ -129,7 +129,7 @@ export const apiClient = {
   },
 
   async getAgent(id: string) {
-    return api<{ id: string; name: string; description: string; source_ids: string[]; suggested_questions: string[] }>(`/api/agents/${id}`);
+    return api<{ id: string; name: string; description: string; source_ids: string[]; suggested_questions: string[]; llm_config_id?: string | null }>(`/api/agents/${id}`);
   },
 
   async listAgents() {
@@ -147,10 +147,10 @@ export const apiClient = {
     });
   },
 
-  async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[]) {
+  async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], llmConfigId?: string | null) {
     return api(`/api/agents/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [] }),
+      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], llm_config_id: llmConfigId ?? null }),
     });
   },
 
@@ -303,6 +303,48 @@ export const apiClient = {
   async listOllamaModels(baseUrl?: string) {
     const params = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : '';
     return api<{ models: string[]; error?: string }>(`/api/settings/ollama/models${params}`);
+  },
+
+  async listLlmConfigs() {
+    return api<Array<{
+      id: string;
+      name: string;
+      llm_provider: string;
+      openai_api_key?: string;
+      openai_model?: string;
+      ollama_base_url?: string;
+      ollama_model?: string;
+      litellm_base_url?: string;
+      litellm_model?: string;
+      litellm_api_key?: string;
+      created_at?: string;
+    }>>('/api/settings/llm-configs');
+  },
+
+  async createLlmConfig(body: {
+    name: string;
+    llm_provider: string;
+    openai_api_key?: string;
+    openai_model?: string;
+    ollama_base_url?: string;
+    ollama_model?: string;
+    litellm_base_url?: string;
+    litellm_model?: string;
+    litellm_api_key?: string;
+  }) {
+    return api('/api/settings/llm-configs', { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async getLlmConfig(id: string) {
+    return api(`/api/settings/llm-configs/${id}`);
+  },
+
+  async updateLlmConfig(id: string, body: Record<string, unknown>) {
+    return api(`/api/settings/llm-configs/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  },
+
+  async deleteLlmConfig(id: string) {
+    return api(`/api/settings/llm-configs/${id}`, { method: 'DELETE' });
   },
 
   // Studio Summary (table executive reports)

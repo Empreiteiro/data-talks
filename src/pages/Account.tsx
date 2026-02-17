@@ -8,7 +8,7 @@ import { Activity, Bot, Database, FolderOpen, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
-import { LLMSettingsManager } from "@/components/LLMSettingsManager";
+import { LLMPanel } from "@/components/LLMPanel";
 
 const Account = () => {
   const { t } = useLanguage();
@@ -65,7 +65,7 @@ const Account = () => {
         <div className="flex-1 bg-background overflow-hidden">
           {activeSection === "usage" && <UsageMonitoring />}
 
-          {activeSection === "llm" && <LLMSettingsManager />}
+          {activeSection === "llm" && <LLMPanel />}
           
           {activeSection === "users" && <UsersManagement />}
           

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Plus } from "lucide-react";
 import { dataClient } from "@/services/dataClient";
 import { toast } from "sonner";
@@ -36,14 +37,21 @@ export function AgentSettingsModal({
 
   const [agentName, setAgentName] = useState("");
   const [sourceIds, setSourceIds] = useState<string[]>([]);
+  const [llmConfigId, setLlmConfigId] = useState<string | null>(null);
+  const [llmConfigs, setLlmConfigs] = useState<Array<{ id: string; name: string; llm_provider: string }>>([]);
 
   const loadSettings = async () => {
     try {
-      const agent = await dataClient.getAgent(agentId);
+      const [agent, configs] = await Promise.all([
+        dataClient.getAgent(agentId),
+        dataClient.listLlmConfigs(),
+      ]);
       setInstructions(agent?.description || "");
       setWarmupQuestions(agent?.suggested_questions || []);
       setAgentName(agent?.name || "");
       setSourceIds(agent?.source_ids || []);
+      setLlmConfigId(agent?.llm_config_id ?? null);
+      setLlmConfigs(configs || []);
     } catch (error: any) {
       console.error("Erro ao carregar configurações:", error);
       toast.error(t('agentSettings.loadError'));
@@ -53,7 +61,7 @@ export function AgentSettingsModal({
   const handleSave = async () => {
     setLoading(true);
     try {
-      await dataClient.updateAgent(agentId, agentName, sourceIds, instructions, warmupQuestions);
+      await dataClient.updateAgent(agentId, agentName, sourceIds, instructions, warmupQuestions, llmConfigId);
       toast.success(t('agentSettings.saveSuccess'));
       onSettingsUpdated?.();
       onOpenChange(false);
@@ -84,6 +92,24 @@ export function AgentSettingsModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Modelo LLM para este Workspace */}
+          <div className="space-y-2">
+            <Label>{t("llmConfig.workspaceModel")}</Label>
+            <Select value={llmConfigId ?? "default"} onValueChange={(v) => setLlmConfigId(v === "default" ? null : v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">{t("llmConfig.defaultOption")}</SelectItem>
+                {llmConfigs.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} ({c.llm_provider})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Orientações Específicas */}
           <div className="space-y-2">
             <Label htmlFor="instructions">{t('agentSettings.instructions')}</Label>

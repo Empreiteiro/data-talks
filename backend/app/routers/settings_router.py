@@ -1,15 +1,16 @@
 """LLM and app settings API."""
 import json
 import os
+import uuid
 import httpx
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
-from app.models import User, LlmSettings
+from app.models import User, LlmSettings, LlmConfig
 from app.auth import require_user
 from app.config import get_settings
 
@@ -190,7 +191,161 @@ async def list_ollama_models(
             r = await client.get(api_url)
             r.raise_for_status()
             data = r.json()
-        models = [m.get("name", "").split(":")[0] for m in data.get("models", []) if m.get("name")]
-        return {"models": list(dict.fromkeys(models))}  # dedupe
+        models = [m.get("name", "").strip() for m in data.get("models", []) if m.get("name")]
+        return {"models": list(dict.fromkeys(models))}  # dedupe by full name
     except Exception as e:
         return {"models": [], "error": str(e)}
+
+
+# --- LLM Configs (multiple per user, for list UI like Sources/Credentials) ---
+
+class LlmConfigCreate(BaseModel):
+    name: str
+    llm_provider: str  # openai | ollama | litellm
+    openai_api_key: Optional[str] = None
+    openai_model: Optional[str] = None
+    ollama_base_url: Optional[str] = None
+    ollama_model: Optional[str] = None
+    litellm_base_url: Optional[str] = None
+    litellm_model: Optional[str] = None
+    litellm_api_key: Optional[str] = None
+
+
+class LlmConfigUpdate(BaseModel):
+    name: Optional[str] = None
+    llm_provider: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    openai_model: Optional[str] = None
+    ollama_base_url: Optional[str] = None
+    ollama_model: Optional[str] = None
+    litellm_base_url: Optional[str] = None
+    litellm_model: Optional[str] = None
+    litellm_api_key: Optional[str] = None
+
+
+def _config_to_response(c: LlmConfig, env) -> dict:
+    return {
+        "id": c.id,
+        "name": c.name,
+        "llm_provider": c.llm_provider,
+        "openai_api_key": _mask_api_key(c.openai_api_key) if c.openai_api_key else "",
+        "openai_model": c.openai_model or env.openai_model,
+        "ollama_base_url": c.ollama_base_url or env.ollama_base_url,
+        "ollama_model": c.ollama_model or env.ollama_model,
+        "litellm_base_url": c.litellm_base_url or env.litellm_base_url,
+        "litellm_model": c.litellm_model or env.litellm_model,
+        "litellm_api_key": _mask_api_key(c.litellm_api_key) if c.litellm_api_key else "",
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+    }
+
+
+@router.get("/llm-configs")
+async def list_llm_configs(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """List all LLM configs for the current user."""
+    env = get_settings()
+    r = await db.execute(select(LlmConfig).where(LlmConfig.user_id == user.id).order_by(LlmConfig.created_at.desc()))
+    configs = list(r.scalars().all())
+    return [_config_to_response(c, env) for c in configs]
+
+
+@router.post("/llm-configs")
+async def create_llm_config(
+    body: LlmConfigCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Create a new LLM config."""
+    env = get_settings()
+    config_id = str(uuid.uuid4())
+    def _opt(s: str | None) -> str | None:
+        return (s or "").strip() or None
+
+    c = LlmConfig(
+        id=config_id,
+        user_id=user.id,
+        name=body.name.strip(),
+        llm_provider=body.llm_provider if body.llm_provider in ("openai", "ollama", "litellm") else "openai",
+        openai_api_key=_opt(body.openai_api_key),
+        openai_model=_opt(body.openai_model),
+        ollama_base_url=_opt(body.ollama_base_url),
+        ollama_model=_opt(body.ollama_model),
+        litellm_base_url=_opt(body.litellm_base_url),
+        litellm_model=_opt(body.litellm_model),
+        litellm_api_key=_opt(body.litellm_api_key),
+    )
+    db.add(c)
+    await db.commit()
+    await db.refresh(c)
+    return _config_to_response(c, env)
+
+
+@router.get("/llm-configs/{config_id}")
+async def get_llm_config(
+    config_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Get a single LLM config."""
+    env = get_settings()
+    r = await db.execute(select(LlmConfig).where(LlmConfig.id == config_id, LlmConfig.user_id == user.id))
+    c = r.scalar_one_or_none()
+    if not c:
+        raise HTTPException(404, "LLM config not found")
+    return _config_to_response(c, env)
+
+
+@router.patch("/llm-configs/{config_id}")
+async def update_llm_config(
+    config_id: str,
+    body: LlmConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Update an LLM config."""
+    env = get_settings()
+    r = await db.execute(select(LlmConfig).where(LlmConfig.id == config_id, LlmConfig.user_id == user.id))
+    c = r.scalar_one_or_none()
+    if not c:
+        raise HTTPException(404, "LLM config not found")
+    if body.name is not None:
+        c.name = body.name.strip()
+    if body.llm_provider is not None and body.llm_provider in ("openai", "ollama", "litellm"):
+        c.llm_provider = body.llm_provider
+    if body.openai_api_key is not None:
+        val = body.openai_api_key.strip()
+        c.openai_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.openai_api_key)
+    if body.openai_model is not None:
+        c.openai_model = body.openai_model.strip() or None
+    if body.ollama_base_url is not None:
+        c.ollama_base_url = body.ollama_base_url.strip() or None
+    if body.ollama_model is not None:
+        c.ollama_model = body.ollama_model.strip() or None
+    if body.litellm_base_url is not None:
+        c.litellm_base_url = body.litellm_base_url.strip() or None
+    if body.litellm_model is not None:
+        c.litellm_model = body.litellm_model.strip() or None
+    if body.litellm_api_key is not None:
+        val = body.litellm_api_key.strip()
+        c.litellm_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.litellm_api_key)
+    await db.commit()
+    await db.refresh(c)
+    return _config_to_response(c, env)
+
+
+@router.delete("/llm-configs/{config_id}")
+async def delete_llm_config(
+    config_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Delete an LLM config."""
+    r = await db.execute(select(LlmConfig).where(LlmConfig.id == config_id, LlmConfig.user_id == user.id))
+    c = r.scalar_one_or_none()
+    if not c:
+        raise HTTPException(404, "LLM config not found")
+    await db.delete(c)
+    await db.commit()
+    return {"ok": True}

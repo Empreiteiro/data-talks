@@ -272,6 +272,7 @@ async def list_agents(db: AsyncSession = Depends(get_db), user: User = Depends(r
             "description": a.description,
             "source_ids": a.source_ids or [],
             "suggested_questions": a.suggested_questions or [],
+            "llm_config_id": getattr(a, "llm_config_id", None),
             "created_at": a.created_at.isoformat(),
             "updated_at": a.updated_at.isoformat(),
             "source_count": count,
@@ -284,6 +285,7 @@ class AgentCreate(BaseModel):
     source_ids: list[str] = []
     description: str = ""
     suggested_questions: list[str] = []
+    llm_config_id: str | None = None
 
 
 @router.post("/agents")
@@ -297,10 +299,11 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
         description=body.description,
         source_ids=body.source_ids,
         suggested_questions=body.suggested_questions,
+        llm_config_id=body.llm_config_id,
     )
     db.add(a)
     await db.commit()
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "suggested_questions": a.suggested_questions, "created_at": a.created_at.isoformat(), "updated_at": a.updated_at.isoformat()}
+    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "suggested_questions": a.suggested_questions, "llm_config_id": a.llm_config_id, "created_at": a.created_at.isoformat(), "updated_at": a.updated_at.isoformat()}
 
 
 @router.patch("/agents/{agent_id}")
@@ -317,8 +320,10 @@ async def update_agent(agent_id: str, body: dict, db: AsyncSession = Depends(get
         a.source_ids = body["source_ids"]
     if "suggested_questions" in body:
         a.suggested_questions = body["suggested_questions"]
+    if "llm_config_id" in body:
+        a.llm_config_id = body["llm_config_id"]
     await db.commit()
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "suggested_questions": a.suggested_questions}
+    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "suggested_questions": a.suggested_questions, "llm_config_id": getattr(a, "llm_config_id", None)}
 
 
 @router.get("/agents/{agent_id}")
@@ -327,7 +332,7 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db), user: Use
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Agent not found")
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids or [], "suggested_questions": a.suggested_questions or []}
+    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids or [], "suggested_questions": a.suggested_questions or [], "llm_config_id": getattr(a, "llm_config_id", None)}
 
 
 @router.delete("/agents/{agent_id}")

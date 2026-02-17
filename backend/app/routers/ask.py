@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Agent, Source, QASession, LlmSettings
+from app.models import Agent, Source, QASession, LlmSettings, LlmConfig
 from app.auth import require_user
 from app.models import User
 from app.schemas import AskQuestionRequest, AskQuestionResponse
@@ -21,27 +21,27 @@ from app.config import get_settings
 router = APIRouter(prefix="/ask-question", tags=["ask"])
 
 
-def _user_llm_overrides(llm_row: LlmSettings | None) -> dict | None:
-    """Build overrides dict from user's LlmSettings for chat_completion."""
-    if not llm_row:
+def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None:
+    """Build overrides dict from LlmConfig or LlmSettings for chat_completion."""
+    if not cfg:
         return None
     overrides = {}
-    if llm_row.llm_provider:
-        overrides["llm_provider"] = llm_row.llm_provider
-    if llm_row.openai_api_key:
-        overrides["openai_api_key"] = llm_row.openai_api_key
-    if llm_row.openai_model:
-        overrides["openai_model"] = llm_row.openai_model
-    if llm_row.ollama_base_url:
-        overrides["ollama_base_url"] = llm_row.ollama_base_url
-    if llm_row.ollama_model:
-        overrides["ollama_model"] = llm_row.ollama_model
-    if llm_row.litellm_base_url:
-        overrides["litellm_base_url"] = llm_row.litellm_base_url
-    if llm_row.litellm_model:
-        overrides["litellm_model"] = llm_row.litellm_model
-    if llm_row.litellm_api_key:
-        overrides["litellm_api_key"] = llm_row.litellm_api_key
+    if cfg.llm_provider:
+        overrides["llm_provider"] = cfg.llm_provider
+    if getattr(cfg, "openai_api_key", None):
+        overrides["openai_api_key"] = cfg.openai_api_key
+    if getattr(cfg, "openai_model", None):
+        overrides["openai_model"] = cfg.openai_model
+    if getattr(cfg, "ollama_base_url", None):
+        overrides["ollama_base_url"] = cfg.ollama_base_url
+    if getattr(cfg, "ollama_model", None):
+        overrides["ollama_model"] = cfg.ollama_model
+    if getattr(cfg, "litellm_base_url", None):
+        overrides["litellm_base_url"] = cfg.litellm_base_url
+    if getattr(cfg, "litellm_model", None):
+        overrides["litellm_model"] = cfg.litellm_model
+    if getattr(cfg, "litellm_api_key", None):
+        overrides["litellm_api_key"] = cfg.litellm_api_key
     return overrides if overrides else None
 
 
@@ -76,10 +76,17 @@ async def ask_question(
     settings = get_settings()
     data_files_dir = settings.data_files_dir
 
-    # User LLM overrides (from settings)
-    r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
-    llm_row = r_llm.scalar_one_or_none()
-    llm_overrides = _user_llm_overrides(llm_row)
+    # LLM overrides: agent.llm_config_id > LlmSettings (default) > env
+    llm_overrides = None
+    if agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            llm_overrides = _llm_config_to_overrides(cfg)
+    if llm_overrides is None:
+        r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
+        llm_row = r_llm.scalar_one_or_none()
+        llm_overrides = _llm_config_to_overrides(llm_row)
 
     # Route by source type
     if source.type in ("csv", "xlsx"):
