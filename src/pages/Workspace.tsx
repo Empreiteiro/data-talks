@@ -6,6 +6,7 @@ import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { LogsModal } from "@/components/LogsModal";
 import { SummaryModal } from "@/components/SummaryModal";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -206,7 +207,11 @@ export default function Workspace() {
       setAddSourceOpen(true);
     }
   }, [searchParams]);
-  const [question, setQuestion] = useState("");
+  type QuestionSegment = { type: "text"; value: string } | { type: "column"; name: string };
+  const [questionSegments, setQuestionSegments] = useState<QuestionSegment[]>([]);
+  const [questionInput, setQuestionInput] = useState("");
+  const getQuestionFullText = () =>
+    questionSegments.map((s) => (s.type === "text" ? s.value : s.name)).join("") + questionInput;
   const [messages, setMessages] = useState<Array<{
     role: string;
     content: string;
@@ -336,7 +341,8 @@ export default function Workspace() {
     setMessages([]);
     setCurrentSessionId(null);
     setFollowUpQuestions([]);
-    setQuestion("");
+    setQuestionSegments([]);
+    setQuestionInput("");
   }
 
   async function loadHistory() {
@@ -455,14 +461,14 @@ export default function Workspace() {
   };
 
   const handleSendMessage = async () => {
-    if (!question.trim() || !id) return;
-    
-    const userMessage = question;
+    const userMessage = getQuestionFullText().trim();
+    if (!userMessage || !id) return;
     setMessages([...messages, {
       role: "user",
       content: userMessage
     }]);
-    setQuestion("");
+    setQuestionSegments([]);
+    setQuestionInput("");
     setIsLoading(true);
 
     try {
@@ -519,7 +525,14 @@ export default function Workspace() {
             agentId={id} 
             onAddSource={() => setAddSourceOpen(true)}
             refreshTrigger={sourcesRefreshTrigger}
-            onSourceActivated={loadAvailableColumns}
+            onSourceActivated={() => {
+              setMessages([]);
+              setCurrentSessionId(null);
+              setFollowUpQuestions([]);
+              setQuestionSegments([]);
+              setQuestionInput("");
+              loadAvailableColumns();
+            }}
           />
         </div>
 
@@ -667,7 +680,14 @@ export default function Workspace() {
                       variant="outline"
                       size="sm"
                       className="text-xs h-auto py-1.5 px-3 font-mono"
-                      onClick={() => setQuestion(prev => prev ? `${prev} ${column}` : column)}
+                      onClick={() => {
+                        setQuestionSegments((prev) => [
+                          ...prev,
+                          { type: "text", value: questionInput + (questionInput ? " " : "") },
+                          { type: "column", name: column },
+                        ]);
+                        setQuestionInput("");
+                      }}
                     >
                       {column}
                     </Button>
@@ -689,7 +709,10 @@ export default function Workspace() {
                       variant="secondary"
                       size="sm"
                       className="text-xs h-auto py-2 px-3"
-                      onClick={() => setQuestion(question)}
+                      onClick={() => {
+                      setQuestionSegments([{ type: "text", value: question }]);
+                      setQuestionInput("");
+                    }}
                     >
                       {question}
                     </Button>
@@ -770,7 +793,10 @@ export default function Workspace() {
                       variant="outline"
                       size="sm"
                       className="text-xs h-auto py-2 px-3"
-                      onClick={() => setQuestion(fq)}
+                      onClick={() => {
+                      setQuestionSegments([{ type: "text", value: fq }]);
+                      setQuestionInput("");
+                    }}
                     >
                       {fq}
                     </Button>
@@ -778,8 +804,51 @@ export default function Workspace() {
                 </div>
               )}
               <div className="flex gap-2">
-                <Input value={question} onChange={e => setQuestion(e.target.value)} placeholder={hasSources ? t('workspace.inputPlaceholder') : t('workspace.addSourceFirst')} onKeyPress={e => e.key === "Enter" && !isLoading && hasSources && handleSendMessage()} disabled={!hasSources || isLoading} className="h-12" />
-                <Button onClick={handleSendMessage} disabled={!question.trim() || !hasSources || isLoading} className="h-12">
+                <div className="flex-1 min-w-0 h-12 flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 has-[:disabled]:opacity-50">
+                  {questionSegments.map((seg, i) =>
+                    seg.type === "text" ? (
+                      seg.value ? (
+                        <span key={i} className="whitespace-pre-wrap break-words">
+                          {seg.value}
+                        </span>
+                      ) : null
+                    ) : (
+                      <Badge
+                        key={i}
+                        variant="secondary"
+                        className="font-mono text-xs h-6 px-2 bg-primary/15 text-primary border border-primary/30"
+                      >
+                        {seg.name}
+                      </Badge>
+                    )
+                  )}
+                  <input
+                    className="flex-1 min-w-[120px] h-6 bg-transparent border-0 outline-none placeholder:text-muted-foreground"
+                    value={questionInput}
+                    onChange={(e) => setQuestionInput(e.target.value)}
+                    placeholder={questionSegments.length === 0 && !questionInput ? (hasSources ? t("workspace.inputPlaceholder") : t("workspace.addSourceFirst")) : ""}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && !isLoading && hasSources) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                      if (e.key === "Backspace" && !questionInput && questionSegments.length > 0) {
+                        e.preventDefault();
+                        setQuestionSegments((prev) => {
+                          const last = prev[prev.length - 1];
+                          if (last?.type === "text" && last.value.length > 0) {
+                            const newVal = last.value.slice(0, -1);
+                            if (newVal === "") return prev.slice(0, -1);
+                            return [...prev.slice(0, -1), { type: "text" as const, value: newVal }];
+                          }
+                          return prev.slice(0, -1);
+                        });
+                      }
+                    }}
+                    disabled={!hasSources || isLoading}
+                  />
+                </div>
+                <Button onClick={handleSendMessage} disabled={!getQuestionFullText().trim() || !hasSources || isLoading} className="h-12">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
