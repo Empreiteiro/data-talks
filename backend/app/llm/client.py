@@ -3,7 +3,8 @@ LLM client: OpenAI API or Ollama (local open-source model).
 Configure via LLM_PROVIDER, OPENAI_API_KEY, OLLAMA_BASE_URL, etc.
 User overrides from settings API take precedence over env vars.
 
-Returns (content, usage) where usage = {provider, model, input_tokens, output_tokens}.
+Returns (content, usage, trace). usage = {provider, model, input_tokens, output_tokens}.
+trace = optional dict with tool_calls, reasoning, finish_reason, messages_summary, etc.
 """
 from datetime import datetime, timezone
 from typing import Any
@@ -45,14 +46,49 @@ def _usage(
     }
 
 
+def _build_trace(
+    messages: list[dict[str, Any]],
+    message: Any,
+    finish_reason: str | None = None,
+    raw: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build trace dict from LLM response for logging."""
+    trace: dict[str, Any] = {
+        "messages_count": len(messages),
+        "roles": [m.get("role", "?") for m in messages],
+    }
+    if messages:
+        first_content = messages[0].get("content", "") or ""
+        trace["prompt_preview"] = (first_content[:500] + "…") if len(str(first_content)) > 500 else first_content
+    if finish_reason:
+        trace["finish_reason"] = finish_reason
+    if message:
+        tc_list = getattr(message, "tool_calls", None)
+        if tc_list:
+            trace["tool_calls"] = []
+            for tc in tc_list:
+                fn = getattr(tc, "function", None)
+                trace["tool_calls"].append({
+                    "id": getattr(tc, "id", ""),
+                    "name": getattr(fn, "name", "") if fn else "",
+                    "args": getattr(fn, "arguments", "") if fn else "",
+                })
+        if getattr(message, "reasoning_content", None):
+            trace["reasoning"] = message.reasoning_content
+    if raw:
+        trace["raw"] = raw
+    return trace
+
+
 async def chat_completion(
     messages: list[dict[str, str]],
     max_tokens: int = 4096,
     llm_overrides: dict[str, Any] | None = None,
-) -> tuple[str, dict[str, Any]]:
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """
-    Returns (content, usage). content is the assistant reply text.
+    Returns (content, usage, trace). content is the assistant reply text.
     usage = {provider, model, input_tokens, output_tokens}.
+    trace = dict with tool_calls, reasoning, messages_summary, etc.
     llm_overrides override env/user settings.
     """
     cfg = _effective_settings(llm_overrides)
@@ -64,7 +100,7 @@ async def chat_completion(
     return await _openai_chat(messages, max_tokens, cfg)
 
 
-async def _openai_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+async def _openai_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
     from openai import AsyncOpenAI
 
     api_key = cfg.get("openai_api_key") or None
@@ -75,14 +111,17 @@ async def _openai_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dic
         messages=messages,
         max_tokens=max_tokens,
     )
-    content = (resp.choices[0].message.content or "").strip()
+    msg = resp.choices[0].message
+    content = (msg.content or "").strip()
     usage_data = resp.usage
     input_t = getattr(usage_data, "prompt_tokens", None) or getattr(usage_data, "input_tokens", 0) if usage_data else 0
     output_t = getattr(usage_data, "completion_tokens", None) or getattr(usage_data, "output_tokens", 0) if usage_data else 0
-    return content, _usage("openai", model, input_t or 0, output_t or 0)
+    finish = getattr(resp.choices[0], "finish_reason", None)
+    trace = _build_trace(messages, msg, finish_reason=finish)
+    return content, _usage("openai", model, input_t or 0, output_t or 0), trace
 
 
-async def _ollama_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+async def _ollama_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """Use Ollama's OpenAI-compatible API (/v1/chat/completions)."""
     from openai import AsyncOpenAI
 
@@ -96,14 +135,17 @@ async def _ollama_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dic
         messages=messages,
         max_tokens=max_tokens,
     )
-    content = (resp.choices[0].message.content or "").strip()
+    msg = resp.choices[0].message
+    content = (msg.content or "").strip()
     usage_data = resp.usage
     input_t = getattr(usage_data, "prompt_tokens", None) or 0 if usage_data else 0
     output_t = getattr(usage_data, "completion_tokens", None) or 0 if usage_data else 0
-    return content, _usage("ollama", model, input_t or 0, output_t or 0)
+    finish = getattr(resp.choices[0], "finish_reason", None)
+    trace = _build_trace(messages, msg, finish_reason=finish)
+    return content, _usage("ollama", model, input_t or 0, output_t or 0), trace
 
 
-async def _litellm_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+async def _litellm_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """Use LiteLLM proxy (OpenAI-compatible API)."""
     from openai import AsyncOpenAI
 
@@ -118,8 +160,11 @@ async def _litellm_chat(messages: list[dict[str, str]], max_tokens: int, cfg: di
         messages=messages,
         max_tokens=max_tokens,
     )
-    content = (resp.choices[0].message.content or "").strip()
+    msg = resp.choices[0].message
+    content = (msg.content or "").strip()
     usage_data = resp.usage
     input_t = getattr(usage_data, "prompt_tokens", None) or getattr(usage_data, "input_tokens", 0) if usage_data else 0
     output_t = getattr(usage_data, "completion_tokens", None) or getattr(usage_data, "output_tokens", 0) if usage_data else 0
-    return content, _usage("litellm", model, input_t or 0, output_t or 0)
+    finish = getattr(resp.choices[0], "finish_reason", None)
+    trace = _build_trace(messages, msg, finish_reason=finish)
+    return content, _usage("litellm", model, input_t or 0, output_t or 0), trace

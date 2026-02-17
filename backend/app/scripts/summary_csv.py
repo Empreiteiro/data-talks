@@ -79,7 +79,7 @@ async def generate_table_summary_csv(
         f"Sample rows (at most 5, for context only):\n{sample_json}\n\n"
         "Write the executive summary (Markdown only, no preamble)."
     )
-    report, usage = await chat_completion(
+    report, usage, trace = await chat_completion(
         [{"role": "system", "content": system_report}, {"role": "user", "content": user_report}],
         max_tokens=2048,
         llm_overrides=llm_overrides,
@@ -91,6 +91,7 @@ async def generate_table_summary_csv(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name or file_path,
+        trace=trace,
     )
     report = (report or "").strip()
     return {"report": report, "queries_run": []}

@@ -18,6 +18,7 @@ async def record_log(
     input_tokens: int = 0,
     output_tokens: int = 0,
     source: str | None = None,
+    trace: dict | None = None,
 ) -> None:
     """Persist a log entry to the database."""
     async with AsyncSessionLocal() as session:
@@ -29,6 +30,7 @@ async def record_log(
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             source=source,
+            trace=trace,
         )
         session.add(entry)
         await session.commit()
@@ -53,6 +55,7 @@ async def list_logs(limit: int = 100) -> list[dict[str, Any]]:
                 "input_tokens": r.input_tokens or 0,
                 "output_tokens": r.output_tokens or 0,
                 "source": getattr(r, "source", None),
+                "trace": getattr(r, "trace", None),
             }
             for r in rows
         ]

@@ -88,7 +88,7 @@ async def generate_table_summary_bigquery(
         f"Schema:\n{schema_text}\n\nGenerate 3-5 analytical SELECT queries for this table. "
         'Return JSON with key "queries" (array of SELECT query strings).'
     )
-    raw_queries, usage1 = await chat_completion(
+    raw_queries, usage1, trace1 = await chat_completion(
         [{"role": "system", "content": system_queries}, {"role": "user", "content": msg_queries}],
         max_tokens=1024,
         llm_overrides=llm_overrides,
@@ -100,6 +100,7 @@ async def generate_table_summary_bigquery(
         input_tokens=usage1.get("input_tokens", 0),
         output_tokens=usage1.get("output_tokens", 0),
         source=source_name or (table_infos[0].get("table") if table_infos else ""),
+        trace=trace1,
     )
     queries = _parse_queries_json(raw_queries)
 
@@ -142,7 +143,7 @@ async def generate_table_summary_bigquery(
         f"Query results:\n{results_text}\n\n"
         "Write the executive summary (Markdown only, no preamble)."
     )
-    report, usage2 = await chat_completion(
+    report, usage2, trace2 = await chat_completion(
         [{"role": "system", "content": system_report}, {"role": "user", "content": user_report}],
         max_tokens=2048,
         llm_overrides=llm_overrides,
@@ -154,6 +155,7 @@ async def generate_table_summary_bigquery(
         input_tokens=usage2.get("input_tokens", 0),
         output_tokens=usage2.get("output_tokens", 0),
         source=source_name or (table_infos[0].get("table") if table_infos else ""),
+        trace=trace2,
     )
     report = (report or "").strip()
 

@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Terminal, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, RefreshCw, Terminal, X } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -23,6 +23,7 @@ type LogEntry = {
   input_tokens: number;
   output_tokens: number;
   source?: string;
+  trace?: Record<string, unknown>;
 };
 
 interface LogsModalProps {
@@ -75,6 +76,11 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
     pergunta: t("logs.actionQuestion"),
     summary: t("logs.actionSummary"),
   };
+
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const toggleExpand = (idx: number) => setExpandedIdx((i) => (i === idx ? null : idx));
+
+  const hasTrace = (log: LogEntry) => log.trace && Object.keys(log.trace).length > 0;
 
   if (!open) return null;
 
@@ -129,6 +135,7 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8" />
                 <TableHead className="w-[120px]">{t("logs.action")}</TableHead>
                 <TableHead className="w-[160px]">{t("logs.timestamp")}</TableHead>
                 <TableHead>{t("logs.provider")}</TableHead>
@@ -140,8 +147,24 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
             </TableHeader>
             <TableBody>
               {logs.map((log, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>
+                <React.Fragment key={idx}>
+                  <TableRow
+                    key={idx}
+                    className={hasTrace(log) ? "cursor-pointer hover:bg-muted/50" : ""}
+                    onClick={() => hasTrace(log) && toggleExpand(idx)}
+                  >
+                    <TableCell className="w-8 py-2">
+                      {hasTrace(log) ? (
+                        expandedIdx === idx ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )
+                      ) : (
+                        <span className="w-4" />
+                      )}
+                    </TableCell>
+                    <TableCell>
                     <Badge
                       variant={
                         log.action === "pergunta" ? "default" : "secondary"
@@ -169,6 +192,52 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
                     {log.source || "—"}
                   </TableCell>
                 </TableRow>
+                {expandedIdx === idx && hasTrace(log) && log.trace && (
+                  <TableRow key={`${idx}-detail`}>
+                    <TableCell colSpan={8} className="bg-muted/30 p-4 align-top">
+                      <div className="space-y-3">
+                        {log.trace.reasoning && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">
+                              Reasoning
+                            </h4>
+                            <pre className="text-xs overflow-auto max-h-40 rounded border bg-background p-3 font-mono whitespace-pre-wrap break-words">
+                              {String(log.trace.reasoning)}
+                            </pre>
+                          </div>
+                        )}
+                        {Array.isArray(log.trace.tool_calls) && log.trace.tool_calls.length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">
+                              Tool calls ({log.trace.tool_calls.length})
+                            </h4>
+                            <div className="space-y-2">
+                              {log.trace.tool_calls.map((tc: { name?: string; args?: string }, i: number) => (
+                                <div key={i} className="rounded border bg-background p-2 font-mono text-xs">
+                                  <span className="text-primary font-medium">{tc.name || "?"}</span>
+                                  {tc.args && (
+                                    <pre className="mt-1 text-muted-foreground whitespace-pre-wrap break-words">
+                                      {typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args)}
+                                    </pre>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">
+                            {t("logs.details")}
+                          </h4>
+                          <pre className="text-xs overflow-auto max-h-48 rounded border bg-background p-3 font-mono whitespace-pre-wrap break-words">
+                            {JSON.stringify(log.trace, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>
