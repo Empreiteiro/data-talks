@@ -25,7 +25,7 @@ const Account = () => {
   ];
 
   return (
-    <main className="min-h-screen flex flex-col pb-6">
+    <main className="min-h-full flex flex-col pb-6">
       <SEO title={`${t('account.title')} | ${t('nav.tagline')}`} description="Gerenciar conta" canonical="/account" />
       
       <div className="container py-6">
@@ -33,30 +33,28 @@ const Account = () => {
       </div>
 
       <div className="flex gap-6 container flex-1">
-        {/* Left Sidebar Menu */}
-        <div className="w-64 flex-shrink-0">
-          <div className="h-full flex flex-col bg-background border rounded-lg">
-            <div className="flex-1 overflow-y-auto p-2">
-              <div className="space-y-1">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveSection(item.id)}
-                      className={cn(
-                        "w-full p-3 rounded-lg transition-colors text-left flex items-center gap-3",
-                        activeSection === item.id
-                          ? "bg-primary/10 border border-primary/20 text-primary font-medium"
-                          : "hover:bg-muted/50 text-muted-foreground"
-                      )}
-                    >
-                      <Icon className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+        {/* Left Sidebar Menu — altura compacta para caber em uma dobra */}
+        <div className="w-64 flex-shrink-0 self-start">
+          <div className="bg-background border rounded-lg p-1.5">
+            <div className="space-y-0.5">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={cn(
+                      "w-full py-2 px-2.5 rounded-md transition-colors text-left flex items-center gap-2.5",
+                      activeSection === item.id
+                        ? "bg-primary/10 border border-primary/20 text-primary font-medium"
+                        : "hover:bg-muted/50 text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm">{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
