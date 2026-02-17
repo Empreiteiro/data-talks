@@ -172,9 +172,6 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     cleanupAuthState();
-    try {
-      localStorage.removeItem('subscription_cache');
-    } catch {}
     setToken(null);
     setUser(null);
     setSession(null);
