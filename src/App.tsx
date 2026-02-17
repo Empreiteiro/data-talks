@@ -11,7 +11,9 @@ import AgentBriefing from "@/pages/AgentBriefing";
 import Alerts from "@/pages/Alerts";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
-import Flows from "@/pages/Flows";
+import DocIndex from "@/pages/docs/DocIndex";
+import DocLayout from "@/pages/docs/DocLayout";
+import DocTopicPage from "@/pages/docs/DocTopicPage";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Workspace from "@/pages/Workspace";
@@ -53,7 +55,10 @@ const AppContent = () => {
           <Route path="/agents/:id" element={<RequireAuth><AgentBriefing /></RequireAuth>} />
           <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
           <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
-          <Route path="/flows" element={<Flows />} />
+          <Route path="/flows" element={<DocLayout />}>
+            <Route index element={<DocIndex />} />
+            <Route path=":topic" element={<DocTopicPage />} />
+          </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
