@@ -402,7 +402,7 @@ export const apiClient = {
       model: string;
       input_tokens: number;
       output_tokens: number;
-      context?: string;
+      source?: string;
     }>>(`/api/logs${params}`);
   },
 };

@@ -99,7 +99,7 @@ async def generate_table_summary_bigquery(
         model=usage1.get("model", ""),
         input_tokens=usage1.get("input_tokens", 0),
         output_tokens=usage1.get("output_tokens", 0),
-        context=f"BigQuery queries: {source_name or (table_infos[0].get('table') if table_infos else '')}",
+        source=source_name or (table_infos[0].get("table") if table_infos else ""),
     )
     queries = _parse_queries_json(raw_queries)
 
@@ -153,7 +153,7 @@ async def generate_table_summary_bigquery(
         model=usage2.get("model", ""),
         input_tokens=usage2.get("input_tokens", 0),
         output_tokens=usage2.get("output_tokens", 0),
-        context=f"BigQuery report: {source_name or (table_infos[0].get('table') if table_infos else '')}",
+        source=source_name or (table_infos[0].get("table") if table_infos else ""),
     )
     report = (report or "").strip()
 

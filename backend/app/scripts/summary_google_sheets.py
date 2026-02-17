@@ -47,7 +47,7 @@ async def generate_table_summary_google_sheets(
         model=usage.get("model", ""),
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
-        context=f"Google Sheets: {source_name or sheet_name}",
+        source=source_name or sheet_name,
     )
     report = (report or "").strip()
     return {"report": report, "queries_run": []}

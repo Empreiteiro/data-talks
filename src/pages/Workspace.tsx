@@ -503,7 +503,7 @@ export default function Workspace() {
                 variant="outline"
                 size="icon"
                 onClick={() => setLogsModalOpen(true)}
-                title="Logs"
+                title={t('logs.button')}
               >
                 <Terminal className="h-4 w-4" />
               </Button>

@@ -101,7 +101,7 @@ async def generate_table_summary_sql(
         model=usage1.get("model", ""),
         input_tokens=usage1.get("input_tokens", 0),
         output_tokens=usage1.get("output_tokens", 0),
-        context=f"SQL queries: {source_name or table_names[0] if table_names else 'SQL'}",
+        source=source_name or (table_names[0] if table_names else "SQL"),
     )
     queries = _parse_queries_json(raw_queries)
 
@@ -158,7 +158,7 @@ async def generate_table_summary_sql(
         model=usage2.get("model", ""),
         input_tokens=usage2.get("input_tokens", 0),
         output_tokens=usage2.get("output_tokens", 0),
-        context=f"SQL report: {source_name or table_names[0] if table_names else 'SQL'}",
+        source=source_name or (table_names[0] if table_names else "SQL"),
     )
     report = (report or "").strip()
     return {"report": report, "queries_run": queries_run}

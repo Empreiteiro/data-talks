@@ -98,6 +98,7 @@ async def ask_question(
             file_path=file_path,
             question=body.question,
             agent_description=agent.description or "",
+            source_name=source.name,
             columns=meta.get("columns"),
             preview_rows=meta.get("preview_rows"),
             sample_profile=meta.get("sample_profile"),
@@ -112,6 +113,7 @@ async def ask_question(
             sheet_name=meta.get("sheetName", "Sheet1"),
             question=body.question,
             agent_description=agent.description or "",
+            source_name=source.name,
             llm_overrides=llm_overrides,
         )
     elif source.type == "sql_database":
@@ -120,6 +122,7 @@ async def ask_question(
             connection_string=meta.get("connectionString", ""),
             question=body.question,
             agent_description=agent.description or "",
+            source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
         )
@@ -135,6 +138,7 @@ async def ask_question(
             tables=meta.get("tables", []),
             question=body.question,
             agent_description=agent.description or "",
+            source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
         )

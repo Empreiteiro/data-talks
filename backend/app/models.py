@@ -40,6 +40,7 @@ class Agent(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_ids: Mapped[list] = mapped_column(JSON, default=list)  # list of UUIDs
     suggested_questions: Mapped[list] = mapped_column(JSON, default=list)
+    llm_config_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # which LLM config to use
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -86,6 +87,24 @@ class DashboardChart(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class LlmConfig(Base):
+    """Multiple LLM configurations per user. User selects one per workspace/agent."""
+    __tablename__ = "llm_configs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(128))
+    llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm
+    openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ollama_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    ollama_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    litellm_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    litellm_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    litellm_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class LlmSettings(Base):
     """Per-user LLM configuration. Falls back to env vars when not set."""
     __tablename__ = "llm_settings"
@@ -126,7 +145,7 @@ class PlatformLog(Base):
     model: Mapped[str] = mapped_column(String(128))
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    context: Mapped[str | None] = mapped_column(Text, nullable=True)  # question preview, source name
+    source: Mapped[str | None] = mapped_column(String(255), nullable=True)  # data source name
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

@@ -90,7 +90,7 @@ async def generate_table_summary_csv(
         model=usage.get("model", ""),
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
-        context=f"CSV: {source_name or file_path}",
+        source=source_name or file_path,
     )
     report = (report or "").strip()
     return {"report": report, "queries_run": []}

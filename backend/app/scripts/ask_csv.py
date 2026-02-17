@@ -16,6 +16,7 @@ async def ask_csv(
     file_path: str,
     question: str,
     agent_description: str = "",
+    source_name: str | None = None,
     columns: list[str] | None = None,
     preview_rows: list[dict] | None = None,
     sample_profile: dict | None = None,
@@ -82,7 +83,7 @@ async def ask_csv(
         model=usage.get("model", ""),
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
-        context=(question[:100] + "..." if len(question) > 100 else question),
+        source=source_name,
     )
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]

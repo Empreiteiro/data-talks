@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Terminal, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type LogEntry = {
   action: string;
@@ -21,7 +22,7 @@ type LogEntry = {
   model: string;
   input_tokens: number;
   output_tokens: number;
-  context?: string;
+  source?: string;
 };
 
 interface LogsModalProps {
@@ -30,6 +31,7 @@ interface LogsModalProps {
 }
 
 export function LogsModal({ open, onOpenChange }: LogsModalProps) {
+  const { t } = useLanguage();
   const { isAuthenticated, loginRequired } = useAuth();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,7 +45,7 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
       const data = await dataClient.listPlatformLogs(200);
       setLogs(data || []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erro ao carregar logs");
+      setError(e instanceof Error ? e.message : t("logs.error"));
       setLogs([]);
     } finally {
       setLoading(false);
@@ -70,8 +72,8 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
   };
 
   const actionLabel: Record<string, string> = {
-    pergunta: "Pergunta",
-    summary: "Summary",
+    pergunta: t("logs.actionQuestion"),
+    summary: t("logs.actionSummary"),
   };
 
   if (!open) return null;
@@ -81,7 +83,7 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
         <div className="flex items-center gap-3">
           <Terminal className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Logs da plataforma</h2>
+          <h2 className="text-lg font-semibold">{t("logs.title")}</h2>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -93,13 +95,13 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
             <RefreshCw
               className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
             />
-            Atualizar
+            {t("logs.refresh")}
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange(false)}
-            aria-label="Fechar"
+            aria-label={t("logs.close")}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -115,27 +117,25 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
         {loading && logs.length === 0 ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             <RefreshCw className="h-8 w-8 animate-spin mr-2" />
-            Carregando logs...
+            {t("logs.loading")}
           </div>
         ) : logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <Terminal className="h-12 w-12 mb-4 opacity-50" />
-            <p>Nenhum log registrado ainda.</p>
-            <p className="text-sm mt-1">
-              Faça perguntas ou gere summaries para ver os logs aqui.
-            </p>
+                <p>{t("logs.empty")}</p>
+                <p className="text-sm mt-1">{t("logs.emptyDescription")}</p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[120px]">Ação</TableHead>
-                <TableHead className="w-[160px]">Data/Hora</TableHead>
-                <TableHead>Provedor</TableHead>
-                <TableHead>Modelo</TableHead>
-                <TableHead className="text-right">Tokens in</TableHead>
-                <TableHead className="text-right">Tokens out</TableHead>
-                <TableHead className="max-w-[200px]">Contexto</TableHead>
+                <TableHead className="w-[120px]">{t("logs.action")}</TableHead>
+                <TableHead className="w-[160px]">{t("logs.timestamp")}</TableHead>
+                <TableHead>{t("logs.provider")}</TableHead>
+                <TableHead>{t("logs.model")}</TableHead>
+                <TableHead className="text-right">{t("logs.tokensIn")}</TableHead>
+                <TableHead className="text-right">{t("logs.tokensOut")}</TableHead>
+                <TableHead className="max-w-[200px]">{t("logs.source")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -166,7 +166,7 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
                     {log.output_tokens ?? 0}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                    {log.context || "—"}
+                    {log.source || "—"}
                   </TableCell>
                 </TableRow>
               ))}

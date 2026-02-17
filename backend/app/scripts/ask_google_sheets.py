@@ -14,6 +14,7 @@ async def ask_google_sheets(
     sheet_name: str,
     question: str,
     agent_description: str = "",
+    source_name: str | None = None,
     credentials_json: str | None = None,
     llm_overrides: dict | None = None,
 ) -> dict[str, Any]:
@@ -57,7 +58,7 @@ async def ask_google_sheets(
         model=usage.get("model", ""),
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
-        context=(question[:100] + "..." if len(question) > 100 else question),
+        source=source_name,
     )
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]
