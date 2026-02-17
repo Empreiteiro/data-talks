@@ -499,6 +499,14 @@ export default function Workspace() {
             <h1 className="font-semibold">{t('workspace.chat')}</h1>
             
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setLogsModalOpen(true)}
+                title="Logs"
+              >
+                <Terminal className="h-4 w-4" />
+              </Button>
               <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="icon">
@@ -739,19 +747,6 @@ export default function Workspace() {
               <ChevronRight className="h-4 w-4 rotate-180" />
             </Button>
           </div>}
-      </div>
-
-      {/* Bottom bar - Logs (estilo n8n) */}
-      <div className="flex items-center justify-between h-11 px-4 py-2 mt-2 -mx-4 border-t bg-muted/30 rounded-b-xl shrink-0">
-        <div className="flex items-center gap-2" />
-        <button
-          type="button"
-          onClick={() => setLogsModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-        >
-          <Terminal className="h-4 w-4" />
-          Logs
-        </button>
       </div>
 
       <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} agentId={id} onSourceAdded={async (sourceId: string) => {
