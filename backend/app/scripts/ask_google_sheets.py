@@ -51,7 +51,7 @@ async def ask_google_sheets(
         {"role": "system", "content": system},
         {"role": "user", "content": f"Context: {schema_text}\nSample: {sample_json}\n\nQuestion: {question}"},
     ]
-    raw_answer, usage = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
+    raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
     await record_log(
         action="pergunta",
         provider=usage.get("provider", ""),
@@ -59,6 +59,7 @@ async def ask_google_sheets(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name,
+        trace=trace,
     )
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]

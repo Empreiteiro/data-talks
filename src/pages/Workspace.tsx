@@ -24,7 +24,8 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { ChevronRight, History, Layout, Lock, RotateCcw, Send, SlidersHorizontal, Table, Terminal, Upload, X } from "lucide-react";
+import { Bot, ChevronRight, History, Layout, Lock, RotateCcw, Send, SlidersHorizontal, Table, Terminal, Upload, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -228,12 +229,41 @@ export default function Workspace() {
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
+  const [agent, setAgent] = useState<{ llm_config_id?: string | null } | null>(null);
+  const [llmConfigs, setLlmConfigs] = useState<Array<{ id: string; name: string; model?: string }>>([]);
+
+  async function loadAgentAndConfigs() {
+    if (!id) return;
+    try {
+      const [agentData, configs] = await Promise.all([
+        dataClient.getAgent(id),
+        dataClient.listLlmConfigs(),
+      ]);
+      setAgent(agentData as { llm_config_id?: string | null });
+      setLlmConfigs((configs || []).map((c: any) => ({ id: c.id, name: c.name, model: c.model })));
+    } catch {
+      setAgent(null);
+      setLlmConfigs([]);
+    }
+  }
+
+  const handleLlmConfigChange = async (cfgId: string | null) => {
+    if (!id) return;
+    try {
+      await dataClient.updateAgentLlmConfig(id, cfgId || null);
+      setAgent((prev) => (prev ? { ...prev, llm_config_id: cfgId || null } : null));
+      toast.success(t("workspace.llmConfigUpdated"));
+    } catch (e: any) {
+      toast.error(t("workspace.llmConfigError"), { description: e?.message });
+    }
+  };
 
   useEffect(() => {
     checkSources();
     loadHistory();
     loadAvailableColumns();
     loadWarmupQuestions();
+    loadAgentAndConfigs();
   }, [id, user]);
 
   useEffect(() => {
@@ -522,6 +552,33 @@ export default function Workspace() {
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" title={t("workspace.llmSelector")}>
+                    <Bot className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72" align="end">
+                  <p className="text-sm font-medium mb-2">{t("workspace.llmSelector")}</p>
+                  <Select
+                    value={agent?.llm_config_id ?? "__default__"}
+                    onValueChange={(v) => handleLlmConfigChange(v === "__default__" ? null : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("workspace.llmUseDefault")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">{t("workspace.llmUseDefault")}</SelectItem>
+                      {llmConfigs.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} {c.model ? `(${c.model})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </PopoverContent>
+              </Popover>
               
               <Button 
                 variant="outline" 

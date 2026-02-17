@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from typing import Optional, Any
 
 from app.database import get_db
-from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert
+from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert, LlmConfig
 from app.auth import require_user
 from app.config import get_settings
 
@@ -291,6 +291,15 @@ class AgentCreate(BaseModel):
 @router.post("/agents")
 async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
     agent_id = str(uuid.uuid4())
+    llm_config_id = body.llm_config_id
+    if not llm_config_id:
+        # Use default LLM config for new workspaces
+        r_def = await db.execute(
+            select(LlmConfig.id).where(LlmConfig.user_id == user.id, LlmConfig.is_default == True).limit(1)
+        )
+        row = r_def.scalar_one_or_none()
+        if row:
+            llm_config_id = row
     a = Agent(
         id=agent_id,
         user_id=user.id,
@@ -299,7 +308,7 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
         description=body.description,
         source_ids=body.source_ids,
         suggested_questions=body.suggested_questions,
-        llm_config_id=body.llm_config_id,
+        llm_config_id=llm_config_id,
     )
     db.add(a)
     await db.commit()

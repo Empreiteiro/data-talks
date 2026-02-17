@@ -154,6 +154,13 @@ export const apiClient = {
     });
   },
 
+  async updateAgentLlmConfig(agentId: string, llmConfigId: string | null) {
+    return api(`/api/agents/${agentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ llm_config_id: llmConfigId }),
+    });
+  },
+
   async deleteAgent(id: string) {
     await api(`/api/agents/${id}`, { method: 'DELETE' });
   },
@@ -343,6 +350,10 @@ export const apiClient = {
     return api(`/api/settings/llm-configs/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   },
 
+  async setLlmConfigDefault(id: string) {
+    return this.updateLlmConfig(id, { is_default: true });
+  },
+
   async deleteLlmConfig(id: string) {
     return api(`/api/settings/llm-configs/${id}`, { method: 'DELETE' });
   },
@@ -403,6 +414,7 @@ export const apiClient = {
       input_tokens: number;
       output_tokens: number;
       source?: string;
+      trace?: Record<string, unknown>;
     }>>(`/api/logs${params}`);
   },
 };

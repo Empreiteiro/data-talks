@@ -76,7 +76,7 @@ async def ask_csv(
         {"role": "system", "content": system},
         {"role": "user", "content": user_content},
     ]
-    raw_answer, usage = await chat_completion(messages, max_tokens=1024, llm_overrides=llm_overrides)
+    raw_answer, usage, trace = await chat_completion(messages, max_tokens=1024, llm_overrides=llm_overrides)
     await record_log(
         action="pergunta",
         provider=usage.get("provider", ""),
@@ -84,6 +84,7 @@ async def ask_csv(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name,
+        trace=trace,
     )
     parsed = _parse_llm_json(raw_answer)
     answer = parsed["answer"]

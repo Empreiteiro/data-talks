@@ -4,7 +4,7 @@ import os
 import uuid
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional
@@ -214,6 +214,7 @@ class LlmConfigCreate(BaseModel):
 class LlmConfigUpdate(BaseModel):
     name: Optional[str] = None
     llm_provider: Optional[str] = None
+    is_default: Optional[bool] = None
     openai_api_key: Optional[str] = None
     openai_model: Optional[str] = None
     ollama_base_url: Optional[str] = None
@@ -224,10 +225,19 @@ class LlmConfigUpdate(BaseModel):
 
 
 def _config_to_response(c: LlmConfig, env) -> dict:
+    # Display model: only use the one matching provider (fixes Ollama showing gpt-4o-mini)
+    model = ""
+    if c.llm_provider == "openai":
+        model = c.openai_model or env.openai_model
+    elif c.llm_provider == "ollama":
+        model = c.ollama_model or env.ollama_model
+    elif c.llm_provider == "litellm":
+        model = c.litellm_model or env.litellm_model
     return {
         "id": c.id,
         "name": c.name,
         "llm_provider": c.llm_provider,
+        "model": model,
         "openai_api_key": _mask_api_key(c.openai_api_key) if c.openai_api_key else "",
         "openai_model": c.openai_model or env.openai_model,
         "ollama_base_url": c.ollama_base_url or env.ollama_base_url,
@@ -235,6 +245,7 @@ def _config_to_response(c: LlmConfig, env) -> dict:
         "litellm_base_url": c.litellm_base_url or env.litellm_base_url,
         "litellm_model": c.litellm_model or env.litellm_model,
         "litellm_api_key": _mask_api_key(c.litellm_api_key) if c.litellm_api_key else "",
+        "is_default": getattr(c, "is_default", False),
         "created_at": c.created_at.isoformat() if c.created_at else None,
     }
 
@@ -330,6 +341,12 @@ async def update_llm_config(
     if body.litellm_api_key is not None:
         val = body.litellm_api_key.strip()
         c.litellm_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.litellm_api_key)
+    if body.is_default is True:
+        # Unset other configs, set this one as default
+        await db.execute(update(LlmConfig).where(LlmConfig.user_id == user.id).values(is_default=False))
+        c.is_default = True
+    elif body.is_default is False:
+        c.is_default = False
     await db.commit()
     await db.refresh(c)
     return _config_to_response(c, env)

@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { dataClient } from "@/services/dataClient";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Bot, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Bot, Loader2, Plus, RefreshCw, Star, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +44,8 @@ interface LlmConfig {
   openai_model?: string;
   ollama_model?: string;
   litellm_model?: string;
+  model?: string;
+  is_default?: boolean;
   created_at?: string;
 }
 
@@ -159,6 +161,19 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSetDefault = async (id: string) => {
+    try {
+      await dataClient.setLlmConfigDefault(id);
+      toast.success(t("llmConfig.setAsDefault"));
+      fetchConfigs();
+      onConfigAdded?.();
+    } catch (error: unknown) {
+      toast.error(t("llmSettings.saveError"), {
+        description: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 
@@ -323,7 +338,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
                         {PROVIDER_LABELS[cfg.llm_provider] || cfg.llm_provider}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {cfg.openai_model || cfg.ollama_model || cfg.litellm_model || "—"}
+                        {cfg.model || cfg.openai_model || cfg.ollama_model || cfg.litellm_model || "—"}
                       </span>
                       {cfg.created_at && (
                         <span className="text-xs text-muted-foreground">
@@ -332,7 +347,16 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
                       )}
                     </div>
                   </div>
-                  <AlertDialog>
+                  <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${cfg.is_default ? "opacity-100 text-amber-500" : ""}`}
+                      title={cfg.is_default ? t("llmConfig.default") : t("llmConfig.setAsDefault")}
+                      onClick={() => !cfg.is_default && handleSetDefault(cfg.id)}
+                    >
+                      <Star className={`h-4 w-4 ${cfg.is_default ? "fill-current" : ""}`} />
+                    </Button>
+                    <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" title={t("llmConfig.delete")}>
                         <Trash2 className="h-4 w-4 text-destructive" />

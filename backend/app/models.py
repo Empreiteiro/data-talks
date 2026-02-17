@@ -93,6 +93,7 @@ class LlmConfig(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # used for new workspaces
     llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm
     openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -146,6 +147,7 @@ class PlatformLog(Base):
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     source: Mapped[str | None] = mapped_column(String(255), nullable=True)  # data source name
+    trace: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # LLM trace: tool_calls, reasoning, etc.
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
