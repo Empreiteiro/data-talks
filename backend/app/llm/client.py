@@ -83,25 +83,24 @@ async def _openai_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dic
 
 
 async def _ollama_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-    import httpx
+    """Use Ollama's OpenAI-compatible API (/v1/chat/completions)."""
+    from openai import AsyncOpenAI
 
     model = cfg.get("ollama_model", "llama3.2")
     base_url = (cfg.get("ollama_base_url") or "http://localhost:11434").rstrip("/")
-    url = f"{base_url}/api/chat"
-    payload = {
-        "model": model,
-        "messages": messages,
-        "stream": False,
-        "options": {"num_predict": max_tokens},
-    }
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        r = await client.post(url, json=payload)
-        r.raise_for_status()
-        data = r.json()
-    content = (data.get("message", {}).get("content") or "").strip()
-    input_t = data.get("prompt_eval_count", 0)
-    output_t = data.get("eval_count", 0)
-    return content, _usage("ollama", model, input_t, output_t)
+    if not base_url.endswith("/v1"):
+        base_url = f"{base_url}/v1"
+    client = AsyncOpenAI(api_key="ollama", base_url=base_url)
+    resp = await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=max_tokens,
+    )
+    content = (resp.choices[0].message.content or "").strip()
+    usage_data = resp.usage
+    input_t = getattr(usage_data, "prompt_tokens", None) or 0 if usage_data else 0
+    output_t = getattr(usage_data, "completion_tokens", None) or 0 if usage_data else 0
+    return content, _usage("ollama", model, input_t or 0, output_t or 0)
 
 
 async def _litellm_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any]]:
