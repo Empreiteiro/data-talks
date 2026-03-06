@@ -41,11 +41,11 @@ const Account = () => {
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-4 sm:px-6 pt-4 pb-20">
         <h1 className="text-2xl sm:text-3xl font-semibold mb-4 flex-shrink-0">{t('account.title')}</h1>
 
-        <div className="flex items-stretch gap-4 flex-1 min-h-0 overflow-hidden">
-          {/* Menu lateral e painel à mesma altura (items-stretch) */}
-          <div className="w-56 sm:w-64 flex-shrink-0 flex flex-col min-h-0 self-stretch">
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background border rounded-lg p-1.5">
-              <div className="space-y-0.5 flex-shrink-0">
+        {/* Grid: uma linha com altura total = as duas colunas sempre na mesma altura */}
+        <div className="grid grid-cols-[14rem_1fr] sm:grid-cols-[16rem_1fr] grid-rows-[minmax(0,1fr)] gap-4 flex-1 min-h-0 overflow-hidden">
+          <div className="min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-background border rounded-lg p-1.5 flex flex-col">
+              <div className="space-y-0.5">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -68,8 +68,8 @@ const Account = () => {
             </div>
           </div>
 
-          <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden self-stretch bg-background rounded-lg">
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6" style={{ minHeight: 0 }}>
+          <div className="min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" style={{ minHeight: 0 }}>
               {activeSection === "usage" && <UsageMonitoring />}
               {activeSection === "llm" && <LLMPanel />}
               {activeSection === "users" && <UsersManagement />}

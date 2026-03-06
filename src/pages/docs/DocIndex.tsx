@@ -9,7 +9,7 @@ export default function DocIndex() {
   const structure = getDocStructure(isPt);
 
   return (
-    <div className="container max-w-3xl py-8 px-4 lg:px-8">
+    <div className="py-8 px-8 lg:px-12">
       <nav className="mb-6 text-sm text-muted-foreground">
         <Link to="/" className="hover:text-foreground transition-colors">
           Data Talks
@@ -36,7 +36,7 @@ export default function DocIndex() {
               {sec.title}
             </Link>
             {sec.subs.length > 0 && (
-              <ul className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+              <ul className="space-y-0.5">
                 {sec.subs.map((sub) => (
                   <li key={sub.id}>
                     <Link

@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { dataClient } from "@/services/dataClient";
-import { useAuth } from "@/hooks/useAuth";
-import { Database, MessageSquare, Calendar, Users } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
+import { dataClient } from "@/services/dataClient";
+import { Calendar, Database, MessageSquare, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface UsageStats {
   sourcesCount: number;
@@ -96,10 +96,10 @@ const UsageMonitoring = () => {
       </div>
     );
   }
-  return <div className="space-y-6">
+  return <div className="h-full flex flex-col space-y-6">
       
       
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-4 flex-shrink-0">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -158,13 +158,13 @@ const UsageMonitoring = () => {
         </Card>
       </div>
 
-      <Card className="flex flex-col">
+      <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader>
           <CardTitle>
             {language === 'pt' ? 'Perguntas por Dia' : 'Questions per Day'}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1">
+        <CardContent className="flex-1 min-h-0">
           {dailyQuestions.length > 0 ? (
             <ChartContainer
               config={{

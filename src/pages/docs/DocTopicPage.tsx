@@ -1,14 +1,16 @@
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Bot, Database, FileSpreadsheet, FileText, Save, Server, Sheet } from "lucide-react";
+import { Bot, CheckCircle2, Database, FileSpreadsheet, FileText, Info, Lightbulb, Save, Server, Sheet } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { isDocTopicId } from "./docStructure";
 
 function DocSubsection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <div id={id} className="scroll-mt-24 mb-6">
-      <h3 className="text-base font-semibold mb-2">{title}</h3>
-      <div className="text-sm text-muted-foreground space-y-2">{children}</div>
+    <div id={id} className="scroll-mt-24 mb-8">
+      <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+        {title}
+      </h3>
+      <div className="text-sm text-muted-foreground space-y-3 leading-relaxed">{children}</div>
     </div>
   );
 }
@@ -25,20 +27,32 @@ function DocSection({
   children: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+    <Card className="border-none shadow-none bg-transparent">
+      <CardHeader className="px-0 pt-0">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 shadow-sm">
             <Icon className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-            <CardDescription>{description}</CardDescription>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">{title}</h2>
+            <CardDescription className="text-base">{description}</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">{children}</CardContent>
+      <CardContent className="px-0 pt-4">{children}</CardContent>
     </Card>
+  );
+}
+
+function Tip({ children, isPt }: { children: React.ReactNode; isPt: boolean }) {
+  return (
+    <div className="flex gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10 my-4 text-sm italic">
+      <Lightbulb className="h-5 w-5 text-primary shrink-0" />
+      <div>
+        <span className="font-semibold block mb-1">{isPt ? "Dica Pro:" : "Pro Tip:"}</span>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -54,17 +68,17 @@ export default function DocTopicPage() {
   const content = getTopicContent(topic, isPt);
 
   return (
-    <div className="container max-w-3xl py-8 px-4 lg:px-8">
-      <nav className="mb-6 text-sm text-muted-foreground">
-        <Link to="/" className="hover:text-foreground transition-colors">
+    <div className="py-10 px-8 lg:px-16 max-w-5xl animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <nav className="mb-10 text-sm font-medium flex items-center text-muted-foreground/60">
+        <Link to="/" className="hover:text-primary transition-colors">
           Data Talks
         </Link>
-        <span className="mx-2">/</span>
-        <Link to="/flows/data-sources" className="hover:text-foreground transition-colors">
+        <span className="mx-3 opacity-40">/</span>
+        <Link to="/flows" className="hover:text-primary transition-colors">
           Docs
         </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground font-medium">{content.title}</span>
+        <span className="mx-3 opacity-40">/</span>
+        <span className="text-foreground">{content.title}</span>
       </nav>
       {content.node}
     </div>
@@ -75,29 +89,76 @@ function getTopicContent(topic: string, isPt: boolean) {
   switch (topic) {
     case "data-sources":
       return {
-        title: isPt ? "Fontes de dados" : "Data sources",
+        title: isPt ? "Fontes de Dados" : "Data Sources",
         node: (
           <DocSection
-            title={isPt ? "Fontes de dados" : "Data sources"}
-            description={isPt ? "Como conectar e gerenciar suas fontes de dados." : "How to connect and manage your data sources."}
+            title={isPt ? "Gestão de Dados" : "Data Management"}
+            description={isPt 
+              ? "Centralize suas informações para que a inteligência artificial possa entender seu negócio." 
+              : "Centralize your information so the AI can understand your business."}
             icon={Server}
           >
             <DocSubsection
               id="data-sources-add"
-              title={isPt ? "Adicionar e vincular fontes" : "Adding and linking sources"}
+              title={isPt ? "Como Conectar seus Dados" : "How to Connect Your Data"}
             >
               <p>
                 {isPt
-                  ? "No workspace, o usuário abre o modal de fontes e adiciona uma fonte: upload de arquivo (CSV/XLSX) ou preenchimento de credenciais (BigQuery, Google Sheets, SQL). O backend expõe POST /api/sources/upload para arquivos e POST /api/sources para fontes com type e metadata. Cada fonte é salva com user_id; em seguida, PATCH /api/sources/{id} com agent_id e is_active vincula a fonte ao agente do workspace."
-                  : "In the workspace, the user opens the source modal and adds a source: file upload (CSV/XLSX) or entering credentials (BigQuery, Google Sheets, SQL). The backend exposes POST /api/sources/upload for files and POST /api/sources for sources with type and metadata. Each source is saved with user_id; then PATCH /api/sources/{id} with agent_id and is_active links the source to the workspace agent."}
+                  ? "O primeiro passo para extrair inteligência dos seus dados é a conexão. No Data Talks, você pode carregar arquivos estáticos ou conectar bancos de dados dinâmicos. Cada fonte de dados serve como um 'livro de contexto' para seus agentes de IA."
+                  : "The first step to extracting intelligence from your data is connectivity. In Data Talks, you can upload static files or connect dynamic databases. Each data source acts as a 'context book' for your AI agents."}
               </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div className="p-4 border rounded-xl bg-card">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    {isPt ? "Fácil Integração" : "Easy Integration"}
+                  </h4>
+                  <p className="text-xs">
+                    {isPt 
+                      ? "Arraste e solte arquivos ou use credenciais seguras para bancos de dados." 
+                      : "Drag and drop files or use secure credentials for databases."}
+                  </p>
+                </div>
+                <div className="p-4 border rounded-xl bg-card">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    {isPt ? "Vínculo de Agente" : "Agent Association"}
+                  </h4>
+                  <p className="text-xs">
+                    {isPt 
+                      ? "Associe fontes específicas a agentes especializados para obter respostas mais precisas." 
+                      : "Associate specific sources with specialized agents for more accurate answers."}
+                  </p>
+                </div>
+              </div>
             </DocSubsection>
-            <DocSubsection id="data-sources-types" title={isPt ? "Tipos de fonte" : "Source types"}>
+            
+            <Tip isPt={isPt}>
+              {isPt 
+                ? "Manter suas fontes de dados atualizadas garante que a IA sempre tenha a última versão da verdade sobre seu negócio." 
+                : "Keeping your data sources updated ensures the AI always has the latest version of the truth about your business."}
+            </Tip>
+
+            <DocSubsection id="data-sources-types" title={isPt ? "Tipos de Fonte Suportados" : "Supported Source Types"}>
               <p>
                 {isPt
-                  ? "O Data Talks suporta: CSV e XLSX (arquivos locais), BigQuery (credenciais e metadados no backend), Google Sheets (ID da planilha e aba), e SQL (connection string e informações de tabela). O backend roteia cada pergunta conforme o type da fonte ativa para o script correspondente."
-                  : "Data Talks supports: CSV and XLSX (local files), BigQuery (credentials and metadata on the backend), Google Sheets (spreadsheet ID and sheet name), and SQL (connection string and table info). The backend routes each question by the active source type to the corresponding script."}
+                  ? "Oferecemos flexibilidade total para diferentes necessidades corporativas:"
+                  : "We offer total flexibility for different corporate needs:"}
               </p>
+              <ul className="list-disc pl-5 mt-2 space-y-2">
+                <li>
+                  <strong>CSV / XLSX:</strong> {isPt ? "Ideal para análises rápidas de planilhas e relatórios pontuais." : "Ideal for rapid spreadsheet analysis and ad-hoc reporting."}
+                </li>
+                <li>
+                  <strong>BigQuery:</strong> {isPt ? "Conecte-se ao data warehouse do Google para análises em larga escala." : "Connect to Google's data warehouse for large-scale analytics."}
+                </li>
+                <li>
+                  <strong>Google Sheets:</strong> {isPt ? "Mantenha a agilidade usando planilhas colaborativas na nuvem." : "Maintain agility using collaborative cloud spreadsheets."}
+                </li>
+                <li>
+                  <strong>SQL Databases:</strong> {isPt ? "Acesso direto aos seus bancos relacionais (Postgres, MySQL) para dados transacionais em tempo real." : "Direct access to your relational databases (Postgres, MySQL) for real-time transactional data."}
+                </li>
+              </ul>
             </DocSubsection>
           </DocSection>
         ),
@@ -105,65 +166,125 @@ function getTopicContent(topic: string, isPt: boolean) {
 
     case "asking-questions":
       return {
-        title: isPt ? "Perguntas" : "Asking questions",
+        title: isPt ? "Fazendo Perguntas" : "Asking Questions",
         node: (
           <DocSection
-            title={isPt ? "Perguntas" : "Asking questions"}
-            description={isPt ? "Como as perguntas são enviadas e processadas." : "How questions are sent and processed."}
-            icon={Server}
+            title={isPt ? "Interação Natural" : "Natural Interaction"}
+            description={isPt 
+              ? "Transforme perguntas complexas em respostas simples através do chat." 
+              : "Turn complex questions into simple answers through chat."}
+            icon={Bot}
           >
-            <p className="text-sm text-muted-foreground">
-              {isPt
-                ? "O usuário digita a pergunta no workspace. O frontend chama POST /api/ask-question com { question, agentId, sessionId? }. O backend carrega o agente e as fontes (por source_ids no agente ou agent_id na tabela sources), usa a primeira fonte ativa e, conforme o type (csv, xlsx, bigquery, google_sheets, sql_database), chama o script correspondente com a pergunta, a descrição do agente e os metadados da fonte."
-                : "The user types the question in the workspace. The frontend calls POST /api/ask-question with { question, agentId, sessionId? }. The backend loads the agent and sources (by agent.source_ids or source.agent_id), uses the first active source, and according to type (csv, xlsx, bigquery, google_sheets, sql_database) calls the corresponding script with the question, agent description, and source metadata."}
-            </p>
+            <DocSubsection id="asking-how" title={isPt ? "O Poder do Contexto" : "The Power of Context"}>
+              <p>
+                {isPt
+                  ? "Diferente de sistemas de busca tradicionais, o Data Talks entende o contexto total dos seus dados. Quando você faz uma pergunta, o sistema não apenas busca palavras-chave, mas 'lê' a estrutura dos seus dados para gerar um raciocínio lógico."
+                  : "Unlike traditional search systems, Data Talks understands the full context of your data. When you ask a question, the system doesn't just search for keywords; it 'reads' your data structure to generate logical reasoning."}
+              </p>
+            </DocSubsection>
+
+            <DocSubsection id="asking-tips" title={isPt ? "Dicas para Melhores Perguntas" : "Tips for Better Questions"}>
+              <p>{isPt ? "Para obter os melhores resultados, tente ser específico nas suas solicitações:" : "To get the best results, try to be specific in your requests:"}</p>
+              <div className="space-y-4 mt-4">
+                <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                  <span className="text-xs font-bold uppercase text-primary mb-1 block">{isPt ? "Faça assim:" : "Do it like this:"}</span>
+                  <p className="text-sm">"{isPt ? "Qual foi o crescimento percentual de vendas entre Janeiro e Março deste ano?" : "What was the percentage growth in sales between January and March of this year?"}"</p>
+                </div>
+                <div className="p-3 bg-muted/20 opacity-70 rounded-lg border border-border">
+                  <span className="text-xs font-bold uppercase text-muted-foreground mb-1 block">{isPt ? "Evite assim:" : "Avoid this:"}</span>
+                  <p className="text-sm">"{isPt ? "As vendas subiram?" : "Did sales go up?"}"</p>
+                </div>
+              </div>
+            </DocSubsection>
+
+            <Tip isPt={isPt}>
+              {isPt 
+                ? "Você pode pedir para a IA cruzar dados de diferentes colunas ou tabelas, como 'relacione o custo de marketing com a receita total'." 
+                : "You can ask the AI to cross-reference data from different columns or tables, like 'relate marketing cost to total revenue'."}
+            </Tip>
           </DocSection>
         ),
       };
 
     case "answers-sessions":
       return {
-        title: isPt ? "Respostas e sessões" : "Answers & sessions",
+        title: isPt ? "Respostas e Sessões" : "Answers & Sessions",
         node: (
           <DocSection
-            title={isPt ? "Respostas e sessões" : "Answers & sessions"}
-            description={isPt ? "Como o LLM gera respostas e como as sessões são guardadas." : "How the LLM generates answers and how sessions are stored."}
+            title={isPt ? "Memória e Continuidade" : "Memory and Continuity"}
+            description={isPt 
+              ? "Mantenha o histórico de suas descobertas e aprofunde as análises." 
+              : "Maintain a history of your discoveries and deepen your analysis."}
             icon={Save}
           >
-            <p className="text-sm text-muted-foreground">
-              {isPt
-                ? "Cada script monta o contexto (schema, amostra de dados, etc.) e envia ao modelo. O provedor e o modelo são definidos pela configuração do usuário (Conta → LLM) ou por um LlmConfig vinculado ao agente (llm_config_id). Suporta OpenAI, Ollama e LiteLLM. O modelo devolve answer, followUpQuestions e opcionalmente imageUrl. O backend cria ou atualiza a QASession (conversation_history, follow_up_questions) e retorna AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). O frontend atualiza o chat e o histórico; as follow-ups aparecem como sugestões."
-                : "Each script builds the context (schema, sample data, etc.) and sends it to the model. The provider and model are determined by the user's settings (Account → LLM) or by an LlmConfig linked to the agent (llm_config_id). Supports OpenAI, Ollama, and LiteLLM. The model returns answer, followUpQuestions, and optionally imageUrl. The backend creates or updates the QASession (conversation_history, follow_up_questions) and returns AskQuestionResponse (answer, imageUrl, sessionId, followUpQuestions). The frontend updates the chat and history; follow-ups appear as suggestions."}
-            </p>
+            <DocSubsection id="sessions-continuity" title={isPt ? "Exploração Contínua" : "Continuous Exploration"}>
+              <p>
+                {isPt
+                  ? "As conversas no Data Talks são organizadas em sessões, o que permite que a IA 'lembre' do que foi discutido anteriormente. Isso é fundamental para análises exploratórias onde uma pergunta leva a outra."
+                  : "Conversations in Data Talks are organized into sessions, allowing the AI to 'remember' what was discussed previously. This is essential for exploratory analysis where one question leads to another."}
+              </p>
+              <div className="flex gap-4 items-start mt-4">
+                <div className="h-10 w-10 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <Info className="h-5 w-5 text-blue-500" />
+                </div>
+                <p className="text-xs italic">
+                  {isPt 
+                    ? "Exemplo: Após perguntar sobre o total de vendas, você pode simplesmente perguntar 'E qual foi o principal produto?' sem precisar repetir o período ou a fonte de dados." 
+                    : "Example: After asking about total sales, you can simply ask 'And what was the top product?' without needing to repeat the time period or data source."}
+                </p>
+              </div>
+            </DocSubsection>
+
+            <DocSubsection id="sessions-export" title={isPt ? "Sugestões Inteligentes" : "Smart Suggestions"}>
+              <p>
+                {isPt
+                  ? "Ao final de cada resposta, o sistema sugere 'perguntas de acompanhamento' baseadas no seu contexto atual, ajudando você a descobrir insights que talvez não tivesse imaginado."
+                  : "At the end of each answer, the system suggests 'follow-up questions' based on your current context, helping you discover insights you might not have imagined."}
+              </p>
+            </DocSubsection>
           </DocSection>
         ),
       };
 
     case "llm-configuration":
       return {
-        title: isPt ? "Configuração do LLM" : "LLM configuration",
+        title: isPt ? "Configuração do LLM" : "LLM Configuration",
         node: (
           <DocSection
-            title={isPt ? "Configuração do LLM" : "LLM configuration"}
-            description={isPt ? "Provedores de modelo e configuração por usuário ou por agente." : "Model providers and per-user or per-agent configuration."}
+            title={isPt ? "Cérebro da Inteligência" : "Intelligence Engine"}
+            description={isPt 
+              ? "Escolha e configure os modelos de linguagem que melhor atendem seu negócio." 
+              : "Choose and configure the language models that best serve your business."}
             icon={Bot}
           >
-            <DocSubsection id="llm-providers" title={isPt ? "Provedores (OpenAI, Ollama, LiteLLM)" : "Providers (OpenAI, Ollama, LiteLLM)"}>
+            <DocSubsection id="llm-providers" title={isPt ? "Escolhendo seu Provedor" : "Choosing Your Provider"}>
               <p>
                 {isPt
-                  ? "O Data Talks suporta três provedores: OpenAI (API key e modelo, ex. gpt-4o-mini), Ollama (URL base e modelo local, ex. llama3.2) e LiteLLM (URL do proxy OpenAI-compatível, modelo e opcional API key). Os valores padrão vêm das variáveis de ambiente (OPENAI_API_KEY, OLLAMA_BASE_URL, LITELLM_BASE_URL, etc.). O usuário pode sobrescrever em Conta → LLM; as configurações salvas em llm_settings têm prioridade sobre o env."
-                  : "Data Talks supports three providers: OpenAI (API key and model, e.g. gpt-4o-mini), Ollama (base URL and local model, e.g. llama3.2), and LiteLLM (proxy URL, model, and optional API key). Defaults come from environment variables (OPENAI_API_KEY, OLLAMA_BASE_URL, LITELLM_BASE_URL, etc.). The user can override in Account → LLM; saved llm_settings take precedence over env."}
+                  ? "O Data Talks não está preso a um único modelo. Você pode escolher o 'cérebro' do seu sistema baseado em performance, custo ou privacidade:"
+                  : "Data Talks is not locked into a single model. You can choose the 'engine' of your system based on performance, cost, or privacy:"}
               </p>
+              <ul className="mt-4 space-y-4">
+                <li className="p-4 border rounded-xl hover:bg-muted/30 transition-colors">
+                  <h5 className="font-bold mb-1">OpenAI (SaaS)</h5>
+                  <p className="text-xs text-muted-foreground">{isPt ? "O estado da arte em raciocínio e velocidade. Ideal para análises complexas e alta demanda." : "State-of-the-art reasoning and speed. Ideal for complex analysis and high demand."}</p>
+                </li>
+                <li className="p-4 border rounded-xl hover:bg-muted/30 transition-colors">
+                  <h5 className="font-bold mb-1">Ollama (Local/Self-hosted)</h5>
+                  <p className="text-xs text-muted-foreground">{isPt ? "Privacidade total. Seus dados nunca saem da sua infraestrutura. Ideal para dados sensíveis e conformidade LGPD/GDPR." : "Total privacy. Your data never leaves your infrastructure. Ideal for sensitive data and compliance (LGPD/GDPR)."}</p>
+                </li>
+                <li className="p-4 border rounded-xl hover:bg-muted/30 transition-colors">
+                  <h5 className="font-bold mb-1">LiteLLM (Flexibilidade)</h5>
+                  <p className="text-xs text-muted-foreground">{isPt ? "Um proxy versátil que permite conectar virtualmente qualquer modelo compatível com OpenAI." : "A versatile proxy that allows you to connect virtually any OpenAI-compatible model."}</p>
+                </li>
+              </ul>
             </DocSubsection>
-            <DocSubsection id="llm-settings-api" title={isPt ? "API de configuração" : "Settings API"}>
+            
+            <DocSubsection id="llm-custom" title={isPt ? "Personalização por Agente" : "Per-Agent Customization"}>
               <p>
                 {isPt
-                  ? "GET /api/settings/llm retorna a configuração atual (chaves mascaradas). PATCH /api/settings/llm atualiza llm_provider, openai_api_key, openai_model, ollama_base_url, ollama_model, litellm_base_url, litellm_model, litellm_api_key. Opcionalmente, um agente pode usar uma configuração específica (llm_config_id) em vez da configuração padrão do usuário; os LlmConfigs são gerenciados via API de configurações."
-                  : "GET /api/settings/llm returns the current configuration (keys masked). PATCH /api/settings/llm updates llm_provider, openai_api_key, openai_model, ollama_base_url, ollama_model, litellm_base_url, litellm_model, litellm_api_key. Optionally, an agent can use a specific config (llm_config_id) instead of the user's default; LlmConfigs are managed via the settings API."}
+                  ? "Diferentes departamentos podem precisar de diferentes modelos. Você pode configurar um modelo mais rápido para atendimento simples e um modelo mais potente para analistas de dados seniores, tudo na mesma plataforma."
+                  : "Different departments may need different models. You can configure a faster model for simple support and a more powerful model for senior data analysts, all within the same platform."}
               </p>
-              <code className="block rounded bg-muted p-2 text-xs mt-2">
-                GET /api/settings/llm · PATCH /api/settings/llm
-              </code>
             </DocSubsection>
           </DocSection>
         ),
@@ -171,29 +292,43 @@ function getTopicContent(topic: string, isPt: boolean) {
 
     case "table-summaries":
       return {
-        title: isPt ? "Resumos de tabela (Studio)" : "Table summaries (Studio)",
+        title: isPt ? "Resumos de Tabela" : "Table Summaries",
         node: (
           <DocSection
-            title={isPt ? "Resumos de tabela (Studio)" : "Table summaries (Studio)"}
-            description={isPt ? "Relatórios executivos gerados por LLM a partir da fonte de dados." : "Executive reports generated by the LLM from the data source."}
+            title={isPt ? "O Studio de Insights" : "The Insights Studio"}
+            description={isPt 
+              ? "Obtenha uma visão panorâmica e estatística dos seus dados em segundos." 
+              : "Get a bird's eye view and statistical overview of your data in seconds."}
             icon={FileText}
           >
-            <DocSubsection id="table-summaries-generate" title={isPt ? "Gerar resumo" : "Generate summary"}>
+            <DocSubsection id="summaries-what" title={isPt ? "O que o Resumo oferece?" : "What does the Summary offer?"}>
               <p>
                 {isPt
-                  ? "No Studio do workspace, o usuário pode abrir o modal de Resumo da Tabela, escolher uma fonte (do workspace) e gerar um resumo. O backend chama o script de summary correspondente ao tipo da fonte (CSV/XLSX, BigQuery, SQL, Google Sheets). O script usa o LLM (com as mesmas overrides do usuário) e, quando aplicável, executa consultas analíticas para obter estatísticas; o resultado é um relatório em markdown (report) e opcionalmente uma lista de queries_run. O resumo é salvo em table_summaries e exibido no modal."
-                  : "In the workspace Studio, the user can open the Table Summary modal, select a source (from the workspace), and generate a summary. The backend calls the summary script for the source type (CSV/XLSX, BigQuery, SQL, Google Sheets). The script uses the LLM (with the same user overrides) and, when applicable, runs analytical queries to get statistics; the result is a markdown report and optionally a list of queries_run. The summary is stored in table_summaries and shown in the modal."}
+                  ? "O recurso de Resumo de Tabela no Studio do Workspace é como ter um cientista de dados júnior fazendo um relatório inicial para você. Ele analisa automaticamente:"
+                  : "The Table Summary feature in the Workspace Studio is like having a junior data scientist create an initial report for you. It automatically analyzes:"}
               </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                {[
+                  { pt: "Top Insights", en: "Top Insights" },
+                  { pt: "Tendências", en: "Trends" },
+                  { pt: "Anomalias", en: "Anomalies" },
+                  { pt: "Distribuição", en: "Distribution" },
+                  { pt: "Sugestões", en: "Suggestions" },
+                  { pt: "Estatísticas", en: "Statistics" }
+                ].map((item, i) => (
+                  <div key={i} className="py-2 px-3 border rounded-lg text-xs font-semibold text-center bg-muted/30">
+                    {isPt ? item.pt : item.en}
+                  </div>
+                ))}
+              </div>
             </DocSubsection>
-            <DocSubsection id="table-summaries-api" title={isPt ? "API" : "API"}>
+
+            <DocSubsection id="summaries-speed" title={isPt ? "Velocidade na Tomada de Decisão" : "Speed in Decision Making"}>
               <p>
                 {isPt
-                  ? "POST /api/table_summaries com { agentId, sourceId? } gera um novo resumo (sourceId opcional; se omitido, usa a fonte ativa do agente). GET /api/table_summaries?agent_id=... lista resumos do workspace. GET /api/table_summaries/{id} retorna um resumo. DELETE /api/table_summaries/{id} remove o resumo. A resposta de geração inclui id, agentId, sourceId, sourceName, report, queriesRun, createdAt."
-                  : "POST /api/table_summaries with { agentId, sourceId? } generates a new summary (sourceId optional; if omitted, uses the agent's active source). GET /api/table_summaries?agent_id=... lists summaries for the workspace. GET /api/table_summaries/{id} returns one summary. DELETE /api/table_summaries/{id} removes it. The generate response includes id, agentId, sourceId, sourceName, report, queriesRun, createdAt."}
+                  ? "Em vez de ler milhares de linhas ou criar gráficos complexos para entender o básico, o resumo executivo fornece os pontos principais de forma textual e estruturada, prontos para serem compartilhados em reuniões."
+                  : "Instead of reading thousands of lines or creating complex charts to understand the basics, the executive summary provides key points in a structured textual format, ready to be shared in meetings."}
               </p>
-              <code className="block rounded bg-muted p-2 text-xs mt-2">
-                POST /api/table_summaries · GET /api/table_summaries · GET/DELETE /api/table_summaries/{id}
-              </code>
             </DocSubsection>
           </DocSection>
         ),
@@ -205,26 +340,30 @@ function getTopicContent(topic: string, isPt: boolean) {
         node: (
           <DocSection
             title="CSV / XLSX"
-            description={isPt ? "Arquivos enviados e armazenados localmente." : "Files uploaded and stored locally."}
+            description={isPt ? "Analise suas planilhas de forma dinâmica." : "Analyze your spreadsheets dynamically."}
             icon={FileSpreadsheet}
           >
-            <DocSubsection id="csv-xlsx-storage" title={isPt ? "Upload e armazenamento" : "Upload & storage"}>
+            <DocSubsection id="csv-how" title={isPt ? "Simplicidade e Versatilidade" : "Simplicity and Versatility"}>
               <p>
                 {isPt
-                  ? "O arquivo é enviado via FormData para POST /api/sources/upload e gravado em data_files/{user_id}/{uuid}.csv (ou .xlsx). O backend usa Pandas para extrair colunas e uma prévia de 5 linhas; os metadados (file_path, columns, preview_rows, row_count) são guardados em Source.metadata."
-                  : "The file is sent via FormData to POST /api/sources/upload and written to data_files/{user_id}/{uuid}.csv (or .xlsx). The backend uses Pandas to extract columns and a 5-row preview; metadata (file_path, columns, preview_rows, row_count) is stored in Source.metadata."}
+                  ? "O formato CSV/XLSX é o mais utilizado no mundo dos negócios. No Data Talks, tratamos essas planilhas não apenas como arquivos mortos, mas como bases de dados consultáveis."
+                  : "The CSV/XLSX format is the most common in the business world. In Data Talks, we treat these spreadsheets not just as dead files, but as searchable databases."}
               </p>
             </DocSubsection>
-            <DocSubsection id="csv-xlsx-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
+            
+            <DocSubsection id="csv-analysis" title={isPt ? "Análise de Colunas" : "Column Analysis"}>
               <p>
                 {isPt
-                  ? "Ao responder uma pergunta, o backend chama ask_csv(file_path, question, agent_description, columns, preview_rows, data_files_dir), com caminho relativo a data_files e metadados da fonte. O script monta o schema (colunas) e uma amostra (até 10 linhas), usa um system prompt de assistente de dados tabulares e user prompt com schema + amostra + pergunta. A resposta pode incluir follow-up questions (linhas terminando em '?')."
-                  : "When answering a question, the backend calls ask_csv(file_path, question, agent_description, columns, preview_rows, data_files_dir), with path relative to data_files and source metadata. The script builds the schema (columns) and a sample (up to 10 rows), uses a tabular data assistant system prompt and user prompt with schema + sample + question. The answer may include follow-up questions (lines ending with '?')."}
+                  ? "Ao carregar um arquivo, o sistema mapeia automaticamente os tipos de dados de cada coluna (datas, números, categorias). Isso permite que a IA responda coisas como 'some o total da coluna Preço' ou 'agrupe por Região'."
+                  : "When you upload a file, the system automatically maps the data types of each column (dates, numbers, categories). This allows the AI to answer things like 'sum the Total Price column' or 'group by Region'."}
               </p>
-              <code className="block rounded bg-muted p-2 text-xs mt-2">
-                ask_csv(file_path, question, agent_description, columns, preview_rows, data_files_dir)
-              </code>
             </DocSubsection>
+
+            <Tip isPt={isPt}>
+              {isPt 
+                ? "Certifique-se de que a primeira linha do seu arquivo contenha cabeçalhos claros para que a IA identifique as colunas corretamente." 
+                : "Make sure the first row of your file contains clear headers so the AI can correctly identify the columns."}
+            </Tip>
           </DocSection>
         ),
       };
@@ -235,35 +374,23 @@ function getTopicContent(topic: string, isPt: boolean) {
         node: (
           <DocSection
             title="BigQuery"
-            description={isPt ? "Credenciais e metadados armazenados localmente." : "Credentials and metadata stored locally."}
+            description={isPt ? "Poder do Google Cloud para grandes conjuntos de dados." : "Google Cloud power for large datasets."}
             icon={Database}
           >
-            <DocSubsection id="bigquery-config" title={isPt ? "Configuração e armazenamento" : "Configuration & storage"}>
+            <DocSubsection id="bq-enterprise" title={isPt ? "Pronto para Corporações" : "Enterprise-Ready"}>
               <p>
                 {isPt
-                  ? "O usuário envia o JSON de credenciais (ou escolhe um existente), informa Project ID, Dataset ID e tabelas (lista ou texto separado por vírgula). POST /api/sources com type: bigquery e metadata: { credentialsContent, projectId, datasetId, tables }. A fonte é criada no banco com type=bigquery; os metadados ficam apenas no backend — nada é enviado à nuvem além do que o backend usa nas consultas."
-                  : "The user uploads the credentials JSON (or selects an existing one), enters Project ID, Dataset ID, and tables (list or comma-separated). POST /api/sources with type: bigquery and metadata: { credentialsContent, projectId, datasetId, tables }. The source is created in the DB with type=bigquery; metadata stays on the backend only — nothing is sent to the cloud except what the backend uses for queries."}
+                  ? "Ideal para empresas que já possuem seus dados consolidados no ecossistema Google Cloud. O Data Talks integra-se perfeitamente via Chave de Conta de Serviço, permitindo consultas em milhões de linhas em questão de segundos."
+                  : "Ideal for companies that already have their data consolidated in the Google Cloud ecosystem. Data Talks integrates perfectly via Service Account Key, allowing queries across millions of rows in a matter of seconds."}
               </p>
             </DocSubsection>
-            <DocSubsection id="bigquery-discovery" title={isPt ? "Discovery e atualização de metadata" : "Discovery & metadata refresh"}>
+
+            <DocSubsection id="bq-schema" title={isPt ? "Auto-Descoberta de Schema" : "Automatic Schema Discovery"}>
               <p>
                 {isPt
-                  ? "O backend expõe endpoints para listar projetos, datasets e tabelas do BigQuery e para atualizar o metadata da fonte com table_infos (schema com colunas). POST /api/bigquery/projects com credentialsContent ou sourceId retorna os projetos. POST /api/bigquery/datasets com credentialsContent/sourceId e projectId retorna os datasets. POST /api/bigquery/tables com credentialsContent/sourceId, projectId e datasetId retorna as tabelas. POST /api/bigquery/refresh_source atualiza a fonte com table_infos (e opcionalmente preview), permitindo que o LLM tenha contexto completo do schema."
-                  : "The backend exposes endpoints to list BigQuery projects, datasets, and tables and to refresh source metadata with table_infos (schema with columns). POST /api/bigquery/projects with credentialsContent or sourceId returns projects. POST /api/bigquery/datasets with credentialsContent/sourceId and projectId returns datasets. POST /api/bigquery/tables with credentialsContent/sourceId, projectId, and datasetId returns tables. POST /api/bigquery/refresh_source updates the source with table_infos (and optional preview), so the LLM has full schema context."}
+                  ? "Uma vez conectado, o sistema 'estuda' suas tabelas e visões. Ele entende relacionamentos complexos e pode até sugerir insights baseados na hierarquia do seu dataset no BigQuery."
+                  : "Once connected, the system 'studies' your tables and views. It understands complex relationships and can even suggest insights based on your BigQuery dataset hierarchy."}
               </p>
-              <code className="block rounded bg-muted p-2 text-xs mt-2">
-                POST /api/bigquery/projects · /datasets · /tables · /refresh_source
-              </code>
-            </DocSubsection>
-            <DocSubsection id="bigquery-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
-              <p>
-                {isPt
-                  ? "O backend chama ask_bigquery(credentials_content, project_id, dataset_id, tables, question, agent_description, table_infos) com dados do Source.metadata. O script monta o schema (project, dataset, tabelas; se houver table_infos, inclui colunas por tabela), usa um system prompt de assistente BigQuery (pode sugerir SQL SELECT) e user prompt com schema + pergunta. Resposta e follow-ups no mesmo formato das outras fontes."
-                  : "The backend calls ask_bigquery(credentials_content, project_id, dataset_id, tables, question, agent_description, table_infos) with data from Source.metadata. The script builds the schema (project, dataset, tables; if table_infos is present, includes columns per table), uses a BigQuery assistant system prompt (may suggest SELECT SQL) and user prompt with schema + question. Answer and follow-ups in the same format as other sources."}
-              </p>
-              <code className="block rounded bg-muted p-2 text-xs mt-2">
-                ask_bigquery(..., question, agent_description, table_infos)
-              </code>
             </DocSubsection>
           </DocSection>
         ),
@@ -275,25 +402,23 @@ function getTopicContent(topic: string, isPt: boolean) {
         node: (
           <DocSection
             title="Google Sheets"
-            description={isPt ? "Spreadsheet ID e nome da aba no metadata." : "Spreadsheet ID and sheet name in metadata."}
+            description={isPt ? "Colaboração e dados em tempo real." : "Collaboration and real-time data."}
             icon={Sheet}
           >
-            <DocSubsection id="google-sheets-config" title={isPt ? "Configuração" : "Configuration"}>
+            <DocSubsection id="sheets-live" title={isPt ? "Dados em Movimento" : "Data in Motion"}>
               <p>
                 {isPt
-                  ? "O usuário informa o ID da planilha e o nome da aba. POST /api/sources com type: google_sheets e metadata: { spreadsheetId, sheetName }. A fonte é salva no banco; o metadata guarda apenas esses identificadores. As credenciais do Google (conta de serviço) vêm da variável de ambiente no backend."
-                  : "The user enters the spreadsheet ID and sheet name. POST /api/sources with type: google_sheets and metadata: { spreadsheetId, sheetName }. The source is stored in the DB; metadata only holds these identifiers. Google (service account) credentials come from the backend environment variable."}
+                  ? "A maior vantagem de usar o Google Sheets é a agilidade. Diferente de um CSV estático, quando você altera um valor na sua planilha do Google, a próxima pergunta feita ao agente já usará o dado atualizado."
+                  : "The biggest advantage of using Google Sheets is agility. Unlike a static CSV, when you change a value in your Google spreadsheet, the next question asked to the agent will already use the updated data."}
               </p>
             </DocSubsection>
-            <DocSubsection id="google-sheets-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
+
+            <DocSubsection id="sheets-security" title={isPt ? "Segurança no Acesso" : "Access Security"}>
               <p>
                 {isPt
-                  ? "O backend chama ask_google_sheets(spreadsheet_id, sheet_name, question, agent_description); os IDs vêm do metadata e as credenciais de GOOGLE_SHEETS_SERVICE_ACCOUNT. O contexto enviado ao LLM inclui spreadsheet_id e sheet_name; a amostra de dados pode ser obtida via API Google (quando implementado). Atualmente o prompt usa o contexto básico; system prompt de assistente de planilhas e user prompt com contexto + pergunta."
-                  : "The backend calls ask_google_sheets(spreadsheet_id, sheet_name, question, agent_description); IDs come from metadata and credentials from GOOGLE_SHEETS_SERVICE_ACCOUNT. The context sent to the LLM includes spreadsheet_id and sheet_name; sample data can be fetched via Google API (when implemented). Currently the prompt uses basic context; system prompt is a sheets assistant and user prompt is context + question."}
+                  ? "Para que o Data Talks acesse sua planilha, você deve compartilhar o arquivo com o e-mail da conta de serviço gerada no backend. Isso garante que apenas os dados autorizados sejam acessados pelo sistema."
+                  : "In order for Data Talks to access your spreadsheet, you must share the file with the service account email generated on the backend. This ensures only authorized data is accessed by the system."}
               </p>
-              <code className="block rounded bg-muted p-2 text-xs mt-2">
-                ask_google_sheets(spreadsheet_id, sheet_name, question, agent_description)
-              </code>
             </DocSubsection>
           </DocSection>
         ),
@@ -305,25 +430,23 @@ function getTopicContent(topic: string, isPt: boolean) {
         node: (
           <DocSection
             title="SQL Database"
-            description={isPt ? "Connection string e informações de tabela no metadata." : "Connection string and table info in metadata."}
+            description={isPt ? "Conectividade direta com seu coração transacional." : "Direct connectivity to your transactional heart."}
             icon={Database}
           >
-            <DocSubsection id="sql-config" title={isPt ? "Configuração" : "Configuration"}>
+            <DocSubsection id="sql-realtime" title={isPt ? "Acesso Direto (Postgres/MySQL)" : "Direct Access (Postgres/MySQL)"}>
               <p>
                 {isPt
-                  ? "O usuário informa a connection string, o tipo (postgresql/mysql) e o nome da tabela. POST /api/sources com type: sql_database e metadata: { connectionString, table_infos: [{ table, columns? }] }. A fonte é salva no banco; o metadata guarda connectionString e table_infos para o contexto do LLM. As credenciais ficam apenas no backend."
-                  : "The user enters the connection string, type (postgresql/mysql), and table name. POST /api/sources with type: sql_database and metadata: { connectionString, table_infos: [{ table, columns? }] }. The source is stored in the DB; metadata holds connectionString and table_infos for LLM context. Credentials stay on the backend only."}
+                  ? "Conecte-se diretamente aos bancos de dados de produção ou réplicas de leitura. Isso permite que sua IA responda sobre o estado atual do seu negócio, sem necessidade de processos complexos de extração de dados (ETL)."
+                  : "Connect directly to production databases or read replicas. This allows your AI to answer questions about the current state of your business without the need for complex data extraction processes (ETL)."}
               </p>
             </DocSubsection>
-            <DocSubsection id="sql-context" title={isPt ? "Contexto para o LLM" : "Context for the LLM"}>
+
+            <DocSubsection id="sql-mapping" title={isPt ? "Mapeamento Inteligente" : "Smart Mapping"}>
               <p>
                 {isPt
-                  ? "O backend chama ask_sql(connection_string, question, agent_description, table_infos) com dados do Source.metadata. O script monta o schema a partir de table_infos (tabela + colunas), usa um system prompt de assistente SQL (pode sugerir queries SELECT) e user prompt com schema + pergunta. O LLM não executa SQL automaticamente; sugere quando apropriado. Resposta e follow-ups no mesmo formato das outras fontes."
-                  : "The backend calls ask_sql(connection_string, question, agent_description, table_infos) with data from Source.metadata. The script builds the schema from table_infos (table + columns), uses a SQL assistant system prompt (may suggest SELECT queries) and user prompt with schema + question. The LLM does not execute SQL automatically; it suggests when appropriate. Answer and follow-ups in the same format as other sources."}
+                  ? "O sistema mapeia as tabelas selecionadas e entende a tipagem de cada campo. Isso é crucial para que o LLM saiba distinguir, por exemplo, um 'ID de Clientes' de um 'Valor de Compra' e possa realizar cálculos matemáticos precisos."
+                  : "The system maps selected tables and understands each field's typing. This is crucial so the LLM knows how to distinguish, for example, a 'Customer ID' from a 'Purchase Value' and can perform precise mathematical calculations."}
               </p>
-              <code className="block rounded bg-muted p-2 text-xs mt-2">
-                ask_sql(connection_string, question, agent_description, table_infos)
-              </code>
             </DocSubsection>
           </DocSection>
         ),

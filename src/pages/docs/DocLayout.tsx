@@ -1,10 +1,10 @@
+import { SEO } from "@/components/SEO";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { SEO } from "@/components/SEO";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { getDocStructure, filterToc } from "./docStructure";
+import { filterToc, getDocStructure } from "./docStructure";
 
 export default function DocLayout() {
   const { t, language } = useLanguage();
@@ -24,7 +24,7 @@ export default function DocLayout() {
     <div className="min-h-screen bg-muted/30 flex">
       <SEO title={t("doc.title")} description={t("doc.subtitle")} />
 
-      <aside className="w-64 shrink-0 border-r bg-background/95 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto hidden lg:block">
+      <aside className="w-64 shrink-0 border-r bg-background/95 sticky top-16 min-h-[calc(100vh-4rem)] overflow-y-auto hidden lg:block">
         <div className="p-4 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -50,7 +50,7 @@ export default function DocLayout() {
                   {sec.title}
                 </NavLink>
                 {sec.subs.length > 0 && (
-                  <ul className="ml-3 space-y-0.5 border-l border-border pl-2">
+                  <ul className="space-y-0.5">
                     {sec.subs.map((sub) => (
                       <li key={sub.id}>
                         <Link
