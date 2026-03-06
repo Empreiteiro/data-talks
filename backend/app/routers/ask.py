@@ -88,6 +88,15 @@ async def ask_question(
         llm_row = r_llm.scalar_one_or_none()
         llm_overrides = _llm_config_to_overrides(llm_row)
 
+    # Retrieve History
+    history = []
+    session_id = body.sessionId
+    if session_id:
+        r_qa = await db.execute(select(QASession).where(QASession.id == session_id))
+        qa_session = r_qa.scalar_one_or_none()
+        if qa_session and qa_session.conversation_history:
+            history = qa_session.conversation_history
+
     # Route by source type
     if source.type in ("csv", "xlsx"):
         file_path = (source.metadata_ or {}).get("file_path")
@@ -105,6 +114,7 @@ async def ask_question(
             sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
             data_files_dir=data_files_dir,
             llm_overrides=llm_overrides,
+            history=history,
         )
     elif source.type == "google_sheets":
         meta = source.metadata_ or {}
@@ -115,6 +125,7 @@ async def ask_question(
             agent_description=agent.description or "",
             source_name=source.name,
             llm_overrides=llm_overrides,
+            history=history,
         )
     elif source.type == "sql_database":
         meta = source.metadata_ or {}
@@ -125,6 +136,7 @@ async def ask_question(
             source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
+            history=history,
         )
     elif source.type == "bigquery":
         meta = source.metadata_ or {}
@@ -141,6 +153,7 @@ async def ask_question(
             source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
+            history=history,
         )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")

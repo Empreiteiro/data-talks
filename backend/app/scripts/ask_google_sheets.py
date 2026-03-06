@@ -17,6 +17,7 @@ async def ask_google_sheets(
     source_name: str | None = None,
     credentials_json: str | None = None,
     llm_overrides: dict | None = None,
+    history: list[dict] | None = None,
 ) -> dict[str, Any]:
     """
     Fetch sheet data (via Google API), send context to LLM, return answer.
@@ -49,8 +50,12 @@ async def ask_google_sheets(
 
     messages = [
         {"role": "system", "content": system},
-        {"role": "user", "content": f"Context: {schema_text}\nSample: {sample_json}\n\nQuestion: {question}"},
     ]
+    if history:
+        for turn in history[-5:]:
+            messages.append({"role": "user", "content": turn["question"]})
+            messages.append({"role": "assistant", "content": turn["answer"]})
+    messages.append({"role": "user", "content": f"Context: {schema_text}\nSample: {sample_json}\n\nQuestion: {question}"})
     raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
     await record_log(
         action="pergunta",

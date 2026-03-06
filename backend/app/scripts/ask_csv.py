@@ -29,6 +29,7 @@ async def ask_csv(
     sample_row_count: int | None = None,
     data_files_dir: str = "./data_files",
     llm_overrides: dict | None = None,
+    history: list[dict] | None = None,
 ) -> dict[str, Any]:
     """
     file_path: path relative to data_files (e.g. user_id/timestamp.csv).
@@ -80,8 +81,12 @@ async def ask_csv(
 
     messages = [
         {"role": "system", "content": system},
-        {"role": "user", "content": user_content},
     ]
+    if history:
+        for turn in history[-5:]:
+            messages.append({"role": "user", "content": turn["question"]})
+            messages.append({"role": "assistant", "content": turn["answer"]})
+    messages.append({"role": "user", "content": user_content})
     raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
     await record_log(
         action="pergunta",

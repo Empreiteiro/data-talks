@@ -23,11 +23,22 @@ async def generate_table_summary_google_sheets(
     schema_text = "Columns: " + ", ".join(columns) if columns else "No columns (sheet may be empty or not loaded)."
 
     system_report = (
-        "You are a business analyst. Write a short executive summary (report) in Markdown that describes "
-        "what this Google Sheet likely contains, based ONLY on the spreadsheet/sheet identifiers and the list of column names. "
-        "Do not assume you have any row data. Infer the purpose of the sheet and the meaning of columns from their names. "
-        "Keep it concise (about 1 page). Include: probable purpose of the sheet, what each column likely represents, "
-        "and any data quality or structure notes. Use clear headings and bullet points."
+        "You are a professional business analyst. Write a highly structured executive summary in STRICT Markdown format "
+        "based ONLY on the Google Sheet column names. "
+        "You MUST use heading indicators (#, ##), bold text (**bold**), and Markdown tables (|---|) exactly as shown in this template.\n\n"
+        "### TEMPLATE:\n"
+        "# [Sheet Title] Executive Summary\n\n"
+        "## Purpose\n"
+        "[Probable purpose of the sheet based on name and columns.]\n\n"
+        "## Structure\n"
+        "| Column | Description |\n"
+        "|---|---|\n"
+        "| [col1] | [what it likely represents] |\n"
+        "| [col2] | [what it likely represents] |\n\n"
+        "## Notes\n"
+        "[Any data quality or structural observations.]\n\n"
+        "Keep it professional and concise (about 1 page). "
+        "Return ONLY the Markdown content with no preamble."
     )
     user_report = (
         f"Source name: {source_name or sheet_name}\n"

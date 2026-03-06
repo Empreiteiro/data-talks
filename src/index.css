@@ -145,3 +145,57 @@ All colors MUST be HSL.
   background: radial-gradient(600px circle at var(--x, 50%) var(--y, 50%), hsl(var(--brand) / 0.25), transparent 40%),
     radial-gradient(800px circle at var(--x2, 60%) var(--y2, 40%), hsl(257 92% 62% / 0.22), transparent 40%);
 }
+
+/* Fallback markdown spacing for summary reports. */
+.table-summary-markdown {
+  line-height: 1.7;
+}
+
+.table-summary-markdown > :first-child {
+  margin-top: 0;
+}
+
+.table-summary-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.table-summary-markdown h1,
+.table-summary-markdown h2,
+.table-summary-markdown h3,
+.table-summary-markdown h4 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.25;
+}
+
+.table-summary-markdown h1 {
+  font-size: 1.5rem;
+}
+
+.table-summary-markdown h2 {
+  font-size: 1.25rem;
+}
+
+.table-summary-markdown p,
+.table-summary-markdown ul,
+.table-summary-markdown ol,
+.table-summary-markdown table,
+.table-summary-markdown blockquote,
+.table-summary-markdown pre {
+  margin: 0.75rem 0;
+}
+
+.table-summary-markdown li + li {
+  margin-top: 0.25rem;
+}
+
+.table-summary-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-summary-markdown th,
+.table-summary-markdown td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}

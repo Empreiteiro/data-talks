@@ -125,7 +125,7 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -134,9 +134,9 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
           <DialogDescription>{t("studio.summaryDescription")}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
           {/* Generate section */}
-          <div className="space-y-2">
+          <div className="space-y-2 shrink-0">
             <Label>{t("studio.summarySource")}</Label>
             {sources.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("studio.summaryNoSource")}</p>
@@ -165,33 +165,8 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
             )}
           </div>
 
-          {/* Report view */}
-          {(displayReport || loading) && (
-            <div className="border rounded-lg flex-1 min-h-0 flex flex-col">
-              <div className="p-3 border-b bg-muted/50 text-sm font-medium">
-                {viewingSummary
-                  ? `${viewingSummary.sourceName} — ${new Date(viewingSummary.createdAt).toLocaleString()}`
-                  : loading
-                    ? t("studio.summaryGenerating")
-                    : t("studio.summaryReport")}
-              </div>
-              <ScrollArea className="flex-1 p-4 min-h-[200px]">
-                {loading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>{t("studio.summaryGenerating")}</span>
-                  </div>
-                ) : (
-                  <div className="table-summary-markdown prose prose-sm md:prose-base max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:tracking-tight prose-p:leading-relaxed prose-ul:my-3 prose-ol:my-3 prose-li:my-0.5 prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:rounded-lg prose-blockquote:border-l-4 prose-blockquote:italic prose-table:border-collapse prose-th:border prose-th:bg-muted prose-th:px-3 prose-th:py-2 prose-td:border prose-td:px-3 prose-td:py-2">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayReport || ""}</ReactMarkdown>
-                  </div>
-                )}
-              </ScrollArea>
-            </div>
-          )}
-
           {/* Saved summaries list */}
-          <div className="space-y-2">
+          <div className="space-y-2 shrink-0">
             <Label>{t("studio.summarySavedList")}</Label>
             {summaries.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("studio.summaryNoSaved")}</p>
@@ -225,6 +200,33 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
               </ScrollArea>
             )}
           </div>
+
+          {/* Report view */}
+          {(displayReport || loading) && (
+            <div className="border rounded-lg flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="p-3 border-b bg-muted/50 text-sm font-medium shrink-0">
+                {viewingSummary
+                  ? `${viewingSummary.sourceName} — ${new Date(viewingSummary.createdAt).toLocaleString()}`
+                  : loading
+                    ? t("studio.summaryGenerating")
+                    : t("studio.summaryReport")}
+              </div>
+              <ScrollArea className="h-full min-h-0 flex-1">
+                <div className="p-4 pr-6">
+                  {loading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>{t("studio.summaryGenerating")}</span>
+                    </div>
+                  ) : (
+                    <div className="table-summary-markdown prose prose-sm md:prose-base max-w-none text-foreground dark:prose-invert prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground prose-p:text-foreground prose-p:leading-relaxed prose-strong:text-foreground prose-ul:my-3 prose-ul:text-foreground prose-ol:my-3 prose-ol:text-foreground prose-li:my-0.5 prose-li:text-foreground prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:text-foreground prose-pre:border prose-pre:rounded-lg prose-blockquote:border-l-4 prose-blockquote:text-foreground prose-blockquote:italic prose-table:border-collapse prose-th:border prose-th:bg-muted prose-th:px-3 prose-th:py-2 prose-th:text-foreground prose-td:border prose-td:px-3 prose-td:py-2 prose-td:text-foreground">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayReport || ""}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
