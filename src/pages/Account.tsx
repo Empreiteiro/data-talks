@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
 import UsersManagement from "@/components/UsersManagement";
@@ -12,30 +13,38 @@ import { LLMPanel } from "@/components/LLMPanel";
 
 const Account = () => {
   const { t } = useLanguage();
+  const { loginRequired } = useAuth();
   const [activeSection, setActiveSection] = useState("usage");
   const [showAddSourceModal, setShowAddSourceModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const menuItems = [
-    { id: "usage", label: t('account.tabs.usage'), icon: Activity },
-    { id: "llm", label: t('account.tabs.llm'), icon: Bot },
-    { id: "users", label: t('account.tabs.users'), icon: Users },
-    { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
-    { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
-  ];
+  const menuItems = useMemo(() => {
+    const items = [
+      { id: "usage", label: t('account.tabs.usage'), icon: Activity },
+      { id: "llm", label: t('account.tabs.llm'), icon: Bot },
+      ...(loginRequired ? [{ id: "users", label: t('account.tabs.users'), icon: Users }] : []),
+      { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
+      { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
+    ];
+    return items;
+  }, [t, loginRequired]);
+
+  useEffect(() => {
+    if (!loginRequired && activeSection === "users") setActiveSection("usage");
+  }, [loginRequired, activeSection]);
 
   return (
-    <main className="min-h-full flex flex-col h-full">
+    <main className="h-full min-h-0 flex flex-col overflow-hidden">
       <SEO title={`${t('account.title')} | ${t('nav.tagline')}`} description="Gerenciar conta" canonical="/account" />
 
-      {/* Espaço de respiro: padding até as bordas da tela */}
-      <div className="flex-1 flex flex-col min-h-0 px-4 sm:px-6 py-4">
+      {/* Área que preenche da navbar até acima do botão de logs */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-4 sm:px-6 pt-4 pb-20">
         <h1 className="text-2xl sm:text-3xl font-semibold mb-4 flex-shrink-0">{t('account.title')}</h1>
 
-        <div className="flex gap-4 flex-1 min-h-0">
-          {/* Left Sidebar Menu */}
-          <div className="w-56 sm:w-64 flex-shrink-0">
-            <div className="h-full bg-background border rounded-lg p-1.5 min-h-0 flex flex-col">
+        <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
+          {/* Left Sidebar Menu — com borda; painel da direita sem borda para não duplicar */}
+          <div className="w-56 sm:w-64 flex-shrink-0 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 bg-background border rounded-lg p-1.5 flex flex-col overflow-hidden">
               <div className="space-y-0.5">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
@@ -59,9 +68,9 @@ const Account = () => {
             </div>
           </div>
 
-          {/* Main Content Area — scroll só quando os registros superarem a altura */}
-          <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-background border rounded-lg overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+          {/* Main Content Area — sem borda para não duplicar com o menu */}
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-background rounded-lg overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6" style={{ minHeight: 0 }}>
               {activeSection === "usage" && <UsageMonitoring />}
               {activeSection === "llm" && <LLMPanel />}
               {activeSection === "users" && <UsersManagement />}
