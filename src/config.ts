@@ -7,7 +7,9 @@ const API_URL = import.meta.env.VITE_API_URL as string | undefined;
 export function getApiUrl(): string {
   const fromEnv = API_URL ? API_URL.replace(/\/$/, '') : '';
   if (fromEnv) return fromEnv;
-  // When app is served from the backend (e.g. localhost:8000), use same origin so API is always used
+  // Dev: if we're on localhost:8080 (Vite), assume backend is on 8000 (avoids 404 when .env.local not loaded yet)
+  if (typeof window !== 'undefined' && window.location?.origin === 'http://localhost:8080') return 'http://localhost:8000';
+  // When app is served from the backend (e.g. localhost:8000), use same origin
   if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
   return '';
 }

@@ -95,7 +95,7 @@ export function useAuth() {
       })
       .catch(() => {
         if (cancelled) return;
-        setToken(null);
+        // Don't clear token on network error – keep it so refresh restores session when backend is back
         setUser(null);
         setSession(null);
         setLoginRequired(true);

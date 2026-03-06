@@ -14,7 +14,7 @@ import {
 import LanguageSelector from "@/components/ui/language-selector";
 
 const NavBar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, loginRequired } = useAuth();
   const { t } = useLanguage();
 
   const handleLogout = async () => {
@@ -54,10 +54,14 @@ const NavBar = () => {
                     {t('settings.subscription')}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  {t('nav.logout')}
-                </DropdownMenuItem>
+                {loginRequired && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      {t('nav.logout')}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
