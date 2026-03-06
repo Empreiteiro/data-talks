@@ -35,20 +35,6 @@ export default function DocIndex() {
             >
               {sec.title}
             </Link>
-            {sec.subs.length > 0 && (
-              <ul className="space-y-0.5">
-                {sec.subs.map((sub) => (
-                  <li key={sub.id}>
-                    <Link
-                      to={`/flows/${sec.id}#${sub.id}`}
-                      className="block py-1 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                      {sub.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
           </li>
         ))}
       </ul>

@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 
 const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
+const OPENAI_AUDIO_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"];
 const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI", ollama: "Ollama", litellm: "LiteLLM" };
 
 interface LlmConfig {
@@ -42,8 +43,10 @@ interface LlmConfig {
   name: string;
   llm_provider: string;
   openai_model?: string;
+  openai_audio_model?: string;
   ollama_model?: string;
   litellm_model?: string;
+  litellm_audio_model?: string;
   model?: string;
   is_default?: boolean;
   created_at?: string;
@@ -63,11 +66,13 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
   const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm">("openai");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
+  const [openaiAudioModel, setOpenaiAudioModel] = useState("gpt-4o-mini-tts");
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState("llama3.2");
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [litellmBaseUrl, setLitellmBaseUrl] = useState("http://localhost:4000");
   const [litellmModel, setLitellmModel] = useState("gpt-4o-mini");
+  const [litellmAudioModel, setLitellmAudioModel] = useState("");
   const [litellmApiKey, setLitellmApiKey] = useState("");
   const [litellmModels, setLitellmModels] = useState<string[]>([]);
   const [fetchingOllama, setFetchingOllama] = useState(false);
@@ -123,11 +128,13 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
     setLlmProvider("openai");
     setOpenaiApiKey("");
     setOpenaiModel("gpt-4o-mini");
+    setOpenaiAudioModel("gpt-4o-mini-tts");
     setOllamaBaseUrl("http://localhost:11434");
     setOllamaModel("llama3.2");
     setOllamaModels([]);
     setLitellmBaseUrl("http://localhost:4000");
     setLitellmModel("gpt-4o-mini");
+    setLitellmAudioModel("");
     setLitellmApiKey("");
     setLitellmModels([]);
   };
@@ -144,10 +151,12 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
         llm_provider: llmProvider,
         openai_api_key: llmProvider === "openai" ? (openaiApiKey || undefined) : undefined,
         openai_model: llmProvider === "openai" ? openaiModel : undefined,
+        openai_audio_model: llmProvider === "openai" ? (openaiAudioModel || undefined) : undefined,
         ollama_base_url: llmProvider === "ollama" ? ollamaBaseUrl : undefined,
         ollama_model: llmProvider === "ollama" ? ollamaModel : undefined,
         litellm_base_url: llmProvider === "litellm" ? litellmBaseUrl : undefined,
         litellm_model: llmProvider === "litellm" ? litellmModel : undefined,
+        litellm_audio_model: llmProvider === "litellm" ? (litellmAudioModel || undefined) : undefined,
         litellm_api_key: llmProvider === "litellm" ? (litellmApiKey || undefined) : undefined,
       });
       toast.success(t("llmSettings.saveSuccess"));
@@ -235,6 +244,15 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>{t("llmSettings.openaiAudioModel")}</Label>
+            <Select value={openaiAudioModel} onValueChange={setOpenaiAudioModel}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {OPENAI_AUDIO_MODELS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </>
       )}
       {llmProvider === "ollama" && (
@@ -291,6 +309,15 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
               </Button>
             </div>
           </div>
+          <div className="space-y-2">
+            <Label>{t("llmSettings.litellmAudioModel")}</Label>
+            <Input
+              placeholder="gpt-4o-mini-tts"
+              value={litellmAudioModel}
+              onChange={(e) => setLitellmAudioModel(e.target.value)}
+              disabled={saving}
+            />
+          </div>
         </>
       )}
     </div>
@@ -340,6 +367,11 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
                       <span className="text-xs text-muted-foreground">
                         {cfg.model || cfg.openai_model || cfg.ollama_model || cfg.litellm_model || "—"}
                       </span>
+                      {(cfg.openai_audio_model || cfg.litellm_audio_model) && (
+                        <span className="text-xs text-muted-foreground">
+                          Audio: {cfg.openai_audio_model || cfg.litellm_audio_model}
+                        </span>
+                      )}
                       {cfg.created_at && (
                         <span className="text-xs text-muted-foreground">
                           {new Date(cfg.created_at).toLocaleDateString()}

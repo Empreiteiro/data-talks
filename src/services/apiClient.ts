@@ -52,6 +52,29 @@ async function apiFormData<T>(path: string, formData: FormData): Promise<T> {
   return res.json();
 }
 
+async function apiBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+  const base = getApiUrl();
+  const url = base ? `${base}${path}` : path;
+  const token = getToken();
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const msg = err.detail != null
+      ? Array.isArray(err.detail)
+        ? (err.detail[0]?.msg ?? err.detail[0]?.loc?.join?.(' ') ?? JSON.stringify(err.detail))
+        : err.detail
+      : err.error || res.statusText || String(res.status);
+    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+  }
+  return res.blob();
+}
+
 export const apiClient = {
   async listSources(agentId?: string, isActive?: boolean) {
     const params = new URLSearchParams();
@@ -272,10 +295,12 @@ export const apiClient = {
       llm_provider: string;
       openai_api_key?: string;
       openai_model?: string;
+      openai_audio_model?: string;
       ollama_base_url?: string;
       ollama_model?: string;
       litellm_base_url?: string;
       litellm_model?: string;
+      litellm_audio_model?: string;
       litellm_api_key?: string;
     }>('/api/settings/llm');
   },
@@ -284,20 +309,24 @@ export const apiClient = {
     llm_provider?: string;
     openai_api_key?: string;
     openai_model?: string;
+    openai_audio_model?: string;
     ollama_base_url?: string;
     ollama_model?: string;
     litellm_base_url?: string;
     litellm_model?: string;
+    litellm_audio_model?: string;
     litellm_api_key?: string;
   }) {
     return api<{
       llm_provider: string;
       openai_api_key?: string;
       openai_model?: string;
+      openai_audio_model?: string;
       ollama_base_url?: string;
       ollama_model?: string;
       litellm_base_url?: string;
       litellm_model?: string;
+      litellm_audio_model?: string;
       litellm_api_key?: string;
     }>('/api/settings/llm', { method: 'PATCH', body: JSON.stringify(body) });
   },
@@ -319,10 +348,12 @@ export const apiClient = {
       llm_provider: string;
       openai_api_key?: string;
       openai_model?: string;
+      openai_audio_model?: string;
       ollama_base_url?: string;
       ollama_model?: string;
       litellm_base_url?: string;
       litellm_model?: string;
+      litellm_audio_model?: string;
       litellm_api_key?: string;
       created_at?: string;
     }>>('/api/settings/llm-configs');
@@ -333,10 +364,12 @@ export const apiClient = {
     llm_provider: string;
     openai_api_key?: string;
     openai_model?: string;
+    openai_audio_model?: string;
     ollama_base_url?: string;
     ollama_model?: string;
     litellm_base_url?: string;
     litellm_model?: string;
+    litellm_audio_model?: string;
     litellm_api_key?: string;
   }) {
     return api('/api/settings/llm-configs', { method: 'POST', body: JSON.stringify(body) });
@@ -401,6 +434,42 @@ export const apiClient = {
 
   async deleteTableSummary(summaryId: string) {
     return api<{ ok: boolean }>(`/api/table_summaries/${summaryId}`, { method: 'DELETE' });
+  },
+
+  async generateAudioOverview(agentId: string, sourceId?: string) {
+    return api<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      script: string;
+      mimeType: string;
+      createdAt: string;
+    }>('/api/audio_overviews', {
+      method: 'POST',
+      body: JSON.stringify({ agentId, sourceId }),
+    });
+  },
+
+  async listAudioOverviews(agentId?: string) {
+    const path = agentId ? `/api/audio_overviews?agent_id=${encodeURIComponent(agentId)}` : '/api/audio_overviews';
+    return api<Array<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      script: string;
+      mimeType: string;
+      createdAt: string;
+    }>>(path);
+  },
+
+  async fetchAudioOverviewBlob(audioOverviewId: string) {
+    return apiBlob(`/api/audio_overviews/${audioOverviewId}/audio`);
+  },
+
+  async deleteAudioOverview(audioOverviewId: string) {
+    return api<{ ok: boolean }>(`/api/audio_overviews/${audioOverviewId}`, { method: 'DELETE' });
   },
 
   // Platform logs (LLM activity across all workspaces)

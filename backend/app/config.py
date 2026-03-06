@@ -57,10 +57,12 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"  # "openai" | "ollama" | "litellm"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    openai_audio_model: str = ""
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     litellm_base_url: str = "http://localhost:4000"
     litellm_model: str = "gpt-4o-mini"
+    litellm_audio_model: str = ""
     litellm_api_key: str = ""
 
     class Config:

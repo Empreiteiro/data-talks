@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { filterToc, getDocStructure } from "./docStructure";
 
 export default function DocLayout() {
@@ -40,7 +40,7 @@ export default function DocLayout() {
           </div>
           <nav className="space-y-0.5">
             {filteredToc.map((sec) => (
-              <div key={sec.id} className="space-y-0.5">
+              <div key={sec.id}>
                 <NavLink
                   to={`/flows/${sec.id}`}
                   className={({ isActive }) =>
@@ -49,20 +49,6 @@ export default function DocLayout() {
                 >
                   {sec.title}
                 </NavLink>
-                {sec.subs.length > 0 && (
-                  <ul className="space-y-0.5">
-                    {sec.subs.map((sub) => (
-                      <li key={sub.id}>
-                        <Link
-                          to={`/flows/${sec.id}#${sub.id}`}
-                          className="block py-1 px-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded"
-                        >
-                          {sub.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             ))}
           </nav>

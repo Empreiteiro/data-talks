@@ -21,10 +21,12 @@ class LlmSettingsResponse(BaseModel):
     llm_provider: str
     openai_api_key: Optional[str] = None  # Masked in response; empty if not set
     openai_model: Optional[str] = None
+    openai_audio_model: Optional[str] = None
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
     litellm_base_url: Optional[str] = None
     litellm_model: Optional[str] = None
+    litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None  # Masked
 
 
@@ -32,10 +34,12 @@ class LlmSettingsUpdate(BaseModel):
     llm_provider: Optional[str] = None
     openai_api_key: Optional[str] = None
     openai_model: Optional[str] = None
+    openai_audio_model: Optional[str] = None
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
     litellm_base_url: Optional[str] = None
     litellm_model: Optional[str] = None
+    litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None
 
 
@@ -63,20 +67,24 @@ async def get_llm_settings(
             llm_provider=row.llm_provider or env.llm_provider,
             openai_api_key=_mask_api_key(row.openai_api_key) if row.openai_api_key else _mask_api_key(env.openai_api_key),
             openai_model=row.openai_model or env.openai_model,
+            openai_audio_model=row.openai_audio_model or env.openai_audio_model,
             ollama_base_url=row.ollama_base_url or env.ollama_base_url,
             ollama_model=row.ollama_model or env.ollama_model,
             litellm_base_url=row.litellm_base_url or env.litellm_base_url,
             litellm_model=row.litellm_model or env.litellm_model,
+            litellm_audio_model=row.litellm_audio_model or env.litellm_audio_model,
             litellm_api_key=_mask_api_key(row.litellm_api_key) if row.litellm_api_key else _mask_api_key(env.litellm_api_key or ""),
         )
     return LlmSettingsResponse(
         llm_provider=env.llm_provider,
         openai_api_key=_mask_api_key(env.openai_api_key),
         openai_model=env.openai_model,
+        openai_audio_model=env.openai_audio_model,
         ollama_base_url=env.ollama_base_url,
         ollama_model=env.ollama_model,
         litellm_base_url=env.litellm_base_url,
         litellm_model=env.litellm_model,
+        litellm_audio_model=env.litellm_audio_model,
         litellm_api_key=_mask_api_key(env.litellm_api_key or ""),
     )
 
@@ -107,6 +115,8 @@ async def update_llm_settings(
             row.openai_api_key = val
     if body.openai_model is not None:
         row.openai_model = body.openai_model.strip() or None
+    if body.openai_audio_model is not None:
+        row.openai_audio_model = body.openai_audio_model.strip() or None
     if body.ollama_base_url is not None:
         row.ollama_base_url = body.ollama_base_url.strip() or None
     if body.ollama_model is not None:
@@ -115,6 +125,8 @@ async def update_llm_settings(
         row.litellm_base_url = body.litellm_base_url.strip() or None
     if body.litellm_model is not None:
         row.litellm_model = body.litellm_model.strip() or None
+    if body.litellm_audio_model is not None:
+        row.litellm_audio_model = body.litellm_audio_model.strip() or None
     if body.litellm_api_key is not None:
         val = body.litellm_api_key.strip()
         if val == "":
@@ -129,10 +141,12 @@ async def update_llm_settings(
         llm_provider=row.llm_provider,
         openai_api_key=_mask_api_key(row.openai_api_key),
         openai_model=row.openai_model or env.openai_model,
+        openai_audio_model=row.openai_audio_model or env.openai_audio_model,
         ollama_base_url=row.ollama_base_url or env.ollama_base_url,
         ollama_model=row.ollama_model or env.ollama_model,
         litellm_base_url=row.litellm_base_url or env.litellm_base_url,
         litellm_model=row.litellm_model or env.litellm_model,
+        litellm_audio_model=row.litellm_audio_model or env.litellm_audio_model,
         litellm_api_key=_mask_api_key(row.litellm_api_key),
     )
 
@@ -204,10 +218,12 @@ class LlmConfigCreate(BaseModel):
     llm_provider: str  # openai | ollama | litellm
     openai_api_key: Optional[str] = None
     openai_model: Optional[str] = None
+    openai_audio_model: Optional[str] = None
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
     litellm_base_url: Optional[str] = None
     litellm_model: Optional[str] = None
+    litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None
 
 
@@ -217,10 +233,12 @@ class LlmConfigUpdate(BaseModel):
     is_default: Optional[bool] = None
     openai_api_key: Optional[str] = None
     openai_model: Optional[str] = None
+    openai_audio_model: Optional[str] = None
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
     litellm_base_url: Optional[str] = None
     litellm_model: Optional[str] = None
+    litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None
 
 
@@ -240,10 +258,12 @@ def _config_to_response(c: LlmConfig, env) -> dict:
         "model": model,
         "openai_api_key": _mask_api_key(c.openai_api_key) if c.openai_api_key else "",
         "openai_model": c.openai_model or env.openai_model,
+        "openai_audio_model": c.openai_audio_model or env.openai_audio_model,
         "ollama_base_url": c.ollama_base_url or env.ollama_base_url,
         "ollama_model": c.ollama_model or env.ollama_model,
         "litellm_base_url": c.litellm_base_url or env.litellm_base_url,
         "litellm_model": c.litellm_model or env.litellm_model,
+        "litellm_audio_model": c.litellm_audio_model or env.litellm_audio_model,
         "litellm_api_key": _mask_api_key(c.litellm_api_key) if c.litellm_api_key else "",
         "is_default": getattr(c, "is_default", False),
         "created_at": c.created_at.isoformat() if c.created_at else None,
@@ -281,10 +301,12 @@ async def create_llm_config(
         llm_provider=body.llm_provider if body.llm_provider in ("openai", "ollama", "litellm") else "openai",
         openai_api_key=_opt(body.openai_api_key),
         openai_model=_opt(body.openai_model),
+        openai_audio_model=_opt(body.openai_audio_model),
         ollama_base_url=_opt(body.ollama_base_url),
         ollama_model=_opt(body.ollama_model),
         litellm_base_url=_opt(body.litellm_base_url),
         litellm_model=_opt(body.litellm_model),
+        litellm_audio_model=_opt(body.litellm_audio_model),
         litellm_api_key=_opt(body.litellm_api_key),
     )
     db.add(c)
@@ -330,6 +352,8 @@ async def update_llm_config(
         c.openai_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.openai_api_key)
     if body.openai_model is not None:
         c.openai_model = body.openai_model.strip() or None
+    if body.openai_audio_model is not None:
+        c.openai_audio_model = body.openai_audio_model.strip() or None
     if body.ollama_base_url is not None:
         c.ollama_base_url = body.ollama_base_url.strip() or None
     if body.ollama_model is not None:
@@ -338,6 +362,8 @@ async def update_llm_config(
         c.litellm_base_url = body.litellm_base_url.strip() or None
     if body.litellm_model is not None:
         c.litellm_model = body.litellm_model.strip() or None
+    if body.litellm_audio_model is not None:
+        c.litellm_audio_model = body.litellm_audio_model.strip() or None
     if body.litellm_api_key is not None:
         val = body.litellm_api_key.strip()
         c.litellm_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.litellm_api_key)

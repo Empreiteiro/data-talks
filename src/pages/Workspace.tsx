@@ -6,6 +6,7 @@ import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { LogsModal } from "@/components/LogsModal";
 import { SummaryModal } from "@/components/SummaryModal";
+import { AudioOverviewModal } from "@/components/AudioOverviewModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -232,6 +233,7 @@ export default function Workspace() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [graphModalOpen, setGraphModalOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [audioOverviewModalOpen, setAudioOverviewModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
   const [agent, setAgent] = useState<{ llm_config_id?: string | null } | null>(null);
@@ -864,6 +866,7 @@ export default function Workspace() {
               onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)}
               onOpenGraph={() => setGraphModalOpen(true)}
               onOpenSummary={() => setSummaryModalOpen(true)}
+              onOpenAudio={() => setAudioOverviewModalOpen(true)}
             />
           </div>}
 
@@ -907,6 +910,12 @@ export default function Workspace() {
       <SummaryModal
         open={summaryModalOpen}
         onOpenChange={setSummaryModalOpen}
+        workspaceId={id || ''}
+      />
+
+      <AudioOverviewModal
+        open={audioOverviewModalOpen}
+        onOpenChange={setAudioOverviewModalOpen}
         workspaceId={id || ''}
       />
 

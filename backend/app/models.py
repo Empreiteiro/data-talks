@@ -97,10 +97,12 @@ class LlmConfig(Base):
     llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm
     openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    openai_audio_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ollama_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
     ollama_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     litellm_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
     litellm_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    litellm_audio_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     litellm_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -113,10 +115,12 @@ class LlmSettings(Base):
     llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm
     openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    openai_audio_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ollama_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
     ollama_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     litellm_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
     litellm_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    litellm_audio_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     litellm_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -161,4 +165,18 @@ class TableSummary(Base):
     source_name: Mapped[str] = mapped_column(String(255))
     report: Mapped[str] = mapped_column(Text)  # markdown executive summary
     queries_run: Mapped[list] = mapped_column(JSON, default=list)  # [{ "query": "...", "rows": [...] }]
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AudioOverview(Base):
+    """Studio Audio: concise spoken overview for a source, generated via LLM + TTS."""
+    __tablename__ = "audio_overviews"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    source_id: Mapped[str] = mapped_column(String(36))
+    source_name: Mapped[str] = mapped_column(String(255))
+    script: Mapped[str] = mapped_column(Text)
+    audio_file_path: Mapped[str] = mapped_column(String(512))
+    mime_type: Mapped[str] = mapped_column(String(64), default="audio/mpeg")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

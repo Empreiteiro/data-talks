@@ -9,6 +9,8 @@ trace = optional dict with tool_calls, reasoning, finish_reason, messages_summar
 from datetime import datetime, timezone
 from typing import Any
 
+import httpx
+
 from app.config import get_settings
 
 
@@ -19,10 +21,12 @@ def _effective_settings(overrides: dict[str, Any] | None = None) -> dict[str, An
         "llm_provider": s.llm_provider,
         "openai_api_key": s.openai_api_key or "",
         "openai_model": s.openai_model,
+        "openai_audio_model": s.openai_audio_model,
         "ollama_base_url": s.ollama_base_url,
         "ollama_model": s.ollama_model,
         "litellm_base_url": s.litellm_base_url,
         "litellm_model": s.litellm_model,
+        "litellm_audio_model": s.litellm_audio_model,
         "litellm_api_key": s.litellm_api_key or "",
     }
     if overrides:
@@ -44,6 +48,17 @@ def _usage(
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
     }
+
+
+def get_audio_model(llm_overrides: dict[str, Any] | None = None) -> tuple[str, str]:
+    """Return (provider, audio_model) for TTS, or ('', '') if unsupported/not configured."""
+    cfg = _effective_settings(llm_overrides)
+    provider = cfg.get("llm_provider", "openai")
+    if provider == "openai":
+        return provider, (cfg.get("openai_audio_model") or "").strip()
+    if provider == "litellm":
+        return provider, (cfg.get("litellm_audio_model") or "").strip()
+    return provider, ""
 
 
 def _build_trace(
@@ -168,3 +183,51 @@ async def _litellm_chat(messages: list[dict[str, str]], max_tokens: int, cfg: di
     finish = getattr(resp.choices[0], "finish_reason", None)
     trace = _build_trace(messages, msg, finish_reason=finish)
     return content, _usage("litellm", model, input_t or 0, output_t or 0), trace
+
+
+async def synthesize_speech(
+    text: str,
+    llm_overrides: dict[str, Any] | None = None,
+) -> tuple[bytes, str, dict[str, Any]]:
+    """
+    Convert text to speech using the configured provider.
+    Supports OpenAI and LiteLLM (OpenAI-compatible /v1/audio/speech).
+    Returns (audio_bytes, mime_type, usage).
+    """
+    cfg = _effective_settings(llm_overrides)
+    provider, audio_model = get_audio_model(llm_overrides)
+    if provider not in ("openai", "litellm"):
+        raise ValueError("Audio overview currently requires an OpenAI or LiteLLM configuration")
+    if not audio_model:
+        raise ValueError("No audio model configured. Add an audio model in Account > LLM / AI settings")
+
+    if provider == "openai":
+        api_key = (cfg.get("openai_api_key") or "").strip()
+        if not api_key:
+            raise ValueError("OpenAI API key is required for audio generation")
+        url = "https://api.openai.com/v1/audio/speech"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+    else:
+        base_url = (cfg.get("litellm_base_url") or "http://localhost:4000").rstrip("/")
+        if not base_url.endswith("/v1"):
+            base_url = f"{base_url}/v1"
+        url = f"{base_url}/audio/speech"
+        headers = {
+            "Authorization": f"Bearer {(cfg.get('litellm_api_key') or 'not-needed').strip() or 'not-needed'}",
+            "Content-Type": "application/json",
+        }
+
+    payload = {
+        "model": audio_model,
+        "voice": "alloy",
+        "input": text.strip(),
+        "response_format": "mp3",
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        mime_type = response.headers.get("content-type", "audio/mpeg").split(";")[0].strip() or "audio/mpeg"
+        return response.content, mime_type, _usage(provider, audio_model, 0, 0)

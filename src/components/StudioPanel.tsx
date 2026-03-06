@@ -8,11 +8,12 @@ interface StudioPanelProps {
   onAddNote?: () => void;
   onOpenGraph?: () => void;
   onOpenSummary?: () => void;
+  onOpenAudio?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -40,7 +41,8 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, collapsed, 
       icon: AudioWaveform,
       title: "Audio",
       description: t('studio.audioOverview'),
-      locked: true,
+      locked: false,
+      onClick: onOpenAudio,
     },
     {
       icon: Network,
