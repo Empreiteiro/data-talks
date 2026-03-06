@@ -76,6 +76,7 @@ async def ask_bigquery(
     """
     from app.llm.client import chat_completion
     from app.llm.elaborate import elaborate_answer_with_results
+    from app.llm.followups import refine_followup_questions
     from app.llm.logs import record_log
     from app.scripts.sql_utils import extract_sql_from_field
 
@@ -107,6 +108,8 @@ async def ask_bigquery(
         "Use standard SQL and full table names: `project_id.dataset_id.table_id`. "
         "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of strings), "
         "sqlQuery (string or null). "
+        "Any suggested follow-up questions must be answerable using only the available tables and columns in the schema. "
+        "Do not invent fields, dimensions, joins, or metrics that are not present in that schema. "
         "Do not include any extra text outside the JSON."
     )
     if agent_description:
@@ -145,6 +148,7 @@ async def ask_bigquery(
                     query_results=rows,
                     agent_description=agent_description,
                     source_name=source_name,
+                    schema_text=schema_text,
                     llm_overrides=llm_overrides,
                 )
                 answer = elaborated["answer"]
@@ -157,6 +161,12 @@ async def ask_bigquery(
             answer = raw_answer
         if not follow_up:
             follow_up = _extract_followups(raw_answer)
+    follow_up = await refine_followup_questions(
+        question=question,
+        candidate_questions=follow_up,
+        schema_text=schema_text,
+        llm_overrides=llm_overrides,
+    )
     return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up}
 
 

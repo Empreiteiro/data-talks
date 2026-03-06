@@ -8,6 +8,7 @@ import json
 import re
 
 from app.llm.client import chat_completion
+from app.llm.followups import refine_followup_questions
 from app.llm.logs import record_log
 
 
@@ -39,6 +40,7 @@ async def elaborate_answer_with_results(
     query_results: list[dict],
     agent_description: str = "",
     source_name: str | None = None,
+    schema_text: str = "",
     llm_overrides: dict | None = None,
 ) -> dict[str, Any]:
     """
@@ -58,6 +60,8 @@ async def elaborate_answer_with_results(
         "If it's a list of items, present it as a readable list. "
         "If it's a count or aggregate, explain what it means. "
         "Keep the answer concise but informative. "
+        "Suggested follow-up questions must be answerable using only the available schema. "
+        "Do not mention columns, metrics, or concepts that are not grounded in that schema. "
         "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of 0-3 suggested follow-up questions as strings). "
         "Do not include any extra text outside the JSON."
     )
@@ -66,6 +70,7 @@ async def elaborate_answer_with_results(
 
     user_content = (
         f"User question: {question}\n\n"
+        f"Available schema:\n{schema_text or 'Not provided'}\n\n"
         f"Query results:\n{results_text}\n\n"
         "Write an elaborated answer based on the question and these results."
     )
@@ -88,9 +93,15 @@ async def elaborate_answer_with_results(
     )
 
     parsed = _parse_elaborate_json(raw)
+    follow_ups = await refine_followup_questions(
+        question=question,
+        candidate_questions=parsed.get("followUpQuestions") or [],
+        schema_text=schema_text,
+        llm_overrides=llm_overrides,
+    )
     return {
         "answer": parsed.get("answer") or raw,
-        "followUpQuestions": parsed.get("followUpQuestions") or [],
+        "followUpQuestions": follow_ups,
     }
 
 

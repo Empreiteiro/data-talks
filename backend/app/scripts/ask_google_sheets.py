@@ -12,6 +12,7 @@ import re
 async def ask_google_sheets(
     spreadsheet_id: str,
     sheet_name: str,
+    available_columns: list[str] | None,
     question: str,
     agent_description: str = "",
     source_name: str | None = None,
@@ -29,10 +30,12 @@ async def ask_google_sheets(
 
     # Use gspread + google-auth here to read the sheet when implementing
     from app.llm.client import chat_completion
+    from app.llm.followups import refine_followup_questions
     from app.llm.logs import record_log
 
     # TODO: implement real sheet read (gspread)
-    schema_text = f"Spreadsheet: {spreadsheet_id}, sheet: {sheet_name}"
+    columns_text = ", ".join(available_columns or [])
+    schema_text = f"Spreadsheet: {spreadsheet_id}, sheet: {sheet_name}. Columns: {columns_text or 'unknown'}"
     sample_json = "[]"
 
     system = (
@@ -43,6 +46,8 @@ async def ask_google_sheets(
         "In that case, also state that the answer requires executing the SQL on the full dataset. "
         "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of strings), "
         "sqlQuery (string or null). "
+        "Any suggested follow-up questions must be answerable using only the available columns in the schema. "
+        "Do not invent fields, dimensions, or metrics that are not present in that schema. "
         "Do not include any extra text outside the JSON."
     )
     if agent_description:
@@ -74,6 +79,12 @@ async def ask_google_sheets(
             answer = raw_answer
         if not follow_up:
             follow_up = _extract_followups(raw_answer)
+    follow_up = await refine_followup_questions(
+        question=question,
+        candidate_questions=follow_up,
+        schema_text=schema_text,
+        llm_overrides=llm_overrides,
+    )
     return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up}
 
 

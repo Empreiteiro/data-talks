@@ -121,6 +121,7 @@ async def ask_question(
         result = await ask_google_sheets(
             spreadsheet_id=meta.get("spreadsheetId", ""),
             sheet_name=meta.get("sheetName", "Sheet1"),
+            available_columns=meta.get("availableColumns") or meta.get("available_columns"),
             question=body.question,
             agent_description=agent.description or "",
             source_name=source.name,

@@ -11,6 +11,7 @@ import sqlite3
 import pandas as pd
 from app.llm.client import chat_completion
 from app.llm.elaborate import elaborate_answer_with_results
+from app.llm.followups import refine_followup_questions
 from app.llm.logs import record_log
 from app.scripts.sql_utils import extract_sql_from_field
 
@@ -66,6 +67,8 @@ async def ask_csv(
         "Use standard SQL: SELECT ... FROM data. Quote column names with double quotes if they have spaces or special chars. "
         "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of strings), "
         "sqlQuery (string or null). The sqlQuery will be executed on the full data for accurate results. "
+        "Any suggested follow-up questions must be answerable using only the available columns in the schema. "
+        "Do not invent fields, dimensions, or metrics that are not grounded in those columns. "
         "Do not include any extra text outside the JSON."
     )
     if agent_description:
@@ -113,6 +116,7 @@ async def ask_csv(
                         query_results=rows,
                         agent_description=agent_description,
                         source_name=source_name,
+                        schema_text=schema_for_sql,
                         llm_overrides=llm_overrides,
                     )
                     answer = elaborated["answer"]
@@ -127,6 +131,13 @@ async def ask_csv(
             answer = raw_answer
         if not follow_up:
             follow_up = _extract_followups(raw_answer)
+
+    follow_up = await refine_followup_questions(
+        question=question,
+        candidate_questions=follow_up,
+        schema_text=schema_for_sql,
+        llm_overrides=llm_overrides,
+    )
 
     return {
         "answer": answer,

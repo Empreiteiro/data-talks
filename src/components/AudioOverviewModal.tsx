@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { dataClient } from "@/services/apiClient";
+import { dataClient } from "@/services/dataClient";
 import { Loader2, Trash2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 

@@ -743,7 +743,13 @@ export default function Workspace() {
                 {messages.map((message, index) => (
                   <div key={index} className="space-y-3">
                     <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`group relative rounded-lg p-4 max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                      <div
+                        className={`group relative rounded-lg p-4 max-w-[80%] ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border/60 bg-muted/70 text-foreground"
+                        }`}
+                      >
                         <Button
                           variant="ghost"
                           size="icon"
@@ -752,7 +758,13 @@ export default function Workspace() {
                         >
                           <X className="h-3 w-3" />
                         </Button>
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div
+                          className={`prose prose-sm max-w-none ${
+                            message.role === "user"
+                              ? "text-primary-foreground prose-headings:text-primary-foreground prose-p:text-primary-foreground prose-strong:text-primary-foreground prose-a:text-primary-foreground prose-li:text-primary-foreground prose-code:bg-primary-foreground/10 prose-code:text-primary-foreground prose-pre:border-primary-foreground/15 prose-pre:bg-primary-foreground/10 prose-pre:text-primary-foreground prose-blockquote:border-primary-foreground/30 prose-blockquote:text-primary-foreground"
+                              : "text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-a:text-primary prose-li:text-foreground prose-code:bg-background/60 prose-code:text-foreground prose-pre:border-border prose-pre:bg-background/70 prose-pre:text-foreground prose-blockquote:border-border prose-blockquote:text-foreground"
+                          }`}
+                        >
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {message.content}
                           </ReactMarkdown>

@@ -52,6 +52,15 @@ interface LlmConfig {
   created_at?: string;
 }
 
+interface EffectiveLlmSettings {
+  llm_provider: string;
+  openai_model?: string;
+  openai_audio_model?: string;
+  ollama_model?: string;
+  litellm_model?: string;
+  litellm_audio_model?: string;
+}
+
 interface LLMPanelProps {
   onConfigAdded?: () => void;
 }
@@ -59,6 +68,7 @@ interface LLMPanelProps {
 export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
   const { t } = useLanguage();
   const [configs, setConfigs] = useState<LlmConfig[]>([]);
+  const [effectiveSettings, setEffectiveSettings] = useState<EffectiveLlmSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -80,8 +90,12 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
 
   const fetchConfigs = async () => {
     try {
-      const data = await dataClient.listLlmConfigs();
-      setConfigs(data || []);
+      const [configData, settingsData] = await Promise.all([
+        dataClient.listLlmConfigs(),
+        dataClient.getLlmSettings(),
+      ]);
+      setConfigs(configData || []);
+      setEffectiveSettings(settingsData || null);
     } catch (error: unknown) {
       toast.error(t("llmSettings.loadError"), {
         description: error instanceof Error ? error.message : String(error),
@@ -323,6 +337,18 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
     </div>
   );
 
+  const effectiveProviderLabel = effectiveSettings
+    ? PROVIDER_LABELS[effectiveSettings.llm_provider] || effectiveSettings.llm_provider
+    : "—";
+
+  const effectiveTextModel = effectiveSettings
+    ? effectiveSettings.openai_model || effectiveSettings.ollama_model || effectiveSettings.litellm_model || "—"
+    : "—";
+
+  const effectiveAudioModel = effectiveSettings
+    ? effectiveSettings.openai_audio_model || effectiveSettings.litellm_audio_model || ""
+    : "";
+
   return (
     <div className="h-full flex flex-col bg-background border rounded-lg">
       <div className="p-4 border-b flex items-center h-[57px]">
@@ -343,73 +369,101 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
               <p className="text-sm text-muted-foreground">{t("llmSettings.loading")}</p>
             </div>
           </div>
-        ) : configs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <Bot className="h-12 w-12 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">{t("llmConfig.empty")}</p>
-            <p className="text-xs text-muted-foreground mt-2">{t("llmConfig.emptyHelp")}</p>
-          </div>
         ) : (
-          <div className="space-y-2">
-            {configs.map((cfg) => (
-              <div
-                key={cfg.id}
-                className="group relative p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50"
-              >
+          <div className="space-y-4">
+            {effectiveSettings && (
+              <div className="p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50">
                 <div className="flex items-center gap-2">
                   <Bot className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{cfg.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <p className="text-sm font-medium truncate">{t("llmSettings.accountDefaultTitle")}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge variant="outline" className="text-xs">
-                        {PROVIDER_LABELS[cfg.llm_provider] || cfg.llm_provider}
+                        {effectiveProviderLabel}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {cfg.model || cfg.openai_model || cfg.ollama_model || cfg.litellm_model || "—"}
+                        {effectiveTextModel}
                       </span>
-                      {(cfg.openai_audio_model || cfg.litellm_audio_model) && (
+                      {effectiveAudioModel && (
                         <span className="text-xs text-muted-foreground">
-                          Audio: {cfg.openai_audio_model || cfg.litellm_audio_model}
-                        </span>
-                      )}
-                      {cfg.created_at && (
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(cfg.created_at).toLocaleDateString()}
+                          Audio: {effectiveAudioModel}
                         </span>
                       )}
                     </div>
                   </div>
-                  <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${cfg.is_default ? "opacity-100 text-amber-500" : ""}`}
-                      title={cfg.is_default ? t("llmConfig.default") : t("llmConfig.setAsDefault")}
-                      onClick={() => !cfg.is_default && handleSetDefault(cfg.id)}
-                    >
-                      <Star className={`h-4 w-4 ${cfg.is_default ? "fill-current" : ""}`} />
-                    </Button>
-                    <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" title={t("llmConfig.delete")}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t("llmConfig.deleteTitle")}</AlertDialogTitle>
-                        <AlertDialogDescription>{t("llmConfig.deleteDescription", { name: cfg.name })}</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t("llmConfig.cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(cfg.id)} className="bg-destructive text-destructive-foreground">
-                          {t("llmConfig.deleteConfirm")}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </div>
               </div>
-            ))}
+            )}
+
+            {configs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center p-4 border rounded-lg bg-muted/10">
+                <Bot className="h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">{t("llmConfig.empty")}</p>
+                <p className="text-xs text-muted-foreground mt-2">{t("llmConfig.emptyHelp")}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {configs.map((cfg) => (
+                  <div
+                    key={cfg.id}
+                    className="group relative p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{cfg.name}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {PROVIDER_LABELS[cfg.llm_provider] || cfg.llm_provider}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {cfg.model || cfg.openai_model || cfg.ollama_model || cfg.litellm_model || "—"}
+                          </span>
+                          {(cfg.openai_audio_model || cfg.litellm_audio_model) && (
+                            <span className="text-xs text-muted-foreground">
+                              Audio: {cfg.openai_audio_model || cfg.litellm_audio_model}
+                            </span>
+                          )}
+                          {cfg.created_at && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(cfg.created_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${cfg.is_default ? "opacity-100 text-amber-500" : ""}`}
+                        title={cfg.is_default ? t("llmConfig.default") : t("llmConfig.setAsDefault")}
+                        onClick={() => !cfg.is_default && handleSetDefault(cfg.id)}
+                      >
+                        <Star className={`h-4 w-4 ${cfg.is_default ? "fill-current" : ""}`} />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" title={t("llmConfig.delete")}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t("llmConfig.deleteTitle")}</AlertDialogTitle>
+                            <AlertDialogDescription>{t("llmConfig.deleteDescription", { name: cfg.name })}</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t("llmConfig.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(cfg.id)} className="bg-destructive text-destructive-foreground">
+                              {t("llmConfig.deleteConfirm")}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
