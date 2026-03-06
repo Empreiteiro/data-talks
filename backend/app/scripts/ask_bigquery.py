@@ -75,6 +75,7 @@ async def ask_bigquery(
     table_infos: [{ "table": "x", "columns": [...] }] for context. Fetched from BigQuery if missing.
     """
     from app.llm.client import chat_completion
+    from app.llm.charting import build_chart_input
     from app.llm.elaborate import elaborate_answer_with_results
     from app.llm.followups import refine_followup_questions
     from app.llm.logs import record_log
@@ -139,10 +140,12 @@ async def ask_bigquery(
     sql_query = extract_sql_from_field(parsed.get("sqlQuery") or "")
 
     # Execute SELECT and have LLM elaborate answer from results
+    chart_input = None
     if sql_query and sql_query.upper().startswith("SELECT"):
         try:
             rows = await loop.run_in_executor(None, lambda: _run_query_sync(client, sql_query))
             if rows is not None:
+                chart_input = build_chart_input(rows, schema_text)
                 elaborated = await elaborate_answer_with_results(
                     question=question,
                     query_results=rows,
@@ -167,7 +170,7 @@ async def ask_bigquery(
         schema_text=schema_text,
         llm_overrides=llm_overrides,
     )
-    return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up}
+    return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up, "chartInput": chart_input}
 
 
 def _format_rows(rows: list[dict]) -> str:

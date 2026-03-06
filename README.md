@@ -52,6 +52,15 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 - **LLM**: OpenAI API or local Ollama
 - **Per-source scripts**: CSV, Google Sheets, SQL, BigQuery
 
+### LLM environment defaults
+
+When you configure `OPENAI_API_KEY` in `backend/.env`, the backend uses these environment defaults unless you explicitly override them:
+
+- **Text model**: `gpt-4o-mini`
+- **Audio model**: `gpt-4o-mini-tts`
+
+If you want different defaults, set `OPENAI_MODEL` and/or `OPENAI_AUDIO_MODEL` explicitly in `backend/.env`.
+
 ### State
 - **React Context API**, **React Query**, **Local Storage**
 
@@ -115,6 +124,8 @@ pip install -e .
 cp .env.example .env
 data-talks run
 ```
+
+In `backend/.env`, if you only add `OPENAI_API_KEY`, the backend will automatically assume `gpt-4o-mini` for text and `gpt-4o-mini-tts` for audio as the environment fallback configuration.
 
 - **`data-talks run`** — starts the API on `0.0.0.0:8000`. Use `--host` and `--port` to override.
 - **`data-talks migrate`** — runs database migrations.

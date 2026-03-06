@@ -85,7 +85,7 @@ async def ask_google_sheets(
         schema_text=schema_text,
         llm_overrides=llm_overrides,
     )
-    return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up}
+    return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up, "chartInput": None}
 
 
 def _parse_llm_json(raw: str) -> dict[str, Any]:

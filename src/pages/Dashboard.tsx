@@ -1,3 +1,4 @@
+import { ProtectedImage } from "@/components/ProtectedImage";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ const Dashboard = () => {
     
     try {
       const data = await dataClient.getDashboard(id);
-      setDashboard(data);
+      setDashboard(data as DashboardData);
     } catch (error: any) {
       toast.error(t('dashboard.loadError'), {
         description: error.message
@@ -272,10 +273,16 @@ const Dashboard = () => {
             {dashboard.dashboard_charts.map((chart) => (
               <Card key={chart.id} className="overflow-hidden">
                 <div className="relative">
-                  <img
+                  <ProtectedImage
                     src={chart.image_url}
                     alt={chart.title || t('dashboard.chart')}
                     className="w-full h-64 object-contain bg-gray-50"
+                    loadingFallback={<div className="w-full h-64 bg-gray-50 animate-pulse" />}
+                    errorFallback={
+                      <div className="w-full h-64 bg-gray-50 flex items-center justify-center text-sm text-muted-foreground">
+                        {t('dashboard.chartLoadError')}
+                      </div>
+                    }
                   />
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>

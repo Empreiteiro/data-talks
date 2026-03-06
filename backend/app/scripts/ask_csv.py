@@ -10,6 +10,7 @@ import math
 import sqlite3
 import pandas as pd
 from app.llm.client import chat_completion
+from app.llm.charting import build_chart_input
 from app.llm.elaborate import elaborate_answer_with_results
 from app.llm.followups import refine_followup_questions
 from app.llm.logs import record_log
@@ -105,12 +106,14 @@ async def ask_csv(
     follow_up = parsed["followUpQuestions"]
     sql_query = extract_sql_from_field(parsed.get("sqlQuery") or "")
 
+    chart_input = None
     try:
         # Execute SQL and have LLM elaborate answer from results
         if sql_query and sql_query.upper().strip().startswith("SELECT"):
             try:
                 rows = _run_sql_on_csv(conn, sql_query)
                 if rows is not None:
+                    chart_input = build_chart_input(rows, schema_for_sql)
                     elaborated = await elaborate_answer_with_results(
                         question=question,
                         query_results=rows,
@@ -143,6 +146,7 @@ async def ask_csv(
         "answer": answer,
         "imageUrl": None,
         "followUpQuestions": follow_up,
+        "chartInput": chart_input,
     }
 
 

@@ -1,7 +1,7 @@
 """Configuration via environment variables."""
 from pathlib import Path
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from functools import lru_cache
 
 # Load .env from backend/ so it works whether you run from backend/ or project root
@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     litellm_model: str = "gpt-4o-mini"
     litellm_audio_model: str = ""
     litellm_api_key: str = ""
+
+    @model_validator(mode="after")
+    def apply_openai_defaults(self):
+        """When an OpenAI key exists in .env, default text/audio models if omitted."""
+        if self.openai_api_key.strip():
+            if not (self.openai_model or "").strip():
+                self.openai_model = "gpt-4o-mini"
+            if not (self.openai_audio_model or "").strip():
+                self.openai_audio_model = "gpt-4o-mini-tts"
+        return self
 
     class Config:
         env_file = str(_ENV_FILE) if _ENV_FILE.exists() else ".env"

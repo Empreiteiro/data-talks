@@ -4,6 +4,15 @@
  */
 import { getApiUrl, getToken } from '@/config';
 
+function toApiAssetUrl(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//i.test(path) || path.startsWith('blob:') || path.startsWith('data:')) return path;
+  const base = getApiUrl();
+  if (!base) return path;
+  if (path.startsWith('/')) return `${base}${path}`;
+  return `${base}/${path}`;
+}
+
 async function api<T>(
   path: string,
   options: RequestInit = {}
@@ -194,11 +203,14 @@ export const apiClient = {
     return (data || []).map((s) => ({
       ...s,
       answerText: s.answer,
-      imageUrl: s.imageUrl ?? (s.table_data && s.table_data.image_url),
+      imageUrl: toApiAssetUrl(s.imageUrl ?? (s.table_data && s.table_data.image_url)),
       answerTableJSON: s.table_data?.table,
       latencyMs: s.latency,
       followUpQuestions: s.follow_up_questions || [],
-      conversationHistory: s.conversation_history || [],
+      conversationHistory: (s.conversation_history || []).map((entry: any) => ({
+        ...entry,
+        imageUrl: toApiAssetUrl(entry.imageUrl),
+      })),
     }));
   },
 
@@ -245,11 +257,25 @@ export const apiClient = {
   },
 
   async askQuestion(agentId: string, question: string, sessionId?: string) {
-    const data = await api<{ answer: string; imageUrl?: string; sessionId?: string; followUpQuestions?: string[] }>('/api/ask-question', {
+    const data = await api<{ answer: string; imageUrl?: string; sessionId?: string; followUpQuestions?: string[]; turnId?: string; chartInput?: any }>('/api/ask-question', {
       method: 'POST',
       body: JSON.stringify({ question, agentId, sessionId }),
     });
-    return data;
+    return {
+      ...data,
+      imageUrl: toApiAssetUrl(data.imageUrl),
+    };
+  },
+
+  async generateChartForTurn(sessionId: string, body: { turnId?: string; turnIndex?: number }) {
+    const data = await api<{ imageUrl: string; matplotlibScript?: string; chartSpec?: any; turnId?: string }>(`/api/ask-question/${sessionId}/chart`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return {
+      ...data,
+      imageUrl: toApiAssetUrl(data.imageUrl) || data.imageUrl,
+    };
   },
 
   async listDashboards() {

@@ -570,6 +570,10 @@ const translations = {
        'workspace.llmUseDefault': 'Use default',
        'workspace.llmConfigUpdated': 'LLM configuration updated',
        'workspace.llmConfigError': 'Error updating LLM',
+       'workspace.generateChart': 'Generate chart',
+       'workspace.generatingChart': 'Generating chart...',
+       'workspace.chartGeneratedSuccess': 'Chart generated successfully',
+       'workspace.chartGeneratedError': 'Error generating chart',
        
        // Studio
        'studio.title': 'Studio',
@@ -776,6 +780,7 @@ const translations = {
       'dashboard.remove': 'Remove',
       'dashboard.chartUpdateSuccess': 'Chart updated successfully!',
       'dashboard.chartUpdateError': 'Error updating chart',
+      'dashboard.chartLoadError': 'Could not load chart image',
    },
   pt: {
     // Common
@@ -1336,6 +1341,10 @@ const translations = {
        'workspace.llmUseDefault': 'Usar padrão',
        'workspace.llmConfigUpdated': 'Configuração LLM atualizada',
        'workspace.llmConfigError': 'Erro ao atualizar LLM',
+       'workspace.generateChart': 'Gerar gráfico',
+       'workspace.generatingChart': 'Gerando gráfico...',
+       'workspace.chartGeneratedSuccess': 'Gráfico gerado com sucesso',
+       'workspace.chartGeneratedError': 'Erro ao gerar gráfico',
        
       // Studio
       'studio.title': 'Studio',
@@ -1542,6 +1551,7 @@ const translations = {
       'dashboard.remove': 'Remover',
       'dashboard.chartUpdateSuccess': 'Gráfico atualizado com sucesso!',
       'dashboard.chartUpdateError': 'Erro ao atualizar gráfico',
+      'dashboard.chartLoadError': 'Nao foi possivel carregar a imagem do grafico',
    },
   es: {
     // Common
@@ -2078,6 +2088,10 @@ const translations = {
        'workspace.llmUseDefault': 'Usar predeterminado',
        'workspace.llmConfigUpdated': 'Configuración LLM actualizada',
        'workspace.llmConfigError': 'Error al actualizar LLM',
+       'workspace.generateChart': 'Generar gráfico',
+       'workspace.generatingChart': 'Generando gráfico...',
+       'workspace.chartGeneratedSuccess': 'Gráfico generado con éxito',
+       'workspace.chartGeneratedError': 'Error al generar gráfico',
     // Studio
     'studio.title': 'Studio',
     'studio.graphDescription': 'Ver datos como grafo',
@@ -2278,6 +2292,7 @@ const translations = {
     'dashboard.remove': 'Eliminar',
     'dashboard.chartUpdateSuccess': '¡Gráfico actualizado exitosamente!',
     'dashboard.chartUpdateError': 'Error al actualizar gráfico',
+    'dashboard.chartLoadError': 'No se pudo cargar la imagen del grafico',
     // Footer
     'footer.copyright': '© {year} Habla con tus datos. Todos los derechos reservados.',
   }

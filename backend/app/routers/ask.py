@@ -3,20 +3,26 @@ POST /api/ask-question: routes to the correct script (CSV, Google Sheets, SQL, B
 Compatible with frontend payload (question, agentId, userId, sessionId).
 """
 import uuid
+from datetime import datetime
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
-from app.models import Agent, Source, QASession, LlmSettings, LlmConfig
 from app.auth import require_user
+from app.llm.charting import build_chart_plan, render_chart
+from app.models import Agent, Source, QASession, LlmSettings, LlmConfig
 from app.models import User
 from app.schemas import AskQuestionRequest, AskQuestionResponse
 from app.scripts.ask_csv import ask_csv
+from app.scripts.ask_bigquery import ask_bigquery
 from app.scripts.ask_google_sheets import ask_google_sheets
 from app.scripts.ask_sql import ask_sql
-from app.scripts.ask_bigquery import ask_bigquery
-from app.config import get_settings
 
 router = APIRouter(prefix="/ask-question", tags=["ask"])
 
@@ -43,6 +49,32 @@ def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None
     if getattr(cfg, "litellm_api_key", None):
         overrides["litellm_api_key"] = cfg.litellm_api_key
     return overrides if overrides else None
+
+
+class GenerateChartRequest(BaseModel):
+    turnId: str | None = None
+    turnIndex: int | None = None
+
+
+def _chart_image_url(session_id: str, turn_id: str) -> str:
+    prefix = get_settings().api_prefix.rstrip("/")
+    return f"{prefix}/ask-question/{session_id}/chart/{turn_id}/image"
+
+
+def _chart_file_path(user_id: str, session_id: str, turn_id: str) -> tuple[str, Path]:
+    relative_path = f"charts/{user_id}/{session_id}-{turn_id}.png"
+    full_path = Path(get_settings().data_files_dir) / relative_path
+    return relative_path, full_path
+
+
+def _find_turn(history: list[dict], turn_id: str | None, turn_index: int | None) -> tuple[int, dict]:
+    if turn_id:
+        for index, item in enumerate(history):
+            if item.get("id") == turn_id:
+                return index, item
+    if turn_index is not None and 0 <= turn_index < len(history):
+        return turn_index, history[turn_index]
+    raise HTTPException(404, "Conversation turn not found")
 
 
 @router.post("", response_model=AskQuestionResponse)
@@ -159,22 +191,34 @@ async def ask_question(
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")
 
+    turn_id = str(uuid.uuid4())
+    conversation_entry = {
+        "id": turn_id,
+        "question": body.question,
+        "answer": result["answer"],
+        "imageUrl": result.get("imageUrl"),
+        "followUpQuestions": result.get("followUpQuestions", []),
+        "chartInput": result.get("chartInput"),
+        "chartSpec": result.get("chartSpec"),
+        "chartScript": result.get("chartScript"),
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
     # Create or update QA session in SQLite
     session_id = body.sessionId
     if session_id:
         r = await db.execute(select(QASession).where(QASession.id == session_id))
         qa = r.scalar_one_or_none()
         if qa:
-            history = qa.conversation_history or []
-            history.append({
-                "question": body.question,
-                "answer": result["answer"],
-                "imageUrl": result.get("imageUrl"),
-                "followUpQuestions": result.get("followUpQuestions", []),
-                "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
-            })
+            history = [*(qa.conversation_history or []), conversation_entry]
             qa.conversation_history = history
             qa.follow_up_questions = result.get("followUpQuestions", [])
+            if result.get("imageUrl"):
+                qa.table_data = {
+                    **(qa.table_data or {}),
+                    "image_url": result.get("imageUrl"),
+                    "last_turn_id": turn_id,
+                }
             await db.flush()
             session_id = str(qa.id)
         else:
@@ -187,15 +231,16 @@ async def ask_question(
             source_id=source.id,
             question=body.question,
             answer=result["answer"],
-            table_data={"image_url": result.get("imageUrl")} if result.get("imageUrl") else None,
+            table_data=(
+                {
+                    "image_url": result.get("imageUrl"),
+                    "last_turn_id": turn_id,
+                }
+                if result.get("imageUrl")
+                else None
+            ),
             follow_up_questions=result.get("followUpQuestions", []),
-            conversation_history=[{
-                "question": body.question,
-                "answer": result["answer"],
-                "imageUrl": result.get("imageUrl"),
-                "followUpQuestions": result.get("followUpQuestions", []),
-                "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
-            }],
+            conversation_history=[conversation_entry],
         )
         db.add(qa)
         await db.flush()
@@ -208,4 +253,105 @@ async def ask_question(
         imageUrl=result.get("imageUrl"),
         sessionId=session_id,
         followUpQuestions=result.get("followUpQuestions", []),
+        turnId=turn_id,
+        chartInput=result.get("chartInput"),
     )
+
+
+@router.post("/{session_id}/chart")
+async def generate_chart_for_turn(
+    session_id: str,
+    body: GenerateChartRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == user.id))
+    qa = r.scalar_one_or_none()
+    if not qa:
+        raise HTTPException(404, "Session not found")
+
+    history = list(qa.conversation_history or [])
+    turn_index, turn = _find_turn(history, body.turnId, body.turnIndex)
+    turn_id = str(turn.get("id") or body.turnId or turn_index)
+
+    if turn.get("imageUrl") and turn.get("chartScript"):
+        return {
+            "imageUrl": turn["imageUrl"],
+            "matplotlibScript": turn["chartScript"],
+            "chartSpec": turn.get("chartSpec"),
+            "turnId": turn_id,
+        }
+
+    agent_row = await db.execute(select(Agent).where(Agent.id == qa.agent_id))
+    agent = agent_row.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    llm_overrides = None
+    if agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            llm_overrides = _llm_config_to_overrides(cfg)
+    if llm_overrides is None:
+        r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
+        llm_row = r_llm.scalar_one_or_none()
+        llm_overrides = _llm_config_to_overrides(llm_row)
+
+    plan = await build_chart_plan(
+        question=str(turn.get("question") or qa.question or ""),
+        answer=str(turn.get("answer") or qa.answer or ""),
+        chart_input=turn.get("chartInput"),
+        llm_overrides=llm_overrides,
+    )
+    if not plan:
+        raise HTTPException(400, "Could not derive a reliable chart from this answer")
+
+    _, full_path = _chart_file_path(user.id, session_id, turn_id)
+    script = render_chart(plan, full_path)
+    image_url = _chart_image_url(session_id, turn_id)
+
+    updated_turn = {
+        **turn,
+        "id": turn_id,
+        "imageUrl": image_url,
+        "chartSpec": plan,
+        "chartScript": script,
+    }
+    updated_history = [*history[:turn_index], updated_turn, *history[turn_index + 1 :]]
+    qa.conversation_history = updated_history
+    qa.table_data = {
+        **(qa.table_data or {}),
+        "image_url": image_url,
+        "last_turn_id": turn_id,
+    }
+    await db.commit()
+
+    return {
+        "imageUrl": image_url,
+        "matplotlibScript": script,
+        "chartSpec": plan,
+        "turnId": turn_id,
+    }
+
+
+@router.get("/{session_id}/chart/{turn_id}/image")
+async def get_chart_image(
+    session_id: str,
+    turn_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == user.id))
+    qa = r.scalar_one_or_none()
+    if not qa:
+        raise HTTPException(404, "Session not found")
+
+    history = qa.conversation_history or []
+    _find_turn(history, turn_id, None)
+    _, full_path = _chart_file_path(user.id, session_id, turn_id)
+    if not full_path.exists():
+        raise HTTPException(404, "Chart image not found")
+
+    filename = f"chart-{turn_id}.png"
+    return FileResponse(path=str(full_path), media_type="image/png", filename=filename)

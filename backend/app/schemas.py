@@ -48,6 +48,8 @@ class AskQuestionResponse(BaseModel):
     imageUrl: Optional[str] = None
     sessionId: Optional[str] = None
     followUpQuestions: list[str] = []
+    turnId: Optional[str] = None
+    chartInput: Optional[dict[str, Any]] = None
 
 
 # Other CRUD schemas can be added as needed by the frontend
