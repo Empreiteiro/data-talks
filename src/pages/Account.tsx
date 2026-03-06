@@ -41,35 +41,32 @@ const Account = () => {
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-4 sm:px-6 pt-4 pb-20">
         <h1 className="text-2xl sm:text-3xl font-semibold mb-4 flex-shrink-0">{t('account.title')}</h1>
 
-        <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
-          {/* Left Sidebar Menu — com borda; painel da direita sem borda para não duplicar */}
-          <div className="w-56 sm:w-64 flex-shrink-0 flex flex-col min-h-0 overflow-hidden">
-            <div className="flex-1 min-h-0 bg-background border rounded-lg p-1.5 flex flex-col overflow-hidden">
-              <div className="space-y-0.5">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveSection(item.id)}
-                      className={cn(
-                        "w-full py-2 px-2.5 rounded-md transition-colors text-left flex items-center gap-2.5",
-                        activeSection === item.id
-                          ? "bg-primary/10 border border-primary/20 text-primary font-medium"
-                          : "hover:bg-muted/50 text-muted-foreground"
-                      )}
-                    >
-                      <Icon className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+        {/* Um único bloco com borda: menu e conteúdo alinhados na mesma altura */}
+        <div className="flex flex-1 min-h-0 overflow-hidden border rounded-lg bg-background">
+          <div className="w-56 sm:w-64 flex-shrink-0 flex flex-col min-h-0 border-r p-1.5">
+            <div className="space-y-0.5">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={cn(
+                      "w-full py-2 px-2.5 rounded-md transition-colors text-left flex items-center gap-2.5",
+                      activeSection === item.id
+                        ? "bg-primary/10 border border-primary/20 text-primary font-medium"
+                        : "hover:bg-muted/50 text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm">{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Main Content Area — sem borda para não duplicar com o menu */}
-          <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-background rounded-lg overflow-hidden">
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6" style={{ minHeight: 0 }}>
               {activeSection === "usage" && <UsageMonitoring />}
               {activeSection === "llm" && <LLMPanel />}
