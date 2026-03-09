@@ -138,10 +138,10 @@ export function TelegramConnectionPanel({ agentId }: TelegramConnectionPanelProp
 
   return (
     <div className="space-y-4">
-      {!hasAvailableBotConfig && !loadingConfigs && (
-        <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
+      {!hasAvailableBotConfig && !loadingConfigs ? (
+        <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
           <p className="font-medium text-foreground">{t("telegram.noBotConfigTitle")}</p>
-          <p className="mt-1">
+          <p className="mt-1 max-w-md">
             {t("telegram.noBotConfigDescriptionPrefix")}{" "}
             <Link to="/account?section=connections" className="font-medium text-primary underline underline-offset-4">
               {t("telegram.configureConnectionsLink")}
@@ -149,7 +149,7 @@ export function TelegramConnectionPanel({ agentId }: TelegramConnectionPanelProp
             {t("telegram.noBotConfigDescriptionSuffix")}
           </p>
         </div>
-      )}
+      ) : null}
 
       {hasAvailableBotConfig && (
         <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-4">

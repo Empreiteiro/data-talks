@@ -121,7 +121,7 @@ export function ConnectionsPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="text-center">
@@ -130,7 +130,7 @@ export function ConnectionsPanel() {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className={`min-h-full ${!envConfig && configs.length === 0 ? "flex flex-col" : "space-y-4"}`}>
             {envConfig && (
               <div className="group relative p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50">
                 <div className="flex items-start gap-2">
@@ -149,7 +149,7 @@ export function ConnectionsPanel() {
 
             {configs.length === 0 ? (
               !envConfig ? (
-                <div className="flex h-full min-h-[320px] flex-col items-center justify-center text-center p-4">
+                <div className="flex flex-1 flex-col items-center justify-center text-center p-4">
                   <Bot className="h-12 w-12 text-muted-foreground mb-3" />
                   <p className="text-sm text-muted-foreground">{t("connections.empty")}</p>
                   <p className="text-xs text-muted-foreground mt-2">{t("connections.emptyDescription")}</p>
