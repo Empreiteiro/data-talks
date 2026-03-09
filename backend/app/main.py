@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
-from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, summary_router, logs_router, audio_overview_router
+from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, summary_router, logs_router, audio_overview_router, telegram_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -67,7 +67,15 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     import logging
     logging.getLogger("uvicorn.error").info(f"ENABLE_LOGIN={settings.enable_login}")
+    
+    # Start Telegram background worker if configured
+    import asyncio
+    from app.telegram_bot import polling_worker
+    bg_task = asyncio.create_task(polling_worker())
+    
     yield
+    
+    bg_task.cancel()
 
 
 app = FastAPI(
@@ -92,6 +100,7 @@ app.include_router(bigquery_router.router, prefix=prefix)
 app.include_router(summary_router.router, prefix=prefix)
 app.include_router(logs_router.router, prefix=prefix)
 app.include_router(audio_overview_router.router, prefix=prefix)
+app.include_router(telegram_router.router, prefix=prefix)
 
 
 @app.get(prefix + "/config")

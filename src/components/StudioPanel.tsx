@@ -1,19 +1,20 @@
-import { Lock, AudioWaveform, Network, FileText, MessageCircle, Hash, Bell, Plus, ChevronRight, GitBranch, FileBarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, Lock, MessageCircle, Network, Send } from "lucide-react";
+import { toast } from "sonner";
 
 interface StudioPanelProps {
   onAddNote?: () => void;
   onOpenGraph?: () => void;
   onOpenSummary?: () => void;
   onOpenAudio?: () => void;
+  onOpenTelegram?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenTelegram, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -64,7 +65,13 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
     },
   ];
 
-  const connectionOptions = [
+  const connectionOptions: Array<{
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    description: string;
+    locked: boolean;
+    onClick?: () => void;
+  }> = [
     {
       icon: MessageCircle,
       title: "WhatsApp",
@@ -76,6 +83,13 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
       title: "Slack",
       description: t('studio.connectSlack'),
       locked: true,
+    },
+    {
+      icon: Send,
+      title: "Telegram",
+      description: t('studio.connectTelegram'),
+      locked: false,
+      onClick: onOpenTelegram,
     },
   ];
 
@@ -109,7 +123,7 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
                 className={`p-4 cursor-pointer transition-all h-28 ${
                   option.locked
                     ? "opacity-50 hover:opacity-75"
-                    : "hover:shadow-md"
+                    : "hover:shadow-md hover:border-blue-400"
                 }`}
                 onClick={option.locked ? handleLockedClick : option.onClick}
               >
@@ -138,12 +152,12 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
             {connectionOptions.map((option) => (
               <Card
                 key={option.title}
-                className={`p-4 cursor-pointer transition-all h-28 ${
+                className={`p-4 cursor-pointer transition-all min-h-28 ${
                   option.locked
                     ? "opacity-50 hover:opacity-75"
-                    : "hover:shadow-md"
+                    : "hover:shadow-md hover:border-blue-400"
                 }`}
-                onClick={option.locked ? handleLockedClick : undefined}
+                onClick={option.locked ? handleLockedClick : option.onClick}
               >
                 <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
                   <div className="relative">
@@ -154,8 +168,8 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
                       </div>
                     )}
                   </div>
-                  <div>
-                    <p className="text-xs font-medium">{option.description}</p>
+                  <div className="min-w-0 px-1">
+                    <p className="text-sm font-semibold">{option.title}</p>
                   </div>
                 </div>
               </Card>

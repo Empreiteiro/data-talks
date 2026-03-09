@@ -75,6 +75,10 @@ class Settings(BaseSettings):
                 self.openai_audio_model = "gpt-4o-mini-tts"
         return self
 
+    # Telegram Bot Settings
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = ""
+
     class Config:
         env_file = str(_ENV_FILE) if _ENV_FILE.exists() else ".env"
         extra = "ignore"

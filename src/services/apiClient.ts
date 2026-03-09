@@ -512,4 +512,17 @@ export const apiClient = {
       trace?: Record<string, unknown>;
     }>>(`/api/logs${params}`);
   },
+
+  // Telegram Integration
+  async generateTelegramConnectionLink(agentId: string): Promise<{ url: string; expires_at: string }> {
+    return api(`/api/telegram/connection-link/${agentId}`, { method: 'POST' });
+  },
+
+  async listTelegramConnections(agentId: string): Promise<{ connections: Array<{ id: string; chat_id: string; chat_title?: string; created_at: string }> }> {
+    return api(`/api/telegram/connections/${agentId}`);
+  },
+
+  async deleteTelegramConnection(connectionId: string): Promise<{ message: string }> {
+    return api(`/api/telegram/connections/${connectionId}`, { method: 'DELETE' });
+  },
 };

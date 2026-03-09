@@ -180,3 +180,26 @@ class AudioOverview(Base):
     audio_file_path: Mapped[str] = mapped_column(String(512))
     mime_type: Mapped[str] = mapped_column(String(64), default="audio/mpeg")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TelegramLinkToken(Base):
+    """Temporary token to link a Telegram group to an agent."""
+    __tablename__ = "telegram_link_tokens"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class TelegramConnection(Base):
+    """Maps a Telegram chat (group or private) to an agent."""
+    __tablename__ = "telegram_connections"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    chat_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    chat_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

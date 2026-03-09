@@ -1,14 +1,15 @@
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Plus } from "lucide-react";
-import { dataClient } from "@/services/dataClient";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { dataClient } from "@/services/dataClient";
+import { Plus, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
 
 interface AgentSettingsModalProps {
   open: boolean;
