@@ -34,15 +34,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
 const OPENAI_AUDIO_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"];
-const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI", ollama: "Ollama", litellm: "LiteLLM" };
+const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI-compatible", ollama: "Ollama", litellm: "LiteLLM" };
 
 interface LlmConfig {
   id: string;
   name: string;
   llm_provider: string;
   openai_model?: string;
+  openai_base_url?: string;
   openai_audio_model?: string;
   ollama_model?: string;
   litellm_model?: string;
@@ -55,6 +55,7 @@ interface LlmConfig {
 interface EffectiveLlmSettings {
   llm_provider: string;
   openai_model?: string;
+  openai_base_url?: string;
   openai_audio_model?: string;
   ollama_model?: string;
   litellm_model?: string;
@@ -75,6 +76,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
   const [name, setName] = useState("");
   const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm">("openai");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [openaiBaseUrl, setOpenaiBaseUrl] = useState("https://api.openai.com/v1");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
   const [openaiAudioModel, setOpenaiAudioModel] = useState("gpt-4o-mini-tts");
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState("http://localhost:11434");
@@ -141,6 +143,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
     setName("");
     setLlmProvider("openai");
     setOpenaiApiKey("");
+    setOpenaiBaseUrl("https://api.openai.com/v1");
     setOpenaiModel("gpt-4o-mini");
     setOpenaiAudioModel("gpt-4o-mini-tts");
     setOllamaBaseUrl("http://localhost:11434");
@@ -164,6 +167,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
         name: name.trim(),
         llm_provider: llmProvider,
         openai_api_key: llmProvider === "openai" ? (openaiApiKey || undefined) : undefined,
+        openai_base_url: llmProvider === "openai" ? (openaiBaseUrl || undefined) : undefined,
         openai_model: llmProvider === "openai" ? openaiModel : undefined,
         openai_audio_model: llmProvider === "openai" ? (openaiAudioModel || undefined) : undefined,
         ollama_base_url: llmProvider === "ollama" ? ollamaBaseUrl : undefined,
@@ -231,7 +235,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
         <Select value={llmProvider} onValueChange={(v) => setLlmProvider(v as "openai" | "ollama" | "litellm")}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="openai">OpenAI</SelectItem>
+            <SelectItem value="openai">OpenAI-compatible</SelectItem>
             <SelectItem value="ollama">Ollama</SelectItem>
             <SelectItem value="litellm">LiteLLM</SelectItem>
           </SelectContent>
@@ -250,13 +254,22 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
             />
           </div>
           <div className="space-y-2">
+            <Label>{t("llmSettings.openaiBaseUrl")}</Label>
+            <Input
+              placeholder="https://api.openai.com/v1"
+              value={openaiBaseUrl}
+              onChange={(e) => setOpenaiBaseUrl(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
             <Label>{t("llmSettings.openaiModel")}</Label>
-            <Select value={openaiModel} onValueChange={setOpenaiModel}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {OPENAI_MODELS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="gpt-4o-mini ou gemini-2.0-flash"
+              value={openaiModel}
+              onChange={(e) => setOpenaiModel(e.target.value)}
+              disabled={saving}
+            />
           </div>
           <div className="space-y-2">
             <Label>{t("llmSettings.openaiAudioModel")}</Label>

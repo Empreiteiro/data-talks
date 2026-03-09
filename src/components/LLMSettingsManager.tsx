@@ -3,19 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { dataClient } from "@/services/dataClient";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Bot, Loader2, RefreshCw } from "lucide-react";
-
-const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
 
 export const LLMSettingsManager = () => {
   const { t } = useLanguage();
@@ -24,6 +16,7 @@ export const LLMSettingsManager = () => {
   const [fetchingModels, setFetchingModels] = useState(false);
   const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm">("openai");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [openaiBaseUrl, setOpenaiBaseUrl] = useState("https://api.openai.com/v1");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState("llama3.2");
@@ -39,6 +32,7 @@ export const LLMSettingsManager = () => {
       const data = await dataClient.getLlmSettings();
       setLlmProvider((data.llm_provider as "openai" | "ollama" | "litellm") || "openai");
       setOpenaiApiKey(data.openai_api_key || "");
+      setOpenaiBaseUrl(data.openai_base_url || "https://api.openai.com/v1");
       setOpenaiModel(data.openai_model || "gpt-4o-mini");
       setOllamaBaseUrl(data.ollama_base_url || "http://localhost:11434");
       setOllamaModel(data.ollama_model || "llama3.2");
@@ -105,6 +99,7 @@ export const LLMSettingsManager = () => {
       await dataClient.updateLlmSettings({
         llm_provider: llmProvider,
         openai_api_key: openaiApiKey || undefined,
+        openai_base_url: openaiBaseUrl || undefined,
         openai_model: openaiModel || undefined,
         ollama_base_url: ollamaBaseUrl || undefined,
         ollama_model: ollamaModel || undefined,
@@ -154,7 +149,7 @@ export const LLMSettingsManager = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="openai">OpenAI (API)</SelectItem>
+                <SelectItem value="openai">OpenAI-compatible</SelectItem>
                 <SelectItem value="ollama">Ollama (local/remote)</SelectItem>
                 <SelectItem value="litellm">LiteLLM (proxy)</SelectItem>
               </SelectContent>
@@ -178,19 +173,30 @@ export const LLMSettingsManager = () => {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>{t("llmSettings.openaiModel")}</Label>
-                <Select value={openaiModel} onValueChange={setOpenaiModel}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OPENAI_MODELS.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="openai-base-url">{t("llmSettings.openaiBaseUrl")}</Label>
+                <Input
+                  id="openai-base-url"
+                  placeholder="https://api.openai.com/v1"
+                  value={openaiBaseUrl}
+                  onChange={(e) => setOpenaiBaseUrl(e.target.value)}
+                  disabled={saving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("llmSettings.openaiBaseUrlHelp")}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="openai-model">{t("llmSettings.openaiModel")}</Label>
+                <Input
+                  id="openai-model"
+                  placeholder="gpt-4o-mini ou gemini-2.0-flash"
+                  value={openaiModel}
+                  onChange={(e) => setOpenaiModel(e.target.value)}
+                  disabled={saving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("llmSettings.openaiModelHelp")}
+                </p>
               </div>
             </>
           )}

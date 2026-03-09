@@ -26,6 +26,8 @@ def _user_llm_overrides(llm_row: LlmSettings | None) -> dict | None:
         overrides["llm_provider"] = llm_row.llm_provider
     if llm_row.openai_api_key:
         overrides["openai_api_key"] = llm_row.openai_api_key
+    if getattr(llm_row, "openai_base_url", None):
+        overrides["openai_base_url"] = llm_row.openai_base_url
     if llm_row.openai_model:
         overrides["openai_model"] = llm_row.openai_model
     if llm_row.ollama_base_url:

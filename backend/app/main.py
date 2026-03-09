@@ -66,12 +66,50 @@ async def _ensure_platform_logs_channel_column():
             await conn.execute(text("ALTER TABLE platform_logs ADD COLUMN channel VARCHAR(50)"))
 
 
+async def _ensure_llm_openai_base_url_columns():
+    async with engine.begin() as conn:
+        table_columns = await conn.run_sync(
+            lambda sync_conn: {
+                table: {c["name"] for c in inspect(sync_conn).get_columns(table)}
+                for table in ("llm_settings", "llm_configs")
+                if inspect(sync_conn).has_table(table)
+            }
+        )
+        if "llm_settings" in table_columns and "openai_base_url" not in table_columns["llm_settings"]:
+            await conn.execute(text("ALTER TABLE llm_settings ADD COLUMN openai_base_url VARCHAR(512)"))
+        if "llm_configs" in table_columns and "openai_base_url" not in table_columns["llm_configs"]:
+            await conn.execute(text("ALTER TABLE llm_configs ADD COLUMN openai_base_url VARCHAR(512)"))
+
+
+async def _ensure_telegram_config_columns():
+    async with engine.begin() as conn:
+        table_columns = await conn.run_sync(
+            lambda sync_conn: {
+                table: {c["name"] for c in inspect(sync_conn).get_columns(table)}
+                for table in ("telegram_link_tokens", "telegram_connections")
+                if inspect(sync_conn).has_table(table)
+            }
+        )
+        for table in ("telegram_link_tokens", "telegram_connections"):
+            if table not in table_columns:
+                continue
+            columns = table_columns[table]
+            if "bot_key" not in columns:
+                await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN bot_key VARCHAR(64)"))
+            if "bot_username" not in columns:
+                await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN bot_username VARCHAR(255)"))
+            if "telegram_bot_config_id" not in columns:
+                await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN telegram_bot_config_id VARCHAR(36)"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await _ensure_platform_logs_channel_column()
+    await _ensure_llm_openai_base_url_columns()
+    await _ensure_telegram_config_columns()
     Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
     await _ensure_single_user()
     settings = get_settings()

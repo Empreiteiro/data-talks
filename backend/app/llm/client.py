@@ -20,6 +20,7 @@ def _effective_settings(overrides: dict[str, Any] | None = None) -> dict[str, An
     base = {
         "llm_provider": s.llm_provider,
         "openai_api_key": s.openai_api_key or "",
+        "openai_base_url": s.openai_base_url,
         "openai_model": s.openai_model,
         "openai_audio_model": s.openai_audio_model,
         "ollama_base_url": s.ollama_base_url,
@@ -119,8 +120,9 @@ async def _openai_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dic
     from openai import AsyncOpenAI
 
     api_key = cfg.get("openai_api_key") or None
+    base_url = (cfg.get("openai_base_url") or "https://api.openai.com/v1").rstrip("/")
     model = cfg.get("openai_model", "gpt-4o-mini")
-    client = AsyncOpenAI(api_key=api_key)
+    client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     resp = await client.chat.completions.create(
         model=model,
         messages=messages,
@@ -205,7 +207,8 @@ async def synthesize_speech(
         api_key = (cfg.get("openai_api_key") or "").strip()
         if not api_key:
             raise ValueError("OpenAI API key is required for audio generation")
-        url = "https://api.openai.com/v1/audio/speech"
+        base_url = (cfg.get("openai_base_url") or "https://api.openai.com/v1").rstrip("/")
+        url = f"{base_url}/audio/speech"
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",

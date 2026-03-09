@@ -320,6 +320,7 @@ export const apiClient = {
     return api<{
       llm_provider: string;
       openai_api_key?: string;
+      openai_base_url?: string;
       openai_model?: string;
       openai_audio_model?: string;
       ollama_base_url?: string;
@@ -334,6 +335,7 @@ export const apiClient = {
   async updateLlmSettings(body: {
     llm_provider?: string;
     openai_api_key?: string;
+    openai_base_url?: string;
     openai_model?: string;
     openai_audio_model?: string;
     ollama_base_url?: string;
@@ -346,6 +348,7 @@ export const apiClient = {
     return api<{
       llm_provider: string;
       openai_api_key?: string;
+      openai_base_url?: string;
       openai_model?: string;
       openai_audio_model?: string;
       ollama_base_url?: string;
@@ -373,6 +376,7 @@ export const apiClient = {
       name: string;
       llm_provider: string;
       openai_api_key?: string;
+      openai_base_url?: string;
       openai_model?: string;
       openai_audio_model?: string;
       ollama_base_url?: string;
@@ -389,6 +393,7 @@ export const apiClient = {
     name: string;
     llm_provider: string;
     openai_api_key?: string;
+    openai_base_url?: string;
     openai_model?: string;
     openai_audio_model?: string;
     ollama_base_url?: string;
@@ -515,11 +520,44 @@ export const apiClient = {
   },
 
   // Telegram Integration
-  async generateTelegramConnectionLink(agentId: string): Promise<{ url: string; expires_at: string }> {
-    return api(`/api/telegram/connection-link/${agentId}`, { method: 'POST' });
+  async listTelegramBotConfigs(): Promise<{
+    env_config: {
+      id: string;
+      key: string;
+      name: string;
+      bot_username: string;
+      masked_token: string;
+      is_env: boolean;
+    } | null;
+    configs: Array<{
+      id: string;
+      key: string;
+      name: string;
+      bot_username: string;
+      masked_token: string;
+      is_env: boolean;
+      created_at?: string;
+    }>;
+  }> {
+    return api('/api/telegram/bot-configs');
   },
 
-  async listTelegramConnections(agentId: string): Promise<{ connections: Array<{ id: string; chat_id: string; chat_title?: string; created_at: string }> }> {
+  async createTelegramBotConfig(body: { name: string; bot_token: string; bot_username: string }) {
+    return api('/api/telegram/bot-configs', { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async deleteTelegramBotConfig(configId: string): Promise<{ message: string }> {
+    return api(`/api/telegram/bot-configs/${configId}`, { method: 'DELETE' });
+  },
+
+  async generateTelegramConnectionLink(
+    agentId: string,
+    body?: { bot_key?: string }
+  ): Promise<{ url: string; expires_at: string; bot_key?: string; bot_username?: string; bot_name?: string }> {
+    return api(`/api/telegram/connection-link/${agentId}`, { method: 'POST', body: JSON.stringify(body || {}) });
+  },
+
+  async listTelegramConnections(agentId: string): Promise<{ connections: Array<{ id: string; chat_id: string; chat_title?: string; created_at: string; bot_key?: string; bot_username?: string; bot_name?: string }> }> {
     return api(`/api/telegram/connections/${agentId}`);
   },
 

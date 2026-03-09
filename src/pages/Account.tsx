@@ -5,15 +5,18 @@ import { useAuth } from "@/hooks/useAuth";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
 import UsersManagement from "@/components/UsersManagement";
-import { Activity, Bot, Database, FolderOpen, Users } from "lucide-react";
+import { Activity, Bot, Database, FolderOpen, PlugZap, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { LLMPanel } from "@/components/LLMPanel";
+import { ConnectionsPanel } from "@/components/ConnectionsPanel";
+import { useSearchParams } from "react-router-dom";
 
 const Account = () => {
   const { t } = useLanguage();
   const { loginRequired } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState("usage");
   const [showAddSourceModal, setShowAddSourceModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -22,6 +25,7 @@ const Account = () => {
     const items = [
       { id: "usage", label: t('account.tabs.usage'), icon: Activity },
       { id: "llm", label: t('account.tabs.llm'), icon: Bot },
+      { id: "connections", label: t('account.tabs.connections'), icon: PlugZap },
       ...(loginRequired ? [{ id: "users", label: t('account.tabs.users'), icon: Users }] : []),
       { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
       { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
@@ -32,6 +36,22 @@ const Account = () => {
   useEffect(() => {
     if (!loginRequired && activeSection === "users") setActiveSection("usage");
   }, [loginRequired, activeSection]);
+
+  useEffect(() => {
+    const requestedSection = searchParams.get("section");
+    if (!requestedSection) return;
+    const isValidSection = menuItems.some((item) => item.id === requestedSection);
+    if (isValidSection && requestedSection !== activeSection) {
+      setActiveSection(requestedSection);
+    }
+  }, [searchParams, menuItems, activeSection]);
+
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("section", sectionId);
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
     <main className="h-full min-h-0 flex flex-col overflow-hidden">
@@ -51,7 +71,7 @@ const Account = () => {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveSection(item.id)}
+                      onClick={() => handleSectionChange(item.id)}
                       className={cn(
                         "w-full py-2 px-2.5 rounded-md transition-colors text-left flex items-center gap-2.5",
                         activeSection === item.id
@@ -72,6 +92,7 @@ const Account = () => {
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" style={{ minHeight: 0 }}>
               {activeSection === "usage" && <UsageMonitoring />}
               {activeSection === "llm" && <LLMPanel />}
+              {activeSection === "connections" && <ConnectionsPanel />}
               {activeSection === "users" && <UsersManagement />}
               {activeSection === "sources" && (
                 <SourcesPanel

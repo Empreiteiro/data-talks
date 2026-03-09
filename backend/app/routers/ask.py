@@ -36,6 +36,8 @@ def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None
         overrides["llm_provider"] = cfg.llm_provider
     if getattr(cfg, "openai_api_key", None):
         overrides["openai_api_key"] = cfg.openai_api_key
+    if getattr(cfg, "openai_base_url", None):
+        overrides["openai_base_url"] = cfg.openai_base_url
     if getattr(cfg, "openai_model", None):
         overrides["openai_model"] = cfg.openai_model
     if getattr(cfg, "ollama_base_url", None):

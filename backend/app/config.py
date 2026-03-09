@@ -53,9 +53,10 @@ class Settings(BaseSettings):
     # Local file storage
     data_files_dir: str = "./data_files"
 
-    # LLM: OpenAI, Ollama, or LiteLLM proxy (OpenAI-compatible)
+    # LLM: OpenAI-compatible, Ollama, or LiteLLM proxy
     llm_provider: str = "openai"  # "openai" | "ollama" | "litellm"
     openai_api_key: str = ""
+    openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
     openai_audio_model: str = ""
     ollama_base_url: str = "http://localhost:11434"

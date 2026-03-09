@@ -96,6 +96,7 @@ class LlmConfig(Base):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # used for new workspaces
     llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm
     openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    openai_base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     openai_audio_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ollama_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
@@ -114,6 +115,7 @@ class LlmSettings(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
     llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm
     openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    openai_base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     openai_audio_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ollama_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
@@ -183,6 +185,18 @@ class AudioOverview(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class TelegramBotConfig(Base):
+    """User-managed Telegram bot credentials shown in the Connections screen."""
+    __tablename__ = "telegram_bot_configs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(128))
+    bot_token: Mapped[str] = mapped_column(String(512))
+    bot_username: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class TelegramLinkToken(Base):
     """Temporary token to link a Telegram group to an agent."""
     __tablename__ = "telegram_link_tokens"
@@ -190,6 +204,9 @@ class TelegramLinkToken(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     agent_id: Mapped[str] = mapped_column(String(36))
     token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    bot_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    bot_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    telegram_bot_config_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
 
@@ -202,5 +219,8 @@ class TelegramConnection(Base):
     agent_id: Mapped[str] = mapped_column(String(36))
     chat_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     chat_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bot_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    bot_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    telegram_bot_config_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
