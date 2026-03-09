@@ -83,6 +83,7 @@ async def ask_question(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_user),
 ):
+    channel = body.channel or "workspace"
     if not body.agentId:
         raise HTTPException(400, "agentId is required")
 
@@ -147,6 +148,7 @@ async def ask_question(
             data_files_dir=data_files_dir,
             llm_overrides=llm_overrides,
             history=history,
+            channel=channel,
         )
     elif source.type == "google_sheets":
         meta = source.metadata_ or {}
@@ -159,6 +161,7 @@ async def ask_question(
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
+            channel=channel,
         )
     elif source.type == "sql_database":
         meta = source.metadata_ or {}
@@ -170,6 +173,7 @@ async def ask_question(
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
             history=history,
+            channel=channel,
         )
     elif source.type == "bigquery":
         meta = source.metadata_ or {}
@@ -187,6 +191,7 @@ async def ask_question(
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
             history=history,
+            channel=channel,
         )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")

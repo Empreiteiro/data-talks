@@ -69,6 +69,7 @@ async def ask_bigquery(
     table_infos: list[dict] | None = None,
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
+    channel: str = "workspace",
 ) -> dict[str, Any]:
     """
     credentials_content: Google service account JSON string.
@@ -132,6 +133,7 @@ async def ask_bigquery(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name,
+        channel=channel,
         trace=trace,
     )
     parsed = _parse_llm_json(raw_answer)
@@ -153,6 +155,7 @@ async def ask_bigquery(
                     source_name=source_name,
                     schema_text=schema_text,
                     llm_overrides=llm_overrides,
+                    channel=channel,
                 )
                 answer = elaborated["answer"]
                 follow_up = elaborated["followUpQuestions"] or follow_up

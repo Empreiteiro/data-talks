@@ -146,6 +146,7 @@ class PlatformLog(Base):
     __tablename__ = "platform_logs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     action: Mapped[str] = mapped_column(String(50))  # pergunta | summary
+    channel: Mapped[str | None] = mapped_column(String(50), nullable=True)  # workspace | telegram | studio
     provider: Mapped[str] = mapped_column(String(50))  # openai | ollama | litellm
     model: Mapped[str] = mapped_column(String(128))
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)

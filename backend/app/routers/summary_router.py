@@ -95,6 +95,7 @@ async def generate_summary(
             table_infos=meta.get("table_infos"),
             source_name=source.name,
             llm_overrides=llm_overrides,
+            channel="studio",
         )
     elif source.type in ("csv", "xlsx"):
         file_path = meta.get("file_path")
@@ -109,6 +110,7 @@ async def generate_summary(
             sample_profile=meta.get("sample_profile"),
             sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
             llm_overrides=llm_overrides,
+            channel="studio",
         )
     elif source.type == "sql_database":
         connection_string = meta.get("connectionString") or meta.get("connection_string")
@@ -122,6 +124,7 @@ async def generate_summary(
             table_infos=table_infos,
             source_name=source.name,
             llm_overrides=llm_overrides,
+            channel="studio",
         )
     elif source.type == "google_sheets":
         result = await generate_table_summary_google_sheets(
@@ -130,6 +133,7 @@ async def generate_summary(
             available_columns=meta.get("availableColumns") or meta.get("available_columns"),
             source_name=source.name,
             llm_overrides=llm_overrides,
+            channel="studio",
         )
     else:
         raise HTTPException(400, f"Table summary not supported for source type: {source.type}")

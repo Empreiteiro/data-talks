@@ -11,6 +11,8 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+MAX_TELEGRAM_MESSAGE_LENGTH = 4000
+
 async def handle_start_command(message: dict, db: AsyncSession, bot_token: str):
     """Handles the /start <token> command to link a group/chat to an agent."""
     text = message.get("text", "")
@@ -71,9 +73,9 @@ async def handle_start_command(message: dict, db: AsyncSession, bot_token: str):
 async def handle_message(message: dict, db: AsyncSession, bot_token: str):
     """Processes a normal text message and responds using the connected agent."""
     chat_id = str(message.get("chat", {}).get("id"))
-    text = message.get("text", "")
+    text = (message.get("text", "") or "").strip()
 
-    if not text or text.startswith("/"):
+    if not text:
         return
 
     # Find connection
@@ -88,14 +90,32 @@ async def handle_message(message: dict, db: AsyncSession, bot_token: str):
     # In groups, we should only answer if mentioned or replied to, to avoid spam
     bot_username = get_settings().telegram_bot_username
     is_group = chat_type in ["group", "supergroup"]
+    ask_command = f"/ask@{bot_username}" if bot_username else "/ask"
+    is_ask_command = text.startswith("/ask ") or text == "/ask" or (bot_username and (text.startswith(f"{ask_command} ") or text == ask_command))
     mentioned = bot_username and f"@{bot_username}" in text
     reply_to_bot = message.get("reply_to_message", {}).get("from", {}).get("username") == bot_username
 
-    if is_group and not (mentioned or reply_to_bot):
+    if text.startswith("/") and not is_ask_command:
+        return
+
+    if is_group and not (mentioned or reply_to_bot or is_ask_command):
         return
         
     if mentioned:
        text = text.replace(f"@{bot_username}", "").strip()
+
+    if is_ask_command:
+        text = text.replace(ask_command, "", 1).replace("/ask", "", 1).strip()
+        if not text:
+            await send_telegram_message(
+                bot_token,
+                chat_id,
+                "Use `/ask sua pergunta` para falar comigo neste grupo.",
+                reply_to_message_id=message.get("message_id"),
+            )
+            return
+
+    logger.info("Telegram message received for chat %s", chat_id)
 
     # Create mock current user instance to bypass authentication for API call
     from app.models import User
@@ -115,6 +135,7 @@ async def handle_message(message: dict, db: AsyncSession, bot_token: str):
         request = AskQuestionRequest(
             question=text,
             agentId=conn.agent_id,
+            channel="telegram",
         )
         response = await ask_question(request, db, user)
 
@@ -132,19 +153,43 @@ async def handle_message(message: dict, db: AsyncSession, bot_token: str):
 
 async def send_telegram_message(token: str, chat_id: str, text: str, reply_to_message_id: int = None):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown"  # Or HTML
-    }
-    if reply_to_message_id:
-        payload["reply_to_message_id"] = reply_to_message_id
+    safe_text = (text or "").strip() or "Sem conteúdo para enviar."
+    if len(safe_text) > MAX_TELEGRAM_MESSAGE_LENGTH:
+        safe_text = safe_text[: MAX_TELEGRAM_MESSAGE_LENGTH - 1].rstrip() + "…"
+
+    attempts = [
+        {
+            "chat_id": chat_id,
+            "text": safe_text,
+            "parse_mode": "Markdown",
+            **({"reply_to_message_id": reply_to_message_id} if reply_to_message_id else {}),
+        },
+        {
+            "chat_id": chat_id,
+            "text": safe_text,
+            **({"reply_to_message_id": reply_to_message_id} if reply_to_message_id else {}),
+        },
+        {
+            "chat_id": chat_id,
+            "text": safe_text,
+        },
+    ]
 
     async with httpx.AsyncClient() as client:
-        try:
-             await client.post(url, json=payload)
-        except Exception as e:
-            logger.error(f"Failed to send telegram msg: {e}")
+        last_error = None
+        for payload in attempts:
+            try:
+                response = await client.post(url, json=payload)
+                data = response.json()
+                if response.status_code == 200 and data.get("ok"):
+                    return
+                last_error = data
+                logger.warning("Telegram sendMessage rejected payload: %s", data)
+            except Exception as e:
+                last_error = str(e)
+                logger.error(f"Failed to send telegram msg: {e}")
+
+        logger.error("All Telegram sendMessage attempts failed for chat %s: %s", chat_id, last_error)
 
 async def send_telegram_action(token: str, chat_id: str, action: str):
     url = f"https://api.telegram.org/bot{token}/sendChatAction"

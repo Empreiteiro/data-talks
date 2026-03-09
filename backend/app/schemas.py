@@ -41,6 +41,7 @@ class AskQuestionRequest(BaseModel):
     agentId: str
     userId: Optional[str] = None
     sessionId: Optional[str] = None
+    channel: Optional[str] = None
 
 
 class AskQuestionResponse(BaseModel):

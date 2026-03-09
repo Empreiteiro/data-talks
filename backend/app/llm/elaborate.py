@@ -42,6 +42,7 @@ async def elaborate_answer_with_results(
     source_name: str | None = None,
     schema_text: str = "",
     llm_overrides: dict | None = None,
+    channel: str = "workspace",
 ) -> dict[str, Any]:
     """
     Second LLM call: given the question and query results, craft an elaborated
@@ -89,6 +90,7 @@ async def elaborate_answer_with_results(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name,
+        channel=channel,
         trace=trace,
     )
 

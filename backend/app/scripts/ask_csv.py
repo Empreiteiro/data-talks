@@ -32,6 +32,7 @@ async def ask_csv(
     data_files_dir: str = "./data_files",
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
+    channel: str = "workspace",
 ) -> dict[str, Any]:
     """
     file_path: path relative to data_files (e.g. user_id/timestamp.csv).
@@ -99,6 +100,7 @@ async def ask_csv(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name,
+        channel=channel,
         trace=trace,
     )
     parsed = _parse_llm_json(raw_answer)
@@ -121,6 +123,7 @@ async def ask_csv(
                         source_name=source_name,
                         schema_text=schema_for_sql,
                         llm_overrides=llm_overrides,
+                        channel=channel,
                     )
                     answer = elaborated["answer"]
                     follow_up = elaborated["followUpQuestions"] or follow_up

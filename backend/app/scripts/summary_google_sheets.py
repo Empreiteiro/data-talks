@@ -11,6 +11,7 @@ async def generate_table_summary_google_sheets(
     available_columns: list[str] | None,
     source_name: str = "",
     llm_overrides: dict | None = None,
+    channel: str = "studio",
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [] }.
@@ -59,6 +60,7 @@ async def generate_table_summary_google_sheets(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name or sheet_name,
+        channel=channel,
         trace=trace,
     )
     report = (report or "").strip()

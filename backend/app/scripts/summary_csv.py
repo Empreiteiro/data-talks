@@ -26,6 +26,7 @@ async def generate_table_summary_csv(
     sample_profile: dict | None = None,
     sample_row_count: int | None = None,
     llm_overrides: dict | None = None,
+    channel: str = "studio",
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [] }.
@@ -107,6 +108,7 @@ async def generate_table_summary_csv(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name or file_path,
+        channel=channel,
         trace=trace,
     )
     report = (report or "").strip()

@@ -503,6 +503,7 @@ export const apiClient = {
     const params = limit != null ? `?limit=${limit}` : '';
     return api<Array<{
       action: string;
+      channel?: string;
       timestamp: string;
       provider: string;
       model: string;

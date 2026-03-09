@@ -19,6 +19,7 @@ async def ask_google_sheets(
     credentials_json: str | None = None,
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
+    channel: str = "workspace",
 ) -> dict[str, Any]:
     """
     Fetch sheet data (via Google API), send context to LLM, return answer.
@@ -69,6 +70,7 @@ async def ask_google_sheets(
         input_tokens=usage.get("input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
         source=source_name,
+        channel=channel,
         trace=trace,
     )
     parsed = _parse_llm_json(raw_answer)

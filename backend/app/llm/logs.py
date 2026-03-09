@@ -18,6 +18,7 @@ async def record_log(
     input_tokens: int = 0,
     output_tokens: int = 0,
     source: str | None = None,
+    channel: str | None = None,
     trace: dict | None = None,
 ) -> None:
     """Persist a log entry to the database."""
@@ -25,6 +26,7 @@ async def record_log(
         entry = PlatformLog(
             id=str(uuid.uuid4()),
             action=action,
+            channel=channel,
             provider=provider,
             model=model,
             input_tokens=input_tokens,
@@ -49,6 +51,7 @@ async def list_logs(limit: int = 100) -> list[dict[str, Any]]:
         return [
             {
                 "action": r.action,
+                "channel": getattr(r, "channel", None),
                 "timestamp": r.created_at.isoformat() if r.created_at else "",
                 "provider": r.provider,
                 "model": r.model,

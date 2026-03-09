@@ -17,6 +17,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 type LogEntry = {
   action: string;
+  channel?: string;
   timestamp: string;
   provider: string;
   model: string;
@@ -137,6 +138,7 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
               <TableRow>
                 <TableHead className="w-8" />
                 <TableHead className="w-[120px]">{t("logs.action")}</TableHead>
+                <TableHead className="w-[110px]">{t("logs.channel")}</TableHead>
                 <TableHead className="w-[160px]">{t("logs.timestamp")}</TableHead>
                 <TableHead>{t("logs.provider")}</TableHead>
                 <TableHead>{t("logs.model")}</TableHead>
@@ -173,6 +175,9 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
                       {actionLabel[log.action] ?? log.action}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {log.channel || "—"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {formatTimestamp(log.timestamp)}
                   </TableCell>
@@ -194,7 +199,7 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
                 </TableRow>
                 {expandedIdx === idx && hasTrace(log) && log.trace && (
                   <TableRow key={`${idx}-detail`}>
-                    <TableCell colSpan={8} className="bg-muted/30 p-4 align-top">
+                    <TableCell colSpan={9} className="bg-muted/30 p-4 align-top">
                       <div className="space-y-3">
                         {log.trace.reasoning && (
                           <div>

@@ -65,6 +65,7 @@ async def generate_table_summary_sql(
     table_infos: list[dict] | None,
     source_name: str = "",
     llm_overrides: dict | None = None,
+    channel: str = "studio",
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [ { "query": str, "rows": list }, ... ] }
@@ -102,6 +103,7 @@ async def generate_table_summary_sql(
         input_tokens=usage1.get("input_tokens", 0),
         output_tokens=usage1.get("output_tokens", 0),
         source=source_name or (table_names[0] if table_names else "SQL"),
+        channel=channel,
         trace=trace1,
     )
     queries = _parse_queries_json(raw_queries)
@@ -176,6 +178,7 @@ async def generate_table_summary_sql(
         input_tokens=usage2.get("input_tokens", 0),
         output_tokens=usage2.get("output_tokens", 0),
         source=source_name or (table_names[0] if table_names else "SQL"),
+        channel=channel,
         trace=trace2,
     )
     report = (report or "").strip()

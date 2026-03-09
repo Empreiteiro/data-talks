@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, summary_router, logs_router, audio_overview_router, telegram_router
@@ -57,11 +57,21 @@ async def _ensure_single_user():
         await db.commit()
 
 
+async def _ensure_platform_logs_channel_column():
+    async with engine.begin() as conn:
+        has_channel = await conn.run_sync(
+            lambda sync_conn: "channel" in {c["name"] for c in inspect(sync_conn).get_columns("platform_logs")}
+        )
+        if not has_channel:
+            await conn.execute(text("ALTER TABLE platform_logs ADD COLUMN channel VARCHAR(50)"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await _ensure_platform_logs_channel_column()
     Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
     await _ensure_single_user()
     settings = get_settings()
