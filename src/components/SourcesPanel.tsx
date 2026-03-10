@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, X, Check } from "lucide-react";
+import { Plus, FileText, X, Check, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { dataClient } from "@/services/dataClient";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { DataPreviewModal } from "@/components/DataPreviewModal";
+import { SqlRelationshipsModal } from "@/components/SqlRelationshipsModal";
 
 interface Source {
   id: string;
@@ -23,9 +24,10 @@ interface SourcesPanelProps {
   agentId?: string;
   refreshTrigger?: number; // Novo: trigger para forçar refresh
   onSourceActivated?: () => void; // Callback quando uma fonte é ativada
+  onRelationshipsUpdated?: () => void;
 }
 
-export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceActivated }: SourcesPanelProps) {
+export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceActivated, onRelationshipsUpdated }: SourcesPanelProps) {
   const { t } = useLanguage();
   const [sources, setSources] = useState<Source[]>([]);
   const [linkedSourceIds, setLinkedSourceIds] = useState<string[]>([]);
@@ -33,7 +35,8 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
   const [searchQuery, setSearchQuery] = useState("");
   const [previewSource, setPreviewSource] = useState<Source | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [activeSourceIds, setActiveSourceIds] = useState<string[]>([]);
+  const [relationshipsOpen, setRelationshipsOpen] = useState(false);
 
   useEffect(() => {
     if (agentId) {
@@ -91,8 +94,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
         is_active: s.is_active,
         agent_id: s.agent_id,
       }));
-      const activeSource = mappedSources.find(s => s.is_active);
-      setActiveSourceId(activeSource?.id || null);
+      setActiveSourceIds(mappedSources.filter((source) => source.is_active).map((source) => source.id));
       setSources(mappedSources);
     } catch (error: any) {
       console.error("Erro ao carregar sources do agente:", error);
@@ -107,17 +109,35 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
     if (!agentId) return;
     try {
       const existingSources = await dataClient.listSources(agentId);
-      await Promise.all(
-        existingSources.map((s: { id: string }) =>
-          dataClient.updateSource(s.id, { is_active: s.id === sourceId })
-        )
-      );
-      setActiveSourceId(sourceId);
-      toast.success("Fonte ativada com sucesso");
+      const targetSource = existingSources.find((source) => source.id === sourceId);
+      if (!targetSource) return;
+
+      if (targetSource.type === "sql_database") {
+        const nextActive = !targetSource.is_active;
+        await Promise.all(
+          existingSources.map((source) => {
+            if (source.id === sourceId) {
+              return dataClient.updateSource(source.id, { is_active: nextActive });
+            }
+            if (nextActive && source.type !== "sql_database" && source.is_active) {
+              return dataClient.updateSource(source.id, { is_active: false });
+            }
+            return Promise.resolve();
+          })
+        );
+        toast.success(nextActive ? t("sources.sqlSourceActivated") : t("sources.sqlSourceDeactivated"));
+      } else {
+        await Promise.all(
+          existingSources.map((source) =>
+            dataClient.updateSource(source.id, { is_active: source.id === sourceId })
+          )
+        );
+        toast.success(t("sources.sourceActivated"));
+      }
       loadAgentSourceIds();
       if (onSourceActivated) onSourceActivated();
     } catch (error: any) {
-      toast.error("Erro ao ativar fonte", { description: error.message });
+      toast.error(t("sources.activateError"), { description: error.message });
     }
   }
 
@@ -138,21 +158,30 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
   const filteredSources = sources.filter((source) =>
     source.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const sqlSourcesCount = sources.filter((source) => source.type === "sql_database").length;
 
   return (
     <div className="h-full flex flex-col bg-background border rounded-lg">
       <div className="p-4 border-b flex items-center h-[57px]">
-        <div className="flex items-center justify-between w-full">
+        <div className="flex items-center justify-between gap-2 w-full">
           <h2 className="font-semibold">{t('sources.title')}</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onAddSource}
-            disabled={false}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {t('sources.add')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {agentId && sqlSourcesCount >= 2 && (
+              <Button variant="outline" size="sm" onClick={() => setRelationshipsOpen(true)}>
+                <Link2 className="h-4 w-4 mr-2" />
+                {t("sources.relationships")}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAddSource}
+              disabled={false}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t('sources.add')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -177,7 +206,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
         ) : (
           <div className="space-y-2">
             {filteredSources.map((source) => {
-              const isActive = agentId && source.id === activeSourceId;
+              const isActive = !!(agentId && activeSourceIds.includes(source.id));
               
               return (
                 <div
@@ -215,6 +244,12 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                         <Badge variant="outline" className="text-xs">
                           {source.type}
                         </Badge>
+                        {isActive && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Check className="h-3 w-3 mr-1" />
+                            {t("sources.active")}
+                          </Badge>
+                        )}
                         <span className="text-xs text-muted-foreground">
                           {new Date(source.createdAt).toLocaleDateString('pt-BR')}
                         </span>
@@ -248,6 +283,17 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
           onOpenChange={setShowPreview}
           sourceName={previewSource.name}
           metadata={previewSource.metadata}
+        />
+      )}
+
+      {agentId && (
+        <SqlRelationshipsModal
+          open={relationshipsOpen}
+          onOpenChange={setRelationshipsOpen}
+          agentId={agentId}
+          onSaved={() => {
+            onRelationshipsUpdated?.();
+          }}
         />
       )}
     </div>

@@ -275,6 +275,28 @@ export default function Workspace() {
     if (!id) return;
     try {
       let sources = await dataClient.listSources(id, true);
+      const activeSqlSources = (sources || []).filter((source) => source.type === "sql_database");
+      if (activeSqlSources.length > 1) {
+        const agent = await dataClient.getAgent(id);
+        const relationships = agent?.source_relationships || [];
+        const relatedSourceIds = new Set<string>();
+        relationships.forEach((relationship) => {
+          relatedSourceIds.add(relationship.leftSourceId);
+          relatedSourceIds.add(relationship.rightSourceId);
+        });
+        const groupedSqlSources = activeSqlSources.filter((source) => relatedSourceIds.has(source.id));
+        if (groupedSqlSources.length > 1) {
+          const groupedColumns = groupedSqlSources.flatMap((source) => {
+            const tableInfos = source.metaJSON?.table_infos || [];
+            return tableInfos.flatMap((tableInfo: { table: string; columns?: string[] }) =>
+              (tableInfo.columns || []).map((column) => `${tableInfo.table}.${column}`)
+            );
+          });
+          setAvailableColumns(Array.from(new Set(groupedColumns)));
+          return;
+        }
+      }
+
       const source = sources && sources[0];
       if (source) {
         let metadata = source?.metaJSON as any;
@@ -329,6 +351,11 @@ export default function Workspace() {
     setFollowUpQuestions([]);
     setQuestionSegments([]);
     setQuestionInput("");
+  }
+
+  function handleSourceContextChanged() {
+    clearConversation();
+    loadAvailableColumns();
   }
 
   async function loadHistory() {
@@ -561,14 +588,8 @@ export default function Workspace() {
             agentId={id} 
             onAddSource={() => setAddSourceOpen(true)}
             refreshTrigger={sourcesRefreshTrigger}
-            onSourceActivated={() => {
-              setMessages([]);
-              setCurrentSessionId(null);
-              setFollowUpQuestions([]);
-              setQuestionSegments([]);
-              setQuestionInput("");
-              loadAvailableColumns();
-            }}
+            onSourceActivated={handleSourceContextChanged}
+            onRelationshipsUpdated={handleSourceContextChanged}
           />
         </div>
 

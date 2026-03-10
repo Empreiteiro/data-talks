@@ -23,6 +23,8 @@ from app.scripts.ask_csv import ask_csv
 from app.scripts.ask_bigquery import ask_bigquery
 from app.scripts.ask_google_sheets import ask_google_sheets
 from app.scripts.ask_sql import ask_sql
+from app.scripts.ask_sql_multi import ask_sql_multi_source
+from app.scripts.sql_utils import validate_source_relationships
 
 router = APIRouter(prefix="/ask-question", tags=["ask"])
 
@@ -79,6 +81,53 @@ def _find_turn(history: list[dict], turn_id: str | None, turn_index: int | None)
     raise HTTPException(404, "Conversation turn not found")
 
 
+def _build_active_multi_sql_sources(agent: Agent, sources: list[Source]) -> tuple[list[dict], list[dict[str, str]]]:
+    relationships = agent.source_relationships or []
+    if not relationships:
+        return [], []
+
+    active_sql_sources = [source for source in sources if source.type == "sql_database" and source.is_active]
+    if len(active_sql_sources) < 2:
+        return [], []
+
+    source_rows = [
+        {
+            "id": source.id,
+            "name": source.name,
+            "connection_string": (source.metadata_ or {}).get("connectionString", ""),
+            "table_infos": (source.metadata_ or {}).get("table_infos") or [],
+        }
+        for source in active_sql_sources
+    ]
+    try:
+        validated_relationships = validate_source_relationships(source_rows, relationships)
+    except ValueError:
+        return [], []
+
+    related_source_ids = {
+        relationship["leftSourceId"]
+        for relationship in validated_relationships
+    }.union({
+        relationship["rightSourceId"]
+        for relationship in validated_relationships
+    })
+    if len(related_source_ids) < 2:
+        return [], []
+
+    selected_sources = []
+    for source in active_sql_sources:
+        if source.id not in related_source_ids:
+            continue
+        meta = source.metadata_ or {}
+        selected_sources.append({
+            "id": source.id,
+            "name": source.name,
+            "connectionString": meta.get("connectionString", ""),
+            "table_infos": meta.get("table_infos") or [],
+        })
+    return selected_sources, validated_relationships
+
+
 @router.post("", response_model=AskQuestionResponse)
 async def ask_question(
     body: AskQuestionRequest,
@@ -106,6 +155,7 @@ async def ask_question(
     if not sources:
         raise HTTPException(400, "No active source found for this workspace")
 
+    multi_sql_sources, multi_sql_relationships = _build_active_multi_sql_sources(agent, sources)
     active_sources = [s for s in sources if s.is_active]
     source = active_sources[0] if active_sources else sources[0]
     settings = get_settings()
@@ -133,7 +183,17 @@ async def ask_question(
             history = qa_session.conversation_history
 
     # Route by source type
-    if source.type in ("csv", "xlsx"):
+    if len(multi_sql_sources) >= 2 and multi_sql_relationships:
+        result = await ask_sql_multi_source(
+            sources=multi_sql_sources,
+            relationships=multi_sql_relationships,
+            question=body.question,
+            agent_description=agent.description or "",
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type in ("csv", "xlsx"):
         file_path = (source.metadata_ or {}).get("file_path")
         if not file_path:
             raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
