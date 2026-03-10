@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import inspect, select, text
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
-from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, summary_router, logs_router, audio_overview_router, telegram_router
+from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, sql_router, summary_router, logs_router, audio_overview_router, telegram_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -102,6 +102,19 @@ async def _ensure_telegram_config_columns():
                 await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN telegram_bot_config_id VARCHAR(36)"))
 
 
+async def _ensure_agent_source_relationships_column():
+    async with engine.begin() as conn:
+        table_columns = await conn.run_sync(
+            lambda sync_conn: {
+                table: {c["name"] for c in inspect(sync_conn).get_columns(table)}
+                for table in ("agents",)
+                if inspect(sync_conn).has_table(table)
+            }
+        )
+        if "agents" in table_columns and "source_relationships" not in table_columns["agents"]:
+            await conn.execute(text("ALTER TABLE agents ADD COLUMN source_relationships JSON"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
@@ -110,6 +123,7 @@ async def lifespan(app: FastAPI):
     await _ensure_platform_logs_channel_column()
     await _ensure_llm_openai_base_url_columns()
     await _ensure_telegram_config_columns()
+    await _ensure_agent_source_relationships_column()
     Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
     await _ensure_single_user()
     settings = get_settings()
@@ -145,6 +159,7 @@ app.include_router(crud.router, prefix=prefix)
 app.include_router(users_router.router, prefix=prefix)
 app.include_router(settings_router.router, prefix=prefix)
 app.include_router(bigquery_router.router, prefix=prefix)
+app.include_router(sql_router.router, prefix=prefix)
 app.include_router(summary_router.router, prefix=prefix)
 app.include_router(logs_router.router, prefix=prefix)
 app.include_router(audio_overview_router.router, prefix=prefix)

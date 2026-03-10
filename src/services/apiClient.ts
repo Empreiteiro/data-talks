@@ -4,6 +4,15 @@
  */
 import { getApiUrl, getToken } from '@/config';
 
+export interface SqlSourceRelationship {
+  leftSourceId: string;
+  leftTable: string;
+  leftColumn: string;
+  rightSourceId: string;
+  rightTable: string;
+  rightColumn: string;
+}
+
 function toApiAssetUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//i.test(path) || path.startsWith('blob:') || path.startsWith('data:')) return path;
@@ -146,6 +155,41 @@ export const apiClient = {
       body: JSON.stringify(body),
     });
   },
+  async sqlListTables(body: { connectionString: string }) {
+    return api<{ tables: Array<{ id: string; name: string; columns?: string[] }> }>('/api/sql/tables', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async listAgentSqlSources(agentId: string) {
+    return api<{
+      sources: Array<{
+        id: string;
+        name: string;
+        is_active?: boolean;
+        table_infos?: Array<{ table: string; columns?: string[]; preview_rows?: Record<string, unknown>[] }>;
+      }>;
+      relationships: SqlSourceRelationship[];
+    }>(`/api/sql/agents/${agentId}/sources`);
+  },
+  async listAgentSqlRelationshipSuggestions(agentId: string) {
+    return api<{
+      sources: Array<{
+        id: string;
+        name: string;
+        is_active?: boolean;
+        table_infos?: Array<{ table: string; columns?: string[]; preview_rows?: Record<string, unknown>[] }>;
+      }>;
+      relationships: SqlSourceRelationship[];
+      suggestions: SqlSourceRelationship[];
+    }>(`/api/sql/agents/${agentId}/relationship-suggestions`);
+  },
+  async saveAgentSqlRelationships(agentId: string, relationships: SqlSourceRelationship[]) {
+    return api<{ relationships: SqlSourceRelationship[] }>(`/api/sql/agents/${agentId}/relationships`, {
+      method: 'PUT',
+      body: JSON.stringify({ relationships }),
+    });
+  },
   async refreshSourceBigQueryMetadata(sourceId: string) {
     return api<{ metaJSON: any }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
@@ -161,28 +205,29 @@ export const apiClient = {
   },
 
   async getAgent(id: string) {
-    return api<{ id: string; name: string; description: string; source_ids: string[]; suggested_questions: string[]; llm_config_id?: string | null }>(`/api/agents/${id}`);
+    return api<{ id: string; name: string; description: string; source_ids: string[]; source_relationships: SqlSourceRelationship[]; suggested_questions: string[]; llm_config_id?: string | null }>(`/api/agents/${id}`);
   },
 
   async listAgents() {
-    const data = await api<Array<{ id: string; name: string; description: string; source_ids: string[]; suggested_questions: string[]; created_at: string; updated_at: string; source_count: number }>>('/api/agents');
+    const data = await api<Array<{ id: string; name: string; description: string; source_ids: string[]; source_relationships: SqlSourceRelationship[]; suggested_questions: string[]; created_at: string; updated_at: string; source_count: number }>>('/api/agents');
     return (data || []).map((a) => ({
       ...a,
+      source_relationships: a.source_relationships || [],
       suggested_questions: a.suggested_questions || [],
     }));
   },
 
-  async createAgent(name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[]) {
+  async createAgent(name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], sourceRelationships?: SqlSourceRelationship[]) {
     return api('/api/agents', {
       method: 'POST',
-      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [] }),
+      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], source_relationships: sourceRelationships || [] }),
     });
   },
 
-  async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], llmConfigId?: string | null) {
+  async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], llmConfigId?: string | null, sourceRelationships?: SqlSourceRelationship[]) {
     return api(`/api/agents/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], llm_config_id: llmConfigId ?? null }),
+      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], llm_config_id: llmConfigId ?? null, source_relationships: sourceRelationships }),
     });
   },
 

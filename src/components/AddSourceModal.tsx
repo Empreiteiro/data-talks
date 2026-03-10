@@ -63,6 +63,8 @@ export function AddSourceModal({
   const [sqlConnectionString, setSqlConnectionString] = useState("");
   const [sqlDatabaseType, setSqlDatabaseType] = useState<'postgresql' | 'mysql' | ''>('');
   const [sqlTableName, setSqlTableName] = useState("");
+  const [availableSqlTables, setAvailableSqlTables] = useState<Array<{id: string; name: string; columns?: string[]}>>([]);
+  const [loadingSqlTables, setLoadingSqlTables] = useState(false);
 
   // Fetch existing BigQuery credentials and Google Sheets service email when modal opens
   useEffect(() => {
@@ -71,6 +73,8 @@ export function AddSourceModal({
       setAvailableProjects([]);
       setAvailableDatasets([]);
       setAvailableTables([]);
+      setAvailableSqlTables([]);
+      setSqlTableName("");
       setSheetsServiceEmail(undefined);
       dataClient.getGoogleSheetsServiceEmail()
         .then((email) => setSheetsServiceEmail(email ?? null))
@@ -320,9 +324,9 @@ export function AddSourceModal({
       if (agentId && source?.id) {
         const existingSources = await dataClient.listSources(agentId);
         await Promise.all(
-          existingSources.filter((s: { id: string }) => s.id !== source.id).map((s: { id: string }) =>
-            dataClient.updateSource(s.id, { is_active: false })
-          )
+          existingSources
+            .filter((s: { id: string; type: string }) => s.id !== source.id && s.type !== 'sql_database')
+            .map((s: { id: string }) => dataClient.updateSource(s.id, { is_active: false }))
         );
         await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
       }
@@ -376,6 +380,36 @@ export function AddSourceModal({
     }
   };
 
+  const handleSqlDiscoverTables = async () => {
+    if (!sqlConnectionString.trim()) {
+      toast.error(t('addSource.sqlFillFields'));
+      return;
+    }
+
+    setLoadingSqlTables(true);
+    try {
+      const res = await dataClient.sqlListTables({ connectionString: sqlConnectionString.trim() });
+      const tables = res.tables || [];
+      setAvailableSqlTables(tables);
+      if (tables.length === 0) {
+        setSqlTableName("");
+        toast.error(t('addSource.sqlNoTablesFound'));
+        return;
+      }
+
+      if (!tables.some((table) => table.id === sqlTableName)) {
+        setSqlTableName(tables[0].id);
+      }
+    } catch (error: any) {
+      console.error('SQL table discovery error:', error);
+      setAvailableSqlTables([]);
+      setSqlTableName("");
+      toast.error(t('addSource.sqlListError'), { description: error.message });
+    } finally {
+      setLoadingSqlTables(false);
+    }
+  };
+
   const handleSqlConnect = async () => {
     if (!sqlConnectionString || !sqlDatabaseType || !sqlTableName) {
       toast.error(t('addSource.sqlFillFields'));
@@ -384,10 +418,13 @@ export function AddSourceModal({
 
     setConnecting(true);
     try {
+      const selectedSqlTable = availableSqlTables.find((table) => table.id === sqlTableName);
+      const availableColumns = (selectedSqlTable?.columns || []).filter(Boolean);
       const name = `SQL ${sqlTableName}`;
       const metadata = {
-        connectionString: sqlConnectionString,
-        table_infos: [{ table: sqlTableName }],
+        connectionString: sqlConnectionString.trim(),
+        availableColumns,
+        table_infos: [{ table: sqlTableName, columns: availableColumns }],
       };
       const source = await dataClient.createSource(name, 'sql_database', metadata, agentId);
       if (agentId && source?.id) {
@@ -640,16 +677,20 @@ export function AddSourceModal({
                   <p className="text-sm">
                     <strong>{t('addSource.sqlImportant')}</strong> {t('addSource.sqlSecurityWarning')}
                   </p>
-                  <ul className="text-xs space-y-1 ml-4 list-disc">
-                    <li>{t('addSource.sqlIpAgent')}: <code className="bg-background px-2 py-1 rounded text-xs border">34.121.141.105</code></li>
-                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    {t('addSource.sqlSelfHostedNote')}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="sql-type">{t('addSource.sqlDatabaseType')}</Label>
                   <Select 
                     value={sqlDatabaseType} 
-                    onValueChange={(value: any) => setSqlDatabaseType(value)}
+                    onValueChange={(value: any) => {
+                      setSqlDatabaseType(value);
+                      setAvailableSqlTables([]);
+                      setSqlTableName("");
+                    }}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder={t('addSource.sqlSelectType')} />
@@ -668,7 +709,11 @@ export function AddSourceModal({
                     type="password"
                     placeholder={t('addSource.sqlConnectionStringPlaceholder')}
                     value={sqlConnectionString}
-                    onChange={(e) => setSqlConnectionString(e.target.value)}
+                    onChange={(e) => {
+                      setSqlConnectionString(e.target.value);
+                      setAvailableSqlTables([]);
+                      setSqlTableName("");
+                    }}
                   />
                   <p className="text-xs text-muted-foreground">
                     {t('addSource.sqlExample')}: {sqlDatabaseType === 'mysql' ? 'mysql://user:password@host:3306/database' : 'postgresql://user:password@host:5432/database'}
@@ -676,20 +721,52 @@ export function AddSourceModal({
                 </div>
 
                 <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleSqlDiscoverTables}
+                    disabled={!sqlConnectionString.trim() || loadingSqlTables || connecting}
+                  >
+                    {loadingSqlTables ? <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {t('addSource.loadingTables')}
+                      </> : t('addSource.listButton')}
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="sql-table">{t('addSource.sqlTableName')}</Label>
-                  <Input 
-                    id="sql-table" 
-                    type="text"
-                    placeholder={t('addSource.sqlTableNamePlaceholder')}
-                    value={sqlTableName}
-                    onChange={(e) => setSqlTableName(e.target.value)}
-                  />
+                  <Select
+                    value={sqlTableName || undefined}
+                    onValueChange={setSqlTableName}
+                    disabled={loadingSqlTables || availableSqlTables.length === 0}
+                  >
+                    <SelectTrigger id="sql-table" className="w-full">
+                      <SelectValue
+                        placeholder={
+                          loadingSqlTables
+                            ? t('addSource.loadingTables')
+                            : availableSqlTables.length === 0
+                              ? t('addSource.sqlLoadTablesFirst')
+                              : t('addSource.selectTablePlaceholder')
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSqlTables.map((table) => (
+                        <SelectItem key={table.id} value={table.id}>
+                          {table.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Button 
                   className="w-full"
                   onClick={handleSqlConnect}
-                  disabled={!sqlConnectionString || !sqlDatabaseType || !sqlTableName || connecting}
+                  disabled={!sqlConnectionString || !sqlDatabaseType || !sqlTableName || connecting || loadingSqlTables}
                 >
                   {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
                 </Button>
