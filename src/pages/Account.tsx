@@ -3,7 +3,7 @@ import { SEO } from "@/components/SEO";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import UsageMonitoring from "@/components/UsageMonitoring";
-import { BigQueryCredentialsManager } from "@/components/BigQueryCredentialsManager";
+import { CredentialsView } from "@/components/CredentialsView";
 import UsersManagement from "@/components/UsersManagement";
 import { Activity, Bot, Database, FolderOpen, PlugZap, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -100,7 +100,7 @@ const Account = () => {
                   refreshTrigger={refreshTrigger}
                 />
               )}
-              {activeSection === "credentials" && <BigQueryCredentialsManager />}
+              {activeSection === "credentials" && <CredentialsView />}
             </div>
           </div>
         </div>

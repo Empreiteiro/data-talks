@@ -70,6 +70,7 @@ async def ask_bigquery(
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
     channel: str = "workspace",
+    sql_mode: bool = False,
 ) -> dict[str, Any]:
     """
     credentials_content: Google service account JSON string.
@@ -126,6 +127,8 @@ async def ask_bigquery(
             messages.append({"role": "assistant", "content": turn["answer"]})
     messages.append({"role": "user", "content": f"Schema:\n{schema_text}\n\nQuestion: {question}"})
     raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
+    trace["stage"] = "pergunta_main"
+    trace["source_type"] = "bigquery"
     await record_log(
         action="pergunta",
         provider=usage.get("provider", ""),
@@ -141,9 +144,11 @@ async def ask_bigquery(
     follow_up = parsed["followUpQuestions"]
     sql_query = extract_sql_from_field(parsed.get("sqlQuery") or "")
 
-    # Execute SELECT and have LLM elaborate answer from results
+    # Execute SELECT and have LLM elaborate answer from results (unless sql_mode: return raw SQL)
     chart_input = None
-    if sql_query and sql_query.upper().startswith("SELECT"):
+    if sql_mode and sql_query:
+        answer = sql_query
+    elif sql_query and sql_query.upper().startswith("SELECT"):
         try:
             rows = await loop.run_in_executor(None, lambda: _run_query_sync(client, sql_query))
             if rows is not None:
@@ -172,6 +177,7 @@ async def ask_bigquery(
         candidate_questions=follow_up,
         schema_text=schema_text,
         llm_overrides=llm_overrides,
+        channel=channel,
     )
     return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up, "chartInput": chart_input}
 

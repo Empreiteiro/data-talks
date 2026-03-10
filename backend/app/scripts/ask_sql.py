@@ -37,6 +37,7 @@ async def ask_sql(
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
     channel: str = "workspace",
+    sql_mode: bool = False,
 ) -> dict[str, Any]:
     """
     connection_string: database URL (e.g. postgresql://...).
@@ -52,19 +53,25 @@ async def ask_sql(
     loop = asyncio.get_event_loop()
 
     schema_text = ""
+    table_names_list = []
     if table_infos:
         for t in table_infos:
-            schema_text += f"Table {t.get('table', '')}: columns {t.get('columns', [])}\n"
+            tbl = t.get("table", "")
+            cols = t.get("columns", [])
+            schema_text += f"Table {tbl}: columns {cols}\n"
+            if tbl:
+                table_names_list.append(tbl)
 
     system = (
         "You are an assistant that answers questions about an SQL database. "
-        "When the question requires precise filtering or aggregation, you MUST provide a SQL query "
+        "CRITICAL: You may ONLY use the tables explicitly listed in the schema. "
+        "Do NOT reference any table that is not in the schema—the database has only these tables. "
+        "If the question requires a table not in the schema, explain that the data is not available and suggest what would be needed. "
+        "When the question can be answered with the available tables, provide a SQL query "
         "(SELECT only, in a fenced ```sql``` block). "
-        "Then explain the expected result briefly. "
         "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of strings), "
         "sqlQuery (string or null). "
-        "Any suggested follow-up questions must be answerable using only the available tables and columns in the schema. "
-        "Do not invent fields, dimensions, or metrics that are not present in that schema. "
+        "Do not invent tables, fields, or columns. "
         "Do not include any extra text outside the JSON."
     )
     if agent_description:
@@ -77,8 +84,16 @@ async def ask_sql(
         for turn in history[-5:]:
             messages.append({"role": "user", "content": turn["question"]})
             messages.append({"role": "assistant", "content": turn["answer"]})
-    messages.append({"role": "user", "content": f"Schema: {schema_text}\n\nQuestion: {question}"})
+    schema_suffix = ""
+    if table_names_list:
+        schema_suffix = f"\n\nAvailable tables ONLY (use no other): {', '.join(table_names_list)}"
+    messages.append({
+        "role": "user",
+        "content": f"Schema:\n{schema_text}{schema_suffix}\n\nQuestion: {question}",
+    })
     raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
+    trace["stage"] = "pergunta_main"
+    trace["source_type"] = "sql"
     await record_log(
         action="pergunta",
         provider=usage.get("provider", ""),
@@ -94,9 +109,11 @@ async def ask_sql(
     follow_up = parsed["followUpQuestions"]
     sql_query = extract_sql_from_field(parsed.get("sqlQuery") or "")
 
-    # Execute SELECT and have LLM elaborate answer from results
+    # Execute SELECT and have LLM elaborate answer from results (unless sql_mode: return raw SQL)
     chart_input = None
-    if sql_query and sql_query.upper().startswith("SELECT"):
+    if sql_mode and sql_query:
+        answer = sql_query
+    elif sql_query and sql_query.upper().startswith("SELECT"):
         try:
             rows = await loop.run_in_executor(
                 None, lambda: _run_query_sync(connection_string, sql_query)
@@ -127,6 +144,7 @@ async def ask_sql(
         candidate_questions=follow_up,
         schema_text=schema_text,
         llm_overrides=llm_overrides,
+        channel=channel,
     )
     return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up, "chartInput": chart_input}
 

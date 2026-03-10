@@ -190,6 +190,12 @@ export const apiClient = {
       body: JSON.stringify({ relationships }),
     });
   },
+  async dismissRelationshipSuggestion(agentId: string, key: string) {
+    return api<{ dismissed: string[] }>(`/api/sql/agents/${agentId}/dismiss-relationship-suggestion`, {
+      method: 'POST',
+      body: JSON.stringify({ key }),
+    });
+  },
   async refreshSourceBigQueryMetadata(sourceId: string) {
     return api<{ metaJSON: any }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
@@ -205,7 +211,7 @@ export const apiClient = {
   },
 
   async getAgent(id: string) {
-    return api<{ id: string; name: string; description: string; source_ids: string[]; source_relationships: SqlSourceRelationship[]; suggested_questions: string[]; llm_config_id?: string | null }>(`/api/agents/${id}`);
+    return api<{ id: string; name: string; description: string; source_ids: string[]; source_relationships: SqlSourceRelationship[]; suggested_questions: string[]; llm_config_id?: string | null; sql_mode?: boolean }>(`/api/agents/${id}`);
   },
 
   async listAgents() {
@@ -224,10 +230,10 @@ export const apiClient = {
     });
   },
 
-  async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], llmConfigId?: string | null, sourceRelationships?: SqlSourceRelationship[]) {
+  async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], llmConfigId?: string | null, sourceRelationships?: SqlSourceRelationship[], sqlMode?: boolean) {
     return api(`/api/agents/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], llm_config_id: llmConfigId ?? null, source_relationships: sourceRelationships }),
+      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], llm_config_id: llmConfigId ?? null, source_relationships: sourceRelationships, sql_mode: sqlMode }),
     });
   },
 

@@ -6,10 +6,12 @@ Serves the frontend SPA at / when dist/ exists (after npm run build).
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from openai import APIConnectionError
 
 from sqlalchemy import inspect, select, text
 from app.config import get_settings
@@ -113,6 +115,10 @@ async def _ensure_agent_source_relationships_column():
         )
         if "agents" in table_columns and "source_relationships" not in table_columns["agents"]:
             await conn.execute(text("ALTER TABLE agents ADD COLUMN source_relationships JSON"))
+        if "agents" in table_columns and "dismissed_relationship_suggestions" not in table_columns["agents"]:
+            await conn.execute(text("ALTER TABLE agents ADD COLUMN dismissed_relationship_suggestions JSON"))
+        if "agents" in table_columns and "sql_mode" not in table_columns["agents"]:
+            await conn.execute(text("ALTER TABLE agents ADD COLUMN sql_mode BOOLEAN DEFAULT 0"))
 
 
 @asynccontextmanager
@@ -153,6 +159,28 @@ app.add_middleware(
 )
 
 prefix = get_settings().api_prefix
+
+
+@app.exception_handler(APIConnectionError)
+async def llm_connection_error_handler(_request: Request, exc: APIConnectionError):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "Não foi possível conectar ao modelo de linguagem. Verifique se o Ollama está rodando (ollama serve) ou configure OpenAI/LiteLLM em Account > LLM."
+        },
+    )
+
+
+@app.exception_handler(httpx.ConnectError)
+async def httpx_connect_error_handler(_request: Request, exc: httpx.ConnectError):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "Não foi possível conectar ao modelo de linguagem. Verifique se o serviço (Ollama/OpenAI/LiteLLM) está rodando e acessível."
+        },
+    )
+
+
 app.include_router(auth_router.router, prefix=prefix)
 app.include_router(ask.router, prefix=prefix)
 app.include_router(crud.router, prefix=prefix)
@@ -190,7 +218,6 @@ if _SERVE_FRONTEND:
     async def spa_fallback(request: Request, _exc):
         """Serve index.html for non-API routes so SPA client-side routing works."""
         if request.url.path.startswith(prefix):
-            from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "Not Found"}, status_code=404)
         return FileResponse(_FRONTEND_DIST / "index.html")
 else:

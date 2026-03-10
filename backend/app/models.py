@@ -40,8 +40,10 @@ class Agent(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_ids: Mapped[list] = mapped_column(JSON, default=list)  # list of UUIDs
     source_relationships: Mapped[list] = mapped_column(JSON, default=list)
+    dismissed_relationship_suggestions: Mapped[list] = mapped_column(JSON, default=list)  # keys of excluded suggestions
     suggested_questions: Mapped[list] = mapped_column(JSON, default=list)
     llm_config_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # which LLM config to use
+    sql_mode: Mapped[bool] = mapped_column(Boolean, default=False)  # when True, answer with SQL query instead of elaborated result
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

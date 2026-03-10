@@ -24,7 +24,7 @@ def _materialize_sources_to_sqlite(
 ) -> tuple[sqlite3.Connection, list[dict[str, Any]]]:
     from sqlalchemy import create_engine
 
-    sqlite_conn = sqlite3.connect(":memory:")
+    sqlite_conn = sqlite3.connect(":memory:", check_same_thread=False)
     sqlite_conn.row_factory = sqlite3.Row
     aliases: list[dict[str, Any]] = []
 
@@ -67,29 +67,40 @@ def _materialize_sources_to_sqlite(
 
 
 def _build_schema_text(table_aliases: list[dict[str, Any]]) -> str:
+    """Build a clear schema description: table names, columns, and SQLite aliases."""
     lines = []
     for item in table_aliases:
+        cols_str = ", ".join(item["columns"]) if item.get("columns") else "(no columns)"
         lines.append(
-            f'Source "{item["sourceName"]}" table {item["table"]} is available as SQLite table '
-            f'{item["alias"]} with columns {item["columns"]}'
+            f'- Tabela "{item["table"]}" (fonte: {item["sourceName"]})\n'
+            f'  Colunas: {cols_str}\n'
+            f'  Alias no SQL: {item["alias"]}'
         )
-    return "\n".join(lines)
+    return "\n\n".join(lines)
 
 
 def _build_relationship_text(
     relationships: list[dict[str, str]],
     alias_map: dict[tuple[str, str], str],
-) -> str:
-    lines = []
+) -> tuple[str, str]:
+    """Build human-readable relationship description and SQL join conditions."""
+    human_lines = []
+    sql_lines = []
     for relationship in relationships:
         left_alias = alias_map.get((relationship["leftSourceId"], relationship["leftTable"]))
         right_alias = alias_map.get((relationship["rightSourceId"], relationship["rightTable"]))
         if not left_alias or not right_alias:
             continue
-        lines.append(
+        human_lines.append(
+            f'- {relationship["leftTable"]}.{relationship["leftColumn"]} -> '
+            f'{relationship["rightTable"]}.{relationship["rightColumn"]}'
+        )
+        sql_lines.append(
             f'{left_alias}."{relationship["leftColumn"]}" = {right_alias}."{relationship["rightColumn"]}"'
         )
-    return "\n".join(lines)
+    human_text = "\n".join(human_lines) if human_lines else "Nenhuma conexão configurada."
+    sql_text = "\n".join(sql_lines) if sql_lines else ""
+    return human_text, sql_text
 
 
 def _run_sqlite_query(conn: sqlite3.Connection, query: str) -> list[dict[str, Any]]:
@@ -112,6 +123,7 @@ async def ask_sql_multi_source(
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
     channel: str = "workspace",
+    sql_mode: bool = False,
 ) -> dict[str, Any]:
     from app.llm.charting import build_chart_input
     from app.llm.client import chat_completion
@@ -127,21 +139,41 @@ async def ask_sql_multi_source(
             for item in table_aliases
         }
         schema_text = _build_schema_text(table_aliases)
-        relationship_text = _build_relationship_text(relationships, alias_map)
+        relationship_human, relationship_sql = _build_relationship_text(relationships, alias_map)
         system = (
             "You are an assistant that answers questions about multiple SQL databases. "
             "The system materialized each original source table into an in-memory SQLite database. "
-            "When the question requires precise filtering or aggregation, you MUST provide a SQLite-compatible "
-            "SELECT query inside a fenced ```sql``` block using the provided SQLite table aliases. "
-            "Use the documented relationship clauses to join tables when needed. "
+            "You receive: (1) table names and their columns, (2) explicit connections (relationships) if configured. "
+            "When explicit relationships exist, use them for JOINs. "
+            "When no explicit relationships exist, infer JOINs from column names: e.g. orders.customer_id = customers.id, "
+            "order_items.order_id = orders.id, order_items.product_id = products.id. "
+            "Use JOINs to answer questions that span multiple tables (e.g. customers with orders, products in orders). "
+            "You MUST provide a SQLite-compatible SELECT query in a fenced ```sql``` block using the provided table aliases. "
             "Return ONLY valid JSON with keys: answer (string), followUpQuestions (array of strings), "
             "sqlQuery (string or null). "
-            "Any suggested follow-up questions must be answerable using only the available schema and relationships. "
-            "Do not invent fields, joins, dimensions, or metrics outside the provided schema. "
+            "Do not invent tables or columns outside the provided schema. "
             "Do not include any extra text outside the JSON."
         )
         if agent_description:
             system += f"\nContext: {agent_description}"
+
+        user_content_parts = [
+            "TABELAS E COLUNAS:\n",
+            schema_text,
+        ]
+        if relationship_sql:
+            user_content_parts.extend([
+                "\n\nCONEXÕES (SQL Links):\n",
+                relationship_human,
+                "\n\nCláusulas JOIN:\n",
+                relationship_sql,
+            ])
+        else:
+            user_content_parts.append(
+                "\n\n(Sem conexões explícitas. Infira JOINs por nomes de colunas: customer_id->customers.id, "
+                "order_id->orders.id, product_id->products.id, etc.)"
+            )
+        user_content_parts.extend(["\n\nPERGUNTA: ", question])
 
         messages = [{"role": "system", "content": system}]
         if history:
@@ -150,14 +182,12 @@ async def ask_sql_multi_source(
                 messages.append({"role": "assistant", "content": turn["answer"]})
         messages.append({
             "role": "user",
-            "content": (
-                f"Schema:\n{schema_text}\n\n"
-                f"Relationships:\n{relationship_text or 'No explicit relationships available'}\n\n"
-                f"Question: {question}"
-            ),
+            "content": "".join(user_content_parts),
         })
 
         raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
+        trace["stage"] = "pergunta_main"
+        trace["source_type"] = "sql_multi"
         await record_log(
             action="pergunta",
             provider=usage.get("provider", ""),
@@ -175,7 +205,9 @@ async def ask_sql_multi_source(
         sql_query = parsed.get("sqlQuery") or ""
 
         chart_input = None
-        if sql_query and sql_query.upper().startswith("SELECT"):
+        if sql_mode and sql_query:
+            answer = sql_query
+        elif sql_query and sql_query.upper().startswith("SELECT"):
             try:
                 rows = await loop.run_in_executor(None, lambda: _run_sqlite_query(sqlite_conn, sql_query))
                 chart_input = build_chart_input(rows, schema_text)
@@ -184,7 +216,7 @@ async def ask_sql_multi_source(
                     query_results=rows,
                     agent_description=agent_description,
                     source_name="SQL multi-source",
-                    schema_text=f"{schema_text}\nRelationships:\n{relationship_text}",
+                    schema_text=f"{schema_text}\n\nConexões:\n{relationship_human}",
                     llm_overrides=llm_overrides,
                     channel=channel,
                 )
@@ -202,8 +234,9 @@ async def ask_sql_multi_source(
         follow_up = await refine_followup_questions(
             question=question,
             candidate_questions=follow_up,
-            schema_text=f"{schema_text}\nRelationships:\n{relationship_text}",
+            schema_text=f"{schema_text}\n\nConexões:\n{relationship_human}",
             llm_overrides=llm_overrides,
+            channel=channel,
         )
         return {
             "answer": answer,

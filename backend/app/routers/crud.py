@@ -315,7 +315,7 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
     )
     db.add(a)
     await db.commit()
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": a.llm_config_id, "created_at": a.created_at.isoformat(), "updated_at": a.updated_at.isoformat()}
+    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": a.llm_config_id, "sql_mode": getattr(a, "sql_mode", False), "created_at": a.created_at.isoformat(), "updated_at": a.updated_at.isoformat()}
 
 
 @router.patch("/agents/{agent_id}")
@@ -336,8 +336,10 @@ async def update_agent(agent_id: str, body: dict, db: AsyncSession = Depends(get
         a.suggested_questions = body["suggested_questions"]
     if "llm_config_id" in body:
         a.llm_config_id = body["llm_config_id"]
+    if "sql_mode" in body:
+        a.sql_mode = bool(body["sql_mode"])
     await db.commit()
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": getattr(a, "llm_config_id", None)}
+    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": getattr(a, "llm_config_id", None), "sql_mode": getattr(a, "sql_mode", False)}
 
 
 @router.get("/agents/{agent_id}")
@@ -346,7 +348,7 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db), user: Use
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Agent not found")
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids or [], "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions or [], "llm_config_id": getattr(a, "llm_config_id", None)}
+    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids or [], "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions or [], "llm_config_id": getattr(a, "llm_config_id", None), "sql_mode": getattr(a, "sql_mode", False)}
 
 
 @router.delete("/agents/{agent_id}")

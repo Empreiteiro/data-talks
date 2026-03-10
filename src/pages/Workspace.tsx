@@ -5,6 +5,7 @@ import { GraphViewModal } from "@/components/GraphViewModal";
 import { LogsModal } from "@/components/LogsModal";
 import { ProtectedImage } from "@/components/ProtectedImage";
 import { SEO } from "@/components/SEO";
+import { SqlRelationshipsModal } from "@/components/SqlRelationshipsModal";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { SummaryModal } from "@/components/SummaryModal";
@@ -26,7 +27,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { BarChart3, Bot, ChevronRight, History, Layout, RotateCcw, Send, Table, Terminal, Upload, X } from "lucide-react";
+import { BarChart3, Bot, ChevronRight, History, Layout, Link2, RotateCcw, Send, Table, Terminal, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -249,12 +250,15 @@ export default function Workspace() {
   const [audioOverviewModalOpen, setAudioOverviewModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
+  const [sqlRelationshipsOpen, setSqlRelationshipsOpen] = useState(false);
+  const [sqlSourcesCount, setSqlSourcesCount] = useState(0);
 
   useEffect(() => {
     checkSources();
     loadHistory();
     loadAvailableColumns();
     loadWarmupQuestions();
+    loadSqlSourcesCount();
   }, [id, user]);
 
   useEffect(() => {
@@ -271,37 +275,61 @@ export default function Workspace() {
     }
   }
 
+  async function loadSqlSourcesCount() {
+    if (!id) return;
+    try {
+      const sources = await dataClient.listSources(id);
+      setSqlSourcesCount((sources || []).filter((source) => source.type === "sql_database").length);
+    } catch (error: any) {
+      console.error("Erro ao carregar contagem de fontes SQL:", error);
+    }
+  }
+
+  function getColumnsFromSource(source: { name: string; type: string; metaJSON?: any }, withPrefix: boolean): string[] {
+    const meta = source?.metaJSON || {};
+    const prefix = withPrefix ? source.name + "." : "";
+
+    if (source.type === "sql_database") {
+      const tableInfos = meta.table_infos || [];
+      if (tableInfos.length > 0) {
+        return tableInfos.flatMap((ti: { table: string; columns?: string[] }) =>
+          (ti.columns || []).map((col: string) => `${ti.table}.${col}`)
+        );
+      }
+      return (meta.availableColumns || []).map((c: string) => prefix + c);
+    }
+    if (source.type === "bigquery") {
+      const tables = meta.table_infos || meta.tables || [];
+      return tables.flatMap((ti: { table?: string; columns?: string[] }) =>
+        (ti.columns || []).map((c: string) => prefix + c)
+      );
+    }
+    if (source.type === "google_sheets") {
+      return (meta.availableColumns || meta.available_columns || []).map((c: string) => prefix + c);
+    }
+    if (meta.columns) {
+      return meta.columns.map((c: string) => prefix + c);
+    }
+    return [];
+  }
+
   async function loadAvailableColumns() {
     if (!id) return;
     try {
       let sources = await dataClient.listSources(id, true);
-      const activeSqlSources = (sources || []).filter((source) => source.type === "sql_database");
-      if (activeSqlSources.length > 1) {
-        const agent = await dataClient.getAgent(id);
-        const relationships = agent?.source_relationships || [];
-        const relatedSourceIds = new Set<string>();
-        relationships.forEach((relationship) => {
-          relatedSourceIds.add(relationship.leftSourceId);
-          relatedSourceIds.add(relationship.rightSourceId);
-        });
-        const groupedSqlSources = activeSqlSources.filter((source) => relatedSourceIds.has(source.id));
-        if (groupedSqlSources.length > 1) {
-          const groupedColumns = groupedSqlSources.flatMap((source) => {
-            const tableInfos = source.metaJSON?.table_infos || [];
-            return tableInfos.flatMap((tableInfo: { table: string; columns?: string[] }) =>
-              (tableInfo.columns || []).map((column) => `${tableInfo.table}.${column}`)
-            );
-          });
-          setAvailableColumns(Array.from(new Set(groupedColumns)));
-          return;
-        }
+      sources = sources || [];
+
+      if (sources.length > 1) {
+        const allColumns = sources.flatMap((s) => getColumnsFromSource(s, true));
+        setAvailableColumns(Array.from(new Set(allColumns)));
+        return;
       }
 
-      const source = sources && sources[0];
+      const source = sources[0];
       if (source) {
         let metadata = source?.metaJSON as any;
         let columnNames: string[] = [];
-        if (source?.type === 'bigquery') {
+        if (source?.type === "bigquery") {
           const hasTableInfos = metadata?.table_infos && metadata.table_infos.length > 0;
           if (!hasTableInfos && source.id) {
             try {
@@ -318,9 +346,9 @@ export default function Workspace() {
           } else {
             columnNames = metadata?.table_infos?.[0]?.columns || [];
           }
-        } else if (source.type === 'google_sheets' && metadata?.availableColumns) {
+        } else if (source.type === "google_sheets" && metadata?.availableColumns) {
           columnNames = metadata.availableColumns;
-        } else if (source.type === 'sql_database') {
+        } else if (source.type === "sql_database") {
           if (metadata?.availableColumns) columnNames = metadata.availableColumns;
           else if (metadata?.table_infos?.length) columnNames = metadata.table_infos[0].columns || [];
         } else if (metadata?.columns) {
@@ -356,6 +384,7 @@ export default function Workspace() {
   function handleSourceContextChanged() {
     clearConversation();
     loadAvailableColumns();
+    loadSqlSourcesCount();
   }
 
   async function loadHistory() {
@@ -589,7 +618,6 @@ export default function Workspace() {
             onAddSource={() => setAddSourceOpen(true)}
             refreshTrigger={sourcesRefreshTrigger}
             onSourceActivated={handleSourceContextChanged}
-            onRelationshipsUpdated={handleSourceContextChanged}
           />
         </div>
 
@@ -599,6 +627,16 @@ export default function Workspace() {
             <h1 className="font-semibold">{t('workspace.chat')}</h1>
             
             <div className="flex items-center gap-2">
+              {id && sqlSourcesCount >= 2 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setSqlRelationshipsOpen(true)}
+                  title={t("sources.relationships")}
+                >
+                  <Link2 className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="icon"
@@ -943,7 +981,17 @@ export default function Workspace() {
         setSourcesRefreshTrigger(prev => prev + 1);
         checkSources();
         loadAvailableColumns();
+        loadSqlSourcesCount();
       }} />
+
+      {id && (
+        <SqlRelationshipsModal
+          open={sqlRelationshipsOpen}
+          onOpenChange={setSqlRelationshipsOpen}
+          agentId={id}
+          onSaved={handleSourceContextChanged}
+        />
+      )}
       
       <AgentSettingsModal
         open={isSettingsOpen}

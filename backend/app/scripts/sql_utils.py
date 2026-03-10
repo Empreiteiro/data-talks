@@ -170,6 +170,18 @@ def validate_source_relationships(
     return validated
 
 
+def relationship_key(rel: dict[str, Any]) -> str:
+    """Canonical key for a relationship; matches frontend format."""
+    return "|".join([
+        str(rel.get("leftSourceId", "")),
+        str(rel.get("leftTable", "")),
+        str(rel.get("leftColumn", "")),
+        str(rel.get("rightSourceId", "")),
+        str(rel.get("rightTable", "")),
+        str(rel.get("rightColumn", "")),
+    ])
+
+
 def suggest_source_relationships(source_rows: list[dict[str, Any]]) -> list[dict[str, str]]:
     """Suggest relationships when sources share a column name."""
     suggestions: list[dict[str, str]] = []

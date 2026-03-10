@@ -53,6 +53,7 @@ async def generate_table_summary_google_sheets(
         max_tokens=2048,
         llm_overrides=llm_overrides,
     )
+    trace["stage"] = "summary_google_sheets"
     await record_log(
         action="summary",
         provider=usage.get("provider", ""),

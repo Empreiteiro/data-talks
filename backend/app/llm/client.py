@@ -62,16 +62,27 @@ def get_audio_model(llm_overrides: dict[str, Any] | None = None) -> tuple[str, s
     return provider, ""
 
 
+_MAX_TRACE_CONTENT = 30000  # chars per field to avoid huge DB payloads
+
+
+def _truncate(s: str, max_len: int = _MAX_TRACE_CONTENT) -> str:
+    s = str(s) if s is not None else ""
+    return s if len(s) <= max_len else s[:max_len] + "\n...[truncated]"
+
+
 def _build_trace(
     messages: list[dict[str, Any]],
     message: Any,
+    content: str = "",
     finish_reason: str | None = None,
     raw: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build trace dict from LLM response for logging."""
+    """Build trace dict from LLM response for logging. Includes full input/output for debugging."""
     trace: dict[str, Any] = {
         "messages_count": len(messages),
         "roles": [m.get("role", "?") for m in messages],
+        "input_messages": [{"role": m.get("role", "?"), "content": _truncate(m.get("content", ""))} for m in messages],
+        "output_content": _truncate(content),
     }
     if messages:
         first_content = messages[0].get("content", "") or ""
@@ -134,7 +145,7 @@ async def _openai_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dic
     input_t = getattr(usage_data, "prompt_tokens", None) or getattr(usage_data, "input_tokens", 0) if usage_data else 0
     output_t = getattr(usage_data, "completion_tokens", None) or getattr(usage_data, "output_tokens", 0) if usage_data else 0
     finish = getattr(resp.choices[0], "finish_reason", None)
-    trace = _build_trace(messages, msg, finish_reason=finish)
+    trace = _build_trace(messages, msg, content=content, finish_reason=finish)
     return content, _usage("openai", model, input_t or 0, output_t or 0), trace
 
 
@@ -158,7 +169,7 @@ async def _ollama_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dic
     input_t = getattr(usage_data, "prompt_tokens", None) or 0 if usage_data else 0
     output_t = getattr(usage_data, "completion_tokens", None) or 0 if usage_data else 0
     finish = getattr(resp.choices[0], "finish_reason", None)
-    trace = _build_trace(messages, msg, finish_reason=finish)
+    trace = _build_trace(messages, msg, content=content, finish_reason=finish)
     return content, _usage("ollama", model, input_t or 0, output_t or 0), trace
 
 
@@ -183,7 +194,7 @@ async def _litellm_chat(messages: list[dict[str, str]], max_tokens: int, cfg: di
     input_t = getattr(usage_data, "prompt_tokens", None) or getattr(usage_data, "input_tokens", 0) if usage_data else 0
     output_t = getattr(usage_data, "completion_tokens", None) or getattr(usage_data, "output_tokens", 0) if usage_data else 0
     finish = getattr(resp.choices[0], "finish_reason", None)
-    trace = _build_trace(messages, msg, finish_reason=finish)
+    trace = _build_trace(messages, msg, content=content, finish_reason=finish)
     return content, _usage("litellm", model, input_t or 0, output_t or 0), trace
 
 

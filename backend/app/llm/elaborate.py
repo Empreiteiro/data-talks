@@ -83,8 +83,9 @@ async def elaborate_answer_with_results(
     raw, usage, trace = await chat_completion(
         messages, max_tokens=1024, llm_overrides=llm_overrides
     )
+    trace["stage"] = "elaborate"
     await record_log(
-        action="elaborate",
+        action="pergunta",
         provider=usage.get("provider", ""),
         model=usage.get("model", ""),
         input_tokens=usage.get("input_tokens", 0),
@@ -100,6 +101,7 @@ async def elaborate_answer_with_results(
         candidate_questions=parsed.get("followUpQuestions") or [],
         schema_text=schema_text,
         llm_overrides=llm_overrides,
+        channel=channel,
     )
     return {
         "answer": parsed.get("answer") or raw,

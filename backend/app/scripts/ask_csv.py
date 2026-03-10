@@ -93,6 +93,8 @@ async def ask_csv(
             messages.append({"role": "assistant", "content": turn["answer"]})
     messages.append({"role": "user", "content": user_content})
     raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
+    trace["stage"] = "pergunta_main"
+    trace["source_type"] = "csv"
     await record_log(
         action="pergunta",
         provider=usage.get("provider", ""),
@@ -143,6 +145,7 @@ async def ask_csv(
         candidate_questions=follow_up,
         schema_text=schema_for_sql,
         llm_overrides=llm_overrides,
+        channel=channel,
     )
 
     return {

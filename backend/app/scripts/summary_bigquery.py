@@ -94,6 +94,7 @@ async def generate_table_summary_bigquery(
         max_tokens=1024,
         llm_overrides=llm_overrides,
     )
+    trace1["stage"] = "summary_bigquery_queries"
     await record_log(
         action="summary",
         provider=usage1.get("provider", ""),
@@ -166,6 +167,7 @@ async def generate_table_summary_bigquery(
         max_tokens=2048,
         llm_overrides=llm_overrides,
     )
+    trace2["stage"] = "summary_bigquery_report"
     await record_log(
         action="summary",
         provider=usage2.get("provider", ""),

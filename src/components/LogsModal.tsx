@@ -145,6 +145,7 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
                 <TableHead className="text-right">{t("logs.tokensIn")}</TableHead>
                 <TableHead className="text-right">{t("logs.tokensOut")}</TableHead>
                 <TableHead className="max-w-[200px]">{t("logs.source")}</TableHead>
+                <TableHead className="w-[100px]">{t("logs.stage")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,11 +197,30 @@ export function LogsModal({ open, onOpenChange }: LogsModalProps) {
                   <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                     {log.source || "—"}
                   </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {(log.trace as { stage?: string })?.stage || "—"}
+                  </TableCell>
                 </TableRow>
                 {expandedIdx === idx && hasTrace(log) && log.trace && (
                   <TableRow key={`${idx}-detail`}>
-                    <TableCell colSpan={9} className="bg-muted/30 p-4 align-top">
+                    <TableCell colSpan={10} className="bg-muted/30 p-4 align-top">
                       <div className="space-y-3">
+                        {(log.trace as { input_messages?: unknown[] }).input_messages && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Input (messages)</h4>
+                            <pre className="text-xs overflow-auto max-h-48 rounded border bg-background p-3 font-mono whitespace-pre-wrap break-words">
+                              {JSON.stringify((log.trace as { input_messages: unknown[] }).input_messages, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                        {(log.trace as { output_content?: string }).output_content && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Output</h4>
+                            <pre className="text-xs overflow-auto max-h-48 rounded border bg-background p-3 font-mono whitespace-pre-wrap break-words">
+                              {String((log.trace as { output_content: string }).output_content)}
+                            </pre>
+                          </div>
+                        )}
                         {log.trace.reasoning && (
                           <div>
                             <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">

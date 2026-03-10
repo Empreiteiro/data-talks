@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models import Agent, Source, User
 from app.scripts.sql_utils import (
     list_sql_tables_sync,
+    relationship_key,
     suggest_source_relationships,
     validate_source_relationships,
 )
@@ -82,6 +83,10 @@ class RelationshipSaveBody(BaseModel):
     relationships: list[dict] = []
 
 
+class DismissSuggestionBody(BaseModel):
+    key: str
+
+
 @router.get("/agents/{agent_id}/sources")
 async def list_agent_sql_sources(
     agent_id: str,
@@ -112,7 +117,9 @@ async def list_relationship_suggestions(
 ):
     agent, sources = await _get_agent_sql_sources(agent_id, db, user)
     source_rows = [_source_sql_payload(source) for source in sources]
-    suggestions = suggest_source_relationships(source_rows)
+    all_suggestions = suggest_source_relationships(source_rows)
+    dismissed = set(getattr(agent, "dismissed_relationship_suggestions", None) or [])
+    suggestions = [s for s in all_suggestions if relationship_key(s) not in dismissed]
     return {
         "sources": [
             {
@@ -126,6 +133,23 @@ async def list_relationship_suggestions(
         "relationships": agent.source_relationships or [],
         "suggestions": suggestions,
     }
+
+
+@router.post("/agents/{agent_id}/dismiss-relationship-suggestion")
+async def dismiss_relationship_suggestion(
+    agent_id: str,
+    body: DismissSuggestionBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    agent, _ = await _get_agent_sql_sources(agent_id, db, user)
+    dismissed = list(getattr(agent, "dismissed_relationship_suggestions", None) or [])
+    key = (body.key or "").strip()
+    if key and key not in dismissed:
+        dismissed.append(key)
+        agent.dismissed_relationship_suggestions = dismissed
+        await db.commit()
+    return {"dismissed": agent.dismissed_relationship_suggestions or []}
 
 
 @router.put("/agents/{agent_id}/relationships")

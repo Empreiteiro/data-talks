@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { dataClient } from "@/services/dataClient";
+import { getConnectionStringLabel } from "@/lib/utils";
 import { Trash2, Plus, Key } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -27,12 +28,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-interface Credential {
-  id: string;
-  name: string;
-  createdAt: string;
-  projectId?: string;
-}
+type Credential =
+  | { type: "bigquery"; id: string; name: string; createdAt: string; projectId?: string }
+  | { type: "sql"; id: string; connectionLabel: string; databaseType: string; tableCount: number };
 
 interface BigQueryCredentialsManagerProps {
   onSourceAdded?: () => void;
@@ -52,13 +50,33 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       const sources = await dataClient.listSources();
       const list = Array.isArray(sources) ? sources : [];
       const bigquery = list.filter((s: { type?: string }) => s.type === 'bigquery');
-      const formattedCredentials: Credential[] = bigquery.map((s: { id: string; name: string; createdAt?: string; metaJSON?: any }) => ({
+      const sqlSources = list.filter((s: { type?: string; metaJSON?: any }) => s.type === 'sql_database' && s.metaJSON?.connectionString);
+      const bqCreds: Credential[] = bigquery.map((s: { id: string; name: string; createdAt?: string; metaJSON?: any }) => ({
+        type: 'bigquery' as const,
         id: s.id,
         name: s.name ?? '',
         createdAt: s.createdAt ?? '',
         projectId: s.metaJSON?.projectId ?? s.metaJSON?.project_id,
       }));
-      setCredentials(formattedCredentials);
+      const byConn = new Map<string, { id: string; connectionString: string; databaseType: string; tableNames: Set<string> }>();
+      for (const s of sqlSources) {
+        const conn = String(s.metaJSON?.connectionString || '').trim();
+        const tableInfos = Array.isArray(s.metaJSON?.table_infos) ? s.metaJSON.table_infos : [];
+        const names = new Set(tableInfos.map((t: { table?: string }) => t?.table).filter(Boolean));
+        if (!byConn.has(conn)) {
+          byConn.set(conn, { id: s.id, connectionString: conn, databaseType: s.metaJSON?.databaseType || 'sql', tableNames: new Set(names) });
+        } else {
+          names.forEach((n) => byConn.get(conn)!.tableNames.add(n as string));
+        }
+      }
+      const sqlCreds: Credential[] = Array.from(byConn.values()).map((c) => ({
+        type: 'sql' as const,
+        id: c.id,
+        connectionLabel: getConnectionStringLabel(c.connectionString),
+        databaseType: c.databaseType,
+        tableCount: c.tableNames.size,
+      }));
+      setCredentials([...bqCreds, ...sqlCreds]);
     } catch (error: any) {
       console.error('Error fetching credentials:', error);
       const message = error?.message ?? t('bigquery.errors.loadFailed');
@@ -175,54 +193,67 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
           <div className="space-y-2">
             {credentials.map((cred) => (
               <div
-                key={cred.id}
+                key={`${cred.type}-${cred.id}`}
                 className="group relative p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50"
               >
                 <div className="flex items-start gap-2">
                   <Key className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{cred.name}</p>
+                    <p className="text-sm font-medium truncate">
+                      {cred.type === 'bigquery' ? cred.name : cred.connectionLabel}
+                    </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {cred.projectId || 'N/A'}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {cred.createdAt ? new Date(cred.createdAt).toLocaleDateString('pt-BR') : '—'}
-                      </span>
+                      {cred.type === 'bigquery' ? (
+                        <>
+                          <Badge variant="outline" className="text-xs">{cred.projectId || 'N/A'}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {cred.createdAt ? new Date(cred.createdAt).toLocaleDateString('pt-BR') : '—'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Badge variant="outline" className="text-xs capitalize">{cred.databaseType}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {cred.tableCount} {t('credentials.sql.tables')}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                          title={t('bigquery.delete.title')}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>{t('bigquery.delete.title')}</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t('bigquery.delete.description', { name: cred.name })}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>{t('bigquery.delete.cancel')}</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(cred.id)}
-                            className="bg-destructive text-destructive-foreground"
+                  {cred.type === 'bigquery' && (
+                    <div className="flex items-center gap-1">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                            title={t('bigquery.delete.title')}
                           >
-                            {t('bigquery.delete.confirm')}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t('bigquery.delete.title')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t('bigquery.delete.description', { name: cred.name })}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t('bigquery.delete.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(cred.id)}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              {t('bigquery.delete.confirm')}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getConnectionStringLabel } from "@/lib/utils";
 import { dataClient } from "@/services/dataClient";
 import { Loader2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -60,9 +61,18 @@ export function AddSourceModal({
   const [sheetsServiceEmail, setSheetsServiceEmail] = useState<string | null | undefined>(undefined);
 
   // SQL Database state
+  const [existingSqlCredentials, setExistingSqlCredentials] = useState<Array<{
+    id: string;
+    connectionLabel: string;
+    connectionString?: string;
+    databaseType?: 'postgresql' | 'mysql' | '';
+    tableInfos?: Array<{ table: string; columns?: string[] }>;
+  }>>([]);
+  const [useExistingSqlCredential, setUseExistingSqlCredential] = useState(false);
+  const [selectedSqlCredential, setSelectedSqlCredential] = useState<string>("");
   const [sqlConnectionString, setSqlConnectionString] = useState("");
   const [sqlDatabaseType, setSqlDatabaseType] = useState<'postgresql' | 'mysql' | ''>('');
-  const [sqlTableName, setSqlTableName] = useState("");
+  const [selectedSqlTables, setSelectedSqlTables] = useState<string[]>([]);
   const [availableSqlTables, setAvailableSqlTables] = useState<Array<{id: string; name: string; columns?: string[]}>>([]);
   const [loadingSqlTables, setLoadingSqlTables] = useState(false);
 
@@ -74,7 +84,11 @@ export function AddSourceModal({
       setAvailableDatasets([]);
       setAvailableTables([]);
       setAvailableSqlTables([]);
-      setSqlTableName("");
+      setSelectedSqlTables([]);
+      setUseExistingSqlCredential(false);
+      setSelectedSqlCredential("");
+      setSqlConnectionString("");
+      setSqlDatabaseType("");
       setSheetsServiceEmail(undefined);
       dataClient.getGoogleSheetsServiceEmail()
         .then((email) => setSheetsServiceEmail(email ?? null))
@@ -166,6 +180,21 @@ export function AddSourceModal({
     return () => { cancelled = true; };
   }, [open, bigQueryData.projectId, bigQueryData.datasetId, useExistingCredential, selectedCredential, bigQueryData.credentialsFile]);
 
+  const inferSqlDatabaseType = (connectionString?: string): 'postgresql' | 'mysql' | '' => {
+    const normalized = (connectionString || '').trim().toLowerCase();
+    if (normalized.startsWith('postgresql://') || normalized.startsWith('postgres://')) return 'postgresql';
+    if (normalized.startsWith('mysql://')) return 'mysql';
+    return '';
+  };
+
+  const getCurrentSqlConnectionString = () => {
+    if (useExistingSqlCredential && selectedSqlCredential) {
+      const existing = existingSqlCredentials.find((credential) => credential.id === selectedSqlCredential);
+      return existing?.connectionString?.trim() || '';
+    }
+    return sqlConnectionString.trim();
+  };
+
   const fetchExistingCredentials = async () => {
     try {
       const sources = await dataClient.listSources();
@@ -179,6 +208,34 @@ export function AddSourceModal({
         tables: s.metaJSON?.tables,
       }));
       setExistingCredentials(credentials);
+      const sqlSources = (sources || [])
+        .filter((s: { type: string; metaJSON?: any }) => s.type === 'sql_database' && s.metaJSON?.connectionString);
+      const byConn = new Map<string, { id: string; connectionString: string; databaseType: string; tableInfos: any[] }>();
+      for (const s of sqlSources) {
+        const conn = String(s.metaJSON?.connectionString || '').trim();
+        const existing = byConn.get(conn);
+        const tableInfos = Array.isArray(s.metaJSON?.table_infos) ? s.metaJSON.table_infos : [];
+        if (!existing) {
+          byConn.set(conn, {
+            id: s.id,
+            connectionString: conn,
+            databaseType: s.metaJSON?.databaseType || inferSqlDatabaseType(conn),
+            tableInfos: [...tableInfos],
+          });
+        } else {
+          const merged = new Map<string, any>();
+          [...existing.tableInfos, ...tableInfos].forEach((t) => merged.set(t.table, t));
+          existing.tableInfos = Array.from(merged.values());
+        }
+      }
+      const sqlCredentials = Array.from(byConn.values()).map((c) => ({
+        id: c.id,
+        connectionLabel: getConnectionStringLabel(c.connectionString),
+        connectionString: c.connectionString,
+        databaseType: c.databaseType,
+        tableInfos: c.tableInfos,
+      }));
+      setExistingSqlCredentials(sqlCredentials);
     } catch (error) {
       console.error('Error fetching existing credentials:', error);
     }
@@ -273,6 +330,21 @@ export function AddSourceModal({
         tables: tablesStr,
       }));
     }
+  };
+
+  const handleExistingSqlCredentialSelect = (credentialId: string) => {
+    setSelectedSqlCredential(credentialId);
+    const selectedCredential = existingSqlCredentials.find((credential) => credential.id === credentialId);
+    const inferredType = selectedCredential?.databaseType || inferSqlDatabaseType(selectedCredential?.connectionString);
+    const credentialTables = (selectedCredential?.tableInfos || []).map((table) => ({
+      id: table.table,
+      name: table.table,
+      columns: table.columns || [],
+    }));
+
+    setSqlDatabaseType(inferredType);
+    setAvailableSqlTables(credentialTables);
+    setSelectedSqlTables(credentialTables.map((table) => table.id));
   };
 
   const handleBigQueryConnect = async () => {
@@ -381,29 +453,27 @@ export function AddSourceModal({
   };
 
   const handleSqlDiscoverTables = async () => {
-    if (!sqlConnectionString.trim()) {
+    const connectionString = getCurrentSqlConnectionString();
+    if (!connectionString) {
       toast.error(t('addSource.sqlFillFields'));
       return;
     }
 
     setLoadingSqlTables(true);
     try {
-      const res = await dataClient.sqlListTables({ connectionString: sqlConnectionString.trim() });
+      const res = await dataClient.sqlListTables({ connectionString });
       const tables = res.tables || [];
       setAvailableSqlTables(tables);
       if (tables.length === 0) {
-        setSqlTableName("");
+        setSelectedSqlTables([]);
         toast.error(t('addSource.sqlNoTablesFound'));
         return;
       }
-
-      if (!tables.some((table) => table.id === sqlTableName)) {
-        setSqlTableName(tables[0].id);
-      }
+      setSelectedSqlTables((current) => current.filter((tableId) => tables.some((table) => table.id === tableId)));
     } catch (error: any) {
       console.error('SQL table discovery error:', error);
       setAvailableSqlTables([]);
-      setSqlTableName("");
+      setSelectedSqlTables([]);
       toast.error(t('addSource.sqlListError'), { description: error.message });
     } finally {
       setLoadingSqlTables(false);
@@ -411,33 +481,53 @@ export function AddSourceModal({
   };
 
   const handleSqlConnect = async () => {
-    if (!sqlConnectionString || !sqlDatabaseType || !sqlTableName) {
+    const connectionString = getCurrentSqlConnectionString();
+    if (!connectionString || !sqlDatabaseType || selectedSqlTables.length === 0) {
       toast.error(t('addSource.sqlFillFields'));
       return;
     }
 
     setConnecting(true);
     try {
-      const selectedSqlTable = availableSqlTables.find((table) => table.id === sqlTableName);
-      const availableColumns = (selectedSqlTable?.columns || []).filter(Boolean);
-      const name = `SQL ${sqlTableName}`;
-      const metadata = {
-        connectionString: sqlConnectionString.trim(),
-        availableColumns,
-        table_infos: [{ table: sqlTableName, columns: availableColumns }],
-      };
-      const source = await dataClient.createSource(name, 'sql_database', metadata, agentId);
-      if (agentId && source?.id) {
+      const selectedTableInfos = selectedSqlTables
+        .map((tableId) => availableSqlTables.find((table) => table.id === tableId))
+        .filter(Boolean)
+        .map((table) => ({
+          table: table!.id,
+          columns: (table!.columns || []).filter(Boolean),
+        }));
+      if (selectedTableInfos.length === 0) {
+        toast.error(t('addSource.sqlFillFields'));
+        return;
+      }
+
+      const createdSources = await Promise.all(
+        selectedTableInfos.map((tableInfo) => {
+          const metadata = {
+            connectionString,
+            databaseType: sqlDatabaseType,
+            availableColumns: tableInfo.columns,
+            table_infos: [tableInfo],
+          };
+          return dataClient.createSource(`SQL ${tableInfo.table}`, 'sql_database', metadata, agentId);
+        })
+      );
+
+      if (agentId && createdSources.length > 0) {
         const existingSources = await dataClient.listSources(agentId);
         await Promise.all(
-          existingSources.filter((s: { id: string }) => s.id !== source.id).map((s: { id: string }) =>
+          existingSources.filter((s: { id: string; type: string }) => s.type !== 'sql_database').map((s: { id: string }) =>
             dataClient.updateSource(s.id, { is_active: false })
           )
         );
-        await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
+        await Promise.all(
+          createdSources.map((source) =>
+            dataClient.updateSource(source.id, { agent_id: agentId, is_active: true })
+          )
+        );
       }
       toast.success(t('addSource.sqlConnectSuccess'));
-      onSourceAdded?.(source.id);
+      onSourceAdded?.(createdSources[0]?.id || '');
       onOpenChange(false);
     } catch (error: any) {
       console.error('SQL database connection error:', error);
@@ -689,7 +779,7 @@ export function AddSourceModal({
                     onValueChange={(value: any) => {
                       setSqlDatabaseType(value);
                       setAvailableSqlTables([]);
-                      setSqlTableName("");
+                      setSelectedSqlTables([]);
                     }}
                   >
                     <SelectTrigger className="w-full">
@@ -702,6 +792,49 @@ export function AddSourceModal({
                   </Select>
                 </div>
 
+                {existingSqlCredentials.length > 0 && (
+                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="use-existing-sql"
+                        checked={useExistingSqlCredential}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setUseExistingSqlCredential(checked);
+                          setAvailableSqlTables([]);
+                          setSelectedSqlTables([]);
+                          if (!checked) {
+                            setSelectedSqlCredential("");
+                            setSqlConnectionString("");
+                            setSqlDatabaseType("");
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor="use-existing-sql" className="cursor-pointer font-medium">
+                        {t('addSource.sqlUseExistingCredential')}
+                      </Label>
+                    </div>
+
+                    {useExistingSqlCredential && (
+                      <Select value={selectedSqlCredential} onValueChange={handleExistingSqlCredentialSelect}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={t('addSource.sqlSelectCredential')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {existingSqlCredentials.map((credential) => (
+                            <SelectItem key={credential.id} value={credential.id}>
+                              {credential.connectionLabel || credential.connectionString?.slice(0, 30)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+
+                {!useExistingSqlCredential && (
                 <div className="space-y-2">
                   <Label htmlFor="sql-connection">{t('addSource.sqlConnectionString')}</Label>
                   <Input 
@@ -712,13 +845,17 @@ export function AddSourceModal({
                     onChange={(e) => {
                       setSqlConnectionString(e.target.value);
                       setAvailableSqlTables([]);
-                      setSqlTableName("");
+                      setSelectedSqlTables([]);
+                      if (!sqlDatabaseType) {
+                        setSqlDatabaseType(inferSqlDatabaseType(e.target.value));
+                      }
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
                     {t('addSource.sqlExample')}: {sqlDatabaseType === 'mysql' ? 'mysql://user:password@host:3306/database' : 'postgresql://user:password@host:5432/database'}
                   </p>
                 </div>
+                )}
 
                 <div className="space-y-2">
                   <Button
@@ -726,7 +863,7 @@ export function AddSourceModal({
                     variant="outline"
                     className="w-full"
                     onClick={handleSqlDiscoverTables}
-                    disabled={!sqlConnectionString.trim() || loadingSqlTables || connecting}
+                    disabled={!getCurrentSqlConnectionString() || loadingSqlTables || connecting}
                   >
                     {loadingSqlTables ? <>
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -736,37 +873,53 @@ export function AddSourceModal({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sql-table">{t('addSource.sqlTableName')}</Label>
-                  <Select
-                    value={sqlTableName || undefined}
-                    onValueChange={setSqlTableName}
-                    disabled={loadingSqlTables || availableSqlTables.length === 0}
-                  >
-                    <SelectTrigger id="sql-table" className="w-full">
-                      <SelectValue
-                        placeholder={
-                          loadingSqlTables
-                            ? t('addSource.loadingTables')
-                            : availableSqlTables.length === 0
-                              ? t('addSource.sqlLoadTablesFirst')
-                              : t('addSource.selectTablePlaceholder')
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSqlTables.map((table) => (
-                        <SelectItem key={table.id} value={table.id}>
-                          {table.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="sql-table">{t('addSource.sqlSelectedTables')}</Label>
+                  <div className="max-h-56 overflow-y-auto rounded-md border p-2 space-y-2">
+                    {availableSqlTables.length === 0 ? (
+                      <p className="text-sm text-muted-foreground px-2 py-1">
+                        {loadingSqlTables ? t('addSource.loadingTables') : t('addSource.sqlLoadTablesFirst')}
+                      </p>
+                    ) : (
+                      availableSqlTables.map((table) => {
+                        const isChecked = selectedSqlTables.includes(table.id);
+                        return (
+                          <label key={table.id} className="flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                setSelectedSqlTables((current) => (
+                                  e.target.checked
+                                    ? [...current, table.id]
+                                    : current.filter((tableId) => tableId !== table.id)
+                                ));
+                              }}
+                              className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-sm">{table.name}</span>
+                              {table.columns && table.columns.length > 0 && (
+                                <span className="block text-xs text-muted-foreground truncate">
+                                  {table.columns.join(', ')}
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  {selectedSqlTables.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('addSource.sqlSelectedTablesCount', { count: selectedSqlTables.length })}
+                    </p>
+                  )}
                 </div>
 
                 <Button 
                   className="w-full"
                   onClick={handleSqlConnect}
-                  disabled={!sqlConnectionString || !sqlDatabaseType || !sqlTableName || connecting || loadingSqlTables}
+                  disabled={!getCurrentSqlConnectionString() || !sqlDatabaseType || selectedSqlTables.length === 0 || connecting || loadingSqlTables}
                 >
                   {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
                 </Button>

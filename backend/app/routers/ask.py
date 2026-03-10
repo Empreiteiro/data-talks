@@ -82,12 +82,9 @@ def _find_turn(history: list[dict], turn_id: str | None, turn_index: int | None)
 
 
 def _build_active_multi_sql_sources(agent: Agent, sources: list[Source]) -> tuple[list[dict], list[dict[str, str]]]:
-    relationships = agent.source_relationships or []
-    if not relationships:
-        return [], []
-
-    active_sql_sources = [source for source in sources if source.type == "sql_database" and source.is_active]
-    if len(active_sql_sources) < 2:
+    """Build multi-SQL sources when 2+ SQL sources exist. Includes ALL SQL sources (not only is_active)."""
+    all_sql_sources = [source for source in sources if source.type == "sql_database"]
+    if len(all_sql_sources) < 2:
         return [], []
 
     source_rows = [
@@ -97,27 +94,29 @@ def _build_active_multi_sql_sources(agent: Agent, sources: list[Source]) -> tupl
             "connection_string": (source.metadata_ or {}).get("connectionString", ""),
             "table_infos": (source.metadata_ or {}).get("table_infos") or [],
         }
-        for source in active_sql_sources
+        for source in all_sql_sources
     ]
-    try:
-        validated_relationships = validate_source_relationships(source_rows, relationships)
-    except ValueError:
-        return [], []
 
-    related_source_ids = {
-        relationship["leftSourceId"]
-        for relationship in validated_relationships
-    }.union({
-        relationship["rightSourceId"]
-        for relationship in validated_relationships
-    })
-    if len(related_source_ids) < 2:
-        return [], []
+    relationships = agent.source_relationships or []
+    validated_relationships: list[dict[str, str]] = []
+    if relationships:
+        try:
+            validated_relationships = validate_source_relationships(source_rows, relationships)
+        except ValueError:
+            pass
+
+    if validated_relationships:
+        related_source_ids = {
+            r["leftSourceId"] for r in validated_relationships
+        }.union({r["rightSourceId"] for r in validated_relationships})
+        selected = [s for s in all_sql_sources if s.id in related_source_ids]
+        if len(selected) < 2:
+            selected = all_sql_sources
+    else:
+        selected = all_sql_sources
 
     selected_sources = []
-    for source in active_sql_sources:
-        if source.id not in related_source_ids:
-            continue
+    for source in selected:
         meta = source.metadata_ or {}
         selected_sources.append({
             "id": source.id,
@@ -161,7 +160,8 @@ async def ask_question(
     settings = get_settings()
     data_files_dir = settings.data_files_dir
 
-    # LLM overrides: agent.llm_config_id > LlmSettings (default) > env
+    # LLM overrides: agent.llm_config_id > env (when "Default (env/config)") > LlmSettings
+    # When workspace uses "Default (env/config)", llm_config_id is null -> prefer env so .env wins over stale LlmSettings
     llm_overrides = None
     if agent.llm_config_id:
         r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
@@ -169,9 +169,8 @@ async def ask_question(
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
     if llm_overrides is None:
-        r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
-        llm_row = r_llm.scalar_one_or_none()
-        llm_overrides = _llm_config_to_overrides(llm_row)
+        # "Default (env/config)": use env vars (get_settings) so OPENAI_API_KEY + LLM_PROVIDER from .env apply
+        llm_overrides = None
 
     # Retrieve History
     history = []
@@ -183,7 +182,9 @@ async def ask_question(
             history = qa_session.conversation_history
 
     # Route by source type
-    if len(multi_sql_sources) >= 2 and multi_sql_relationships:
+    sql_mode = getattr(agent, "sql_mode", False)
+
+    if len(multi_sql_sources) >= 2:
         result = await ask_sql_multi_source(
             sources=multi_sql_sources,
             relationships=multi_sql_relationships,
@@ -192,6 +193,7 @@ async def ask_question(
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
+            sql_mode=sql_mode,
         )
     elif source.type in ("csv", "xlsx"):
         file_path = (source.metadata_ or {}).get("file_path")
@@ -236,6 +238,7 @@ async def ask_question(
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
+            sql_mode=sql_mode,
         )
     elif source.type == "bigquery":
         meta = source.metadata_ or {}
@@ -254,6 +257,7 @@ async def ask_question(
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
+            sql_mode=sql_mode,
         )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")
@@ -360,10 +364,7 @@ async def generate_chart_for_turn(
         cfg = r_cfg.scalar_one_or_none()
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
-    if llm_overrides is None:
-        r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
-        llm_row = r_llm.scalar_one_or_none()
-        llm_overrides = _llm_config_to_overrides(llm_row)
+    # When llm_config_id is null ("Default (env/config)"): use env, keep llm_overrides=None
 
     plan = await build_chart_plan(
         question=str(turn.get("question") or qa.question or ""),

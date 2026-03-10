@@ -3,6 +3,7 @@ import json
 import re
 
 from app.llm.client import chat_completion
+from app.llm.logs import record_log
 
 
 def _clean_followups(questions: list[str] | None, limit: int = 3) -> list[str]:
@@ -52,6 +53,7 @@ async def refine_followup_questions(
     candidate_questions: list[str] | None,
     schema_text: str,
     llm_overrides: dict[str, Any] | None = None,
+    channel: str = "workspace",
 ) -> list[str]:
     candidates = _clean_followups(candidate_questions)
     if not candidates:
@@ -74,10 +76,21 @@ async def refine_followup_questions(
         f"Candidate follow-up questions:\n{json.dumps(candidates, ensure_ascii=False)}\n\n"
         "Validate and rewrite the follow-up questions now."
     )
-    raw, _, _ = await chat_completion(
+    raw, usage, trace = await chat_completion(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
         max_tokens=300,
         llm_overrides=llm_overrides,
+    )
+    trace["stage"] = "refine_followups"
+    await record_log(
+        action="pergunta",
+        provider=usage.get("provider", ""),
+        model=usage.get("model", ""),
+        input_tokens=usage.get("input_tokens", 0),
+        output_tokens=usage.get("output_tokens", 0),
+        source=None,
+        channel=channel,
+        trace=trace,
     )
     parsed = _parse_followups_json(raw)
     return parsed or candidates[:3]

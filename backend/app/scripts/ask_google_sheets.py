@@ -63,6 +63,8 @@ async def ask_google_sheets(
             messages.append({"role": "assistant", "content": turn["answer"]})
     messages.append({"role": "user", "content": f"Context: {schema_text}\nSample: {sample_json}\n\nQuestion: {question}"})
     raw_answer, usage, trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
+    trace["stage"] = "pergunta_main"
+    trace["source_type"] = "google_sheets"
     await record_log(
         action="pergunta",
         provider=usage.get("provider", ""),
@@ -86,6 +88,7 @@ async def ask_google_sheets(
         candidate_questions=follow_up,
         schema_text=schema_text,
         llm_overrides=llm_overrides,
+        channel=channel,
     )
     return {"answer": answer, "imageUrl": None, "followUpQuestions": follow_up, "chartInput": None}
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, X, Check, Link2 } from "lucide-react";
+import { Plus, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,6 @@ import { dataClient } from "@/services/dataClient";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { DataPreviewModal } from "@/components/DataPreviewModal";
-import { SqlRelationshipsModal } from "@/components/SqlRelationshipsModal";
 
 interface Source {
   id: string;
@@ -24,10 +23,9 @@ interface SourcesPanelProps {
   agentId?: string;
   refreshTrigger?: number; // Novo: trigger para forçar refresh
   onSourceActivated?: () => void; // Callback quando uma fonte é ativada
-  onRelationshipsUpdated?: () => void;
 }
 
-export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceActivated, onRelationshipsUpdated }: SourcesPanelProps) {
+export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceActivated }: SourcesPanelProps) {
   const { t } = useLanguage();
   const [sources, setSources] = useState<Source[]>([]);
   const [linkedSourceIds, setLinkedSourceIds] = useState<string[]>([]);
@@ -36,7 +34,6 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
   const [previewSource, setPreviewSource] = useState<Source | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [activeSourceIds, setActiveSourceIds] = useState<string[]>([]);
-  const [relationshipsOpen, setRelationshipsOpen] = useState(false);
 
   useEffect(() => {
     if (agentId) {
@@ -158,30 +155,21 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
   const filteredSources = sources.filter((source) =>
     source.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const sqlSourcesCount = sources.filter((source) => source.type === "sql_database").length;
 
   return (
     <div className="h-full flex flex-col bg-background border rounded-lg">
       <div className="p-4 border-b flex items-center h-[57px]">
         <div className="flex items-center justify-between gap-2 w-full">
           <h2 className="font-semibold">{t('sources.title')}</h2>
-          <div className="flex items-center gap-2">
-            {agentId && sqlSourcesCount >= 2 && (
-              <Button variant="outline" size="sm" onClick={() => setRelationshipsOpen(true)}>
-                <Link2 className="h-4 w-4 mr-2" />
-                {t("sources.relationships")}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddSource}
-              disabled={false}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {t('sources.add')}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddSource}
+            disabled={false}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t('sources.add')}
+          </Button>
         </div>
       </div>
 
@@ -217,9 +205,9 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                       : 'bg-muted/30 border-muted hover:bg-muted/50'
                   }`}
                   onClick={async () => {
-                    if (agentId && !isActive) {
+                    if (agentId) {
                       handleToggleActive(source.id);
-                    } else if (!agentId) {
+                    } else {
                       let previewMeta = source.metadata;
                       if (source.type === 'bigquery' && (!previewMeta?.table_infos || previewMeta.table_infos.length === 0)) {
                         try {
@@ -234,26 +222,15 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                     }
                   }}
                 >
-                  <div className="flex items-start gap-2">
-                    <FileText className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <FileText className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                       <p className={`text-sm font-medium truncate ${isActive ? 'text-primary' : ''}`}>
                         {source.name}
                       </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">
-                          {source.type}
-                        </Badge>
-                        {isActive && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Check className="h-3 w-3 mr-1" />
-                            {t("sources.active")}
-                          </Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(source.createdAt).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
+                      <Badge variant="outline" className="text-xs flex-shrink-0">
+                        {source.type}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
@@ -283,17 +260,6 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
           onOpenChange={setShowPreview}
           sourceName={previewSource.name}
           metadata={previewSource.metadata}
-        />
-      )}
-
-      {agentId && (
-        <SqlRelationshipsModal
-          open={relationshipsOpen}
-          onOpenChange={setRelationshipsOpen}
-          agentId={agentId}
-          onSaved={() => {
-            onRelationshipsUpdated?.();
-          }}
         />
       )}
     </div>

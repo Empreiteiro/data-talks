@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
@@ -40,6 +41,7 @@ export function AgentSettingsModal({
   const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [llmConfigId, setLlmConfigId] = useState<string | null>(null);
   const [llmConfigs, setLlmConfigs] = useState<Array<{ id: string; name: string; llm_provider: string }>>([]);
+  const [sqlMode, setSqlMode] = useState(false);
 
   const loadSettings = async () => {
     try {
@@ -52,6 +54,7 @@ export function AgentSettingsModal({
       setAgentName(agent?.name || "");
       setSourceIds(agent?.source_ids || []);
       setLlmConfigId(agent?.llm_config_id ?? null);
+      setSqlMode(agent?.sql_mode ?? false);
       setLlmConfigs(configs || []);
     } catch (error: any) {
       console.error("Erro ao carregar configurações:", error);
@@ -62,7 +65,7 @@ export function AgentSettingsModal({
   const handleSave = async () => {
     setLoading(true);
     try {
-      await dataClient.updateAgent(agentId, agentName, sourceIds, instructions, warmupQuestions, llmConfigId);
+      await dataClient.updateAgent(agentId, agentName, sourceIds, instructions, warmupQuestions, llmConfigId, undefined, sqlMode);
       toast.success(t('agentSettings.saveSuccess'));
       onSettingsUpdated?.();
       onOpenChange(false);
@@ -167,6 +170,15 @@ export function AgentSettingsModal({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+
+          {/* SQL Mode */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="sql-mode">{t("agentSettings.sqlMode")}</Label>
+              <p className="text-xs text-muted-foreground">{t("agentSettings.sqlModeHelp")}</p>
+            </div>
+            <Switch id="sql-mode" checked={sqlMode} onCheckedChange={setSqlMode} />
           </div>
 
           {/* Botões de ação */}
