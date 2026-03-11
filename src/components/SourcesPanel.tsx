@@ -173,7 +173,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="text-center">

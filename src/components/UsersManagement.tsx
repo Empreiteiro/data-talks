@@ -102,7 +102,7 @@ const UsersManagement = () => {
         <div className="p-4 border-b flex items-center h-[57px]">
           <h2 className="font-semibold">{t("account.users.title")}</h2>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4">
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <Users className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">{t("account.users.singleUserMode")}</p>
@@ -119,7 +119,7 @@ const UsersManagement = () => {
         <div className="p-4 border-b flex items-center h-[57px]">
           <h2 className="font-semibold">{t("account.users.title")}</h2>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4">
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <Users className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">{t("account.users.adminOnly")}</p>
@@ -146,7 +146,7 @@ const UsersManagement = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="text-center">

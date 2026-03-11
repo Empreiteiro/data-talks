@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { dataClient } from "@/services/dataClient";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Bot, Loader2, Plus, RefreshCw, Star, Trash2 } from "lucide-react";
+import { Bot, Loader2, Pencil, Plus, RefreshCw, Star, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,12 +41,16 @@ interface LlmConfig {
   id: string;
   name: string;
   llm_provider: string;
-  openai_model?: string;
+  openai_api_key?: string;
   openai_base_url?: string;
+  openai_model?: string;
   openai_audio_model?: string;
+  ollama_base_url?: string;
   ollama_model?: string;
+  litellm_base_url?: string;
   litellm_model?: string;
   litellm_audio_model?: string;
+  litellm_api_key?: string;
   model?: string;
   is_default?: boolean;
   created_at?: string;
@@ -72,6 +76,8 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
   const [effectiveSettings, setEffectiveSettings] = useState<EffectiveLlmSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm">("openai");
@@ -154,6 +160,63 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
     setLitellmAudioModel("");
     setLitellmApiKey("");
     setLitellmModels([]);
+    setEditingConfigId(null);
+  };
+
+  const loadConfigIntoForm = (cfg: LlmConfig) => {
+    setName(cfg.name || "");
+    setLlmProvider((cfg.llm_provider as "openai" | "ollama" | "litellm") || "openai");
+    setOpenaiApiKey(cfg.openai_api_key || "");
+    setOpenaiBaseUrl(cfg.openai_base_url || "https://api.openai.com/v1");
+    setOpenaiModel(cfg.openai_model || "gpt-4o-mini");
+    setOpenaiAudioModel(cfg.openai_audio_model || "gpt-4o-mini-tts");
+    setOllamaBaseUrl(cfg.ollama_base_url || "http://localhost:11434");
+    setOllamaModel(cfg.ollama_model || "llama3.2");
+    setLitellmBaseUrl(cfg.litellm_base_url || "http://localhost:4000");
+    setLitellmModel(cfg.litellm_model || "gpt-4o-mini");
+    setLitellmAudioModel(cfg.litellm_audio_model || "");
+    setLitellmApiKey(cfg.litellm_api_key || "");
+  };
+
+  const openEdit = (cfg: LlmConfig) => {
+    loadConfigIntoForm(cfg);
+    setEditingConfigId(cfg.id);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingConfigId || !name.trim()) {
+      if (!name.trim()) toast.error(t("llmConfig.nameRequired"));
+      return;
+    }
+    setSaving(true);
+    try {
+      await dataClient.updateLlmConfig(editingConfigId, {
+        name: name.trim(),
+        llm_provider: llmProvider,
+        openai_api_key: llmProvider === "openai" ? (openaiApiKey || undefined) : undefined,
+        openai_base_url: llmProvider === "openai" ? (openaiBaseUrl || undefined) : undefined,
+        openai_model: llmProvider === "openai" ? openaiModel : undefined,
+        openai_audio_model: llmProvider === "openai" ? (openaiAudioModel || undefined) : undefined,
+        ollama_base_url: llmProvider === "ollama" ? ollamaBaseUrl : undefined,
+        ollama_model: llmProvider === "ollama" ? ollamaModel : undefined,
+        litellm_base_url: llmProvider === "litellm" ? litellmBaseUrl : undefined,
+        litellm_model: llmProvider === "litellm" ? litellmModel : undefined,
+        litellm_audio_model: llmProvider === "litellm" ? (litellmAudioModel || undefined) : undefined,
+        litellm_api_key: llmProvider === "litellm" ? (litellmApiKey || undefined) : undefined,
+      });
+      toast.success(t("llmSettings.saveSuccess"));
+      resetForm();
+      setEditDialogOpen(false);
+      await fetchConfigs();
+      onConfigAdded?.();
+    } catch (error: unknown) {
+      toast.error(t("llmSettings.saveError"), {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAdd = async () => {
@@ -374,7 +437,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="text-center">
@@ -447,6 +510,15 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={t("llmConfig.edit")}
+                        onClick={() => openEdit(cfg)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${cfg.is_default ? "opacity-100 text-amber-500" : ""}`}
                         title={cfg.is_default ? t("llmConfig.default") : t("llmConfig.setAsDefault")}
                         onClick={() => !cfg.is_default && handleSetDefault(cfg.id)}
@@ -494,6 +566,24 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
             </Button>
             <Button onClick={handleAdd} disabled={saving || !name.trim()}>
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("llmSettings.saving")}</> : t("llmConfig.add")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={(open) => { if (!open) { resetForm(); setEditDialogOpen(false); } else setEditDialogOpen(open); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("llmConfig.editTitle")}</DialogTitle>
+            <DialogDescription>{t("llmConfig.editDescription")}</DialogDescription>
+          </DialogHeader>
+          <AddForm />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { resetForm(); setEditDialogOpen(false); }} disabled={saving}>
+              {t("llmConfig.cancel")}
+            </Button>
+            <Button onClick={handleUpdate} disabled={saving || !name.trim()}>
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("llmSettings.saving")}</> : t("llmConfig.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
