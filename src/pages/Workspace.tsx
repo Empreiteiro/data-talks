@@ -42,7 +42,7 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 // Componente para exibir gráficos com tratamento de erro robusto
-const ChartImage = ({ imageUrl, qaSessionId, t }: { imageUrl: string; qaSessionId?: string; t: (key: string) => string }) => {
+const ChartImage = ({ imageUrl, qaSessionId, t, onRemoveImage }: { imageUrl: string; qaSessionId?: string; t: (key: string) => string; onRemoveImage?: () => void }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [dashboards, setDashboards] = useState<any[]>([]);
@@ -130,17 +130,30 @@ const ChartImage = ({ imageUrl, qaSessionId, t }: { imageUrl: string; qaSessionI
           errorFallback={null}
         />
         
-        {/* Botão Add to Dashboard - aparece no hover */}
-        {imageLoaded && qaSessionId && (
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              size="sm"
-              onClick={openAddToDashboard}
-              className="bg-white/90 text-gray-900 hover:bg-white border border-gray-200 shadow-sm"
-            >
-              <Layout className="h-4 w-4 mr-2" />
-              {t('dashboard.addToDashboard')}
-            </Button>
+        {/* Botões no hover: Remover imagem e Add to Dashboard */}
+        {imageLoaded && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+            {onRemoveImage && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={onRemoveImage}
+                className="bg-destructive/90 text-destructive-foreground hover:bg-destructive border border-destructive shadow-sm"
+                title={t('workspace.removeImage') || 'Remover imagem'}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+            {qaSessionId && (
+              <Button
+                size="sm"
+                onClick={openAddToDashboard}
+                className="bg-white/90 text-gray-900 hover:bg-white border border-gray-200 shadow-sm"
+              >
+                <Layout className="h-4 w-4 mr-2" />
+                {t('dashboard.addToDashboard')}
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -450,6 +463,43 @@ export default function Workspace() {
       } catch (error: any) {
         console.error("Erro ao atualizar histórico:", error);
         toast.error("Erro ao excluir mensagem");
+      }
+    }
+  };
+
+  const handleRemoveImageFromMessage = async (messageIndex: number) => {
+    const message = messages[messageIndex];
+    if (!message?.imageUrl) return;
+    setMessages((prev) => prev.map((item, idx) =>
+      idx === messageIndex
+        ? { ...item, imageUrl: undefined, chartSpec: undefined, chartScript: undefined, chartInput: undefined }
+        : item
+    ));
+    if (currentSessionId) {
+      try {
+        const conversationHistory: any[] = [];
+        const updatedMessages = messages.map((item, idx) =>
+          idx === messageIndex ? { ...item, imageUrl: undefined, chartSpec: undefined, chartScript: undefined, chartInput: undefined } : item
+        );
+        for (let i = 0; i < updatedMessages.length; i += 2) {
+          if (updatedMessages[i]?.role === "user" && updatedMessages[i + 1]?.role === "assistant") {
+            conversationHistory.push({
+              id: updatedMessages[i + 1].turnId,
+              question: updatedMessages[i].content,
+              answer: updatedMessages[i + 1].content,
+              imageUrl: updatedMessages[i + 1].imageUrl,
+              followUpQuestions: updatedMessages[i + 1].followUpQuestions || [],
+              chartInput: updatedMessages[i + 1].chartInput,
+              chartSpec: updatedMessages[i + 1].chartSpec,
+              chartScript: updatedMessages[i + 1].chartScript,
+            });
+          }
+        }
+        await dataClient.updateQASession(currentSessionId, { conversation_history: conversationHistory });
+        toast.success(t('workspace.imageRemoved') || "Imagem removida da conversa");
+      } catch (error: any) {
+        console.error("Erro ao remover imagem:", error);
+        toast.error(t('workspace.imageRemoveError') || "Erro ao remover imagem");
       }
     }
   };
@@ -864,6 +914,7 @@ export default function Workspace() {
                             imageUrl={message.imageUrl} 
                             qaSessionId={currentSessionId || undefined}
                             t={t}
+                            onRemoveImage={message.role === "assistant" ? () => handleRemoveImageFromMessage(index) : undefined}
                           />
                         </div>
                       </div>

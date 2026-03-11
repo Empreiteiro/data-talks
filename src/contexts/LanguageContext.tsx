@@ -704,6 +704,9 @@ const translations = {
        'workspace.generatingChart': 'Generating chart...',
        'workspace.chartGeneratedSuccess': 'Chart generated successfully',
        'workspace.chartGeneratedError': 'Error generating chart',
+       'workspace.removeImage': 'Remove image',
+       'workspace.imageRemoved': 'Image removed from conversation',
+       'workspace.imageRemoveError': 'Error removing image',
        
        // Studio
        'studio.title': 'Studio',
@@ -1608,6 +1611,9 @@ const translations = {
        'workspace.generatingChart': 'Gerando gráfico...',
        'workspace.chartGeneratedSuccess': 'Gráfico gerado com sucesso',
        'workspace.chartGeneratedError': 'Erro ao gerar gráfico',
+       'workspace.removeImage': 'Remover imagem',
+       'workspace.imageRemoved': 'Imagem removida da conversa',
+       'workspace.imageRemoveError': 'Erro ao remover imagem',
        
       // Studio
       'studio.title': 'Studio',
@@ -2485,6 +2491,9 @@ const translations = {
        'workspace.generatingChart': 'Generando gráfico...',
        'workspace.chartGeneratedSuccess': 'Gráfico generado con éxito',
        'workspace.chartGeneratedError': 'Error al generar gráfico',
+       'workspace.removeImage': 'Quitar imagen',
+       'workspace.imageRemoved': 'Imagen eliminada de la conversación',
+       'workspace.imageRemoveError': 'Error al quitar la imagen',
     // Studio
     'studio.title': 'Studio',
     'studio.graphDescription': 'Ver datos como grafo',
