@@ -96,10 +96,10 @@ const UsageMonitoring = () => {
       </div>
     );
   }
-  return <div className="h-full flex flex-col space-y-6">
+  return <div className="h-full flex flex-col space-y-3">
       
       
-      <div className="grid gap-6 md:grid-cols-4 flex-shrink-0">
+      <div className="grid gap-3 md:grid-cols-4 flex-shrink-0">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">

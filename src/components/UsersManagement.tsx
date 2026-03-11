@@ -161,7 +161,7 @@ const UsersManagement = () => {
             <p className="text-xs text-muted-foreground mt-2">{t("account.users.description")}</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {users.map((u) => (
               <div
                 key={u.id}

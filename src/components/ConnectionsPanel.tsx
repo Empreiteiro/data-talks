@@ -130,7 +130,7 @@ export function ConnectionsPanel() {
             </div>
           </div>
         ) : (
-          <div className={`min-h-full ${!envConfig && configs.length === 0 ? "flex flex-col" : "space-y-4"}`}>
+          <div className={`min-h-full ${!envConfig && configs.length === 0 ? "flex flex-col" : "space-y-3"}`}>
             {envConfig && (
               <div className="group relative p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50">
                 <div className="flex items-start gap-2">
@@ -156,7 +156,7 @@ export function ConnectionsPanel() {
                 </div>
               ) : null
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {configs.map((config) => (
                   <div
                     key={config.id}

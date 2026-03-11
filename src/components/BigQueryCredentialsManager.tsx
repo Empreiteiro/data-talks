@@ -190,7 +190,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {credentials.map((cred) => (
               <div
                 key={`${cred.type}-${cred.id}`}

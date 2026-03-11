@@ -192,7 +192,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {filteredSources.map((source) => {
               const isActive = !!(agentId && activeSourceIds.includes(source.id));
               
