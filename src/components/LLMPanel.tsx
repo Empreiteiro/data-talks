@@ -446,7 +446,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {effectiveSettings && (
               <div className="p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50">
                 <div className="flex items-center gap-2">
@@ -478,7 +478,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
                 <p className="text-xs text-muted-foreground mt-2">{t("llmConfig.emptyHelp")}</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <>
                 {configs.map((cfg) => (
                   <div
                     key={cfg.id}
@@ -489,21 +489,27 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{cfg.name}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs flex-shrink-0">
                             {PROVIDER_LABELS[cfg.llm_provider] || cfg.llm_provider}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {cfg.model || cfg.openai_model || cfg.ollama_model || cfg.litellm_model || "—"}
                           </span>
                           {(cfg.openai_audio_model || cfg.litellm_audio_model) && (
-                            <span className="text-xs text-muted-foreground">
-                              Audio: {cfg.openai_audio_model || cfg.litellm_audio_model}
-                            </span>
+                            <>
+                              <span className="text-xs text-muted-foreground/60 flex-shrink-0" aria-hidden>·</span>
+                              <span className="text-xs text-muted-foreground">
+                                Audio: {cfg.openai_audio_model || cfg.litellm_audio_model}
+                              </span>
+                            </>
                           )}
                           {cfg.created_at && (
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(cfg.created_at).toLocaleDateString()}
-                            </span>
+                            <>
+                              <span className="text-xs text-muted-foreground/60 flex-shrink-0" aria-hidden>·</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(cfg.created_at).toLocaleDateString()}
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>
@@ -547,7 +553,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
                     </div>
                   </div>
                 ))}
-              </div>
+              </>
             )}
           </div>
         )}
