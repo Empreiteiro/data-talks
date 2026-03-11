@@ -176,7 +176,7 @@ const UsageMonitoring = () => {
               className="h-full min-h-[400px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyQuestions}>
+                <BarChart data={dailyQuestions} margin={{ top: 10, right: 24, bottom: 28, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis 
                     dataKey="date" 
