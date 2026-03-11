@@ -6,7 +6,7 @@ An intelligent data analysis platform that lets you connect data sources, config
 
 Data Talks is a web app that changes how you work with your data. Through a simple interface you can:
 
-- **Connect data sources** (CSV, XLSX, BigQuery)
+- **Connect data sources** (CSV, XLSX, BigQuery, SQL databases)
 - **Configure custom AI agents**
 - **Ask questions** in natural language about your data
 - **Get visual answers** with charts and tables
@@ -17,6 +17,8 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 ### Data source management
 - **File upload**: CSV and XLSX support
 - **BigQuery**: Direct Google BigQuery integration
+- **SQL databases**: PostgreSQL, MySQL, and other SQL-compatible databases
+- **Google Sheets**: Direct spreadsheet connection
 - **Automatic metadata**: Column and type detection
 - **Data preview**: First rows preview
 
@@ -31,6 +33,11 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 - **Visual answers**: Auto-generated charts and tables
 - **Follow-up questions**: Suggestions to dig deeper
 - **User feedback**: Answer rating
+
+### SQL features
+- **Multi-table queries**: Ask questions across multiple SQL sources; the agent infers JOINs from column names (e.g. `customer_id`, `order_id`) or uses configured relationships
+- **ER diagram**: Entity-relationship view showing how tables connect through configured SQL links
+- **SQL mode**: When enabled in Agent Settings, the agent responds with the raw SQL query instead of the elaborated answer—useful for debugging or learning
 
 ### Alerts
 - **Ongoing monitoring**: Recurring alerts
@@ -50,7 +57,7 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 ### Backend
 - **Python**: FastAPI, SQLite (default) or PostgreSQL, Alembic migrations
 - **LLM**: OpenAI API or local Ollama
-- **Per-source scripts**: CSV, Google Sheets, SQL, BigQuery
+- **Per-source scripts**: CSV, Google Sheets, SQL (single and multi-source), BigQuery
 
 ### LLM environment defaults
 
@@ -142,8 +149,8 @@ To develop the frontend with hot reload:
 ## How to use
 
 1. **First use**: Create an account or log in; choose language (PT/EN).
-2. **Data sources**: Go to Sources, upload CSV/XLSX or connect BigQuery.
-3. **Agent**: Create an agent, set name, description, and data sources; add suggested questions.
+2. **Data sources**: Go to Sources, upload CSV/XLSX, connect BigQuery, or add SQL databases.
+3. **Agent**: Create an agent, set name, description, and data sources; add suggested questions. For multiple SQL sources, configure relationships (SQL Links) and optionally enable SQL mode.
 4. **Questions**: Open a workspace, ask in natural language, get answers and charts.
 5. **Alerts** (optional): Configure recurring alerts and conditions.
 
