@@ -29,7 +29,7 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 - **Sharing**: Public or private agents
 
 ### Q&A
-- **Conversational UI**: Ask in Portuguese or English
+- **Conversational UI**: Ask in Portuguese, English, or Spanish
 - **Visual answers**: Auto-generated charts and tables
 - **Follow-up questions**: Suggestions to dig deeper
 - **User feedback**: Answer rating
@@ -44,8 +44,30 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 - **Flexible schedule**: Daily, weekly, or monthly
 - **Notifications**: Alerts when data changes
 
+### Studio
+
+- **Table summaries**: Auto-generated executive reports for any data source (CSV, SQL, BigQuery, Google Sheets)
+- **Audio overviews**: Text-to-speech narration of source highlights using the configured audio model
+
+### Dashboards
+
+- **Saved charts**: Pin Q&A charts to a dashboard for quick reference
+- **Custom layout**: Position and resize charts freely
+- **Multiple dashboards**: Organize charts by topic or team
+
+### Telegram integration
+
+- **Bot configuration**: Register one or more Telegram bots
+- **Agent linking**: Connect an agent to a Telegram group via link token
+- **Q&A over Telegram**: Ask questions and receive answers directly in chat
+
+### Platform logs
+
+- **LLM activity tracking**: Every question and summary is logged with provider, model, and token usage
+- **Channel attribution**: See whether activity came from the workspace, Telegram, or Studio
+
 ### Internationalization
-- **Multilingual**: Portuguese and English
+- **Multilingual**: Portuguese, English, and Spanish
 - **Language persistence**: Preference saved across sessions
 - **Adaptive UI**: All text translated dynamically
 
@@ -56,7 +78,7 @@ Data Talks is a web app that changes how you work with your data. Through a simp
 
 ### Backend
 - **Python**: FastAPI, SQLite (default) or PostgreSQL, Alembic migrations
-- **LLM**: OpenAI API or local Ollama
+- **LLM**: OpenAI API, local Ollama, or LiteLLM proxy
 - **Per-source scripts**: CSV, Google Sheets, SQL (single and multi-source), BigQuery
 
 ### LLM environment defaults
@@ -126,7 +148,8 @@ uv run data-talks run
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate   # Windows
+source .venv/bin/activate   # Linux/macOS
+# .venv\Scripts\activate    # Windows
 pip install -e .
 cp .env.example .env
 data-talks run
@@ -148,7 +171,7 @@ To develop the frontend with hot reload:
 
 ## How to use
 
-1. **First use**: Create an account or log in; choose language (PT/EN).
+1. **First use**: Create an account or log in; choose language (PT/EN/ES).
 2. **Data sources**: Go to Sources, upload CSV/XLSX, connect BigQuery, or add SQL databases.
 3. **Agent**: Create an agent, set name, description, and data sources; add suggested questions. For multiple SQL sources, configure relationships (SQL Links) and optionally enable SQL mode.
 4. **Questions**: Open a workspace, ask in natural language, get answers and charts.
@@ -165,16 +188,37 @@ npm run lint     # Lint
 
 ## Internationalization
 
-The app supports Portuguese and English via a central translation layer:
+The app supports Portuguese, English, and Spanish via a central translation layer:
 
 - **Context**: `src/contexts/LanguageContext.tsx`
 - **Hook**: `useLanguage()` for translations
 - **Usage**: `t('key.subkey')` in components
 - **Storage**: Language preference in localStorage
 
+## Authentication
+
+- **Guest mode** (default): When `ENABLE_LOGIN=false`, the app opens directly with no login screen
+- **Login mode**: Set `ENABLE_LOGIN=true` to require email/password authentication
+- **Admin role**: Admin users can manage other users and platform settings
+- **JWT tokens**: Stateless authentication via Bearer tokens
+
+## LLM providers
+
+The backend supports three LLM providers. Configure one in `backend/.env`:
+
+| Provider | Key env vars | Use case |
+|----------|-------------|----------|
+| **OpenAI** | `OPENAI_API_KEY`, `OPENAI_MODEL` | Cloud API (default) |
+| **Ollama** | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | Local/self-hosted models |
+| **LiteLLM** | `LITELLM_BASE_URL`, `LITELLM_MODEL`, `LITELLM_API_KEY` | Proxy to 100+ providers |
+
+Users can also create multiple LLM configurations per account and switch between them from the settings page.
+
 ## Deploy
 
-Connect the repo [Empreiteiro/data-talks](https://github.com/Empreiteiro/data-talks) to Vercel, Netlify, or similar; set env vars; deploy on push.
+**Frontend**: Connect the repo to Vercel, Netlify, or similar; set env vars; deploy on push.
+
+**Backend**: Run the FastAPI server behind a reverse proxy (nginx, Caddy) or deploy as a Docker container. Set `DATABASE_URL` for PostgreSQL in production.
 
 ## Contributing
 

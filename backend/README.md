@@ -3,7 +3,7 @@
 - **FastAPI** + **SQLite (default)** or **PostgreSQL** (auth, sources, agents, sessions, dashboards, alerts)
 - **Alembic** migrations (same schema for SQLite and PostgreSQL)
 - **Python scripts** per source type (CSV, Google Sheets, SQL, BigQuery)
-- **LLM**: API (OpenAI) or local open-source model (Ollama)
+- **LLM**: API (OpenAI), local open-source model (Ollama), or LiteLLM proxy
 
 ## Requirements
 
@@ -35,8 +35,8 @@ uv run data-talks run
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate   # Windows
-# source .venv/bin/activate  # Linux/macOS
+source .venv/bin/activate   # Linux/macOS
+# .venv\Scripts\activate    # Windows
 pip install -e .
 # Run: data-talks run   or   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -53,6 +53,11 @@ OPENAI_API_KEY=sk-...
 # LLM_PROVIDER=ollama
 # OLLAMA_BASE_URL=http://localhost:11434
 # OLLAMA_MODEL=llama3.2
+
+# LLM_PROVIDER=litellm
+# LITELLM_BASE_URL=http://localhost:4000
+# LITELLM_MODEL=gpt-4o-mini
+# LITELLM_API_KEY=sk-...
 
 # Auth (change in production)
 SECRET_KEY=your-strong-secret-key
@@ -103,19 +108,15 @@ The frontend should point to this API (`VITE_API_URL=http://localhost:8000`) and
 
 ## Scripts per source type
 
-- **CSV/XLSX**: `app/scripts/ask_csv.py` — reads file under `DATA_FILES_DIR`, sends schema + sample to LLM.
+- **CSV/XLSX**: `app/scripts/ask_csv.py` — reads file under `DATA_FILES_DIR`, loads into pandas, generates SQL, elaborates answer.
 - **Google Sheets**: `app/scripts/ask_google_sheets.py` — uses `GOOGLE_SHEETS_SERVICE_ACCOUNT` (JSON).
-- **SQL**: `app/scripts/ask_sql.py` — uses connection string and `table_infos` in source metadata.
+- **SQL (single)**: `app/scripts/ask_sql.py` — uses connection string and `table_infos` in source metadata.
+- **SQL (multi-source)**: `app/scripts/ask_sql_multi.py` — answers questions across multiple SQL databases using configured relationships.
 - **BigQuery**: `app/scripts/ask_bigquery.py` — uses credentials and `table_infos`.
+- **Summaries**: `app/scripts/summary_csv.py`, `summary_sql.py`, `summary_bigquery.py`, `summary_google_sheets.py` — generate executive reports per source type.
 
-Each script returns `{ "answer", "imageUrl?", "followUpQuestions" }`. Charts (imageUrl) can be added later (e.g. matplotlib/plotly → base64).
+Each Q&A script returns `{ "answer", "imageUrl?", "followUpQuestions" }`. Charts are generated via matplotlib and returned as base64 images.
 
 ## Database
 
-SQLite with tables: `users`, `sources`, `agents`, `qa_sessions`, `dashboards`, `dashboard_charts`, `alerts`. Tables are created on startup.
-
-## Next steps
-
-- Full CRUD for sources, agents, dashboards, alerts over REST.
-- File upload to `DATA_FILES_DIR` and registration in `sources`.
-- Real Google Sheets/BigQuery integration (libraries referenced in `requirements.txt`).
+SQLite with tables: `users`, `sources`, `agents`, `qa_sessions`, `dashboards`, `dashboard_charts`, `alerts`, `llm_configs`, `llm_settings`, `platform_logs`, `table_summaries`, `audio_overviews`, `telegram_bot_configs`, `telegram_link_tokens`, `telegram_connections`. Tables are created on startup.
