@@ -128,7 +128,7 @@ To open the UI at **http://localhost:8000** (backend only):
    uv pip install -e .
    uv run data-talks run
    ```
-3. Open in the browser: [http://localhost:8000](http://localhost:8000). Login, signup, and Q&A use the Python backend.
+3. Open in the browser: [http://localhost:8000](http://localhost:8000). By default the app runs without login; enable `ENABLE_LOGIN=true` in `backend/.env` to require authentication.
 
 If the `dist/` folder does not exist, visiting http://localhost:8000 will show a JSON message with instructions; run `npm run build` from the project root and restart the backend.
 
@@ -171,11 +171,15 @@ To develop the frontend with hot reload:
 
 ## How to use
 
-1. **First use**: Create an account or log in; choose language (PT/EN/ES).
-2. **Data sources**: Go to Sources, upload CSV/XLSX, connect BigQuery, or add SQL databases.
-3. **Agent**: Create an agent, set name, description, and data sources; add suggested questions. For multiple SQL sources, configure relationships (SQL Links) and optionally enable SQL mode.
-4. **Questions**: Open a workspace, ask in natural language, get answers and charts.
-5. **Alerts** (optional): Configure recurring alerts and conditions.
+By default, the app runs in guest mode: no login required. Choose your language (PT/EN/ES) and start.
+
+1. **Workspace**: From the home page, select or create a workspace (agent).
+2. **Data sources**: In the Sources panel, upload CSV/XLSX, connect BigQuery/Google Sheets, or add SQL databases.
+3. **Agent setup**: Configure name, description, and data sources; add suggested questions. For multiple SQL sources, configure relationships (SQL Links) and optionally enable SQL mode in Agent Settings.
+4. **Ask questions**: In the Chat panel, ask in natural language and get answers with charts.
+5. **Optional**: Set up alerts, dashboards, Telegram connections, or Studio summaries.
+
+When `ENABLE_LOGIN=true` in the backend, authentication is required before using the app.
 
 ## Scripts
 
