@@ -10,7 +10,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.database import Base
-from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert
+from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert, ApiKey
 from app.config import get_settings
 
 config = context.config

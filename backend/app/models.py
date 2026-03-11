@@ -227,3 +227,18 @@ class TelegramConnection(Base):
     telegram_bot_config_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+
+class ApiKey(Base):
+    """External API key for programmatic access to an agent."""
+    __tablename__ = "api_keys"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    name: Mapped[str] = mapped_column(String(128))
+    key_hash: Mapped[str] = mapped_column(String(512))  # SHA-256 of raw key
+    key_prefix: Mapped[str] = mapped_column(String(12))  # first 12 chars for display ("dtk_XXXXXXXX")
+    scopes: Mapped[list] = mapped_column(JSON, default=list)  # future: ["ask", "read_sources", ...]
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

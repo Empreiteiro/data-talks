@@ -95,3 +95,44 @@ async def require_admin(user: User = Depends(require_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user
+
+
+# ---------------------------------------------------------------------------
+# API Key authentication (for public /api/v1/* endpoints)
+# ---------------------------------------------------------------------------
+import hashlib
+from fastapi import Header
+from app.models import ApiKey
+
+
+def _hash_api_key(raw_key: str) -> str:
+    """Compute SHA-256 hash of the raw API key."""
+    return hashlib.sha256(raw_key.encode()).hexdigest()
+
+
+async def get_api_key_user(
+    x_api_key: str = Header(..., alias="X-API-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> tuple[User, ApiKey]:
+    """Validate X-API-Key header and return (user, api_key_row).
+
+    Raises 401 if the key is invalid or inactive.
+    Updates last_used_at on every successful call.
+    """
+    key_hash = _hash_api_key(x_api_key)
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.key_hash == key_hash, ApiKey.is_active == True)
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or inactive API key")
+
+    result = await db.execute(select(User).where(User.id == api_key.user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key owner not found")
+
+    api_key.last_used_at = datetime.utcnow()
+    await db.flush()
+
+    return user, api_key

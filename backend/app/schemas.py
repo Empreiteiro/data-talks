@@ -53,4 +53,31 @@ class AskQuestionResponse(BaseModel):
     chartInput: Optional[dict[str, Any]] = None
 
 
-# Other CRUD schemas can be added as needed by the frontend
+# API Keys
+class ApiKeyCreate(BaseModel):
+    agent_id: str
+    name: str
+
+
+class ApiKeyOut(BaseModel):
+    id: str
+    agent_id: str
+    name: str
+    key_prefix: str
+    scopes: list[str] = []
+    is_active: bool
+    last_used_at: Optional[str] = None
+    created_at: str
+
+
+class ApiKeyCreated(ApiKeyOut):
+    """Returned only at creation time — includes the raw key."""
+    raw_key: str
+
+
+# Public API
+class PublicAskRequest(BaseModel):
+    question: str
+    source_ids: Optional[list[str]] = None   # subset of agent sources; None = use all
+    sql_mode: Optional[bool] = None          # override agent default; None = use agent setting
+    session_id: Optional[str] = None
