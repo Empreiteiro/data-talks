@@ -75,6 +75,7 @@ export function AddSourceModal({
   const [selectedSqlTables, setSelectedSqlTables] = useState<string[]>([]);
   const [availableSqlTables, setAvailableSqlTables] = useState<Array<{id: string; name: string; columns?: string[]}>>([]);
   const [loadingSqlTables, setLoadingSqlTables] = useState(false);
+  const [activeTab, setActiveTab] = useState("upload");
 
   // Fetch existing BigQuery credentials and Google Sheets service email when modal opens
   useEffect(() => {
@@ -538,17 +539,17 @@ export function AddSourceModal({
   };
 
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[600px] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] h-[780px] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t('addSource.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-6 px-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-1">
           <p className="text-sm text-muted-foreground">
             {t('addSource.description')}
           </p>
 
-          <Tabs defaultValue="upload" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="upload">{t('addSource.uploadTab')}</TabsTrigger>
               <TabsTrigger value="bigquery">{t('addSource.bigQueryTab')}</TabsTrigger>
@@ -694,13 +695,6 @@ export function AddSourceModal({
                     </SelectContent>
                   </Select>
                 </div>
-                <Button 
-                  className="w-full" 
-                  onClick={handleBigQueryConnect}
-                  disabled={connecting || !bigQueryData.projectId || !bigQueryData.datasetId || (!bigQueryData.tables?.trim() && !selectedTable)}
-                >
-                  {connecting ? t('addSource.connecting') : t('addSource.connectBigQuery')}
-                </Button>
               </div>
             </TabsContent>
 
@@ -751,49 +745,13 @@ export function AddSourceModal({
                 <p className="text-sm text-muted-foreground">
                   {t('addSource.sheetsDescription')}
                 </p>
-                <Button 
-                  className="w-full"
-                  onClick={handleSheetsConnect}
-                  disabled={!sheetsUrl.trim() || !selectedSheet || connecting}
-                >
-                  {connecting ? t('addSource.connecting') : t('addSource.connectSheets')}
-                </Button>
               </div>
             </TabsContent>
 
             <TabsContent value="sql" className="space-y-4">
               <div className="space-y-4">
-                <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
-                  <p className="text-sm">
-                    <strong>{t('addSource.sqlImportant')}</strong> {t('addSource.sqlSecurityWarning')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t('addSource.sqlSelfHostedNote')}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sql-type">{t('addSource.sqlDatabaseType')}</Label>
-                  <Select 
-                    value={sqlDatabaseType} 
-                    onValueChange={(value: any) => {
-                      setSqlDatabaseType(value);
-                      setAvailableSqlTables([]);
-                      setSelectedSqlTables([]);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('addSource.sqlSelectType')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="postgresql">PostgreSQL</SelectItem>
-                      <SelectItem value="mysql">MySQL</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {existingSqlCredentials.length > 0 && (
-                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border">
+                  <div className="space-y-4 p-6 bg-muted/30 rounded-lg border mb-6 mt-6">
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -836,11 +794,33 @@ export function AddSourceModal({
 
                 {!useExistingSqlCredential && (
                 <div className="space-y-2">
+                  <Label htmlFor="sql-type">{t('addSource.sqlDatabaseType')}</Label>
+                  <Select 
+                    value={sqlDatabaseType} 
+                    onValueChange={(value: any) => {
+                      setSqlDatabaseType(value);
+                      setAvailableSqlTables([]);
+                      setSelectedSqlTables([]);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={t('addSource.sqlSelectType')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                      <SelectItem value="mysql">MySQL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                )}
+
+                {!useExistingSqlCredential && (
+                <div className="space-y-2">
                   <Label htmlFor="sql-connection">{t('addSource.sqlConnectionString')}</Label>
                   <Input 
                     id="sql-connection" 
                     type="password"
-                    placeholder={t('addSource.sqlConnectionStringPlaceholder')}
+                    placeholder={sqlDatabaseType === 'mysql' ? 'mysql://user:password@host:3306/database' : 'postgresql://user:password@host:5432/database'}
                     value={sqlConnectionString}
                     onChange={(e) => {
                       setSqlConnectionString(e.target.value);
@@ -851,9 +831,6 @@ export function AddSourceModal({
                       }
                     }}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t('addSource.sqlExample')}: {sqlDatabaseType === 'mysql' ? 'mysql://user:password@host:3306/database' : 'postgresql://user:password@host:5432/database'}
-                  </p>
                 </div>
                 )}
 
@@ -916,21 +893,43 @@ export function AddSourceModal({
                   )}
                 </div>
 
-                <Button 
-                  className="w-full"
-                  onClick={handleSqlConnect}
-                  disabled={!getCurrentSqlConnectionString() || !sqlDatabaseType || selectedSqlTables.length === 0 || connecting || loadingSqlTables}
-                >
-                  {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
-                </Button>
               </div>
             </TabsContent>
           </Tabs>
 
-          <div className="pt-4 border-t">
-            
-          </div>
         </div>
+
+        {(activeTab === "bigquery" || activeTab === "sheets" || activeTab === "sql") && (
+          <div className="flex-shrink-0 pt-6 px-1 border-t">
+            {activeTab === "bigquery" && (
+              <Button 
+                className="w-full" 
+                onClick={handleBigQueryConnect}
+                disabled={connecting || !bigQueryData.projectId || !bigQueryData.datasetId || (!bigQueryData.tables?.trim() && !selectedTable)}
+              >
+                {connecting ? t('addSource.connecting') : t('addSource.connectBigQuery')}
+              </Button>
+            )}
+            {activeTab === "sheets" && (
+              <Button 
+                className="w-full"
+                onClick={handleSheetsConnect}
+                disabled={!sheetsUrl.trim() || !selectedSheet || connecting}
+              >
+                {connecting ? t('addSource.connecting') : t('addSource.connectSheets')}
+              </Button>
+            )}
+            {activeTab === "sql" && (
+              <Button 
+                className="w-full"
+                onClick={handleSqlConnect}
+                disabled={!getCurrentSqlConnectionString() || !sqlDatabaseType || selectedSqlTables.length === 0 || connecting || loadingSqlTables}
+              >
+                {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
+              </Button>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>;
 }
