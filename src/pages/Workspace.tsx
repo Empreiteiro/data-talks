@@ -10,6 +10,7 @@ import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { SummaryModal } from "@/components/SummaryModal";
 import { TelegramModal } from "@/components/TelegramModal";
+import { ApiAccessModal } from "@/components/ApiAccessModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -265,6 +266,7 @@ export default function Workspace() {
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [isApiAccessModalOpen, setIsApiAccessModalOpen] = useState(false);
   const [graphModalOpen, setGraphModalOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [audioOverviewModalOpen, setAudioOverviewModalOpen] = useState(false);
@@ -1017,6 +1019,7 @@ export default function Workspace() {
               onOpenSummary={() => setSummaryModalOpen(true)}
               onOpenAudio={() => setAudioOverviewModalOpen(true)}
               onOpenTelegram={() => setIsTelegramModalOpen(true)}
+              onOpenApiAccess={() => setIsApiAccessModalOpen(true)}
             />
           </div>}
 
@@ -1064,6 +1067,12 @@ export default function Workspace() {
       <TelegramModal
         open={isTelegramModalOpen}
         onOpenChange={setIsTelegramModalOpen}
+        agentId={id || ''}
+      />
+
+      <ApiAccessModal
+        open={isApiAccessModalOpen}
+        onOpenChange={setIsApiAccessModalOpen}
         agentId={id || ''}
       />
 

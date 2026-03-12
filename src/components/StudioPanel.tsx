@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, Lock, MessageCircle, Network, Send } from "lucide-react";
+import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, Lock, MessageCircle, Network, Send, Terminal } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudioPanelProps {
@@ -10,11 +10,12 @@ interface StudioPanelProps {
   onOpenSummary?: () => void;
   onOpenAudio?: () => void;
   onOpenTelegram?: () => void;
+  onOpenApiAccess?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenTelegram, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenTelegram, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -90,6 +91,13 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
       description: t('studio.connectTelegram'),
       locked: false,
       onClick: onOpenTelegram,
+    },
+    {
+      icon: Terminal,
+      title: "API",
+      description: t('studio.connectApi'),
+      locked: false,
+      onClick: onOpenApiAccess,
     },
   ];
 

@@ -615,4 +615,50 @@ export const apiClient = {
   async deleteTelegramConnection(connectionId: string): Promise<{ message: string }> {
     return api(`/api/telegram/connections/${connectionId}`, { method: 'DELETE' });
   },
+
+  // API Keys (external agent access)
+  async listApiKeys(agentId?: string): Promise<Array<{
+    id: string;
+    agent_id: string;
+    name: string;
+    key_prefix: string;
+    scopes: string[];
+    is_active: boolean;
+    last_used_at: string | null;
+    created_at: string;
+  }>> {
+    const path = agentId ? `/api/api-keys?agent_id=${encodeURIComponent(agentId)}` : '/api/api-keys';
+    return api(path);
+  },
+
+  async createApiKey(body: { agent_id: string; name: string }): Promise<{
+    id: string;
+    agent_id: string;
+    name: string;
+    key_prefix: string;
+    scopes: string[];
+    is_active: boolean;
+    last_used_at: string | null;
+    created_at: string;
+    raw_key: string;
+  }> {
+    return api('/api/api-keys', { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async deleteApiKey(keyId: string): Promise<{ ok: boolean }> {
+    return api(`/api/api-keys/${keyId}`, { method: 'DELETE' });
+  },
+
+  async updateApiKey(keyId: string, body: { name?: string; is_active?: boolean }): Promise<{
+    id: string;
+    agent_id: string;
+    name: string;
+    key_prefix: string;
+    scopes: string[];
+    is_active: boolean;
+    last_used_at: string | null;
+    created_at: string;
+  }> {
+    return api(`/api/api-keys/${keyId}`, { method: 'PATCH', body: JSON.stringify(body) });
+  },
 };
