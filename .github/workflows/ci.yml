@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: ["master", "main", "claude/**"]
+  pull_request:
+    branches: ["master", "main"]
+
+jobs:
+  # ──────────────────────────────────────────────────
+  # Backend: Python / pytest
+  # ──────────────────────────────────────────────────
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-test.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Run pytest
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          ENABLE_LOGIN: "false"
+          SECRET_KEY: "ci-test-secret-key"
+        run: pytest --tb=short -q
+
+  # ──────────────────────────────────────────────────
+  # Frontend: TypeScript type-check, ESLint, Vitest
+  # ──────────────────────────────────────────────────
+  frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
