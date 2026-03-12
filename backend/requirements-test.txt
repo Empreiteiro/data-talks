@@ -1,0 +1,5 @@
+# Test dependencies (installed in addition to requirements.txt)
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+httpx>=0.28.1
+anyio[trio]>=4.6.0
