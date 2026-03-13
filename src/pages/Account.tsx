@@ -5,12 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import { CredentialsView } from "@/components/CredentialsView";
 import UsersManagement from "@/components/UsersManagement";
-import { Activity, Bot, Database, FolderOpen, PlugZap, Users } from "lucide-react";
+import { Activity, Bot, Database, FolderOpen, PlugZap, Users, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { LLMPanel } from "@/components/LLMPanel";
 import { ConnectionsPanel } from "@/components/ConnectionsPanel";
+import AuditTrail from "@/components/AuditTrail";
 import { useSearchParams } from "react-router-dom";
 
 const Account = () => {
@@ -29,6 +30,7 @@ const Account = () => {
       ...(loginRequired ? [{ id: "users", label: t('account.tabs.users'), icon: Users }] : []),
       { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
       { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
+      { id: "audit", label: t('account.tabs.audit'), icon: ShieldCheck },
     ];
     return items;
   }, [t, loginRequired]);
@@ -101,6 +103,7 @@ const Account = () => {
                 />
               )}
               {activeSection === "credentials" && <CredentialsView />}
+              {activeSection === "audit" && <AuditTrail />}
             </div>
           </div>
         </div>

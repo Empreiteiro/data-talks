@@ -707,4 +707,73 @@ export const apiClient = {
   }> {
     return api(`/api/api-keys/${keyId}`, { method: 'PATCH', body: JSON.stringify(body) });
   },
+
+  // Audit Trail
+  async listAuditLogs(params?: {
+    limit?: number;
+    offset?: number;
+    category?: string;
+    action?: string;
+    user_id?: string;
+    search?: string;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<{
+    total: number;
+    items: Array<{
+      id: string;
+      user_id?: string;
+      user_email?: string;
+      action: string;
+      category: string;
+      resource_type?: string;
+      resource_id?: string;
+      detail?: string;
+      ip_address?: string;
+      metadata?: Record<string, unknown>;
+      created_at: string;
+    }>;
+  }> {
+    const qs = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+      });
+    }
+    const q = qs.toString();
+    return api(`/api/audit${q ? `?${q}` : ''}`);
+  },
+
+  async exportAuditCsv(params?: {
+    category?: string;
+    action?: string;
+    user_id?: string;
+    search?: string;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<Blob> {
+    const qs = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+      });
+    }
+    const q = qs.toString();
+    return apiBlob(`/api/audit/export${q ? `?${q}` : ''}`);
+  },
+
+  async getAuditRetention(): Promise<{ retention_days: number; updated_at?: string }> {
+    return api('/api/audit/retention');
+  },
+
+  async updateAuditRetention(retentionDays: number): Promise<{ retention_days: number }> {
+    return api('/api/audit/retention', {
+      method: 'PATCH',
+      body: JSON.stringify({ retention_days: retentionDays }),
+    });
+  },
+
+  async applyAuditRetention(): Promise<{ deleted: number }> {
+    return api('/api/audit/retention/apply', { method: 'POST' });
+  },
 };

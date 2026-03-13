@@ -17,7 +17,7 @@ from sqlalchemy import inspect, select, text
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, sql_router, summary_router, logs_router, audio_overview_router, telegram_router
-from app.routers import api_keys_router, public_api_router, whatsapp_router
+from app.routers import api_keys_router, public_api_router, whatsapp_router, audit_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -159,6 +159,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.audit_middleware import AuditMiddleware
+app.add_middleware(AuditMiddleware)
+
 prefix = get_settings().api_prefix
 
 
@@ -195,6 +198,7 @@ app.include_router(audio_overview_router.router, prefix=prefix)
 app.include_router(telegram_router.router, prefix=prefix)
 app.include_router(whatsapp_router.router, prefix=prefix)
 app.include_router(api_keys_router.router, prefix=prefix)
+app.include_router(audit_router.router, prefix=prefix)
 app.include_router(public_api_router.router)  # public API at /v1/ask (no internal prefix)
 
 

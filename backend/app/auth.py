@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,9 +84,15 @@ async def get_current_user(
     return None
 
 
-async def require_user(user: User | None = Depends(get_current_user)) -> User:
+async def require_user(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+) -> User:
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    # Expose user info for audit middleware
+    request.state.audit_user_id = user.id
+    request.state.audit_user_email = user.email
     return user
 
 
