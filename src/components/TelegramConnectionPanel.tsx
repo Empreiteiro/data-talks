@@ -51,7 +51,7 @@ export function TelegramConnectionPanel({ agentId }: TelegramConnectionPanelProp
     try {
       const data = await dataClient.listTelegramConnections(agentId);
       setConnections(data.connections || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Erro ao carregar conexões Telegram:", err);
     } finally {
       setLoadingConnections(false);
@@ -70,7 +70,7 @@ export function TelegramConnectionPanel({ agentId }: TelegramConnectionPanelProp
         }
         return data.env_config?.key || data.configs?.[0]?.key || "";
       });
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`${t("telegram.configLoadError")}: ${err.message}`);
     } finally {
       setLoadingConfigs(false);
@@ -105,7 +105,7 @@ export function TelegramConnectionPanel({ agentId }: TelegramConnectionPanelProp
       setManualExpiresAt(data.expires_at);
 
       toast.success(t("telegram.instructionsReady"), { duration: 6000 });
-    } catch (err: any) {
+    } catch (err) {
       if (err.message?.includes("not configured") || err.message?.includes("configuration")) {
         toast.error(t("telegram.notConfigured"));
       } else {
@@ -131,7 +131,7 @@ export function TelegramConnectionPanel({ agentId }: TelegramConnectionPanelProp
       await dataClient.deleteTelegramConnection(connectionId);
       toast.success(t("telegram.removeSuccess"));
       setConnections((prev) => prev.filter((c) => c.id !== connectionId));
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`${t("telegram.removeError")}: ${err.message}`);
     }
   };

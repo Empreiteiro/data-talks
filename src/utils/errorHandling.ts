@@ -1,6 +1,6 @@
 
 /** Translates API/backend errors into user-friendly messages. */
-export const translateApiError = (error: any): string => {
+export const translateApiError = (error: unknown): string => {
   if (!error?.message) return 'Erro desconhecido';
 
   const message = error.message;

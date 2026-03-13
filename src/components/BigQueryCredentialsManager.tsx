@@ -50,8 +50,8 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       const sources = await dataClient.listSources();
       const list = Array.isArray(sources) ? sources : [];
       const bigquery = list.filter((s: { type?: string }) => s.type === 'bigquery');
-      const sqlSources = list.filter((s: { type?: string; metaJSON?: any }) => s.type === 'sql_database' && s.metaJSON?.connectionString);
-      const bqCreds: Credential[] = bigquery.map((s: { id: string; name: string; createdAt?: string; metaJSON?: any }) => ({
+      const sqlSources = list.filter((s) => s.type === 'sql_database' && s.metaJSON?.connectionString);
+      const bqCreds: Credential[] = bigquery.map((s) => ({
         type: 'bigquery' as const,
         id: s.id,
         name: s.name ?? '',
@@ -77,7 +77,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
         tableCount: c.tableNames.size,
       }));
       setCredentials([...bqCreds, ...sqlCreds]);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching credentials:', error);
       const message = error?.message ?? t('bigquery.errors.loadFailed');
       toast.error(t('bigquery.errors.loadFailed'), { description: message });
@@ -135,7 +135,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       setAddDialogOpen(false);
       await fetchCredentials();
       onSourceAdded?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error uploading credential:', error);
       const message = error?.message ?? (typeof error === 'string' ? error : t('bigquery.errors.uploadFailed'));
       toast.error(t('bigquery.errors.uploadFailed'), { description: message });
@@ -149,7 +149,7 @@ export const BigQueryCredentialsManager = ({ onSourceAdded }: BigQueryCredential
       await dataClient.deleteSource(id);
       toast.success(t('bigquery.success.deleted'));
       fetchCredentials();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting credential:', error);
       toast.error(t('bigquery.errors.deleteFailed'), { description: error.message });
     }

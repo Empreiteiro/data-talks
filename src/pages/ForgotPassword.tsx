@@ -26,7 +26,7 @@ const ForgotPassword = () => {
     try {
       await requestPasswordReset(String(data.get('email')));
       setSuccess(true);
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message || 'Erro ao enviar e-mail de recuperação');
     } finally {
       setLoading(false);

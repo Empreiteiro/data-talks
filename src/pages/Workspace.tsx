@@ -47,7 +47,7 @@ import { toast } from "sonner";
 const ChartImage = ({ imageUrl, qaSessionId, t, onRemoveImage }: { imageUrl: string; qaSessionId?: string; t: (key: string) => string; onRemoveImage?: () => void }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [dashboards, setDashboards] = useState<any[]>([]);
+  const [dashboards, setDashboards] = useState<Array<{ id: string; name: string }>>([]);
   const [addToDashboardOpen, setAddToDashboardOpen] = useState(false);
   const [selectedDashboardId, setSelectedDashboardId] = useState<string>("");
 
@@ -71,7 +71,7 @@ const ChartImage = ({ imageUrl, qaSessionId, t, onRemoveImage }: { imageUrl: str
     try {
       const data = await dataClient.listDashboards();
       setDashboards(data || []);
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.loadError'), {
         description: error.message
       });
@@ -86,7 +86,7 @@ const ChartImage = ({ imageUrl, qaSessionId, t, onRemoveImage }: { imageUrl: str
       toast.success(t('dashboard.chartAddedSuccess'));
       setAddToDashboardOpen(false);
       setSelectedDashboardId("");
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.chartAddedError'), {
         description: error.message
       });
@@ -214,12 +214,25 @@ type ChatMessage = {
   imageUrl?: string;
   turnId?: string;
   followUpQuestions?: string[];
-  chartInput?: any;
-  chartSpec?: any;
+  chartInput?: unknown;
+  chartSpec?: unknown;
   chartScript?: string;
   isChartLoading?: boolean;
 };
 
+
+interface QASessionRecord {
+  id: string;
+  question?: string;
+  answer?: string;
+  created_at?: string;
+  conversationHistory?: Record<string, unknown>[];
+  conversation_history?: Record<string, unknown>[];
+  follow_up_questions?: string[];
+  imageUrl?: string;
+  table_data?: { image_url?: string };
+  source_id?: string;
+}
 
 export default function Workspace() {
   const { t } = useLanguage();
@@ -261,7 +274,7 @@ export default function Workspace() {
   const [hasSources, setHasSources] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<QASessionRecord[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
@@ -294,7 +307,7 @@ export default function Workspace() {
     try {
       const sources = await dataClient.listSources(id);
       setHasSources(sources && sources.length > 0);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao verificar fontes:", error);
     }
   }
@@ -304,12 +317,12 @@ export default function Workspace() {
     try {
       const sources = await dataClient.listSources(id);
       setSqlSourcesCount((sources || []).filter((source) => source.type === "sql_database").length);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar contagem de fontes SQL:", error);
     }
   }
 
-  function getColumnsFromSource(source: { name: string; type: string; metaJSON?: any }, withPrefix: boolean): string[] {
+  function getColumnsFromSource(source: { name: string; type: string; metaJSON?: Record<string, unknown> }, withPrefix: boolean): string[] {
     const meta = source?.metaJSON || {};
     const prefix = withPrefix ? source.name + "." : "";
 
@@ -351,6 +364,7 @@ export default function Workspace() {
 
       const source = sources[0];
       if (source) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let metadata = source?.metaJSON as any;
         let columnNames: string[] = [];
         if (source?.type === "bigquery") {
@@ -382,7 +396,7 @@ export default function Workspace() {
       } else {
         setAvailableColumns([]);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar colunas:", error);
     }
   }
@@ -392,7 +406,7 @@ export default function Workspace() {
     try {
       const agent = await dataClient.getAgent(id);
       setWarmupQuestions(agent?.suggested_questions || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar perguntas de aquecimento:", error);
     }
   }
@@ -416,7 +430,7 @@ export default function Workspace() {
     try {
       const data = await dataClient.listQASessions(id);
       setHistory(data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
   }
@@ -435,7 +449,7 @@ export default function Workspace() {
       // Recarregar histórico
       loadHistory();
       toast.success("Conversa excluída");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao excluir conversa:", error);
       toast.error("Erro ao excluir conversa");
     }
@@ -464,7 +478,7 @@ export default function Workspace() {
         }
         await dataClient.updateQASession(currentSessionId, { conversation_history: conversationHistory });
         toast.success("Mensagem excluída");
-      } catch (error: any) {
+      } catch (error) {
         console.error("Erro ao atualizar histórico:", error);
         toast.error("Erro ao excluir mensagem");
       }
@@ -481,7 +495,7 @@ export default function Workspace() {
     ));
     if (currentSessionId) {
       try {
-        const conversationHistory: any[] = [];
+        const conversationHistory: Record<string, unknown>[] = [];
         const updatedMessages = messages.map((item, idx) =>
           idx === messageIndex ? { ...item, imageUrl: undefined, chartSpec: undefined, chartScript: undefined, chartInput: undefined } : item
         );
@@ -501,7 +515,7 @@ export default function Workspace() {
         }
         await dataClient.updateQASession(currentSessionId, { conversation_history: conversationHistory });
         toast.success(t('workspace.imageRemoved') || "Imagem removida da conversa");
-      } catch (error: any) {
+      } catch (error) {
         console.error("Erro ao remover imagem:", error);
         toast.error(t('workspace.imageRemoveError') || "Erro ao remover imagem");
       }
@@ -534,7 +548,7 @@ export default function Workspace() {
       )));
       toast.success(t('workspace.chartGeneratedSuccess'));
       loadHistory();
-    } catch (error: any) {
+    } catch (error) {
       setMessages((prev) => prev.map((item, idx) => (
         idx === messageIndex ? { ...item, isChartLoading: false } : item
       )));
@@ -544,7 +558,7 @@ export default function Workspace() {
     }
   };
 
-  const handleLoadConversation = async (qaSession: any) => {
+  const handleLoadConversation = async (qaSession: QASessionRecord) => {
     const conversationHistory = qaSession.conversationHistory || qaSession.conversation_history || [];
     
     // Reconstruir o array de mensagens a partir do formato do backend
@@ -567,7 +581,7 @@ export default function Workspace() {
       });
     } else {
       // Caso contrário, processar conversation_history normalmente
-      conversationHistory.forEach((entry: any) => {
+      conversationHistory.forEach((entry) => {
         // Adicionar pergunta do usuário
         loadedMessages.push({
           role: "user",
@@ -600,7 +614,7 @@ export default function Workspace() {
         }
         setSourcesRefreshTrigger(prev => prev + 1);
         loadAvailableColumns();
-      } catch (error: any) {
+      } catch (error) {
         console.error("Erro ao ativar fonte da conversa:", error);
       }
     }
@@ -655,7 +669,7 @@ export default function Workspace() {
       
       // Recarregar histórico após resposta bem-sucedida
       loadHistory();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao enviar pergunta:", error);
       toast.error("Erro ao processar pergunta", {
         description: error.message
@@ -744,7 +758,7 @@ export default function Workspace() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {history.map((qaSession: any) => (
+                      {history.map((qaSession) => (
                         <Card
                           key={qaSession.id}
                           className="group relative cursor-pointer hover:bg-accent transition-colors"

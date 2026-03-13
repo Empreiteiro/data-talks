@@ -63,7 +63,7 @@ export default function AgentBriefing() {
         setSelectedSourceIds(agentData.source_ids || []);
         setSuggestedQuestions(agentData.suggested_questions?.length ? agentData.suggested_questions : ['']);
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Erro ao carregar dados", {
         description: error.message,
       });
@@ -115,7 +115,7 @@ export default function AgentBriefing() {
       }
       
       navigate('/agents');
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Erro ao salvar agente", {
         description: error.message,
       });
@@ -134,7 +134,7 @@ export default function AgentBriefing() {
         description: "Agente removido com sucesso.",
       });
       navigate('/agents');
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Erro ao remover agente", {
         description: error.message,
       });

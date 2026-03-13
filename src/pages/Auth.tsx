@@ -34,7 +34,7 @@ const Auth = () => {
         await login(String(data.get('email')), String(data.get('password')));
       }
       window.location.href = '/';
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message || t('auth.loginError'));
     }
   }
@@ -44,13 +44,13 @@ const Auth = () => {
     setError(null);
     const data = new FormData(e.currentTarget);
     try {
-      const res: any = await register(String(data.get('name')), String(data.get('email')), String(data.get('password')));
+      const res = await register(String(data.get('name')), String(data.get('email')), String(data.get('password')));
       if (res && !res.session) {
         setInfo(t('auth.registerSuccess'));
       } else {
         window.location.href = '/';
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message || t('auth.registerError'));
     }
   }

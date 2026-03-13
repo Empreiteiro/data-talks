@@ -50,7 +50,7 @@ export function WhatsAppConnectionPanel({ agentId }: WhatsAppConnectionPanelProp
     try {
       const data = await dataClient.listWhatsAppConnections(agentId);
       setConnections(data.connections || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error loading WhatsApp connections:", err);
     } finally {
       setLoadingConnections(false);
@@ -73,7 +73,7 @@ export function WhatsAppConnectionPanel({ agentId }: WhatsAppConnectionPanelProp
         }
         return data.env_config?.key || data.configs?.[0]?.key || "";
       });
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`${t("whatsapp.configLoadError")}: ${err.message}`);
     } finally {
       setLoadingConfigs(false);
@@ -101,7 +101,7 @@ export function WhatsAppConnectionPanel({ agentId }: WhatsAppConnectionPanelProp
       await dataClient.createWhatsAppConnection(agentId, { config_key: selectedKey });
       toast.success(t("whatsapp.connectSuccess"));
       await fetchConnections();
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`${t("whatsapp.connectError")}: ${err.message}`);
     } finally {
       setConnecting(false);
@@ -123,7 +123,7 @@ export function WhatsAppConnectionPanel({ agentId }: WhatsAppConnectionPanelProp
       await dataClient.deleteWhatsAppConnection(connectionId);
       toast.success(t("whatsapp.removeSuccess"));
       setConnections((prev) => prev.filter((c) => c.id !== connectionId));
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`${t("whatsapp.removeError")}: ${err.message}`);
     }
   };

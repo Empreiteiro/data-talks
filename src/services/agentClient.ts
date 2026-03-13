@@ -7,7 +7,7 @@ export interface Source {
   id: string;
   type: SourceType;
   name: string;
-  metaJSON: any;
+  metaJSON: Record<string, unknown>;
   ownerId: string;
   createdAt: string;
   langflowPath?: string | null;
@@ -29,7 +29,7 @@ export interface QASession {
   agentId: string;
   question: string;
   answerText: string;
-  answerTableJSON?: any[];
+  answerTableJSON?: Record<string, unknown>[];
   rawSQL?: string;
   latencyMs: number;
   status: 'ok' | 'error';
@@ -55,7 +55,7 @@ export interface AlertEvent {
   id: string;
   alertId: string;
   matched: boolean;
-  payloadJSON: any;
+  payloadJSON: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -95,13 +95,14 @@ export const agentClient = {
       const ext = file.name.split('.').pop()?.toLowerCase();
       if (!ext || !['csv', 'xlsx', 'xls'].includes(ext)) throw new Error('Extensão inválida');
       const name = file.name;
-      let preview: any[] = [];
+      let preview: Record<string, unknown>[] = [];
       let schema: Record<string, string> = {};
       let rowCount = 0;
 
       if (ext === 'csv') {
         const text = await file.text();
         const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allData = parsed.data as any[];
         preview = allData.slice(0, 5);
         schema = inferSchema(allData);
@@ -112,6 +113,7 @@ export const agentClient = {
         const firstSheet = wb.SheetNames[0];
         const ws = wb.Sheets[firstSheet];
         const json = XLSX.utils.sheet_to_json(ws);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allData = json as any[];
         preview = allData.slice(0, 5);
         schema = inferSchema(allData);
@@ -298,6 +300,7 @@ export const agentClient = {
     const qa = read<QASession>(DB.qa);
     const s = qa.find(x => x.id === sessionId);
     if (s) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s as any).feedback = feedback || undefined;
       write(DB.qa, qa);
     }
@@ -314,7 +317,7 @@ export const agentClient = {
   }
 };
 
-function inferSchema(rows: any[]): Record<string, string> {
+function inferSchema(rows: Record<string, unknown>[]): Record<string, string> {
   const first = rows[0] || {};
   const keys = Object.keys(first);
   const schema: Record<string, string> = {};
@@ -325,7 +328,7 @@ function inferSchema(rows: any[]): Record<string, string> {
   return schema;
 }
 
-function inferType(v: any): string {
+function inferType(v: unknown): string {
   if (v == null) return 'string';
   if (typeof v === 'number') return 'number';
   if (!isNaN(Number(v))) return 'number';
@@ -345,7 +348,7 @@ function nextScheduleISO(freq: Alert['frequency']): string {
   return d.toISOString();
 }
 
-function synthAnswer(question: string): { text: string; table?: any[]; sql?: string } {
+function synthAnswer(question: string): { text: string; table?: Record<string, unknown>[]; sql?: string } {
   const lower = question.toLowerCase();
   if (lower.includes('receita') || lower.includes('faturamento')) {
     const table = [

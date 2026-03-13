@@ -3,11 +3,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+interface TableInfo {
+  columns?: string[];
+  preview_rows?: Record<string, unknown>[];
+}
+
+interface SourceMetadata {
+  table_infos?: TableInfo[];
+  columns?: string[];
+  preview_rows?: Record<string, unknown>[];
+}
+
 interface DataPreviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sourceName: string;
-  metadata: any;
+  metadata: SourceMetadata | null | undefined;
 }
 
 export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: DataPreviewModalProps) => {
@@ -19,7 +30,7 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
   
   // Para BigQuery, buscar de table_infos
   let schema: string[] = [];
-  let previewRows: any[] = [];
+  let previewRows: Record<string, unknown>[] = [];
 
   if (metadata?.table_infos && metadata.table_infos.length > 0) {
     schema = metadata.table_infos[0]?.columns || [];
@@ -59,7 +70,7 @@ export const DataPreviewModal = ({ open, onOpenChange, sourceName, metadata }: D
             </TableHeader>
             <TableBody>
               {previewRows.length > 0 ? (
-                previewRows.map((row: any, rowIndex: number) => (
+                previewRows.map((row, rowIndex: number) => (
                   <TableRow key={rowIndex}>
                     {columnsForRows.map((column: string, colIndex: number) => (
                       <TableCell key={colIndex} className="whitespace-nowrap">
