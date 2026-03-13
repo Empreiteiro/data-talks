@@ -10,12 +10,13 @@ interface StudioPanelProps {
   onOpenSummary?: () => void;
   onOpenAudio?: () => void;
   onOpenTelegram?: () => void;
+  onOpenWhatsApp?: () => void;
   onOpenApiAccess?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenTelegram, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenTelegram, onOpenWhatsApp, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -77,7 +78,8 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
       icon: MessageCircle,
       title: "WhatsApp",
       description: t('studio.connectWhatsApp'),
-      locked: true,
+      locked: false,
+      onClick: onOpenWhatsApp,
     },
     {
       icon: Hash,
