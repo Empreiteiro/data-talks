@@ -253,6 +253,32 @@ class WhatsAppConnection(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class AuditLog(Base):
+    """Full audit trail: tracks all user actions for enterprise compliance."""
+    __tablename__ = "audit_logs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    user_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    action: Mapped[str] = mapped_column(String(100), index=True)  # e.g. source.create, agent.delete, user.login
+    category: Mapped[str] = mapped_column(String(50), index=True)  # query, source, agent, config, user, auth
+    resource_type: Mapped[str | None] = mapped_column(String(50), nullable=True)  # source, agent, llm_config, etc.
+    resource_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)  # human-readable description
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class AuditRetentionConfig(Base):
+    """Audit log retention policy configuration."""
+    __tablename__ = "audit_retention_config"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    retention_days: Mapped[int] = mapped_column(Integer, default=90)  # days to keep logs; 0 = forever
+    updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class ApiKey(Base):
     """External API key for programmatic access to an agent."""
     __tablename__ = "api_keys"
