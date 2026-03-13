@@ -80,6 +80,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
 
+    # WhatsApp Business API Settings (optional defaults from .env)
+    whatsapp_phone_number_id: str = ""
+    whatsapp_access_token: str = ""
+    whatsapp_verify_token: str = ""
+
     class Config:
         env_file = str(_ENV_FILE) if _ENV_FILE.exists() else ".env"
         extra = "ignore"

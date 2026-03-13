@@ -228,6 +228,31 @@ class TelegramConnection(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class WhatsAppBotConfig(Base):
+    """User-managed WhatsApp Business API credentials."""
+    __tablename__ = "whatsapp_bot_configs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(128))
+    phone_number_id: Mapped[str] = mapped_column(String(64))
+    access_token: Mapped[str] = mapped_column(String(512))
+    verify_token: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class WhatsAppConnection(Base):
+    """Maps a WhatsApp phone number ID to an agent."""
+    __tablename__ = "whatsapp_connections"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    whatsapp_bot_config_id: Mapped[str] = mapped_column(String(36))
+    phone_number_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    config_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class ApiKey(Base):
     """External API key for programmatic access to an agent."""
     __tablename__ = "api_keys"

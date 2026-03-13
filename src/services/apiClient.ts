@@ -616,6 +616,52 @@ export const apiClient = {
     return api(`/api/telegram/connections/${connectionId}`, { method: 'DELETE' });
   },
 
+  // WhatsApp Integration
+  async listWhatsAppBotConfigs(): Promise<{
+    env_config: {
+      id: string;
+      key: string;
+      name: string;
+      phone_number_id: string;
+      masked_token: string;
+      is_env: boolean;
+    } | null;
+    configs: Array<{
+      id: string;
+      key: string;
+      name: string;
+      phone_number_id: string;
+      masked_token: string;
+      is_env: boolean;
+      created_at?: string;
+    }>;
+  }> {
+    return api('/api/whatsapp/bot-configs');
+  },
+
+  async createWhatsAppBotConfig(body: { name: string; phone_number_id: string; access_token: string; verify_token: string }) {
+    return api('/api/whatsapp/bot-configs', { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async deleteWhatsAppBotConfig(configId: string): Promise<{ message: string }> {
+    return api(`/api/whatsapp/bot-configs/${configId}`, { method: 'DELETE' });
+  },
+
+  async createWhatsAppConnection(
+    agentId: string,
+    body: { config_key: string }
+  ): Promise<{ id: string; agent_id: string; phone_number_id: string; config_name?: string; created_at: string }> {
+    return api(`/api/whatsapp/connections/${agentId}`, { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async listWhatsAppConnections(agentId: string): Promise<{ connections: Array<{ id: string; phone_number_id: string; config_name?: string; created_at: string }> }> {
+    return api(`/api/whatsapp/connections/${agentId}`);
+  },
+
+  async deleteWhatsAppConnection(connectionId: string): Promise<{ message: string }> {
+    return api(`/api/whatsapp/connections/${connectionId}`, { method: 'DELETE' });
+  },
+
   // API Keys (external agent access)
   async listApiKeys(agentId?: string): Promise<Array<{
     id: string;
