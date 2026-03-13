@@ -99,7 +99,7 @@ export const apiClient = {
     if (agentId) params.set('agent_id', agentId);
     if (isActive !== undefined) params.set('is_active', String(isActive));
     const path = params.toString() ? `/api/sources?${params}` : '/api/sources';
-    const data = await api<Array<{ id: string; name: string; type: string; ownerId: string; agent_id?: string; is_active?: boolean; createdAt: string; metaJSON: any; langflowPath?: string; langflowName?: string }>>(path);
+    const data = await api<Array<{ id: string; name: string; type: string; ownerId: string; agent_id?: string; is_active?: boolean; createdAt: string; metaJSON: Record<string, unknown>; langflowPath?: string; langflowName?: string }>>(path);
     return (data || []).map((s) => ({
       id: s.id,
       name: s.name,
@@ -123,7 +123,7 @@ export const apiClient = {
   },
 
   async createSource(name: string, type: 'bigquery' | 'google_sheets' | 'sql_database', metadata: Record<string, unknown>, agentId?: string) {
-    const data = await api<{ id: string; name: string; type: string; ownerId: string; createdAt: string; metaJSON: any }>('/api/sources', {
+    const data = await api<{ id: string; name: string; type: string; ownerId: string; createdAt: string; metaJSON: Record<string, unknown> }>('/api/sources', {
       method: 'POST',
       body: JSON.stringify({ name, type, metadata, agent_id: agentId ?? null }),
     });
@@ -197,7 +197,7 @@ export const apiClient = {
     });
   },
   async refreshSourceBigQueryMetadata(sourceId: string) {
-    return api<{ metaJSON: any }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
   async getGoogleSheetsServiceEmail(): Promise<string | null> {
     const data = await api<{ email: string | null }>('/api/settings/google-sheets-service-email');
@@ -250,7 +250,7 @@ export const apiClient = {
 
   async listQASessions(agentId?: string) {
     const path = agentId ? `/api/qa_sessions?agent_id=${encodeURIComponent(agentId)}` : '/api/qa_sessions';
-    const data = await api<any[]>(path);
+    const data = await api<Record<string, unknown>[]>(path);
     return (data || []).map((s) => ({
       ...s,
       answerText: s.answer,
@@ -258,7 +258,7 @@ export const apiClient = {
       answerTableJSON: s.table_data?.table,
       latencyMs: s.latency,
       followUpQuestions: s.follow_up_questions || [],
-      conversationHistory: (s.conversation_history || []).map((entry: any) => ({
+      conversationHistory: (s.conversation_history || []).map((entry) => ({
         ...entry,
         imageUrl: toApiAssetUrl(entry.imageUrl),
       })),
@@ -269,7 +269,7 @@ export const apiClient = {
     await api(`/api/qa_sessions/${id}`, { method: 'DELETE' });
   },
 
-  async updateQASession(id: string, body: { conversation_history?: any[] }) {
+  async updateQASession(id: string, body: { conversation_history?: Record<string, unknown>[] }) {
     await api(`/api/qa_sessions/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   },
 
@@ -296,7 +296,7 @@ export const apiClient = {
   async uploadFile(file: File, _selectedSheet?: string) {
     const form = new FormData();
     form.append('file', file);
-    const data = await apiFormData<{ id: string; name: string; type: string; ownerId: string; createdAt: string; metaJSON: any }>('/api/sources/upload', form);
+    const data = await apiFormData<{ id: string; name: string; type: string; ownerId: string; createdAt: string; metaJSON: Record<string, unknown> }>('/api/sources/upload', form);
     return {
       id: data.id,
       name: data.name,
@@ -308,7 +308,7 @@ export const apiClient = {
   },
 
   async askQuestion(agentId: string, question: string, sessionId?: string) {
-    const data = await api<{ answer: string; imageUrl?: string; sessionId?: string; followUpQuestions?: string[]; turnId?: string; chartInput?: any }>('/api/ask-question', {
+    const data = await api<{ answer: string; imageUrl?: string; sessionId?: string; followUpQuestions?: string[]; turnId?: string; chartInput?: unknown }>('/api/ask-question', {
       method: 'POST',
       body: JSON.stringify({ question, agentId, sessionId }),
     });
@@ -319,7 +319,7 @@ export const apiClient = {
   },
 
   async generateChartForTurn(sessionId: string, body: { turnId?: string; turnIndex?: number }) {
-    const data = await api<{ imageUrl: string; matplotlibScript?: string; chartSpec?: any; turnId?: string }>(`/api/ask-question/${sessionId}/chart`, {
+    const data = await api<{ imageUrl: string; matplotlibScript?: string; chartSpec?: unknown; turnId?: string }>(`/api/ask-question/${sessionId}/chart`, {
       method: 'POST',
       body: JSON.stringify(body),
     });

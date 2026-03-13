@@ -78,7 +78,7 @@ const Dashboard = () => {
     try {
       const data = await dataClient.getDashboard(id);
       setDashboard(data as DashboardData);
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.loadError'), {
         description: error.message
       });
@@ -108,7 +108,7 @@ const Dashboard = () => {
       toast.success(t('dashboard.updateSuccess'));
       setEditDialogOpen(false);
       loadDashboard();
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.updateError'), {
         description: error.message
       });
@@ -126,7 +126,7 @@ const Dashboard = () => {
       await dataClient.deleteDashboard(dashboard.id);
       toast.success(t('dashboard.deleteSuccess'));
       navigate('/');
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.deleteError'), {
         description: error.message
       });
@@ -152,7 +152,7 @@ const Dashboard = () => {
       toast.success(t('dashboard.chartUpdateSuccess'));
       setChartEditDialogOpen(false);
       loadDashboard();
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.chartUpdateError'), {
         description: error.message
       });
@@ -168,7 +168,7 @@ const Dashboard = () => {
       await dataClient.removeChartFromDashboard(chartId);
       toast.success(t('dashboard.chartRemovedSuccess'));
       loadDashboard();
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.chartRemovedError'), {
         description: error.message
       });

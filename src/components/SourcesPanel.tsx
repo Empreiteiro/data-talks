@@ -13,7 +13,7 @@ interface Source {
   name: string;
   type: string;
   createdAt: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   is_active?: boolean;
   agent_id?: string;
 }
@@ -61,7 +61,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
     try {
       setLoading(true);
       const sourcesData = await dataClient.listSources();
-      const mappedSources = (sourcesData || []).map((s: { id: string; name: string; type: string; createdAt: string; metaJSON?: any }) => ({
+      const mappedSources = (sourcesData || []).map((s) => ({
         id: s.id,
         name: s.name,
         type: s.type,
@@ -70,7 +70,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
       }));
       setSources(mappedSources);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar sources:", error);
       toast.error("Erro ao carregar fontes de dados");
       setLoading(false);
@@ -82,7 +82,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
     try {
       setLoading(true);
       const sourcesData = await dataClient.listSources(agentId);
-      const mappedSources = (sourcesData || []).map((s: { id: string; name: string; type: string; createdAt: string; metaJSON?: any; is_active?: boolean; agent_id?: string }) => ({
+      const mappedSources = (sourcesData || []).map((s) => ({
         id: s.id,
         name: s.name,
         type: s.type,
@@ -93,7 +93,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
       }));
       setActiveSourceIds(mappedSources.filter((source) => source.is_active).map((source) => source.id));
       setSources(mappedSources);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar sources do agente:", error);
       toast.error("Erro ao carregar fontes");
     } finally {
@@ -133,7 +133,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
       }
       loadAgentSourceIds();
       if (onSourceActivated) onSourceActivated();
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t("sources.activateError"), { description: error.message });
     }
   }
@@ -147,7 +147,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
       } else {
         loadAllUserSources();
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Erro ao remover fonte", { description: error.message });
     }
   }
@@ -213,7 +213,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                         try {
                           const res = await dataClient.refreshSourceBigQueryMetadata(source.id);
                           previewMeta = res?.metaJSON ?? previewMeta;
-                        } catch (_) {}
+                        } catch (_) { /* intentional */ }
                         setPreviewSource({ ...source, metadata: previewMeta });
                       } else {
                         setPreviewSource(source);

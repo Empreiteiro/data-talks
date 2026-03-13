@@ -79,7 +79,7 @@ const Alerts = () => {
         title: t('alerts.success'),
         description: t('alerts.alertCreated')
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t('alerts.error'),
         description: error.message || t('alerts.errorCreatingAlert'),
@@ -127,7 +127,7 @@ const Alerts = () => {
                     <SelectValue placeholder={t('alerts.selectAgentPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {agents.map((a: any) => (
+                    {agents.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.name || `${a.id.slice(0,6)}...`}
                       </SelectItem>
@@ -230,7 +230,7 @@ const Alerts = () => {
                 </CardContent>
               </Card>
             ) : (
-              alerts.map((a: any) => (
+              alerts.map((a) => (
                 <Card key={a.id} className="shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-base flex items-center justify-between">

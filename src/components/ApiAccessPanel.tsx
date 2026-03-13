@@ -63,7 +63,7 @@ export function ApiAccessPanel({ agentId }: ApiAccessPanelProps) {
         dataClient.getAgent(agentId),
       ]);
       setKeys(keysData);
-      setSources((sourcesData || []).map((s: any) => ({ id: s.id, name: s.name, type: s.type })));
+      setSources((sourcesData || []).map((s: { id: string; name: string; type: string }) => ({ id: s.id, name: s.name, type: s.type })));
       setAgentSqlMode(!!agentData?.sql_mode);
     } catch (error: unknown) {
       toast.error(t("apiAccess.createError"), {

@@ -5,7 +5,7 @@ export type Language = 'en' | 'pt' | 'es';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string, params?: Record<string, any>) => string;
+  t: (key: string, params?: Record<string, unknown>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -2914,7 +2914,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     return savedLanguage && ['en', 'pt', 'es'].includes(savedLanguage) ? savedLanguage : 'en';
   });
 
-  const t = (key: string, params?: Record<string, any>): string => {
+  const t = (key: string, params?: Record<string, unknown>): string => {
     const langTranslations = translations[language as keyof typeof translations];
     let text = (langTranslations?.[key] ?? translations.en[key] ?? key) as string;
     

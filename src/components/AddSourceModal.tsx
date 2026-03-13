@@ -200,7 +200,7 @@ export function AddSourceModal({
     try {
       const sources = await dataClient.listSources();
       const bigquery = (sources || []).filter((s: { type: string }) => s.type === 'bigquery');
-      const credentials = bigquery.map((s: { id: string; name: string; metaJSON?: any }) => ({
+      const credentials = bigquery.map((s) => ({
         id: s.id,
         sourceName: s.name,
         credentialsContent: s.metaJSON?.credentialsContent,
@@ -210,7 +210,8 @@ export function AddSourceModal({
       }));
       setExistingCredentials(credentials);
       const sqlSources = (sources || [])
-        .filter((s: { type: string; metaJSON?: any }) => s.type === 'sql_database' && s.metaJSON?.connectionString);
+        .filter((s) => s.type === 'sql_database' && s.metaJSON?.connectionString);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const byConn = new Map<string, { id: string; connectionString: string; databaseType: string; tableInfos: any[] }>();
       for (const s of sqlSources) {
         const conn = String(s.metaJSON?.connectionString || '').trim();
@@ -224,6 +225,7 @@ export function AddSourceModal({
             tableInfos: [...tableInfos],
           });
         } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const merged = new Map<string, any>();
           [...existing.tableInfos, ...tableInfos].forEach((t) => merged.set(t.table, t));
           existing.tableInfos = Array.from(merged.values());
@@ -303,7 +305,7 @@ export function AddSourceModal({
       }
       
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload error:', error);
       toast.error(t('addSource.uploadError'), {
         description: error.message
@@ -413,7 +415,7 @@ export function AddSourceModal({
       toast.success('BigQuery conectado com sucesso!');
       onSourceAdded?.(source.id);
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('BigQuery connection error:', error);
       toast.error('Erro ao conectar BigQuery', { description: error.message });
     } finally {
@@ -445,7 +447,7 @@ export function AddSourceModal({
       toast.success('Google Sheets conectado com sucesso!');
       onSourceAdded?.(source.id);
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Google Sheets connection error:', error);
       toast.error('Erro ao conectar Google Sheets', { description: error.message });
     } finally {
@@ -471,7 +473,7 @@ export function AddSourceModal({
         return;
       }
       setSelectedSqlTables((current) => current.filter((tableId) => tables.some((table) => table.id === tableId)));
-    } catch (error: any) {
+    } catch (error) {
       console.error('SQL table discovery error:', error);
       setAvailableSqlTables([]);
       setSelectedSqlTables([]);
@@ -530,7 +532,7 @@ export function AddSourceModal({
       toast.success(t('addSource.sqlConnectSuccess'));
       onSourceAdded?.(createdSources[0]?.id || '');
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('SQL database connection error:', error);
       toast.error(t('addSource.sqlConnectError'), { description: error.message });
     } finally {
@@ -797,7 +799,7 @@ export function AddSourceModal({
                   <Label htmlFor="sql-type">{t('addSource.sqlDatabaseType')}</Label>
                   <Select 
                     value={sqlDatabaseType} 
-                    onValueChange={(value: any) => {
+                    onValueChange={(value) => {
                       setSqlDatabaseType(value);
                       setAvailableSqlTables([]);
                       setSelectedSqlTables([]);

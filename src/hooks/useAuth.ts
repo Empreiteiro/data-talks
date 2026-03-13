@@ -27,7 +27,7 @@ const cleanupAuthState = () => {
         }
       });
     }
-  } catch {}
+  } catch { /* intentional */ }
 };
 
 const toUserFromApi = (u: { id: string; email?: string; role?: string }) => ({

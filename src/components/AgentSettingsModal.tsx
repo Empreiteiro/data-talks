@@ -56,7 +56,7 @@ export function AgentSettingsModal({
       setLlmConfigId(agent?.llm_config_id ?? null);
       setSqlMode(agent?.sql_mode ?? false);
       setLlmConfigs(configs || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar configurações:", error);
       toast.error(t('agentSettings.loadError'));
     }
@@ -69,7 +69,7 @@ export function AgentSettingsModal({
       toast.success(t('agentSettings.saveSuccess'));
       onSettingsUpdated?.();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao salvar configurações:", error);
       toast.error(t('agentSettings.saveError'));
     } finally {

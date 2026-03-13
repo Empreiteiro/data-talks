@@ -62,7 +62,7 @@ const Index = () => {
     try {
       const data = await dataClient.listAgents();
       setAgents(data || []);
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Erro ao carregar workspaces", {
         description: error.message
       });
@@ -75,7 +75,7 @@ const Index = () => {
     try {
       const data = await dataClient.listDashboards();
       setDashboards((data || []) as unknown as Dashboard[]);
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.loadError'), {
         description: error.message
       });
@@ -85,7 +85,7 @@ const Index = () => {
     try {
       const newAgent = await dataClient.createAgent(t('workspace.newWorkspace'), [], "", []) as { id: string };
       navigate(`/workspace/${newAgent.id}?openAddSource=true`);
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('workspace.errorCreatingWorkspace'), {
         description: error.message
       });
@@ -107,7 +107,7 @@ const Index = () => {
       setNewDashboardDescription("");
       loadDashboards();
       navigate(`/dashboard/${dashboard.id}`);
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.createError'), {
         description: error.message
       });
@@ -125,7 +125,7 @@ const Index = () => {
       await dataClient.deleteDashboard(dashboardId);
       toast.success(t('dashboard.deleteSuccess'));
       loadDashboards();
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('dashboard.deleteError'), {
         description: error.message
       });
@@ -144,7 +144,7 @@ const Index = () => {
       toast.success(t('workspace.renameSuccess'));
       loadAgents();
       setRenameDialogOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('workspace.renameError'), {
         description: error.message
       });
@@ -159,7 +159,7 @@ const Index = () => {
       await dataClient.deleteAgent(agentId);
       toast.success(t('workspace.deleteSuccess'));
       loadAgents();
-    } catch (error: any) {
+    } catch (error) {
       toast.error(t('workspace.deleteError'), {
         description: error.message
       });
