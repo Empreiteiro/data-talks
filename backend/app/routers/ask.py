@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.auth import require_user
-from app.llm.charting import build_chart_plan, render_chart
+from app.llm.charting import build_chart_plan
 from app.models import Agent, Source, QASession, LlmSettings, LlmConfig
 from app.models import User
 from app.schemas import AskQuestionRequest, AskQuestionResponse
@@ -345,11 +345,10 @@ async def generate_chart_for_turn(
     turn_index, turn = _find_turn(history, body.turnId, body.turnIndex)
     turn_id = str(turn.get("id") or body.turnId or turn_index)
 
-    if turn.get("imageUrl") and turn.get("chartScript"):
+    # Return cached chartSpec if already generated
+    if turn.get("chartSpec"):
         return {
-            "imageUrl": turn["imageUrl"],
-            "matplotlibScript": turn["chartScript"],
-            "chartSpec": turn.get("chartSpec"),
+            "chartSpec": turn["chartSpec"],
             "turnId": turn_id,
         }
 
@@ -375,29 +374,16 @@ async def generate_chart_for_turn(
     if not plan:
         raise HTTPException(400, "Could not derive a reliable chart from this answer")
 
-    _, full_path = _chart_file_path(user.id, session_id, turn_id)
-    script = render_chart(plan, full_path)
-    image_url = _chart_image_url(session_id, turn_id)
-
     updated_turn = {
         **turn,
         "id": turn_id,
-        "imageUrl": image_url,
         "chartSpec": plan,
-        "chartScript": script,
     }
     updated_history = [*history[:turn_index], updated_turn, *history[turn_index + 1 :]]
     qa.conversation_history = updated_history
-    qa.table_data = {
-        **(qa.table_data or {}),
-        "image_url": image_url,
-        "last_turn_id": turn_id,
-    }
     await db.commit()
 
     return {
-        "imageUrl": image_url,
-        "matplotlibScript": script,
         "chartSpec": plan,
         "turnId": turn_id,
     }
