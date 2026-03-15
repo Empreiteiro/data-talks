@@ -1,6 +1,7 @@
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { AgentSettingsModal } from "@/components/AgentSettingsModal";
 import { AudioOverviewModal } from "@/components/AudioOverviewModal";
+import { ChartRenderer, ChartSpec } from "@/components/ChartRenderer";
 import { GraphViewModal } from "@/components/GraphViewModal";
 import { LogsModal } from "@/components/LogsModal";
 import { ProtectedImage } from "@/components/ProtectedImage";
@@ -215,7 +216,7 @@ type ChatMessage = {
   turnId?: string;
   followUpQuestions?: string[];
   chartInput?: unknown;
-  chartSpec?: unknown;
+  chartSpec?: ChartSpec | unknown;
   chartScript?: string;
   isChartLoading?: boolean;
 };
@@ -487,7 +488,7 @@ export default function Workspace() {
 
   const handleRemoveImageFromMessage = async (messageIndex: number) => {
     const message = messages[messageIndex];
-    if (!message?.imageUrl) return;
+    if (!message?.imageUrl && !message?.chartSpec) return;
     setMessages((prev) => prev.map((item, idx) =>
       idx === messageIndex
         ? { ...item, imageUrl: undefined, chartSpec: undefined, chartScript: undefined, chartInput: undefined }
@@ -538,9 +539,7 @@ export default function Workspace() {
         idx === messageIndex
           ? {
               ...item,
-              imageUrl: data.imageUrl,
               chartSpec: data.chartSpec ?? item.chartSpec,
-              chartScript: data.matplotlibScript ?? item.chartScript,
               turnId: data.turnId ?? item.turnId,
               isChartLoading: false,
             }
@@ -925,15 +924,37 @@ export default function Workspace() {
                         )}
                       </div>
                     </div>
-                    {message.imageUrl && (
+                    {(message.chartSpec || message.imageUrl) && (
                       <div className="flex justify-start">
-                        <div className="max-w-[90%]">
-                          <ChartImage 
-                            imageUrl={message.imageUrl} 
-                            qaSessionId={currentSessionId || undefined}
-                            t={t}
-                            onRemoveImage={message.role === "assistant" ? () => handleRemoveImageFromMessage(index) : undefined}
-                          />
+                        <div className="max-w-[90%] w-full">
+                          {message.chartSpec && (message.chartSpec as ChartSpec).categories ? (
+                            <div className="mt-3 relative group">
+                              <ChartRenderer
+                                spec={message.chartSpec as ChartSpec}
+                                className="w-full"
+                              />
+                              {message.role === "assistant" && (
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleRemoveImageFromMessage(index)}
+                                    className="bg-destructive/90 text-destructive-foreground hover:bg-destructive border border-destructive shadow-sm"
+                                    title={t('workspace.removeImage') || 'Remover gráfico'}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ) : message.imageUrl ? (
+                            <ChartImage
+                              imageUrl={message.imageUrl}
+                              qaSessionId={currentSessionId || undefined}
+                              t={t}
+                              onRemoveImage={message.role === "assistant" ? () => handleRemoveImageFromMessage(index) : undefined}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     )}
