@@ -273,6 +273,8 @@ export default function Workspace() {
     return saved === 'true';
   });
   const [hasSources, setHasSources] = useState(false);
+  const [llmConfigured, setLlmConfigured] = useState<boolean | null>(null);
+  const [hasEnvLlm, setHasEnvLlm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [history, setHistory] = useState<QASessionRecord[]>([]);
@@ -297,6 +299,7 @@ export default function Workspace() {
     loadAvailableColumns();
     loadWarmupQuestions();
     loadSqlSourcesCount();
+    checkLlmStatus();
   }, [id, user]);
 
   useEffect(() => {
@@ -310,6 +313,18 @@ export default function Workspace() {
       setHasSources(sources && sources.length > 0);
     } catch (error) {
       console.error("Erro ao verificar fontes:", error);
+    }
+  }
+
+  async function checkLlmStatus() {
+    try {
+      const status = await dataClient.getLlmStatus();
+      setLlmConfigured(status.configured);
+      setHasEnvLlm(status.has_env);
+    } catch (error) {
+      console.error("Erro ao verificar status LLM:", error);
+      setLlmConfigured(false);
+      setHasEnvLlm(false);
     }
   }
 
@@ -1016,9 +1031,9 @@ export default function Workspace() {
                     className="flex-1 min-w-[120px] h-6 bg-transparent border-0 outline-none placeholder:text-muted-foreground"
                     value={questionInput}
                     onChange={(e) => setQuestionInput(e.target.value)}
-                    placeholder={questionSegments.length === 0 && !questionInput ? (hasSources ? t("workspace.inputPlaceholder") : t("workspace.addSourceFirst")) : ""}
+                    placeholder={questionSegments.length === 0 && !questionInput ? (llmConfigured === false ? t("workspace.noLlmConfigured") : hasSources ? t("workspace.inputPlaceholder") : t("workspace.addSourceFirst")) : ""}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !isLoading && hasSources) {
+                      if (e.key === "Enter" && !e.shiftKey && !isLoading && hasSources && llmConfigured !== false) {
                         e.preventDefault();
                         handleSendMessage();
                       }
@@ -1035,10 +1050,10 @@ export default function Workspace() {
                         });
                       }
                     }}
-                    disabled={!hasSources || isLoading}
+                    disabled={!hasSources || isLoading || llmConfigured === false}
                   />
                 </div>
-                <Button onClick={handleSendMessage} disabled={!getQuestionFullText().trim() || !hasSources || isLoading} className="h-12">
+                <Button onClick={handleSendMessage} disabled={!getQuestionFullText().trim() || !hasSources || isLoading || llmConfigured === false} className="h-12">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
@@ -1098,6 +1113,7 @@ export default function Workspace() {
         agentId={id || ''}
         onSettingsUpdated={() => {
           loadWarmupQuestions();
+          checkLlmStatus();
           toast.success("Configurações atualizadas");
         }}
       />

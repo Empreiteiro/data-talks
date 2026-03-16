@@ -43,11 +43,14 @@ export function AgentSettingsModal({
   const [llmConfigs, setLlmConfigs] = useState<Array<{ id: string; name: string; llm_provider: string }>>([]);
   const [sqlMode, setSqlMode] = useState(false);
 
+  const [hasEnvLlm, setHasEnvLlm] = useState(false);
+
   const loadSettings = async () => {
     try {
-      const [agent, configs] = await Promise.all([
+      const [agent, configs, llmStatus] = await Promise.all([
         dataClient.getAgent(agentId),
         dataClient.listLlmConfigs(),
+        dataClient.getLlmStatus(),
       ]);
       setInstructions(agent?.description || "");
       setWarmupQuestions(agent?.suggested_questions || []);
@@ -56,6 +59,12 @@ export function AgentSettingsModal({
       setLlmConfigId(agent?.llm_config_id ?? null);
       setSqlMode(agent?.sql_mode ?? false);
       setLlmConfigs(configs || []);
+      setHasEnvLlm(llmStatus.has_env || llmStatus.has_account);
+
+      // If agent uses default (null) but env has no LLM, and configs exist, auto-select first config
+      if (!agent?.llm_config_id && !llmStatus.has_env && !llmStatus.has_account && configs && configs.length > 0) {
+        setLlmConfigId(configs[0].id);
+      }
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
       toast.error(t('agentSettings.loadError'));
@@ -104,12 +113,17 @@ export function AgentSettingsModal({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">{t("llmConfig.defaultOption")}</SelectItem>
+                {hasEnvLlm && (
+                  <SelectItem value="default">{t("llmConfig.defaultOption")}</SelectItem>
+                )}
                 {llmConfigs.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name} ({c.llm_provider})
                   </SelectItem>
                 ))}
+                {!hasEnvLlm && llmConfigs.length === 0 && (
+                  <SelectItem value="default" disabled>{t("workspace.noLlmConfigured")}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

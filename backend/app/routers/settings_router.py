@@ -55,6 +55,48 @@ def _mask_api_key(key: str | None) -> str:
     return k[:4] + "••••" + k[-4:]
 
 
+@router.get("/llm-status")
+async def get_llm_status(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Check whether LLM is actually configured (env, account settings, or user configs).
+
+    Returns { configured: bool, has_env: bool, has_configs: bool }.
+    """
+    env = get_settings()
+
+    # Check env: provider must have the required credentials/connectivity
+    has_env = False
+    if env.llm_provider == "openai" and (env.openai_api_key or "").strip():
+        has_env = True
+    elif env.llm_provider == "ollama":
+        has_env = True  # Ollama doesn't need API key
+    elif env.llm_provider == "litellm":
+        has_env = True  # LiteLLM proxy doesn't strictly need a key
+
+    # Check user LlmSettings (account-level override)
+    has_account = False
+    r = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
+    row = r.scalar_one_or_none()
+    if row:
+        provider = row.llm_provider or env.llm_provider
+        if provider == "openai" and (row.openai_api_key or "").strip():
+            has_account = True
+        elif provider == "ollama":
+            has_account = True
+        elif provider == "litellm":
+            has_account = True
+
+    # Check user LlmConfigs
+    r = await db.execute(select(LlmConfig).where(LlmConfig.user_id == user.id))
+    configs = list(r.scalars().all())
+    has_configs = len(configs) > 0
+
+    configured = has_env or has_account or has_configs
+    return {"configured": configured, "has_env": has_env, "has_account": has_account, "has_configs": has_configs}
+
+
 @router.get("/llm", response_model=LlmSettingsResponse)
 async def get_llm_settings(
     db: AsyncSession = Depends(get_db),

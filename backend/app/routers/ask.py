@@ -168,8 +168,17 @@ async def ask_question(
         cfg = r_cfg.scalar_one_or_none()
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
+        else:
+            raise HTTPException(400, "The LLM configuration assigned to this workspace no longer exists. Please update it in workspace settings.")
     if llm_overrides is None:
         # "Default (env/config)": use env vars (get_settings) so OPENAI_API_KEY + LLM_PROVIDER from .env apply
+        # Validate that env actually has usable LLM credentials
+        _env = settings
+        if _env.llm_provider == "openai" and not (_env.openai_api_key or "").strip():
+            raise HTTPException(
+                400,
+                "No LLM configured. Add an LLM configuration in Account > LLM / AI settings, or set OPENAI_API_KEY in the environment.",
+            )
         llm_overrides = None
 
     # Retrieve History
@@ -363,7 +372,14 @@ async def generate_chart_for_turn(
         cfg = r_cfg.scalar_one_or_none()
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
-    # When llm_config_id is null ("Default (env/config)"): use env, keep llm_overrides=None
+    # When llm_config_id is null ("Default (env/config)"): validate env has usable LLM
+    if llm_overrides is None:
+        _env = get_settings()
+        if _env.llm_provider == "openai" and not (_env.openai_api_key or "").strip():
+            raise HTTPException(
+                400,
+                "No LLM configured. Add an LLM configuration in Account > LLM / AI settings, or set OPENAI_API_KEY in the environment.",
+            )
 
     plan = await build_chart_plan(
         question=str(turn.get("question") or qa.question or ""),
