@@ -282,15 +282,66 @@ export const apiClient = {
     return api(path);
   },
 
-  async createAlert(agentId: string, name: string, question: string, email: string, frequency: string, executionTime: string, dayOfWeek?: number, dayOfMonth?: number) {
+  async createAlert(agentId: string, name: string, question: string, email: string, frequency: string, executionTime: string, dayOfWeek?: number, dayOfMonth?: number, type?: string) {
     return api('/api/alerts', {
       method: 'POST',
-      body: JSON.stringify({ agentId, name, question, email, frequency, executionTime, dayOfWeek, dayOfMonth }),
+      body: JSON.stringify({ agentId, name, question, email, frequency, executionTime, dayOfWeek, dayOfMonth, type: type || 'alert' }),
     });
+  },
+
+  async updateAlert(id: string, body: Record<string, unknown>) {
+    return api(`/api/alerts/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   },
 
   async deleteAlert(id: string) {
     await api(`/api/alerts/${id}`, { method: 'DELETE' });
+  },
+
+  async testAlert(id: string) {
+    return api<{ status: string; answer?: string; error?: string; email_sent?: boolean; webhooks_fired?: number; duration_ms?: number }>(`/api/alerts/${id}/test`, { method: 'POST' });
+  },
+
+  async listAlertExecutions(alertId: string, limit?: number) {
+    const params = limit ? `?limit=${limit}` : '';
+    return api<Array<{
+      id: string;
+      status: string;
+      answer?: string;
+      error_message?: string;
+      email_sent: boolean;
+      webhooks_fired: number;
+      duration_ms?: number;
+      created_at: string;
+    }>>(`/api/alerts/${alertId}/executions${params}`);
+  },
+
+  // Webhooks
+  async listWebhooks(agentId?: string) {
+    const path = agentId ? `/api/webhooks?agent_id=${encodeURIComponent(agentId)}` : '/api/webhooks';
+    return api<Array<{
+      id: string;
+      name: string;
+      url: string;
+      agent_id?: string;
+      events: string[];
+      secret?: string;
+      is_active: boolean;
+      last_triggered_at?: string;
+      last_status_code?: number;
+      created_at: string;
+    }>>(path);
+  },
+
+  async createWebhook(body: { name: string; url: string; agent_id?: string; events?: string[] }) {
+    return api('/api/webhooks', { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async updateWebhook(id: string, body: Record<string, unknown>) {
+    return api(`/api/webhooks/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  },
+
+  async deleteWebhook(id: string) {
+    await api(`/api/webhooks/${id}`, { method: 'DELETE' });
   },
 
   async uploadFile(file: File, _selectedSheet?: string) {

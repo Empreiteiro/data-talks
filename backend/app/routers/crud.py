@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from typing import Optional, Any
 
 from app.database import get_db
-from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert, LlmConfig
+from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert, AlertExecution, LlmConfig
 from app.auth import require_user
 from app.config import get_settings
 
@@ -543,6 +543,26 @@ async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = D
 
 
 # --- Alerts ---
+def _serialize_alert(a: Alert) -> dict:
+    return {
+        "id": a.id,
+        "agent_id": a.agent_id,
+        "name": a.name,
+        "type": getattr(a, "type", "alert") or "alert",
+        "question": a.question,
+        "email": a.email,
+        "frequency": a.frequency,
+        "execution_time": a.execution_time,
+        "day_of_week": a.day_of_week,
+        "day_of_month": a.day_of_month,
+        "is_active": getattr(a, "is_active", True),
+        "next_run": a.next_run.isoformat() if a.next_run else None,
+        "last_run": a.last_run.isoformat() if getattr(a, "last_run", None) else None,
+        "last_status": getattr(a, "last_status", None),
+        "created_at": a.created_at.isoformat(),
+    }
+
+
 @router.get("/alerts")
 async def list_alerts(agent_id: Optional[str] = None, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
     q = select(Alert).where(Alert.user_id == user.id)
@@ -550,29 +570,69 @@ async def list_alerts(agent_id: Optional[str] = None, db: AsyncSession = Depends
         q = q.where(Alert.agent_id == agent_id)
     q = q.order_by(Alert.created_at.desc())
     r = await db.execute(q)
-    alerts = list(r.scalars().all())
-    return [{"id": a.id, "agent_id": a.agent_id, "name": a.name, "question": a.question, "email": a.email, "frequency": a.frequency, "execution_time": a.execution_time, "day_of_week": a.day_of_week, "day_of_month": a.day_of_month, "next_run": a.next_run.isoformat() if a.next_run else None, "created_at": a.created_at.isoformat()} for a in alerts]
+    return [_serialize_alert(a) for a in r.scalars().all()]
 
 
 @router.post("/alerts")
 async def create_alert(body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+    from app.services.alert_scheduler import _compute_next_run
+
     alert_id = str(uuid.uuid4())
     a = Alert(
         id=alert_id,
         user_id=user.id,
         agent_id=body["agentId"],
         name=body.get("name", ""),
+        type=body.get("type", "alert"),
         question=body["question"],
         email=body["email"],
         frequency=body["frequency"],
         execution_time=body.get("executionTime", "09:00"),
         day_of_week=body.get("dayOfWeek"),
         day_of_month=body.get("dayOfMonth"),
-        next_run=datetime.utcnow(),
+        is_active=True,
     )
+    a.next_run = _compute_next_run(a)
     db.add(a)
     await db.commit()
-    return {"id": a.id, "agent_id": a.agent_id, "name": a.name, "question": a.question, "email": a.email, "frequency": a.frequency}
+    return _serialize_alert(a)
+
+
+@router.patch("/alerts/{alert_id}")
+async def update_alert(alert_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+    from app.services.alert_scheduler import _compute_next_run
+
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user.id))
+    a = r.scalar_one_or_none()
+    if not a:
+        raise HTTPException(404, "Alert not found")
+
+    recalc = False
+    for field in ("name", "question", "email"):
+        if field in body:
+            setattr(a, field, body[field])
+    if "type" in body:
+        a.type = body["type"]
+    if "is_active" in body:
+        a.is_active = bool(body["is_active"])
+    if "frequency" in body:
+        a.frequency = body["frequency"]
+        recalc = True
+    if "executionTime" in body:
+        a.execution_time = body["executionTime"]
+        recalc = True
+    if "dayOfWeek" in body:
+        a.day_of_week = body["dayOfWeek"]
+        recalc = True
+    if "dayOfMonth" in body:
+        a.day_of_month = body["dayOfMonth"]
+        recalc = True
+
+    if recalc:
+        a.next_run = _compute_next_run(a)
+
+    await db.commit()
+    return _serialize_alert(a)
 
 
 @router.delete("/alerts/{alert_id}")
@@ -581,6 +641,52 @@ async def delete_alert(alert_id: str, db: AsyncSession = Depends(get_db), user: 
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Alert not found")
+    # Delete related executions
+    from sqlalchemy import delete as sql_delete
+    await db.execute(sql_delete(AlertExecution).where(AlertExecution.alert_id == alert_id))
     await db.delete(a)
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/alerts/{alert_id}/test")
+async def test_alert(alert_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+    """Execute an alert immediately for testing purposes."""
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user.id))
+    a = r.scalar_one_or_none()
+    if not a:
+        raise HTTPException(404, "Alert not found")
+
+    from app.services.alert_scheduler import execute_alert_now
+    result = await execute_alert_now(alert_id)
+    return result
+
+
+@router.get("/alerts/{alert_id}/executions")
+async def list_alert_executions(alert_id: str, limit: int = 20, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+    """List recent executions for an alert."""
+    # Verify ownership
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user.id))
+    if not r.scalar_one_or_none():
+        raise HTTPException(404, "Alert not found")
+
+    r = await db.execute(
+        select(AlertExecution)
+        .where(AlertExecution.alert_id == alert_id)
+        .order_by(AlertExecution.created_at.desc())
+        .limit(limit)
+    )
+    execs = list(r.scalars().all())
+    return [
+        {
+            "id": e.id,
+            "status": e.status,
+            "answer": (e.answer[:500] + "...") if e.answer and len(e.answer) > 500 else e.answer,
+            "error_message": e.error_message,
+            "email_sent": e.email_sent,
+            "webhooks_fired": e.webhooks_fired,
+            "duration_ms": e.duration_ms,
+            "created_at": e.created_at.isoformat(),
+        }
+        for e in execs
+    ]
