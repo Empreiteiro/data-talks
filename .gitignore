@@ -30,6 +30,8 @@ env
 backend/data_files
 backend/.venv
 backend/*.db
-__pycache__/
 *.pyc
 *.pyo
+__pycache__/
+**/__pycache__/
+
