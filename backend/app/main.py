@@ -122,6 +122,27 @@ async def _ensure_agent_source_relationships_column():
             await conn.execute(text("ALTER TABLE agents ADD COLUMN sql_mode BOOLEAN DEFAULT 0"))
 
 
+async def _ensure_alert_system_columns():
+    async with engine.begin() as conn:
+        table_columns = await conn.run_sync(
+            lambda sync_conn: {
+                table: {c["name"] for c in inspect(sync_conn).get_columns(table)}
+                for table in ("alerts",)
+                if inspect(sync_conn).has_table(table)
+            }
+        )
+        if "alerts" in table_columns:
+            cols = table_columns["alerts"]
+            if "type" not in cols:
+                await conn.execute(text("ALTER TABLE alerts ADD COLUMN type VARCHAR(50) DEFAULT 'alert'"))
+            if "is_active" not in cols:
+                await conn.execute(text("ALTER TABLE alerts ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+            if "last_run" not in cols:
+                await conn.execute(text("ALTER TABLE alerts ADD COLUMN last_run DATETIME"))
+            if "last_status" not in cols:
+                await conn.execute(text("ALTER TABLE alerts ADD COLUMN last_status VARCHAR(50)"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
@@ -131,6 +152,7 @@ async def lifespan(app: FastAPI):
     await _ensure_llm_openai_base_url_columns()
     await _ensure_telegram_config_columns()
     await _ensure_agent_source_relationships_column()
+    await _ensure_alert_system_columns()
     Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
     await _ensure_single_user()
     settings = get_settings()
