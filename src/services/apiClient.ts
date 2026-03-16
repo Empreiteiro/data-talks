@@ -367,6 +367,10 @@ export const apiClient = {
     throw new Error('BigQuery via Python backend coming soon. Use CSV/XLSX only for now.');
   },
 
+  async getLlmStatus() {
+    return api<{ configured: boolean; has_env: boolean; has_account: boolean; has_configs: boolean }>('/api/settings/llm-status');
+  },
+
   async getLlmSettings() {
     return api<{
       llm_provider: string;
