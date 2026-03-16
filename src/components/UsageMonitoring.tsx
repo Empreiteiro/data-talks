@@ -164,7 +164,7 @@ const UsageMonitoring = () => {
             {language === 'pt' ? 'Perguntas por Dia' : 'Questions per Day'}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0">
+        <CardContent className="flex-1 min-h-0 pt-0 pb-4 px-2 sm:px-4">
           {dailyQuestions.length > 0 ? (
             <ChartContainer
               config={{
@@ -173,28 +173,26 @@ const UsageMonitoring = () => {
                   color: "hsl(var(--primary))",
                 },
               }}
-              className="h-full min-h-[400px]"
+              className="w-full h-[260px] sm:h-[320px] md:h-[400px]"
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyQuestions} margin={{ top: 10, right: 24, bottom: 28, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="date" 
-                    className="text-xs"
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <YAxis 
-                    className="text-xs"
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <Tooltip content={<ChartTooltipContent />} />
-                  <Bar 
-                    dataKey="count" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <BarChart data={dailyQuestions} margin={{ top: 10, right: 24, bottom: 28, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="date" 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <Tooltip content={<ChartTooltipContent />} />
+                <Bar 
+                  dataKey="count" 
+                  fill="hsl(var(--primary))" 
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
             </ChartContainer>
           ) : (
             <div className="h-full min-h-[400px] flex items-center justify-center text-muted-foreground">
