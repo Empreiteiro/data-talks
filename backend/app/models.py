@@ -136,13 +136,48 @@ class Alert(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     agent_id: Mapped[str] = mapped_column(String(36))
     name: Mapped[str] = mapped_column(String(255))
+    type: Mapped[str] = mapped_column(String(50), default="alert")  # alert | report
     question: Mapped[str] = mapped_column(Text)
     email: Mapped[str] = mapped_column(String(255))
     frequency: Mapped[str] = mapped_column(String(50))
     execution_time: Mapped[str] = mapped_column(String(20))
     day_of_week: Mapped[int | None] = mapped_column(Integer, nullable=True)
     day_of_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     next_run: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_run: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_status: Mapped[str | None] = mapped_column(String(50), nullable=True)  # success | error
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AlertExecution(Base):
+    """Tracks each execution of an alert."""
+    __tablename__ = "alert_executions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    alert_id: Mapped[str] = mapped_column(String(36), ForeignKey("alerts.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(50))  # success | error
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    email_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    webhooks_fired: Mapped[int] = mapped_column(Integer, default=0)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Webhook(Base):
+    """Outgoing webhook that fires when alert conditions are met."""
+    __tablename__ = "webhooks"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    name: Mapped[str] = mapped_column(String(255))
+    url: Mapped[str] = mapped_column(String(1024))
+    secret: Mapped[str | None] = mapped_column(String(512), nullable=True)  # HMAC secret
+    events: Mapped[list] = mapped_column(JSON, default=list)  # ["alert.executed", "report.generated"]
+    headers: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # custom headers
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

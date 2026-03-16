@@ -76,6 +76,15 @@ class Settings(BaseSettings):
                 self.openai_audio_model = "gpt-4o-mini-tts"
         return self
 
+    # SMTP / Email Settings (for alerts & scheduled reports)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "Data Talks"
+    smtp_use_tls: bool = True
+
     # Telegram Bot Settings
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""

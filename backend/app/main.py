@@ -17,7 +17,7 @@ from sqlalchemy import inspect, select, text
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, sql_router, summary_router, logs_router, audio_overview_router, telegram_router
-from app.routers import api_keys_router, public_api_router, whatsapp_router, audit_router
+from app.routers import api_keys_router, public_api_router, whatsapp_router, audit_router, webhook_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -137,14 +137,17 @@ async def lifespan(app: FastAPI):
     import logging
     logging.getLogger("uvicorn.error").info(f"ENABLE_LOGIN={settings.enable_login}")
     
-    # Start Telegram background worker if configured
+    # Start background workers
     import asyncio
     from app.telegram_bot import polling_worker
-    bg_task = asyncio.create_task(polling_worker())
-    
+    from app.services.alert_scheduler import alert_scheduler_worker
+    bg_telegram = asyncio.create_task(polling_worker())
+    bg_alerts = asyncio.create_task(alert_scheduler_worker())
+
     yield
-    
-    bg_task.cancel()
+
+    bg_telegram.cancel()
+    bg_alerts.cancel()
 
 
 app = FastAPI(
@@ -199,6 +202,7 @@ app.include_router(telegram_router.router, prefix=prefix)
 app.include_router(whatsapp_router.router, prefix=prefix)
 app.include_router(api_keys_router.router, prefix=prefix)
 app.include_router(audit_router.router, prefix=prefix)
+app.include_router(webhook_router.router, prefix=prefix)
 app.include_router(public_api_router.router)  # public API at /v1/ask (no internal prefix)
 
 
