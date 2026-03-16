@@ -17,6 +17,7 @@ aiosqlite==0.20.0
 alembic==1.14.0
 asyncpg==0.30.0
 psycopg2-binary==2.9.10
+greenlet==3.1.1
 
 # LLM (API and/or local)
 openai==1.55.3
