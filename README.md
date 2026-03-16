@@ -113,7 +113,31 @@ data-talks/
 
 ## How to run
 
-### Run the app at a single URL (recommended)
+### Quick start with Make (recommended)
+
+```bash
+make install        # Install frontend and backend dependencies
+make run            # Build frontend and start the server at http://localhost:8000
+```
+
+Other useful commands:
+
+```bash
+make install-cli    # Install only the data-talks CLI
+make build          # Build frontend for production
+make dev            # Start backend + frontend dev server with hot reload
+make migrate        # Run database migrations
+make setup-env      # Create backend/.env from .env.example
+make lint           # Run frontend linter
+make test           # Run frontend tests
+make help           # List all available commands
+```
+
+> **Requires**: Node.js, [uv](https://docs.astral.sh/uv/), and Python 3.11+.
+
+---
+
+### Run the app at a single URL (manual)
 
 To open the UI at **http://localhost:8000** (backend only):
 
