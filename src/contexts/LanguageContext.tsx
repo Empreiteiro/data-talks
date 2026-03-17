@@ -905,7 +905,27 @@ const translations = {
       'studio.addNote': 'Add note',
       'studio.comingSoon': 'Coming soon',
       'studio.comingSoonDescription': 'This feature will be available soon.',
-      
+
+      // Report (Studio)
+      'studio.reportTitle': 'Exploratory Report',
+      'studio.reportDescription': 'Generate a rich HTML report with exploratory charts and observations about your data source.',
+      'studio.reportSource': 'Data source',
+      'studio.reportSelectSource': 'Select a source...',
+      'studio.reportNoSource': 'No data sources available.',
+      'studio.reportGenerate': 'Generate Report',
+      'studio.reportGenerating': 'Generating...',
+      'studio.reportGeneratingHint': 'This may take a minute — analyzing data and creating charts.',
+      'studio.reportSaved': 'Report generated successfully!',
+      'studio.reportSavedList': 'Saved reports',
+      'studio.reportNoSaved': 'No reports generated yet.',
+      'studio.reportDownload': 'Download',
+      'studio.reportLoadError': 'Failed to load reports.',
+      'studio.reportGenerateError': 'Failed to generate report.',
+      'studio.reportDeleted': 'Report deleted.',
+      'studio.reportDeleteError': 'Failed to delete report.',
+      'studio.reportLoadingHtml': 'Loading report...',
+      'studio.reportSelectToView': 'Select a report to view.',
+
       // Graph (Studio)
       'graph.title': 'Graph / Data as Graph',
       'graph.description': 'Transform your table into a graph. Choose source and target columns to build nodes and edges.',
@@ -1964,7 +1984,27 @@ const translations = {
       'studio.addNote': 'Adicionar nota',
       'studio.comingSoon': 'Recurso em breve',
        'studio.comingSoonDescription': 'Esta funcionalidade estará disponível em breve.',
-       
+
+       // Report (Studio)
+       'studio.reportTitle': 'Relatório Exploratório',
+       'studio.reportDescription': 'Gere um relatório HTML rico com gráficos exploratórios e observações sobre sua fonte de dados.',
+       'studio.reportSource': 'Fonte de dados',
+       'studio.reportSelectSource': 'Selecione uma fonte...',
+       'studio.reportNoSource': 'Nenhuma fonte de dados disponível.',
+       'studio.reportGenerate': 'Gerar Relatório',
+       'studio.reportGenerating': 'Gerando...',
+       'studio.reportGeneratingHint': 'Isso pode levar um minuto — analisando dados e criando gráficos.',
+       'studio.reportSaved': 'Relatório gerado com sucesso!',
+       'studio.reportSavedList': 'Relatórios salvos',
+       'studio.reportNoSaved': 'Nenhum relatório gerado ainda.',
+       'studio.reportDownload': 'Download',
+       'studio.reportLoadError': 'Falha ao carregar relatórios.',
+       'studio.reportGenerateError': 'Falha ao gerar relatório.',
+       'studio.reportDeleted': 'Relatório excluído.',
+       'studio.reportDeleteError': 'Falha ao excluir relatório.',
+       'studio.reportLoadingHtml': 'Carregando relatório...',
+       'studio.reportSelectToView': 'Selecione um relatório para visualizar.',
+
        // Graph (Studio)
        'graph.title': 'Grafo / Dados como Grafo',
        'graph.description': 'Transforme sua tabela em um grafo. Escolha as colunas de origem e destino para construir nós e arestas.',
@@ -2995,6 +3035,27 @@ const translations = {
     'studio.addNote': 'Añadir nota',
     'studio.comingSoon': 'Próximamente',
     'studio.comingSoonDescription': 'Esta función estará disponible pronto.',
+
+    // Report (Studio)
+    'studio.reportTitle': 'Informe Exploratorio',
+    'studio.reportDescription': 'Genera un informe HTML rico con gráficos exploratorios y observaciones sobre tu fuente de datos.',
+    'studio.reportSource': 'Fuente de datos',
+    'studio.reportSelectSource': 'Selecciona una fuente...',
+    'studio.reportNoSource': 'No hay fuentes de datos disponibles.',
+    'studio.reportGenerate': 'Generar Informe',
+    'studio.reportGenerating': 'Generando...',
+    'studio.reportGeneratingHint': 'Esto puede tardar un minuto — analizando datos y creando gráficos.',
+    'studio.reportSaved': '¡Informe generado con éxito!',
+    'studio.reportSavedList': 'Informes guardados',
+    'studio.reportNoSaved': 'Aún no se han generado informes.',
+    'studio.reportDownload': 'Descargar',
+    'studio.reportLoadError': 'Error al cargar informes.',
+    'studio.reportGenerateError': 'Error al generar informe.',
+    'studio.reportDeleted': 'Informe eliminado.',
+    'studio.reportDeleteError': 'Error al eliminar informe.',
+    'studio.reportLoadingHtml': 'Cargando informe...',
+    'studio.reportSelectToView': 'Selecciona un informe para ver.',
+
     // Graph (Studio)
     'graph.title': 'Grafo / Datos como Grafo',
     'graph.description': 'Transforma tu tabla en un grafo. Elige columnas de origen y destino para construir nodos y aristas.',
