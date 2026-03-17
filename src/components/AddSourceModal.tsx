@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCallback, useRef, useState } from "react";
 import { BigQuerySourceForm, BigQuerySourceFormHandle } from "@/components/BigQuerySourceForm";
@@ -12,20 +18,20 @@ import { UploadSourceForm } from "@/components/UploadSourceForm";
 
 type ConnectableHandle = { connect(): Promise<void> };
 
-interface SourceTab {
+interface SourceOption {
   key: string;
-  labelKey: string;
+  label: string;
   connectLabelKey: string;
   hasConnect: boolean;
 }
 
-const SOURCE_TABS: SourceTab[] = [
-  { key: "upload",      labelKey: "addSource.uploadTab",    connectLabelKey: "",                        hasConnect: false },
-  { key: "bigquery",    labelKey: "addSource.bigQueryTab",  connectLabelKey: "addSource.connectBigQuery", hasConnect: true },
-  { key: "sheets",      labelKey: "addSource.sheetsTab",    connectLabelKey: "addSource.connectSheets",   hasConnect: true },
-  { key: "sql",         labelKey: "addSource.sqlTab",       connectLabelKey: "addSource.sqlConnect",      hasConnect: true },
-  { key: "dbt",         labelKey: "dbt",                    connectLabelKey: "addSource.dbtConnect",      hasConnect: true },
-  { key: "github_file", labelKey: "GitHub File",            connectLabelKey: "addSource.githubConnect",   hasConnect: true },
+const SOURCE_OPTIONS: SourceOption[] = [
+  { key: "upload",      label: "CSV / XLSX",      connectLabelKey: "",                           hasConnect: false },
+  { key: "bigquery",    label: "BigQuery",         connectLabelKey: "addSource.connectBigQuery",  hasConnect: true },
+  { key: "sheets",      label: "Google Sheets",    connectLabelKey: "addSource.connectSheets",    hasConnect: true },
+  { key: "sql",         label: "SQL Database",     connectLabelKey: "addSource.sqlConnect",       hasConnect: true },
+  { key: "dbt",         label: "dbt",              connectLabelKey: "addSource.dbtConnect",       hasConnect: true },
+  { key: "github_file", label: "GitHub File",      connectLabelKey: "addSource.githubConnect",    hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -42,12 +48,9 @@ export function AddSourceModal({
   agentId,
 }: AddSourceModalProps) {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState("upload");
+  const [selectedType, setSelectedType] = useState<string>("");
 
-  // Single ref map for all connectable forms
   const refs = useRef<Record<string, ConnectableHandle | null>>({});
-
-  // Per-tab connection state tracked in a single object
   const [canConnect, setCanConnect] = useState<Record<string, boolean>>({});
   const [connecting, setConnecting] = useState<Record<string, boolean>>({});
 
@@ -72,7 +75,7 @@ export function AddSourceModal({
 
   const onClose = () => onOpenChange(false);
 
-  const activeConfig = SOURCE_TABS.find((tab) => tab.key === activeTab);
+  const activeConfig = SOURCE_OPTIONS.find((o) => o.key === selectedType);
   const showFooter = activeConfig?.hasConnect;
 
   return (
@@ -87,49 +90,67 @@ export function AddSourceModal({
             {t('addSource.description')}
           </p>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
-              {SOURCE_TABS.map((tab) => (
-                <TabsTrigger key={tab.key} value={tab.key}>
-                  {tab.labelKey.startsWith("addSource.") ? t(tab.labelKey) : tab.labelKey}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{t('addSource.sourceType')}</label>
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('addSource.selectSourceType')} />
+              </SelectTrigger>
+              <SelectContent>
+                {SOURCE_OPTIONS.map((option) => (
+                  <SelectItem key={option.key} value={option.key}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <TabsContent value="upload" className="space-y-4">
+          {selectedType === "upload" && (
+            <div className="space-y-4">
               <UploadSourceForm agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} />
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="bigquery" className="space-y-4">
+          {selectedType === "bigquery" && (
+            <div className="space-y-4">
               <BigQuerySourceForm ref={setRef("bigquery")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("bigquery")} onConnectingChange={setConnectingFor("bigquery")} />
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="sheets" className="space-y-4">
+          {selectedType === "sheets" && (
+            <div className="space-y-4">
               <GoogleSheetsSourceForm ref={setRef("sheets")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("sheets")} onConnectingChange={setConnectingFor("sheets")} />
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="sql" className="space-y-4">
+          {selectedType === "sql" && (
+            <div className="space-y-4">
               <SqlSourceForm ref={setRef("sql")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("sql")} onConnectingChange={setConnectingFor("sql")} />
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="dbt" className="space-y-4">
+          {selectedType === "dbt" && (
+            <div className="space-y-4">
               <DbtSourceForm ref={setRef("dbt")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("dbt")} onConnectingChange={setConnectingFor("dbt")} />
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="github_file" className="space-y-4">
+          {selectedType === "github_file" && (
+            <div className="space-y-4">
               <GithubFileSourceForm ref={setRef("github_file")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("github_file")} onConnectingChange={setConnectingFor("github_file")} />
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </div>
 
         {showFooter && activeConfig && (
           <div className="flex-shrink-0 pt-6 px-1 border-t">
             <Button
               className="w-full"
-              onClick={() => refs.current[activeTab]?.connect()}
-              disabled={!canConnect[activeTab] || connecting[activeTab]}
+              onClick={() => refs.current[selectedType]?.connect()}
+              disabled={!canConnect[selectedType] || connecting[selectedType]}
             >
-              {connecting[activeTab]
+              {connecting[selectedType]
                 ? t('addSource.connecting')
                 : t(activeConfig.connectLabelKey)}
             </Button>
