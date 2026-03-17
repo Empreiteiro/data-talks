@@ -16,7 +16,7 @@ from openai import APIConnectionError
 from sqlalchemy import inspect, select, text
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
-from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, sql_router, summary_router, logs_router, audio_overview_router, telegram_router
+from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, firebase_router, sql_router, summary_router, logs_router, audio_overview_router, telegram_router
 from app.routers import api_keys_router, public_api_router, whatsapp_router, audit_router, webhook_router, automl_router, report_router
 from app.routers import dbt_router, github_router
 from app.models import User
@@ -217,6 +217,7 @@ app.include_router(crud.router, prefix=prefix)
 app.include_router(users_router.router, prefix=prefix)
 app.include_router(settings_router.router, prefix=prefix)
 app.include_router(bigquery_router.router, prefix=prefix)
+app.include_router(firebase_router.router, prefix=prefix)
 app.include_router(sql_router.router, prefix=prefix)
 app.include_router(summary_router.router, prefix=prefix)
 app.include_router(logs_router.router, prefix=prefix)

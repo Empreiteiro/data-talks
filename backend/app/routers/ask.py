@@ -22,6 +22,7 @@ from app.schemas import AskQuestionRequest, AskQuestionResponse
 from app.scripts.ask_csv import ask_csv
 from app.scripts.ask_bigquery import ask_bigquery
 from app.scripts.ask_dbt import ask_dbt
+from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
 from app.scripts.ask_google_sheets import ask_google_sheets
 from app.scripts.ask_sql import ask_sql
@@ -308,6 +309,23 @@ async def ask_question(
             github_branch=meta.get("githubBranch", "main"),
             columns=meta.get("columns"),
             preview_rows=meta.get("preview_rows"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "firebase":
+        meta = source.metadata_ or {}
+        creds = meta.get("credentialsContent") or meta.get("credentials_content")
+        if not creds:
+            raise HTTPException(400, "Firebase source missing credentialsContent in metadata")
+        result = await ask_firebase(
+            credentials_content=creds,
+            project_id=meta.get("projectId", ""),
+            collections=meta.get("collections", []),
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            collection_infos=meta.get("collection_infos"),
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,

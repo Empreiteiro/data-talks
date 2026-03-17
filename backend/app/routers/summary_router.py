@@ -14,6 +14,7 @@ from app.auth import require_user
 from app.config import get_settings
 from app.scripts.summary_bigquery import generate_table_summary_bigquery
 from app.scripts.summary_csv import generate_table_summary_csv
+from app.scripts.summary_firebase import generate_table_summary_firebase
 from app.scripts.summary_sql import generate_table_summary_sql
 from app.scripts.summary_google_sheets import generate_table_summary_google_sheets
 
@@ -142,6 +143,19 @@ async def generate_summary(
             spreadsheet_id=meta.get("spreadsheetId", "") or meta.get("spreadsheet_id", ""),
             sheet_name=meta.get("sheetName", "Sheet1") or meta.get("sheet_name", "Sheet1"),
             available_columns=meta.get("availableColumns") or meta.get("available_columns"),
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+            channel="studio",
+        )
+    elif source.type == "firebase":
+        creds = meta.get("credentialsContent") or meta.get("credentials_content")
+        if not creds:
+            raise HTTPException(400, "Firebase source missing credentials")
+        result = await generate_table_summary_firebase(
+            credentials_content=creds,
+            project_id=meta.get("projectId", ""),
+            collections=meta.get("collections", []),
+            collection_infos=meta.get("collection_infos"),
             source_name=source.name,
             llm_overrides=llm_overrides,
             channel="studio",
