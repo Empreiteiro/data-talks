@@ -86,8 +86,8 @@ export default function AuditTrail() {
       });
       setItems(result.items);
       setTotal(result.total);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -117,8 +117,8 @@ export default function AuditTrail() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("audit.exportSuccess"));
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -126,7 +126,10 @@ export default function AuditTrail() {
     try {
       const config = await apiClient.getAuditRetention();
       setRetentionDays(config.retention_days);
-    } catch {}
+    } catch {
+      // Use default retention days if load fails; dialog opens with current state
+      void 0;
+    }
     setRetentionOpen(true);
   };
 
@@ -136,8 +139,8 @@ export default function AuditTrail() {
       await apiClient.updateAuditRetention(retentionDays);
       toast.success(t("audit.retentionSaved"));
       setRetentionOpen(false);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setRetentionLoading(false);
     }
@@ -151,8 +154,8 @@ export default function AuditTrail() {
         `${t("audit.retentionApplied")}: ${result.deleted} ${t("audit.recordsDeleted")}`
       );
       fetchLogs();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setRetentionLoading(false);
     }
