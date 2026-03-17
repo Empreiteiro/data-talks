@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
-from app.models import User, Agent, Source, TableSummary, LlmSettings
+from app.models import User, Agent, Source, TableSummary, LlmSettings, LlmConfig
 from app.auth import require_user
 from app.config import get_settings
 from app.scripts.summary_bigquery import generate_table_summary_bigquery
@@ -18,28 +18,29 @@ from app.scripts.summary_sql import generate_table_summary_sql
 from app.scripts.summary_google_sheets import generate_table_summary_google_sheets
 
 
-def _user_llm_overrides(llm_row: LlmSettings | None) -> dict | None:
-    if not llm_row:
+def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None:
+    """Build overrides dict from LlmConfig or LlmSettings for chat_completion."""
+    if not cfg:
         return None
     overrides = {}
-    if llm_row.llm_provider:
-        overrides["llm_provider"] = llm_row.llm_provider
-    if llm_row.openai_api_key:
-        overrides["openai_api_key"] = llm_row.openai_api_key
-    if getattr(llm_row, "openai_base_url", None):
-        overrides["openai_base_url"] = llm_row.openai_base_url
-    if llm_row.openai_model:
-        overrides["openai_model"] = llm_row.openai_model
-    if llm_row.ollama_base_url:
-        overrides["ollama_base_url"] = llm_row.ollama_base_url
-    if llm_row.ollama_model:
-        overrides["ollama_model"] = llm_row.ollama_model
-    if llm_row.litellm_base_url:
-        overrides["litellm_base_url"] = llm_row.litellm_base_url
-    if llm_row.litellm_model:
-        overrides["litellm_model"] = llm_row.litellm_model
-    if llm_row.litellm_api_key:
-        overrides["litellm_api_key"] = llm_row.litellm_api_key
+    if cfg.llm_provider:
+        overrides["llm_provider"] = cfg.llm_provider
+    if getattr(cfg, "openai_api_key", None):
+        overrides["openai_api_key"] = cfg.openai_api_key
+    if getattr(cfg, "openai_base_url", None):
+        overrides["openai_base_url"] = cfg.openai_base_url
+    if getattr(cfg, "openai_model", None):
+        overrides["openai_model"] = cfg.openai_model
+    if getattr(cfg, "ollama_base_url", None):
+        overrides["ollama_base_url"] = cfg.ollama_base_url
+    if getattr(cfg, "ollama_model", None):
+        overrides["ollama_model"] = cfg.ollama_model
+    if getattr(cfg, "litellm_base_url", None):
+        overrides["litellm_base_url"] = cfg.litellm_base_url
+    if getattr(cfg, "litellm_model", None):
+        overrides["litellm_model"] = cfg.litellm_model
+    if getattr(cfg, "litellm_api_key", None):
+        overrides["litellm_api_key"] = cfg.litellm_api_key
     return overrides if overrides else None
 
 
@@ -80,10 +81,18 @@ async def generate_summary(
         raise HTTPException(400, "No source found for this workspace")
 
     meta = source.metadata_ or {}
-    r_llm = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
-    llm_row = r_llm.scalar_one_or_none()
-    llm_overrides = _user_llm_overrides(llm_row)
     settings = get_settings()
+
+    # LLM overrides: agent.llm_config_id > env (when "Default (env/config)")
+    # Same resolution logic as the ask router
+    llm_overrides = None
+    if agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            llm_overrides = _llm_config_to_overrides(cfg)
+        else:
+            raise HTTPException(400, "The LLM configuration assigned to this workspace no longer exists. Please update it in workspace settings.")
 
     if source.type == "bigquery":
         creds = meta.get("credentialsContent") or meta.get("credentials_content")
