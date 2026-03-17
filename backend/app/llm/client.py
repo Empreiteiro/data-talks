@@ -130,9 +130,14 @@ async def chat_completion(
 async def _openai_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
     from openai import AsyncOpenAI
 
-    api_key = cfg.get("openai_api_key") or None
+    api_key = (cfg.get("openai_api_key") or "").strip() or None
     base_url = (cfg.get("openai_base_url") or "https://api.openai.com/v1").rstrip("/")
     model = cfg.get("openai_model", "gpt-4o-mini")
+    if not api_key:
+        raise ValueError(
+            "OpenAI API key is not configured. "
+            "Set it in Account > LLM / AI settings or via the OPENAI_API_KEY environment variable."
+        )
     client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     resp = await client.chat.completions.create(
         model=model,
