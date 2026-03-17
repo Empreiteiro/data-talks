@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -13,6 +14,7 @@ interface GithubFileSourceFormProps {
 }
 
 export function GithubFileSourceForm({ agentId, onSourceAdded, onClose }: GithubFileSourceFormProps) {
+  const { t } = useLanguage();
   const [githubToken, setGithubToken] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
   const [githubBranch, setGithubBranch] = useState("main");
@@ -23,7 +25,7 @@ export function GithubFileSourceForm({ agentId, onSourceAdded, onClose }: Github
 
   const handlePreview = async () => {
     if (!githubRepo.trim() || !filePath.trim()) {
-      toast.error("githubRepo e filePath são obrigatórios.");
+      toast.error(t('addSource.sqlFillFields'));
       return;
     }
     setLoadingPreview(true);
@@ -36,9 +38,9 @@ export function GithubFileSourceForm({ agentId, onSourceAdded, onClose }: Github
         filePath: filePath.trim(),
       });
       setPreview(res);
-      toast.success(`${res.rowCount} linhas detectadas, ${res.columns.length} colunas.`);
+      toast.success(t('addSource.githubRowsColumns', { rows: res.rowCount, cols: res.columns.length }));
     } catch (e: unknown) {
-      toast.error("Erro ao validar arquivo", { description: (e as Error).message });
+      toast.error(t('addSource.githubValidateError'), { description: (e as Error).message });
     } finally {
       setLoadingPreview(false);
     }
@@ -46,7 +48,7 @@ export function GithubFileSourceForm({ agentId, onSourceAdded, onClose }: Github
 
   const handleConnect = async () => {
     if (!githubRepo.trim() || !filePath.trim()) {
-      toast.error("githubRepo e filePath são obrigatórios.");
+      toast.error(t('addSource.sqlFillFields'));
       return;
     }
     setConnecting(true);
@@ -70,11 +72,11 @@ export function GithubFileSourceForm({ agentId, onSourceAdded, onClose }: Github
         );
         await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
       }
-      toast.success("Fonte GitHub File criada com sucesso!");
+      toast.success(t('addSource.githubConnectSuccess'));
       onSourceAdded?.(source.id);
       onClose();
     } catch (e: unknown) {
-      toast.error("Erro ao criar fonte GitHub File", { description: (e as Error).message });
+      toast.error(t('addSource.githubConnectError'), { description: (e as Error).message });
     } finally {
       setConnecting(false);
     }
@@ -85,38 +87,38 @@ export function GithubFileSourceForm({ agentId, onSourceAdded, onClose }: Github
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="gh-token">GitHub Token (opcional para repos públicos)</Label>
+        <Label htmlFor="gh-token">{t('addSource.githubToken')}</Label>
         <Input id="gh-token" type="password" placeholder="ghp_..." value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="gh-repo">Repositório <span className="text-red-500">*</span></Label>
+        <Label htmlFor="gh-repo">{t('addSource.githubRepo')} <span className="text-red-500">*</span></Label>
         <Input id="gh-repo" placeholder="owner/repo" value={githubRepo} onChange={(e) => { setGithubRepo(e.target.value); setPreview(null); }} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="gh-branch">Branch</Label>
+          <Label htmlFor="gh-branch">{t('addSource.githubBranch')}</Label>
           <Input id="gh-branch" placeholder="main" value={githubBranch} onChange={(e) => { setGithubBranch(e.target.value); setPreview(null); }} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="gh-file-path">Caminho do arquivo <span className="text-red-500">*</span></Label>
+          <Label htmlFor="gh-file-path">{t('addSource.githubFilePath')} <span className="text-red-500">*</span></Label>
           <Input id="gh-file-path" placeholder="data/sales.csv" value={filePath} onChange={(e) => { setFilePath(e.target.value); setPreview(null); }} />
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">Formatos suportados: CSV, TSV, JSON (array de objetos), JSONL.</p>
+      <p className="text-xs text-muted-foreground">{t('addSource.githubSupportedFormats')}</p>
 
       {/* Preview button */}
       <Button type="button" variant="outline" className="w-full" onClick={handlePreview} disabled={!canPreview || loadingPreview}>
-        {loadingPreview ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Carregando preview...</> : "Preview do arquivo"}
+        {loadingPreview ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t('addSource.githubPreviewing')}</> : t('addSource.githubPreview')}
       </Button>
 
       {/* Preview result */}
       {preview && (
         <div className="rounded-md border p-3 space-y-2 bg-muted/30">
           <p className="text-sm font-medium">
-            {preview.rowCount} linhas &bull; {preview.columns.length} colunas
+            {t('addSource.githubRowsColumns', { rows: preview.rowCount, cols: preview.columns.length })}
           </p>
           <p className="text-xs text-muted-foreground break-all">{preview.columns.join(", ")}</p>
           {preview.previewRows.length > 0 && (
@@ -150,7 +152,7 @@ export function GithubFileSourceForm({ agentId, onSourceAdded, onClose }: Github
 
       {/* Connect button */}
       <Button className="w-full" onClick={handleConnect} disabled={connecting || !canPreview}>
-        {connecting ? "Conectando..." : "Conectar arquivo GitHub"}
+        {connecting ? t('addSource.connecting') : t('addSource.githubConnect')}
       </Button>
     </div>
   );

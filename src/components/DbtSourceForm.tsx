@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -20,6 +21,7 @@ interface DbtSourceFormProps {
 }
 
 export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceFormProps) {
+  const { t } = useLanguage();
   const [projectSource, setProjectSource] = useState<"github" | "cloud">("github");
   // GitHub fields
   const [githubToken, setGithubToken] = useState("");
@@ -51,12 +53,12 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
       setAvailableModels(res.models || []);
       setSelectedModels((res.models || []).map((m) => m.name));
       if ((res.models || []).length === 0) {
-        toast.warning("Nenhum modelo encontrado no manifest.");
+        toast.warning(t('addSource.dbtNoModels'));
       } else {
-        toast.success(`${res.total} modelos encontrados.`);
+        toast.success(t('addSource.dbtModelsFound', { count: res.total }));
       }
     } catch (e: unknown) {
-      toast.error("Erro ao buscar manifest", { description: (e as Error).message });
+      toast.error(t('addSource.dbtFetchError'), { description: (e as Error).message });
     } finally {
       setLoadingModels(false);
     }
@@ -64,15 +66,15 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
 
   const handleConnect = async () => {
     if (!connectionString.trim()) {
-      toast.error("Connection string é obrigatória para consultar os modelos dbt.");
+      toast.error(t('addSource.sqlFillFields'));
       return;
     }
     if (projectSource === "github" && !githubRepo.trim()) {
-      toast.error("githubRepo é obrigatório.");
+      toast.error(t('addSource.sqlFillFields'));
       return;
     }
     if (projectSource === "cloud" && (!dbtCloudToken || !dbtCloudAccountId || !dbtCloudJobId)) {
-      toast.error("dbtCloudToken, dbtCloudAccountId e dbtCloudJobId são obrigatórios.");
+      toast.error(t('addSource.sqlFillFields'));
       return;
     }
 
@@ -111,11 +113,11 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
         );
         await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
       }
-      toast.success("Fonte dbt criada com sucesso!");
+      toast.success(t('addSource.dbtConnectSuccess'));
       onSourceAdded?.(source.id);
       onClose();
     } catch (e: unknown) {
-      toast.error("Erro ao criar fonte dbt", { description: (e as Error).message });
+      toast.error(t('addSource.dbtConnectError'), { description: (e as Error).message });
     } finally {
       setConnecting(false);
     }
@@ -130,14 +132,14 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
     <div className="space-y-4">
       {/* Source type toggle */}
       <div className="space-y-2">
-        <Label>Origem do manifest</Label>
+        <Label>{t('addSource.dbtManifestOrigin')}</Label>
         <Select value={projectSource} onValueChange={(v) => { setProjectSource(v as "github" | "cloud"); setAvailableModels([]); setSelectedModels([]); }}>
           <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="github">GitHub</SelectItem>
-            <SelectItem value="cloud">dbt Cloud</SelectItem>
+            <SelectItem value="github">{t('addSource.dbtGithub')}</SelectItem>
+            <SelectItem value="cloud">{t('addSource.dbtCloud')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -145,20 +147,20 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
       {projectSource === "github" ? (
         <>
           <div className="space-y-2">
-            <Label htmlFor="dbt-github-token">GitHub Token (opcional para repos públicos)</Label>
+            <Label htmlFor="dbt-github-token">{t('addSource.dbtGithubToken')}</Label>
             <Input id="dbt-github-token" type="password" placeholder="ghp_..." value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="dbt-github-repo">Repositório <span className="text-red-500">*</span></Label>
+            <Label htmlFor="dbt-github-repo">{t('addSource.dbtGithubRepo')} <span className="text-red-500">*</span></Label>
             <Input id="dbt-github-repo" placeholder="owner/repo" value={githubRepo} onChange={(e) => setGithubRepo(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="dbt-github-branch">Branch</Label>
+              <Label htmlFor="dbt-github-branch">{t('addSource.dbtGithubBranch')}</Label>
               <Input id="dbt-github-branch" placeholder="main" value={githubBranch} onChange={(e) => setGithubBranch(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dbt-manifest-path">Caminho do manifest</Label>
+              <Label htmlFor="dbt-manifest-path">{t('addSource.dbtManifestPath')}</Label>
               <Input id="dbt-manifest-path" placeholder="target/manifest.json" value={manifestPath} onChange={(e) => setManifestPath(e.target.value)} />
             </div>
           </div>
@@ -166,16 +168,16 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
       ) : (
         <>
           <div className="space-y-2">
-            <Label htmlFor="dbt-cloud-token">dbt Cloud Service Token <span className="text-red-500">*</span></Label>
+            <Label htmlFor="dbt-cloud-token">{t('addSource.dbtCloudToken')} <span className="text-red-500">*</span></Label>
             <Input id="dbt-cloud-token" type="password" placeholder="dbtc_..." value={dbtCloudToken} onChange={(e) => setDbtCloudToken(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="dbt-account-id">Account ID <span className="text-red-500">*</span></Label>
+              <Label htmlFor="dbt-account-id">{t('addSource.dbtCloudAccountId')} <span className="text-red-500">*</span></Label>
               <Input id="dbt-account-id" placeholder="12345" value={dbtCloudAccountId} onChange={(e) => setDbtCloudAccountId(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dbt-job-id">Job ID <span className="text-red-500">*</span></Label>
+              <Label htmlFor="dbt-job-id">{t('addSource.dbtCloudJobId')} <span className="text-red-500">*</span></Label>
               <Input id="dbt-job-id" placeholder="67890" value={dbtCloudJobId} onChange={(e) => setDbtCloudJobId(e.target.value)} />
             </div>
           </div>
@@ -184,13 +186,13 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
 
       {/* Fetch models button */}
       <Button type="button" variant="outline" className="w-full" onClick={handleFetchModels} disabled={!canFetch || loadingModels}>
-        {loadingModels ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Buscando modelos...</> : "Buscar modelos do manifest"}
+        {loadingModels ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t('addSource.dbtFetchingModels')}</> : t('addSource.dbtFetchModels')}
       </Button>
 
       {/* Model selection */}
       {availableModels.length > 0 && (
         <div className="space-y-2">
-          <Label>Modelos ({selectedModels.length}/{availableModels.length} selecionados)</Label>
+          <Label>{t('addSource.dbtModelsSelected', { selected: selectedModels.length, total: availableModels.length })}</Label>
           <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
             {availableModels.map((model) => {
               const checked = selectedModels.includes(model.name);
@@ -222,14 +224,14 @@ export function DbtSourceForm({ agentId, onSourceAdded, onClose }: DbtSourceForm
 
       {/* Connection string */}
       <div className="space-y-2">
-        <Label htmlFor="dbt-conn-string">Connection String do warehouse <span className="text-red-500">*</span></Label>
+        <Label htmlFor="dbt-conn-string">{t('addSource.dbtConnectionString')} <span className="text-red-500">*</span></Label>
         <Input id="dbt-conn-string" type="password" placeholder="postgresql://user:password@host:5432/database" value={connectionString} onChange={(e) => setConnectionString(e.target.value)} />
-        <p className="text-xs text-muted-foreground">A mesma connection string usada pelo dbt para executar as queries.</p>
+        <p className="text-xs text-muted-foreground">{t('addSource.dbtConnectionStringHint')}</p>
       </div>
 
       {/* Connect button */}
       <Button className="w-full" onClick={handleConnect} disabled={connecting || !connectionString.trim()}>
-        {connecting ? "Conectando..." : "Conectar fonte dbt"}
+        {connecting ? t('addSource.connecting') : t('addSource.dbtConnect')}
       </Button>
     </div>
   );
