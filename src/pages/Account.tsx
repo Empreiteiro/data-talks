@@ -13,6 +13,7 @@ import { LLMPanel } from "@/components/LLMPanel";
 import { ConnectionsPanel } from "@/components/ConnectionsPanel";
 import AuditTrail from "@/components/AuditTrail";
 import { useSearchParams } from "react-router-dom";
+import { dataClient } from "@/services/dataClient";
 
 const Account = () => {
   const { t } = useLanguage();
@@ -21,11 +22,16 @@ const Account = () => {
   const [activeSection, setActiveSection] = useState("usage");
   const [showAddSourceModal, setShowAddSourceModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [hasEnvLlm, setHasEnvLlm] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    dataClient.getLlmStatus().then(s => setHasEnvLlm(s.has_env)).catch(() => setHasEnvLlm(false));
+  }, []);
 
   const menuItems = useMemo(() => {
     const items = [
       { id: "usage", label: t('account.tabs.usage'), icon: Activity },
-      { id: "llm", label: t('account.tabs.llm'), icon: Bot },
+      ...(hasEnvLlm ? [{ id: "llm", label: t('account.tabs.llm'), icon: Bot }] : []),
       { id: "connections", label: t('account.tabs.connections'), icon: PlugZap },
       ...(loginRequired ? [{ id: "users", label: t('account.tabs.users'), icon: Users }] : []),
       { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
@@ -33,11 +39,15 @@ const Account = () => {
       { id: "audit", label: t('account.tabs.audit'), icon: ShieldCheck },
     ];
     return items;
-  }, [t, loginRequired]);
+  }, [t, loginRequired, hasEnvLlm]);
 
   useEffect(() => {
     if (!loginRequired && activeSection === "users") setActiveSection("usage");
   }, [loginRequired, activeSection]);
+
+  useEffect(() => {
+    if (hasEnvLlm === false && activeSection === "llm") setActiveSection("usage");
+  }, [hasEnvLlm, activeSection]);
 
   useEffect(() => {
     const requestedSection = searchParams.get("section");
