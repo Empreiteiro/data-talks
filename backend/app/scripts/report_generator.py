@@ -1022,7 +1022,15 @@ async def generate_report(
     profile = _profile_dataframe(df_profile)
 
     # Step 2: Observations (LLM call #1)
-    observations = await _generate_observations(profile, source_name, llm_overrides, channel)
+    try:
+        observations = await _generate_observations(profile, source_name, llm_overrides, channel)
+    except (ValueError, Exception) as exc:
+        if "api_key" in str(exc).lower() or "api key" in str(exc).lower():
+            raise ValueError(
+                "LLM API key error during report generation. "
+                "Please check your API key in Account > LLM / AI settings."
+            ) from exc
+        raise
 
     # Step 3: Plan charts (LLM call #2)
     chart_plans = await _plan_charts(profile, source_name, llm_overrides, channel)

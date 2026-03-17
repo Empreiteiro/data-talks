@@ -110,55 +110,64 @@ async def generate_report(
     # Validate that an LLM API key is configured before starting the pipeline
     _validate_llm_config(llm_overrides, settings)
 
-    if source.type in ("csv", "xlsx"):
-        file_path = meta.get("file_path")
-        if not file_path:
-            raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
-        result = await generate_report_csv(
-            file_path=file_path,
-            source_name=source.name,
-            data_files_dir=settings.data_files_dir,
-            llm_overrides=llm_overrides,
-            channel="studio",
-        )
-    elif source.type == "bigquery":
-        creds = meta.get("credentialsContent") or meta.get("credentials_content")
-        if not creds:
-            raise HTTPException(400, "BigQuery source missing credentials")
-        result = await generate_report_bigquery(
-            credentials_content=creds,
-            project_id=meta.get("projectId", ""),
-            dataset_id=meta.get("datasetId", ""),
-            tables=meta.get("tables", []),
-            table_infos=meta.get("table_infos"),
-            source_name=source.name,
-            llm_overrides=llm_overrides,
-            channel="studio",
-        )
-    elif source.type == "sql_database":
-        connection_string = meta.get("connectionString") or meta.get("connection_string")
-        if not connection_string:
-            raise HTTPException(400, "SQL source missing connectionString in metadata")
-        table_infos = meta.get("table_infos")
-        if not table_infos:
-            raise HTTPException(400, "SQL source missing table_infos (schema) in metadata")
-        result = await generate_report_sql(
-            connection_string=connection_string,
-            table_infos=table_infos,
-            source_name=source.name,
-            llm_overrides=llm_overrides,
-            channel="studio",
-        )
-    elif source.type == "google_sheets":
-        result = await generate_report_google_sheets(
-            spreadsheet_id=meta.get("spreadsheetId", "") or meta.get("spreadsheet_id", ""),
-            sheet_name=meta.get("sheetName", "Sheet1") or meta.get("sheet_name", "Sheet1"),
-            source_name=source.name,
-            llm_overrides=llm_overrides,
-            channel="studio",
-        )
-    else:
-        raise HTTPException(400, f"Report not supported for source type: {source.type}")
+    try:
+        if source.type in ("csv", "xlsx"):
+            file_path = meta.get("file_path")
+            if not file_path:
+                raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
+            result = await generate_report_csv(
+                file_path=file_path,
+                source_name=source.name,
+                data_files_dir=settings.data_files_dir,
+                llm_overrides=llm_overrides,
+                channel="studio",
+            )
+        elif source.type == "bigquery":
+            creds = meta.get("credentialsContent") or meta.get("credentials_content")
+            if not creds:
+                raise HTTPException(400, "BigQuery source missing credentials")
+            result = await generate_report_bigquery(
+                credentials_content=creds,
+                project_id=meta.get("projectId", ""),
+                dataset_id=meta.get("datasetId", ""),
+                tables=meta.get("tables", []),
+                table_infos=meta.get("table_infos"),
+                source_name=source.name,
+                llm_overrides=llm_overrides,
+                channel="studio",
+            )
+        elif source.type == "sql_database":
+            connection_string = meta.get("connectionString") or meta.get("connection_string")
+            if not connection_string:
+                raise HTTPException(400, "SQL source missing connectionString in metadata")
+            table_infos = meta.get("table_infos")
+            if not table_infos:
+                raise HTTPException(400, "SQL source missing table_infos (schema) in metadata")
+            result = await generate_report_sql(
+                connection_string=connection_string,
+                table_infos=table_infos,
+                source_name=source.name,
+                llm_overrides=llm_overrides,
+                channel="studio",
+            )
+        elif source.type == "google_sheets":
+            result = await generate_report_google_sheets(
+                spreadsheet_id=meta.get("spreadsheetId", "") or meta.get("spreadsheet_id", ""),
+                sheet_name=meta.get("sheetName", "Sheet1") or meta.get("sheet_name", "Sheet1"),
+                source_name=source.name,
+                llm_overrides=llm_overrides,
+                channel="studio",
+            )
+        else:
+            raise HTTPException(400, f"Report not supported for source type: {source.type}")
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).exception("Report generation failed")
+        raise HTTPException(500, f"Report generation failed: {exc}")
 
     report_id = str(uuid.uuid4())
     report = Report(
