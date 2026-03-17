@@ -21,12 +21,17 @@ async def test_config_login_disabled(client):
 
 @pytest.mark.asyncio
 async def test_root_without_frontend(client):
-    """Without a built frontend the root endpoint returns API info."""
+    """Root returns 200: either API info (JSON) when no frontend build, or SPA HTML when dist/ exists."""
     response = await client.get("/")
     assert response.status_code == 200
-    body = response.json()
-    # Should be either the API info dict or the SPA index (if dist/ exists in test)
-    assert isinstance(body, dict)
+    content_type = response.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = response.json()
+        assert isinstance(body, dict)
+    else:
+        # SPA served (StaticFiles): response is HTML
+        text = response.text
+        assert isinstance(text, str) and len(text) > 0
 
 
 @pytest.mark.asyncio
