@@ -8,10 +8,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getConnectionStringLabel } from "@/lib/utils";
 import { dataClient } from "@/services/dataClient";
 import { Loader2, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { DbtSourceForm } from "@/components/DbtSourceForm";
-import { GithubFileSourceForm } from "@/components/GithubFileSourceForm";
+import { DbtSourceForm, DbtSourceFormHandle } from "@/components/DbtSourceForm";
+import { GithubFileSourceForm, GithubFileSourceFormHandle } from "@/components/GithubFileSourceForm";
 interface AddSourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -78,6 +78,13 @@ export function AddSourceModal({
   const [availableSqlTables, setAvailableSqlTables] = useState<Array<{id: string; name: string; columns?: string[]}>>([]);
   const [loadingSqlTables, setLoadingSqlTables] = useState(false);
   const [activeTab, setActiveTab] = useState("upload");
+
+  const dbtFormRef = useRef<DbtSourceFormHandle>(null);
+  const githubFileFormRef = useRef<GithubFileSourceFormHandle>(null);
+  const [dbtCanConnect, setDbtCanConnect] = useState(false);
+  const [dbtConnecting, setDbtConnecting] = useState(false);
+  const [githubCanConnect, setGithubCanConnect] = useState(false);
+  const [githubConnecting, setGithubConnecting] = useState(false);
 
   // Fetch existing BigQuery credentials and Google Sheets service email when modal opens
   useEffect(() => {
@@ -903,17 +910,17 @@ export function AddSourceModal({
             </TabsContent>
 
             <TabsContent value="dbt" className="space-y-4">
-              <DbtSourceForm agentId={agentId} onSourceAdded={onSourceAdded} onClose={() => onOpenChange(false)} />
+              <DbtSourceForm ref={dbtFormRef} agentId={agentId} onSourceAdded={onSourceAdded} onClose={() => onOpenChange(false)} onCanConnectChange={setDbtCanConnect} onConnectingChange={setDbtConnecting} />
             </TabsContent>
 
             <TabsContent value="github_file" className="space-y-4">
-              <GithubFileSourceForm agentId={agentId} onSourceAdded={onSourceAdded} onClose={() => onOpenChange(false)} />
+              <GithubFileSourceForm ref={githubFileFormRef} agentId={agentId} onSourceAdded={onSourceAdded} onClose={() => onOpenChange(false)} onCanConnectChange={setGithubCanConnect} onConnectingChange={setGithubConnecting} />
             </TabsContent>
           </Tabs>
 
         </div>
 
-        {(activeTab === "bigquery" || activeTab === "sheets" || activeTab === "sql") && (
+        {(activeTab === "bigquery" || activeTab === "sheets" || activeTab === "sql" || activeTab === "dbt" || activeTab === "github_file") && (
           <div className="flex-shrink-0 pt-6 px-1 border-t">
             {activeTab === "bigquery" && (
               <Button 
@@ -934,12 +941,30 @@ export function AddSourceModal({
               </Button>
             )}
             {activeTab === "sql" && (
-              <Button 
+              <Button
                 className="w-full"
                 onClick={handleSqlConnect}
                 disabled={!getCurrentSqlConnectionString() || !sqlDatabaseType || selectedSqlTables.length === 0 || connecting || loadingSqlTables}
               >
                 {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
+              </Button>
+            )}
+            {activeTab === "dbt" && (
+              <Button
+                className="w-full"
+                onClick={() => dbtFormRef.current?.connect()}
+                disabled={!dbtCanConnect || dbtConnecting}
+              >
+                {dbtConnecting ? t('addSource.connecting') : t('addSource.dbtConnect')}
+              </Button>
+            )}
+            {activeTab === "github_file" && (
+              <Button
+                className="w-full"
+                onClick={() => githubFileFormRef.current?.connect()}
+                disabled={!githubCanConnect || githubConnecting}
+              >
+                {githubConnecting ? t('addSource.connecting') : t('addSource.githubConnect')}
               </Button>
             )}
           </div>
