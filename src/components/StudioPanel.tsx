@@ -12,12 +12,13 @@ interface StudioPanelProps {
   onOpenTelegram?: () => void;
   onOpenAutoML?: () => void;
   onOpenWhatsApp?: () => void;
+  onOpenReport?: () => void;
   onOpenApiAccess?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenTelegram, onOpenWhatsApp, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTelegram, onOpenWhatsApp, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -59,7 +60,8 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
       icon: FileText,
       title: "Reports",
       description: t('studio.reports'),
-      locked: true,
+      locked: false,
+      onClick: onOpenReport,
     },
     {
       icon: Bell,

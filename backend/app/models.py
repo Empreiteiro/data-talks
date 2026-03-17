@@ -331,6 +331,19 @@ class AutoMLRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class Report(Base):
+    """Studio Report: rich HTML report with exploratory charts for a data source."""
+    __tablename__ = "reports"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    source_id: Mapped[str] = mapped_column(String(36))
+    source_name: Mapped[str] = mapped_column(String(255))
+    html_content: Mapped[str] = mapped_column(Text)
+    chart_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class ApiKey(Base):
     """External API key for programmatic access to an agent."""
     __tablename__ = "api_keys"

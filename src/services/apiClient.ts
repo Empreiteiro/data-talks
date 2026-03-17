@@ -573,6 +573,57 @@ export const apiClient = {
     return api<{ ok: boolean }>(`/api/table_summaries/${summaryId}`, { method: 'DELETE' });
   },
 
+  // Studio Reports (rich HTML reports with exploratory charts)
+  async generateReport(agentId: string, sourceId?: string) {
+    return api<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      chartCount: number;
+      createdAt: string;
+    }>('/api/reports', {
+      method: 'POST',
+      body: JSON.stringify({ agentId, sourceId }),
+    });
+  },
+
+  async listReports(agentId?: string) {
+    const path = agentId ? `/api/reports?agent_id=${encodeURIComponent(agentId)}` : '/api/reports';
+    return api<Array<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      chartCount: number;
+      createdAt: string;
+    }>>(path);
+  },
+
+  async getReport(reportId: string) {
+    return api<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      chartCount: number;
+      createdAt: string;
+    }>(`/api/reports/${reportId}`);
+  },
+
+  async getReportHtml(reportId: string): Promise<string> {
+    const token = localStorage.getItem('dt_token');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const resp = await fetch(`/api/reports/${reportId}/html`, { headers });
+    if (!resp.ok) throw new Error(`Failed to fetch report HTML: ${resp.status}`);
+    return resp.text();
+  },
+
+  async deleteReport(reportId: string) {
+    return api<{ ok: boolean }>(`/api/reports/${reportId}`, { method: 'DELETE' });
+  },
+
   // Auto ML
   async trainAutoML(agentId: string, sourceId: string, targetColumn: string) {
     return api<{
