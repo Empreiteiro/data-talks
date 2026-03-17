@@ -314,6 +314,23 @@ class AuditRetentionConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class AutoMLRun(Base):
+    """Auto ML run: stores results of a simplified ML pipeline for a source."""
+    __tablename__ = "automl_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    source_id: Mapped[str] = mapped_column(String(36))
+    source_name: Mapped[str] = mapped_column(String(255))
+    target_column: Mapped[str] = mapped_column(String(255))
+    task_type: Mapped[str] = mapped_column(String(20))  # classification | regression
+    model_type: Mapped[str] = mapped_column(String(50), default="random_forest")
+    metrics: Mapped[dict] = mapped_column(JSON, default=dict)
+    feature_importance: Mapped[list] = mapped_column(JSON, default=list)
+    report: Mapped[str] = mapped_column(Text)  # markdown explanation
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class ApiKey(Base):
     """External API key for programmatic access to an agent."""
     __tablename__ = "api_keys"

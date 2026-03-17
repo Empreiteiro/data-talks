@@ -573,6 +573,67 @@ export const apiClient = {
     return api<{ ok: boolean }>(`/api/table_summaries/${summaryId}`, { method: 'DELETE' });
   },
 
+  // Auto ML
+  async trainAutoML(agentId: string, sourceId: string, targetColumn: string) {
+    return api<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      targetColumn: string;
+      taskType: string;
+      modelType: string;
+      metrics: Record<string, unknown>;
+      featureImportance: Array<{ feature: string; importance: number }>;
+      report: string;
+      createdAt: string;
+    }>('/api/automl/train', {
+      method: 'POST',
+      body: JSON.stringify({ agentId, sourceId, targetColumn }),
+    });
+  },
+
+  async listAutoMLRuns(agentId?: string) {
+    const path = agentId ? `/api/automl?agent_id=${encodeURIComponent(agentId)}` : '/api/automl';
+    return api<Array<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      targetColumn: string;
+      taskType: string;
+      modelType: string;
+      metrics: Record<string, unknown>;
+      featureImportance: Array<{ feature: string; importance: number }>;
+      report: string;
+      createdAt: string;
+    }>>(path);
+  },
+
+  async getAutoMLRun(runId: string) {
+    return api<{
+      id: string;
+      agentId: string;
+      sourceId: string;
+      sourceName: string;
+      targetColumn: string;
+      taskType: string;
+      modelType: string;
+      metrics: Record<string, unknown>;
+      featureImportance: Array<{ feature: string; importance: number }>;
+      report: string;
+      createdAt: string;
+    }>(`/api/automl/${runId}`);
+  },
+
+  async deleteAutoMLRun(runId: string) {
+    return api<{ ok: boolean }>(`/api/automl/${runId}`, { method: 'DELETE' });
+  },
+
+  async getAutoMLColumns(agentId: string, sourceId: string) {
+    return api<{ columns: string[] }>(`/api/automl/columns?agent_id=${encodeURIComponent(agentId)}&source_id=${encodeURIComponent(sourceId)}`);
+  },
+
   async generateAudioOverview(agentId: string, sourceId?: string) {
     return api<{
       id: string;
