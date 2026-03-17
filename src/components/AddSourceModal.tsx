@@ -10,6 +10,8 @@ import { dataClient } from "@/services/dataClient";
 import { Loader2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { DbtSourceForm } from "@/components/DbtSourceForm";
+import { GithubFileSourceForm } from "@/components/GithubFileSourceForm";
 interface AddSourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -552,11 +554,13 @@ export function AddSourceModal({
           </p>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="upload">{t('addSource.uploadTab')}</TabsTrigger>
               <TabsTrigger value="bigquery">{t('addSource.bigQueryTab')}</TabsTrigger>
               <TabsTrigger value="sheets">{t('addSource.sheetsTab')}</TabsTrigger>
               <TabsTrigger value="sql">{t('addSource.sqlTab')}</TabsTrigger>
+              <TabsTrigger value="dbt">dbt</TabsTrigger>
+              <TabsTrigger value="github_file">GitHub File</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-4">
@@ -896,6 +900,14 @@ export function AddSourceModal({
                 </div>
 
               </div>
+            </TabsContent>
+
+            <TabsContent value="dbt" className="space-y-4">
+              <DbtSourceForm agentId={agentId} onSourceAdded={onSourceAdded} onClose={() => onOpenChange(false)} />
+            </TabsContent>
+
+            <TabsContent value="github_file" className="space-y-4">
+              <GithubFileSourceForm agentId={agentId} onSourceAdded={onSourceAdded} onClose={() => onOpenChange(false)} />
             </TabsContent>
           </Tabs>
 

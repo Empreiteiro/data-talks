@@ -21,6 +21,8 @@ from app.models import User
 from app.schemas import AskQuestionRequest, AskQuestionResponse
 from app.scripts.ask_csv import ask_csv
 from app.scripts.ask_bigquery import ask_bigquery
+from app.scripts.ask_dbt import ask_dbt
+from app.scripts.ask_github_file import ask_github_file
 from app.scripts.ask_google_sheets import ask_google_sheets
 from app.scripts.ask_sql import ask_sql
 from app.scripts.ask_sql_multi import ask_sql_multi_source
@@ -267,6 +269,48 @@ async def ask_question(
             history=history,
             channel=channel,
             sql_mode=sql_mode,
+        )
+    elif source.type == "dbt":
+        meta = source.metadata_ or {}
+        result = await ask_dbt(
+            project_source=meta.get("projectSource", "github"),
+            connection_string=meta.get("connectionString", ""),
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            github_token=meta.get("githubToken"),
+            github_repo=meta.get("githubRepo", ""),
+            github_branch=meta.get("githubBranch", "main"),
+            manifest_path=meta.get("manifestPath", "target/manifest.json"),
+            dbt_cloud_token=meta.get("dbtCloudToken"),
+            dbt_cloud_account_id=str(meta.get("dbtCloudAccountId", "")),
+            dbt_cloud_job_id=str(meta.get("dbtCloudJobId", "")),
+            selected_models=meta.get("selectedModels") or None,
+            table_infos=meta.get("table_infos"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
+        )
+    elif source.type == "github_file":
+        meta = source.metadata_ or {}
+        github_repo = meta.get("githubRepo", "")
+        file_path = meta.get("filePath", "")
+        if not github_repo or not file_path:
+            raise HTTPException(400, "GitHub file source missing githubRepo or filePath in metadata")
+        result = await ask_github_file(
+            github_repo=github_repo,
+            file_path=file_path,
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            github_token=meta.get("githubToken"),
+            github_branch=meta.get("githubBranch", "main"),
+            columns=meta.get("columns"),
+            preview_rows=meta.get("preview_rows"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
         )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")

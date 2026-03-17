@@ -122,7 +122,7 @@ export const apiClient = {
     await api(`/api/sources/${id}`, { method: 'DELETE' });
   },
 
-  async createSource(name: string, type: 'bigquery' | 'google_sheets' | 'sql_database', metadata: Record<string, unknown>, agentId?: string) {
+  async createSource(name: string, type: 'bigquery' | 'google_sheets' | 'sql_database' | 'dbt' | 'github_file', metadata: Record<string, unknown>, agentId?: string) {
     const data = await api<{ id: string; name: string; type: string; ownerId: string; createdAt: string; metaJSON: Record<string, unknown> }>('/api/sources', {
       method: 'POST',
       body: JSON.stringify({ name, type, metadata, agent_id: agentId ?? null }),
@@ -198,6 +198,30 @@ export const apiClient = {
   },
   async refreshSourceBigQueryMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
+  async dbtValidateManifest(body: Record<string, unknown>) {
+    return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async dbtRefreshSourceMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown>; modelCount: number }>(`/api/dbt/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
+  async githubValidateFile(body: Record<string, unknown>) {
+    return api<{ columns: string[]; previewRows: Record<string, unknown>[]; rowCount: number }>('/api/github/validate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async githubListFiles(body: Record<string, unknown>) {
+    return api<{ files: Array<{ name: string; path: string; size: number }> }>('/api/github/list-files', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async githubRefreshSourceMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/github/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
   async getGoogleSheetsServiceEmail(): Promise<string | null> {
     const data = await api<{ email: string | null }>('/api/settings/google-sheets-service-email');
