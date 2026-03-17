@@ -44,6 +44,27 @@ def _user_llm_overrides(llm_row: LlmSettings | None) -> dict | None:
     return overrides if overrides else None
 
 
+def _validate_llm_config(llm_overrides: dict | None, settings) -> None:
+    """Raise early if no LLM API key is available, before starting the multi-step pipeline."""
+    provider = (llm_overrides or {}).get("llm_provider") or settings.llm_provider or "openai"
+    if provider == "openai":
+        key = (llm_overrides or {}).get("openai_api_key") or settings.openai_api_key or ""
+        if not key.strip():
+            raise HTTPException(
+                400,
+                "OpenAI API key is not configured. Please set your API key in Account > LLM / AI settings before generating a report.",
+            )
+    elif provider == "litellm":
+        # LiteLLM may not need a key (local proxy), but base_url should be set
+        base = (llm_overrides or {}).get("litellm_base_url") or settings.litellm_base_url or ""
+        if not base.strip():
+            raise HTTPException(
+                400,
+                "LiteLLM base URL is not configured. Please configure it in Account > LLM / AI settings.",
+            )
+    # Ollama doesn't need an API key
+
+
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
@@ -85,6 +106,9 @@ async def generate_report(
     llm_row = r_llm.scalar_one_or_none()
     llm_overrides = _user_llm_overrides(llm_row)
     settings = get_settings()
+
+    # Validate that an LLM API key is configured before starting the pipeline
+    _validate_llm_config(llm_overrides, settings)
 
     if source.type in ("csv", "xlsx"):
         file_path = meta.get("file_path")
