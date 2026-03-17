@@ -13,6 +13,7 @@ import { SummaryModal } from "@/components/SummaryModal";
 import { TelegramModal } from "@/components/TelegramModal";
 import { WhatsAppModal } from "@/components/WhatsAppModal";
 import { ApiAccessModal } from "@/components/ApiAccessModal";
+import { AutoMLModal } from "@/components/AutoMLModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -288,6 +289,7 @@ export default function Workspace() {
   const [graphModalOpen, setGraphModalOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [audioOverviewModalOpen, setAudioOverviewModalOpen] = useState(false);
+  const [autoMLModalOpen, setAutoMLModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
   const [sqlRelationshipsOpen, setSqlRelationshipsOpen] = useState(false);
@@ -1070,6 +1072,7 @@ export default function Workspace() {
               onOpenGraph={() => setGraphModalOpen(true)}
               onOpenSummary={() => setSummaryModalOpen(true)}
               onOpenAudio={() => setAudioOverviewModalOpen(true)}
+              onOpenAutoML={() => setAutoMLModalOpen(true)}
               onOpenTelegram={() => setIsTelegramModalOpen(true)}
               onOpenWhatsApp={() => setIsWhatsAppModalOpen(true)}
               onOpenApiAccess={() => setIsApiAccessModalOpen(true)}
@@ -1151,6 +1154,12 @@ export default function Workspace() {
       <AudioOverviewModal
         open={audioOverviewModalOpen}
         onOpenChange={setAudioOverviewModalOpen}
+        workspaceId={id || ''}
+      />
+
+      <AutoMLModal
+        open={autoMLModalOpen}
+        onOpenChange={setAutoMLModalOpen}
         workspaceId={id || ''}
       />
 

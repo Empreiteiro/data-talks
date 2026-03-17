@@ -10,13 +10,14 @@ interface StudioPanelProps {
   onOpenSummary?: () => void;
   onOpenAudio?: () => void;
   onOpenTelegram?: () => void;
+  onOpenAutoML?: () => void;
   onOpenWhatsApp?: () => void;
   onOpenApiAccess?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenTelegram, onOpenWhatsApp, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenTelegram, onOpenWhatsApp, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -51,7 +52,8 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
       icon: Network,
       title: "Auto ML",
       description: t('studio.autoML'),
-      locked: true,
+      locked: false,
+      onClick: onOpenAutoML,
     },
     {
       icon: FileText,
