@@ -26,6 +26,7 @@ from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
 from app.scripts.ask_google_sheets import ask_google_sheets
 from app.scripts.ask_mongodb import ask_mongodb
+from app.scripts.ask_notion import ask_notion
 from app.scripts.ask_snowflake import ask_snowflake
 from app.scripts.ask_sql import ask_sql
 from app.scripts.ask_sql_multi import ask_sql_multi_source
@@ -345,6 +346,24 @@ async def ask_question(
             agent_description=agent.description or "",
             source_name=source.name,
             schema=meta.get("schema"),
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "notion":
+        meta = source.metadata_ or {}
+        notion_token = meta.get("integrationToken")
+        if not notion_token:
+            raise HTTPException(400, "Notion source missing integrationToken in metadata")
+        result = await ask_notion(
+            integration_token=notion_token,
+            database_id=meta.get("databaseId", ""),
+            database_title=meta.get("databaseTitle", ""),
+            properties=meta.get("properties"),
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
             preview=meta.get("preview"),
             llm_overrides=llm_overrides,
             history=history,
