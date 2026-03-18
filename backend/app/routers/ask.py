@@ -37,6 +37,7 @@ from app.scripts.ask_snowflake import ask_snowflake
 from app.scripts.ask_stripe import ask_stripe
 from app.scripts.ask_pipedrive import ask_pipedrive
 from app.scripts.ask_ga4 import ask_ga4
+from app.scripts.ask_intercom import ask_intercom
 from app.scripts.ask_salesforce import ask_salesforce
 from app.scripts.ask_sql import ask_sql
 from app.scripts.ask_sql_multi import ask_sql_multi_source
@@ -540,6 +541,23 @@ async def dispatch_question(
             agent_description=agent.description or "",
             source_name=source.name,
             table_infos=ga4_table_infos,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "intercom":
+        meta = source.metadata_ or {}
+        ic_token = meta.get("accessToken", "")
+        if not ic_token:
+            raise HTTPException(400, "Intercom source missing accessToken in metadata")
+        result = await ask_intercom(
+            access_token=ic_token,
+            selected_resources=meta.get("selectedResources"),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            schema_text=meta.get("schemaText"),
+            preview=meta.get("preview"),
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
