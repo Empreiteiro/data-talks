@@ -14,6 +14,7 @@ import { DbtSourceForm, DbtSourceFormHandle } from "@/components/DbtSourceForm";
 import { GithubFileSourceForm, GithubFileSourceFormHandle } from "@/components/GithubFileSourceForm";
 import { GoogleSheetsSourceForm, GoogleSheetsSourceFormHandle } from "@/components/GoogleSheetsSourceForm";
 import { FirebaseSourceForm, FirebaseSourceFormHandle } from "@/components/FirebaseSourceForm";
+import { MongoDbSourceForm, MongoDbSourceFormHandle } from "@/components/MongoDbSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
 
@@ -34,6 +35,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "firebase",    label: "Firebase / Firestore", connectLabelKey: "addSource.connectFirebase", hasConnect: true },
   { key: "dbt",         label: "dbt",              connectLabelKey: "addSource.dbtConnect",       hasConnect: true },
   { key: "github_file", label: "GitHub File",      connectLabelKey: "addSource.githubConnect",    hasConnect: true },
+  { key: "mongodb",     label: "MongoDB",          connectLabelKey: "addSource.connectMongoDB",   hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -147,6 +149,12 @@ export function AddSourceModal({
           {selectedType === "github_file" && (
             <div className="space-y-4">
               <GithubFileSourceForm ref={setRef("github_file")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("github_file")} onConnectingChange={setConnectingFor("github_file")} />
+            </div>
+          )}
+
+          {selectedType === "mongodb" && (
+            <div className="space-y-4">
+              <MongoDbSourceForm ref={setRef("mongodb")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mongodb")} onConnectingChange={setConnectingFor("mongodb")} />
             </div>
           )}
         </div>

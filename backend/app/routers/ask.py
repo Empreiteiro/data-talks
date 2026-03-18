@@ -25,6 +25,7 @@ from app.scripts.ask_dbt import ask_dbt
 from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
 from app.scripts.ask_google_sheets import ask_google_sheets
+from app.scripts.ask_mongodb import ask_mongodb
 from app.scripts.ask_sql import ask_sql
 from app.scripts.ask_sql_multi import ask_sql_multi_source
 from app.scripts.sql_utils import validate_source_relationships
@@ -326,6 +327,24 @@ async def ask_question(
             agent_description=agent.description or "",
             source_name=source.name,
             collection_infos=meta.get("collection_infos"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "mongodb":
+        meta = source.metadata_ or {}
+        conn_str = meta.get("connectionString")
+        if not conn_str:
+            raise HTTPException(400, "MongoDB source missing connectionString in metadata")
+        result = await ask_mongodb(
+            connection_string=conn_str,
+            database=meta.get("database", ""),
+            collection=meta.get("collection", ""),
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            schema=meta.get("schema"),
+            preview=meta.get("preview"),
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
