@@ -24,6 +24,7 @@ from app.scripts.ask_bigquery import ask_bigquery
 from app.scripts.ask_excel_online import ask_excel_online
 from app.scripts.ask_rest_api import ask_rest_api
 from app.scripts.ask_s3 import ask_s3
+from app.scripts.ask_sqlite import ask_sqlite
 from app.scripts.ask_dbt import ask_dbt
 from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
@@ -231,6 +232,23 @@ async def ask_question(
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
+        )
+    elif source.type == "sqlite":
+        meta = source.metadata_ or {}
+        file_path = meta.get("file_path")
+        if not file_path:
+            raise HTTPException(400, "SQLite source missing file_path in metadata")
+        result = await ask_sqlite(
+            file_path=file_path,
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            table_infos=meta.get("table_infos"),
+            data_files_dir=data_files_dir,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
         )
     elif source.type == "google_sheets":
         meta = source.metadata_ or {}

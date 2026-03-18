@@ -171,15 +171,28 @@ async def upload_source(
     settings = get_settings()
     Path(settings.data_files_dir).mkdir(parents=True, exist_ok=True)
     ext = (file.filename or "").split(".")[-1].lower()
-    if ext not in ("csv", "xlsx", "xls"):
-        raise HTTPException(400, "Only CSV or XLSX allowed")
+    allowed_extensions = ("csv", "xlsx", "xls", "db", "sqlite", "sqlite3")
+    if ext not in allowed_extensions:
+        raise HTTPException(400, f"Only {', '.join(allowed_extensions)} files are allowed")
     path = f"{user.id}/{uuid.uuid4().hex}.{ext}"
     full = Path(settings.data_files_dir) / path
     full.parent.mkdir(parents=True, exist_ok=True)
     with open(full, "wb") as f:
         f.write(await file.read())
-    meta = {"file_path": path, "columns": [], "preview_rows": [], "row_count": 0, "sample_profile": {}, "sample_row_count": 0}
-    if ext == "csv":
+    meta: dict = {"file_path": path, "columns": [], "preview_rows": [], "row_count": 0, "sample_profile": {}, "sample_row_count": 0}
+    source_type = "csv"
+    if ext in ("db", "sqlite", "sqlite3"):
+        # SQLite file: introspect tables
+        from app.scripts.ask_sqlite import _introspect_sqlite_sync
+        table_infos = _introspect_sqlite_sync(str(full))
+        tables = [ti["table"] for ti in table_infos]
+        meta = {
+            "file_path": path,
+            "tables": tables,
+            "table_infos": _sanitize_for_json(table_infos),
+        }
+        source_type = "sqlite"
+    elif ext == "csv":
         import pandas as pd
         df = pd.read_csv(full, nrows=1000)
         meta["columns"] = list(df.columns)
@@ -195,6 +208,7 @@ async def upload_source(
         meta["row_count"] = len(df)
         meta["sample_row_count"] = len(df)
         meta["sample_profile"] = _build_sample_profile(df)
+        source_type = "xlsx"
     meta = _sanitize_for_json(meta) or meta
     source_id = str(uuid.uuid4())
     source = Source(
@@ -203,7 +217,7 @@ async def upload_source(
         organization_id=user.organization_id or str(uuid.uuid4()),
         agent_id=None,
         name=file.filename or "file",
-        type="csv" if ext == "csv" else "xlsx",
+        type=source_type,
         metadata_=meta,
     )
     db.add(source)
