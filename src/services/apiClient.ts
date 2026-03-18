@@ -230,6 +230,40 @@ export const apiClient = {
   async mongodbRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/mongodb/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Snowflake
+  async snowflakeTestConnection(body: { account: string; user: string; password: string }) {
+    return api<{ ok: boolean }>('/api/snowflake/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async snowflakeListWarehouses(body: { account: string; user: string; password: string }) {
+    return api<{ warehouses: Array<{ id: string; name: string }> }>('/api/snowflake/warehouses', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async snowflakeListDatabases(body: { account: string; user: string; password: string }) {
+    return api<{ databases: Array<{ id: string; name: string }> }>('/api/snowflake/databases', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async snowflakeListSchemas(body: { account: string; user: string; password: string; database: string }) {
+    return api<{ schemas: Array<{ id: string; name: string }> }>('/api/snowflake/schemas', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async snowflakeListTables(body: { account: string; user: string; password: string; database: string; schema: string }) {
+    return api<{ tables: Array<{ id: string; name: string }> }>('/api/snowflake/tables', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async snowflakeRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/snowflake/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   async dbtValidateManifest(body: Record<string, unknown>) {
     return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {
       method: 'POST',
