@@ -75,6 +75,51 @@ class ApiKeyCreated(ApiKeyOut):
     raw_key: str
 
 
+# Report Templates
+class TemplateQueryDef(BaseModel):
+    id: str
+    title: str
+    sql: str
+    chart_type: str = "bar"
+    chart_config: dict = {}
+
+
+class ReportTemplateOut(BaseModel):
+    id: str
+    name: str
+    sourceType: str
+    description: Optional[str] = None
+    queries: list[TemplateQueryDef] = []
+    layout: str = "grid_2x2"
+    refreshInterval: int = 3600
+    isBuiltin: bool = False
+    queryCount: int = 0
+
+
+class TemplateRunRequest(BaseModel):
+    filters: Optional[dict] = None
+    dateRange: Optional[dict] = None  # {"start": "...", "end": "..."}
+    disabledQueries: Optional[list[str]] = None
+
+
+class TemplateQueryResult(BaseModel):
+    queryId: str
+    title: str
+    rows: list[dict] = []
+    chartSpec: Optional[dict] = None
+    error: Optional[str] = None
+
+
+class TemplateRunResponse(BaseModel):
+    runId: str
+    templateId: str
+    templateName: str
+    status: str  # success | error | partial
+    results: list[TemplateQueryResult] = []
+    durationMs: Optional[int] = None
+    createdAt: str
+
+
 # Public API
 class PublicAskRequest(BaseModel):
     question: str

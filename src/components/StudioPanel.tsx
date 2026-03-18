@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, Lock, MessageCircle, Network, Send, Terminal } from "lucide-react";
+import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, LayoutTemplate, Lock, MessageCircle, Network, Send, Terminal } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudioPanelProps {
@@ -13,13 +13,14 @@ interface StudioPanelProps {
   onOpenAutoML?: () => void;
   onOpenWhatsApp?: () => void;
   onOpenReport?: () => void;
+  onOpenTemplates?: () => void;
   onOpenSlack?: () => void;
   onOpenApiAccess?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTelegram, onOpenWhatsApp, onOpenSlack, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenTelegram, onOpenWhatsApp, onOpenSlack, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -63,6 +64,13 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
       description: t('studio.reports'),
       locked: false,
       onClick: onOpenReport,
+    },
+    {
+      icon: LayoutTemplate,
+      title: t('studio.templates'),
+      description: t('studio.templateDescription'),
+      locked: false,
+      onClick: onOpenTemplates,
     },
     {
       icon: Bell,

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "example_overview",
+    "name": "Example Overview",
+    "source_type": "sql_database",
+    "description": "Example template showing the structure. Each template defines queries with SQL, chart type, and layout.",
+    "queries": [
+      {
+        "id": "total_tables",
+        "title": "Total Tables",
+        "sql": "SELECT name FROM sqlite_master WHERE type='table'",
+        "chart_type": "bar",
+        "chart_config": {}
+      }
+    ],
+    "layout": "single",
+    "refresh_interval": 3600
+  }
+]

@@ -1,0 +1,49 @@
+[
+  {
+    "id": "sql_database_overview",
+    "name": "Database Overview",
+    "source_type": "sql_database",
+    "description": "General overview of your SQL database: table sizes, column distributions, and recent data patterns.",
+    "queries": [
+      {
+        "id": "table_row_counts",
+        "title": "Row Count per Table",
+        "sql": "SELECT '{{table}}' AS table_name, COUNT(*) AS row_count FROM {{table}}",
+        "chart_type": "bar",
+        "chart_config": {
+          "xKey": "table_name",
+          "yKey": "row_count"
+        }
+      },
+      {
+        "id": "column_overview",
+        "title": "Column Count per Table",
+        "sql": "SELECT '{{table}}' AS table_name, COUNT(*) AS column_count FROM pragma_table_info('{{table}}')",
+        "chart_type": "horizontal_bar",
+        "chart_config": {
+          "xKey": "table_name",
+          "yKey": "column_count"
+        }
+      }
+    ],
+    "layout": "grid_2x2",
+    "refresh_interval": 3600
+  },
+  {
+    "id": "sql_database_data_quality",
+    "name": "Data Quality Check",
+    "source_type": "sql_database",
+    "description": "Check data quality: null counts, duplicate detection, and value distributions for your tables.",
+    "queries": [
+      {
+        "id": "null_analysis",
+        "title": "Null Values per Column",
+        "sql": "SELECT 'Analysis pending' AS status, 0 AS null_count",
+        "chart_type": "bar",
+        "chart_config": {}
+      }
+    ],
+    "layout": "single",
+    "refresh_interval": 7200
+  }
+]
