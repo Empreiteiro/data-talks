@@ -135,8 +135,8 @@ async def create_source(
     user: User = Depends(require_user),
 ):
     """Create a non-file source (BigQuery, Google Sheets, SQL). Credentials stored locally in metadata."""
-    if body.type not in ("bigquery", "google_sheets", "sql_database", "firebase", "mongodb"):
-        raise HTTPException(400, "type must be bigquery, google_sheets, sql_database, firebase, or mongodb")
+    if body.type not in ("bigquery", "google_sheets", "sql_database", "firebase", "mongodb", "snowflake"):
+        raise HTTPException(400, "type must be bigquery, google_sheets, sql_database, firebase, mongodb, or snowflake")
     source_id = str(uuid.uuid4())
     source = Source(
         id=source_id,

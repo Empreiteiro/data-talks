@@ -18,7 +18,7 @@ from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.routers import auth_router, ask, crud, users_router, settings_router, bigquery_router, firebase_router, sql_router, summary_router, logs_router, audio_overview_router, telegram_router
 from app.routers import api_keys_router, public_api_router, whatsapp_router, audit_router, webhook_router, automl_router, report_router
-from app.routers import dbt_router, github_router, slack_router, mongodb_router
+from app.routers import dbt_router, github_router, slack_router, mongodb_router, snowflake_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -234,6 +234,7 @@ app.include_router(dbt_router.router, prefix=prefix)
 app.include_router(github_router.router, prefix=prefix)
 app.include_router(slack_router.router, prefix=prefix)
 app.include_router(mongodb_router.router, prefix=prefix)
+app.include_router(snowflake_router.router, prefix=prefix)
 
 
 @app.get(prefix + "/config")
