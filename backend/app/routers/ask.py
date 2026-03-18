@@ -214,7 +214,7 @@ async def ask_question(
             channel=channel,
             sql_mode=sql_mode,
         )
-    elif source.type in ("csv", "xlsx"):
+    elif source.type in ("csv", "xlsx", "parquet", "json"):
         file_path = (source.metadata_ or {}).get("file_path")
         if not file_path:
             raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")

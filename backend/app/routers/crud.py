@@ -171,7 +171,7 @@ async def upload_source(
     settings = get_settings()
     Path(settings.data_files_dir).mkdir(parents=True, exist_ok=True)
     ext = (file.filename or "").split(".")[-1].lower()
-    allowed_extensions = ("csv", "xlsx", "xls", "db", "sqlite", "sqlite3")
+    allowed_extensions = ("csv", "xlsx", "xls", "db", "sqlite", "sqlite3", "parquet", "json", "jsonl")
     if ext not in allowed_extensions:
         raise HTTPException(400, f"Only {', '.join(allowed_extensions)} files are allowed")
     path = f"{user.id}/{uuid.uuid4().hex}.{ext}"
@@ -200,6 +200,48 @@ async def upload_source(
         meta["row_count"] = len(df)
         meta["sample_row_count"] = len(df)
         meta["sample_profile"] = _build_sample_profile(df)
+    elif ext == "parquet":
+        import pandas as pd
+        df = pd.read_parquet(full)
+        df = df.head(1000)
+        meta["columns"] = list(df.columns)
+        meta["preview_rows"] = _sanitize_for_json(df.head(5).to_dict(orient="records"))
+        meta["row_count"] = len(df)
+        meta["sample_row_count"] = len(df)
+        meta["sample_profile"] = _build_sample_profile(df)
+        source_type = "parquet"
+    elif ext == "jsonl":
+        import pandas as pd
+        df = pd.read_json(full, lines=True, nrows=1000)
+        meta["columns"] = list(df.columns)
+        meta["preview_rows"] = _sanitize_for_json(df.head(5).to_dict(orient="records"))
+        meta["row_count"] = len(df)
+        meta["sample_row_count"] = len(df)
+        meta["sample_profile"] = _build_sample_profile(df)
+        source_type = "json"
+    elif ext == "json":
+        import pandas as pd
+        import json as json_mod
+        raw_data = json_mod.loads(full.read_text())
+        if isinstance(raw_data, list):
+            df = pd.json_normalize(raw_data)
+        elif isinstance(raw_data, dict):
+            # Try common data paths
+            for data_key in ("data", "results", "items", "records"):
+                if data_key in raw_data and isinstance(raw_data[data_key], list):
+                    df = pd.json_normalize(raw_data[data_key])
+                    break
+            else:
+                df = pd.json_normalize([raw_data])
+        else:
+            df = pd.DataFrame([{"value": raw_data}])
+        df = df.head(1000)
+        meta["columns"] = list(df.columns)
+        meta["preview_rows"] = _sanitize_for_json(df.head(5).to_dict(orient="records"))
+        meta["row_count"] = len(df)
+        meta["sample_row_count"] = len(df)
+        meta["sample_profile"] = _build_sample_profile(df)
+        source_type = "json"
     else:
         import pandas as pd
         df = pd.read_excel(full, nrows=1000)
