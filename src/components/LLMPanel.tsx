@@ -67,10 +67,11 @@ interface EffectiveLlmSettings {
 }
 
 interface LLMPanelProps {
+  hasEnvLlm?: boolean;
   onConfigAdded?: () => void;
 }
 
-export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
+export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
   const { t } = useLanguage();
   const [configs, setConfigs] = useState<LlmConfig[]>([]);
   const [effectiveSettings, setEffectiveSettings] = useState<EffectiveLlmSettings | null>(null);
@@ -447,7 +448,7 @@ export function LLMPanel({ onConfigAdded }: LLMPanelProps = {}) {
           </div>
         ) : (
           <div className="space-y-3">
-            {effectiveSettings && (
+            {hasEnvLlm && effectiveSettings && (
               <div className="p-3 rounded-lg border transition-all bg-muted/30 border-muted hover:bg-muted/50">
                 <div className="flex items-center gap-2">
                   <Bot className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
