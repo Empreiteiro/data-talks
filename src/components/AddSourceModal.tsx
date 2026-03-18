@@ -22,6 +22,7 @@ import { NotionSourceForm, NotionSourceFormHandle } from "@/components/NotionSou
 import { HubspotSourceForm, HubspotSourceFormHandle } from "@/components/HubspotSourceForm";
 import { JiraSourceForm, JiraSourceFormHandle } from "@/components/JiraSourceForm";
 import { StripeSourceForm, StripeSourceFormHandle } from "@/components/StripeSourceForm";
+import { PipedriveSourceForm, PipedriveSourceFormHandle } from "@/components/PipedriveSourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
@@ -52,6 +53,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "jira",          label: "Jira",           connectLabelKey: "addSource.connectJira",        hasConnect: true },
   { key: "hubspot",      label: "HubSpot CRM",   connectLabelKey: "addSource.connectHubspot",     hasConnect: true },
   { key: "stripe",        label: "Stripe",         connectLabelKey: "addSource.connectStripe",      hasConnect: true },
+  { key: "pipedrive",    label: "Pipedrive CRM",  connectLabelKey: "addSource.connectPipedrive",  hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -219,6 +221,12 @@ export function AddSourceModal({
           {selectedType === "stripe" && (
             <div className="space-y-4">
               <StripeSourceForm ref={setRef("stripe")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("stripe")} onConnectingChange={setConnectingFor("stripe")} />
+            </div>
+          )}
+
+          {selectedType === "pipedrive" && (
+            <div className="space-y-4">
+              <PipedriveSourceForm ref={setRef("pipedrive")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("pipedrive")} onConnectingChange={setConnectingFor("pipedrive")} />
             </div>
           )}
         </div>
