@@ -37,6 +37,7 @@ from app.scripts.ask_snowflake import ask_snowflake
 from app.scripts.ask_stripe import ask_stripe
 from app.scripts.ask_pipedrive import ask_pipedrive
 from app.scripts.ask_ga4 import ask_ga4
+from app.scripts.ask_github_analytics import ask_github_analytics
 from app.scripts.ask_intercom import ask_intercom
 from app.scripts.ask_salesforce import ask_salesforce
 from app.scripts.ask_sql import ask_sql
@@ -556,6 +557,27 @@ async def dispatch_question(
             question=question,
             agent_description=agent.description or "",
             source_name=source.name,
+            schema_text=meta.get("schemaText"),
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "github_analytics":
+        meta = source.metadata_ or {}
+        gh_token = meta.get("token", "")
+        gh_owner = meta.get("owner", "")
+        gh_repo = meta.get("repo", "")
+        if not gh_token or not gh_owner or not gh_repo:
+            raise HTTPException(400, "GitHub Analytics source missing token, owner, or repo in metadata")
+        result = await ask_github_analytics(
+            token=gh_token,
+            owner=gh_owner,
+            repo=gh_repo,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            tables_data=meta.get("tablesData"),
             schema_text=meta.get("schemaText"),
             preview=meta.get("preview"),
             llm_overrides=llm_overrides,
