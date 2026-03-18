@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
-import { Bot, Loader2, MessageCircle, Plus, Trash2, PlugZap } from "lucide-react";
+import { Bot, Hash, Loader2, MessageCircle, Plus, Trash2, PlugZap } from "lucide-react";
 import { toast } from "sonner";
 import {
   Select,
@@ -56,7 +56,20 @@ interface WhatsAppBotConfig {
   type: 'whatsapp';
 }
 
-type ConnectionConfig = (TelegramBotConfig | WhatsAppBotConfig);
+interface SlackBotConfig {
+  id: string;
+  key: string;
+  name: string;
+  masked_token: string;
+  team_id?: string;
+  team_name?: string;
+  is_env: boolean;
+  has_token?: boolean;
+  created_at?: string;
+  type: 'slack';
+}
+
+type ConnectionConfig = (TelegramBotConfig | WhatsAppBotConfig | SlackBotConfig);
 
 export function ConnectionsPanel() {
   const { t } = useLanguage();
@@ -65,9 +78,9 @@ export function ConnectionsPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [connectionType, setConnectionType] = useState<"telegram" | "whatsapp">("telegram");
+  const [connectionType, setConnectionType] = useState<"telegram" | "whatsapp" | "slack">("telegram");
   const [allConnections, setAllConnections] = useState<ConnectionConfig[]>([]);
-  
+
   // Telegram form state
   const [tgName, setTgName] = useState("");
   const [tgBotToken, setTgBotToken] = useState("");
@@ -79,33 +92,50 @@ export function ConnectionsPanel() {
   const [waAccessToken, setWaAccessToken] = useState("");
   const [waVerifyToken, setWaVerifyToken] = useState("");
 
+  // Slack form state
+  const [slackName, setSlackName] = useState("");
+  const [slackClientId, setSlackClientId] = useState("");
+  const [slackClientSecret, setSlackClientSecret] = useState("");
+  const [slackSigningSecret, setSlackSigningSecret] = useState("");
+
   const loadAllConnections = async () => {
     try {
-      const [tgData, waData] = await Promise.all([
+      const [tgData, waData, slackData] = await Promise.all([
         dataClient.listTelegramBotConfigs(),
         dataClient.listWhatsAppBotConfigs(),
+        dataClient.listSlackBotConfigs(),
       ]);
-      
+
       const connections: ConnectionConfig[] = [];
-      
+
       // Add Telegram env config if exists
       if (tgData.env_config) {
         connections.push({ ...tgData.env_config, type: 'telegram' });
       }
-      
+
       // Add Telegram configs
       if (tgData.configs) {
         connections.push(...tgData.configs.map(c => ({ ...c, type: 'telegram' as const })));
       }
-      
+
       // Add WhatsApp env config if exists
       if (waData.env_config) {
         connections.push({ ...waData.env_config, type: 'whatsapp' });
       }
-      
+
       // Add WhatsApp configs
       if (waData.configs) {
         connections.push(...waData.configs.map(c => ({ ...c, type: 'whatsapp' as const })));
+      }
+
+      // Add Slack env config if exists
+      if (slackData.env_config) {
+        connections.push({ ...slackData.env_config, type: 'slack' });
+      }
+
+      // Add Slack configs
+      if (slackData.configs) {
+        connections.push(...slackData.configs.map(c => ({ ...c, type: 'slack' as const })));
       }
       
       // Sort by created_at (newest first), then by type, then by name
@@ -150,6 +180,10 @@ export function ConnectionsPanel() {
     setWaPhoneNumberId("");
     setWaAccessToken("");
     setWaVerifyToken("");
+    setSlackName("");
+    setSlackClientId("");
+    setSlackClientSecret("");
+    setSlackSigningSecret("");
     setConnectionType("telegram");
   };
 
@@ -177,7 +211,7 @@ export function ConnectionsPanel() {
       } finally {
         setSaving(false);
       }
-    } else {
+    } else if (connectionType === "whatsapp") {
       if (!waName.trim() || !waPhoneNumberId.trim() || !waAccessToken.trim() || !waVerifyToken.trim()) {
         toast.error(t("connections.requiredFields"));
         return;
@@ -201,6 +235,30 @@ export function ConnectionsPanel() {
       } finally {
         setSaving(false);
       }
+    } else {
+      if (!slackName.trim() || !slackClientId.trim() || !slackClientSecret.trim() || !slackSigningSecret.trim()) {
+        toast.error(t("connections.requiredFields"));
+        return;
+      }
+      setSaving(true);
+      try {
+        await dataClient.createSlackBotConfig({
+          name: slackName.trim(),
+          client_id: slackClientId.trim(),
+          client_secret: slackClientSecret.trim(),
+          signing_secret: slackSigningSecret.trim(),
+        });
+        toast.success(t("connections.saveSuccess"));
+        resetForm();
+        setAddDialogOpen(false);
+        await loadAllConnections();
+      } catch (error: unknown) {
+        toast.error(t("connections.saveError"), {
+          description: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -208,8 +266,10 @@ export function ConnectionsPanel() {
     try {
       if (config.type === "telegram") {
         await dataClient.deleteTelegramBotConfig(config.id);
-      } else {
+      } else if (config.type === "whatsapp") {
         await dataClient.deleteWhatsAppBotConfig(config.id);
+      } else {
+        await dataClient.deleteSlackBotConfig(config.id);
       }
       toast.success(t("connections.deleteSuccess"));
       await loadAllConnections();
@@ -262,6 +322,8 @@ export function ConnectionsPanel() {
                 <div className="flex items-center gap-2">
                   {config.type === "telegram" ? (
                     <Bot className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  ) : config.type === "slack" ? (
+                    <Hash className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                   ) : (
                     <MessageCircle className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                   )}
@@ -272,11 +334,16 @@ export function ConnectionsPanel() {
                         <Badge variant="outline" className="text-xs">{t("connections.envBadge")}</Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
-                        {config.type === "telegram" ? "Telegram" : "WhatsApp"}
+                        {config.type === "telegram" ? "Telegram" : config.type === "slack" ? "Slack" : "WhatsApp"}
                       </Badge>
                       {config.type === "telegram" ? (
                         <>
                           <span className="text-xs text-muted-foreground">@{config.bot_username}</span>
+                          <span className="text-xs text-muted-foreground">{config.masked_token}</span>
+                        </>
+                      ) : config.type === "slack" ? (
+                        <>
+                          {config.team_name && <span className="text-xs text-muted-foreground">{config.team_name}</span>}
                           <span className="text-xs text-muted-foreground">{config.masked_token}</span>
                         </>
                       ) : (
@@ -335,13 +402,14 @@ export function ConnectionsPanel() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>{t("connections.typeLabel") || "Tipo"}</Label>
-              <Select value={connectionType} onValueChange={(v) => setConnectionType(v as "telegram" | "whatsapp")}>
+              <Select value={connectionType} onValueChange={(v) => setConnectionType(v as "telegram" | "whatsapp" | "slack")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="telegram">Telegram</SelectItem>
                   <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="slack">Slack</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -351,8 +419,8 @@ export function ConnectionsPanel() {
               <Input
                 id="connection-name"
                 placeholder={t("connections.namePlaceholder")}
-                value={connectionType === "telegram" ? tgName : waName}
-                onChange={(e) => connectionType === "telegram" ? setTgName(e.target.value) : setWaName(e.target.value)}
+                value={connectionType === "telegram" ? tgName : connectionType === "slack" ? slackName : waName}
+                onChange={(e) => connectionType === "telegram" ? setTgName(e.target.value) : connectionType === "slack" ? setSlackName(e.target.value) : setWaName(e.target.value)}
                 disabled={saving}
               />
             </div>
@@ -377,6 +445,41 @@ export function ConnectionsPanel() {
                     placeholder="my_datatalks_bot"
                     value={tgBotUsername}
                     onChange={(e) => setTgBotUsername(e.target.value)}
+                    disabled={saving}
+                  />
+                </div>
+              </>
+            ) : connectionType === "slack" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="slack-client-id">{t("connections.slackClientIdLabel")}</Label>
+                  <Input
+                    id="slack-client-id"
+                    placeholder="1234567890.1234567890"
+                    value={slackClientId}
+                    onChange={(e) => setSlackClientId(e.target.value)}
+                    disabled={saving}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slack-client-secret">{t("connections.slackClientSecretLabel")}</Label>
+                  <Input
+                    id="slack-client-secret"
+                    type="password"
+                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    value={slackClientSecret}
+                    onChange={(e) => setSlackClientSecret(e.target.value)}
+                    disabled={saving}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slack-signing-secret">{t("connections.slackSigningSecretLabel")}</Label>
+                  <Input
+                    id="slack-signing-secret"
+                    type="password"
+                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    value={slackSigningSecret}
+                    onChange={(e) => setSlackSigningSecret(e.target.value)}
                     disabled={saving}
                   />
                 </div>
@@ -424,9 +527,11 @@ export function ConnectionsPanel() {
             <Button 
               onClick={handleCreate} 
               disabled={
-                saving || 
-                (connectionType === "telegram" 
+                saving ||
+                (connectionType === "telegram"
                   ? (!tgName.trim() || !tgBotToken.trim() || !tgBotUsername.trim())
+                  : connectionType === "slack"
+                  ? (!slackName.trim() || !slackClientId.trim() || !slackClientSecret.trim() || !slackSigningSecret.trim())
                   : (!waName.trim() || !waPhoneNumberId.trim() || !waAccessToken.trim() || !waVerifyToken.trim()))
               }
             >

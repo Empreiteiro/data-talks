@@ -12,6 +12,7 @@ import { StudioPanel } from "@/components/StudioPanel";
 import { SummaryModal } from "@/components/SummaryModal";
 import { TelegramModal } from "@/components/TelegramModal";
 import { WhatsAppModal } from "@/components/WhatsAppModal";
+import { SlackModal } from "@/components/SlackModal";
 import { ApiAccessModal } from "@/components/ApiAccessModal";
 import { AutoMLModal } from "@/components/AutoMLModal";
 import { ReportModal } from "@/components/ReportModal";
@@ -286,6 +287,7 @@ export default function Workspace() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
   const [isApiAccessModalOpen, setIsApiAccessModalOpen] = useState(false);
   const [graphModalOpen, setGraphModalOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
@@ -1078,6 +1080,7 @@ export default function Workspace() {
               onOpenReport={() => setReportModalOpen(true)}
               onOpenTelegram={() => setIsTelegramModalOpen(true)}
               onOpenWhatsApp={() => setIsWhatsAppModalOpen(true)}
+              onOpenSlack={() => setIsSlackModalOpen(true)}
               onOpenApiAccess={() => setIsApiAccessModalOpen(true)}
             />
           </div>}
@@ -1133,6 +1136,12 @@ export default function Workspace() {
       <WhatsAppModal
         open={isWhatsAppModalOpen}
         onOpenChange={setIsWhatsAppModalOpen}
+        agentId={id || ''}
+      />
+
+      <SlackModal
+        open={isSlackModalOpen}
+        onOpenChange={setIsSlackModalOpen}
         agentId={id || ''}
       />
 
