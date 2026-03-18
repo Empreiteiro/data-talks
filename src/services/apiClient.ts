@@ -309,6 +309,13 @@ export const apiClient = {
   async s3RefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/s3/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // REST API
+  async restApiTest(body: { url: string; method?: string; headers?: Record<string, string>; queryParams?: Record<string, string>; body?: unknown; dataPath?: string }) {
+    return api<{ columns: string[]; preview: Record<string, unknown>[]; rowCount: number }>('/api/rest-api/test', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async restApiRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/rest-api/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   async dbtValidateManifest(body: Record<string, unknown>) {
     return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {
       method: 'POST',

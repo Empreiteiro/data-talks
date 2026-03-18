@@ -16,6 +16,7 @@ import { GithubFileSourceForm, GithubFileSourceFormHandle } from "@/components/G
 import { GoogleSheetsSourceForm, GoogleSheetsSourceFormHandle } from "@/components/GoogleSheetsSourceForm";
 import { FirebaseSourceForm, FirebaseSourceFormHandle } from "@/components/FirebaseSourceForm";
 import { MongoDbSourceForm, MongoDbSourceFormHandle } from "@/components/MongoDbSourceForm";
+import { RestApiSourceForm, RestApiSourceFormHandle } from "@/components/RestApiSourceForm";
 import { S3SourceForm, S3SourceFormHandle } from "@/components/S3SourceForm";
 import { NotionSourceForm, NotionSourceFormHandle } from "@/components/NotionSourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
@@ -44,6 +45,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "notion",      label: "Notion Database",  connectLabelKey: "addSource.connectNotion",    hasConnect: true },
   { key: "excel_online", label: "Excel Online",   connectLabelKey: "addSource.connectExcelOnline", hasConnect: true },
   { key: "s3",           label: "S3 / MinIO",     connectLabelKey: "addSource.connectS3",          hasConnect: true },
+  { key: "rest_api",     label: "REST API",       connectLabelKey: "addSource.connectRestApi",     hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -187,6 +189,12 @@ export function AddSourceModal({
           {selectedType === "s3" && (
             <div className="space-y-4">
               <S3SourceForm ref={setRef("s3")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("s3")} onConnectingChange={setConnectingFor("s3")} />
+            </div>
+          )}
+
+          {selectedType === "rest_api" && (
+            <div className="space-y-4">
+              <RestApiSourceForm ref={setRef("rest_api")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("rest_api")} onConnectingChange={setConnectingFor("rest_api")} />
             </div>
           )}
         </div>
