@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     whatsapp_access_token: str = ""
     whatsapp_verify_token: str = ""
 
+    # Slack App Settings (optional defaults from .env)
+    slack_bot_token: str = ""
+    slack_signing_secret: str = ""
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+
     class Config:
         env_file = str(_ENV_FILE) if _ENV_FILE.exists() else ".env"
         extra = "ignore"

@@ -862,6 +862,55 @@ export const apiClient = {
     return api(`/api/whatsapp/connections/${connectionId}`, { method: 'DELETE' });
   },
 
+  // Slack Integration
+  async listSlackBotConfigs(): Promise<{
+    env_config: {
+      id: string;
+      key: string;
+      name: string;
+      masked_token: string;
+      team_id?: string;
+      team_name?: string;
+      is_env: boolean;
+    } | null;
+    configs: Array<{
+      id: string;
+      key: string;
+      name: string;
+      masked_token: string;
+      team_id?: string;
+      team_name?: string;
+      is_env: boolean;
+      has_token?: boolean;
+      created_at?: string;
+    }>;
+  }> {
+    return api('/api/slack/bot-configs');
+  },
+
+  async createSlackBotConfig(body: { name: string; client_id: string; client_secret: string; signing_secret: string }) {
+    return api('/api/slack/bot-configs', { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async deleteSlackBotConfig(configId: string): Promise<{ message: string }> {
+    return api(`/api/slack/bot-configs/${configId}`, { method: 'DELETE' });
+  },
+
+  async createSlackConnection(
+    agentId: string,
+    body: { config_key: string; channel_id: string }
+  ): Promise<{ id: string; channel_id: string; channel_name?: string; team_id?: string; created_at: string }> {
+    return api(`/api/slack/channels/${agentId}`, { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  async listSlackConnections(agentId: string): Promise<{ connections: Array<{ id: string; channel_id: string; channel_name?: string; team_id?: string; config_name?: string; created_at: string }> }> {
+    return api(`/api/slack/channels/${agentId}`);
+  },
+
+  async deleteSlackConnection(connectionId: string): Promise<{ message: string }> {
+    return api(`/api/slack/channels/${connectionId}`, { method: 'DELETE' });
+  },
+
   // API Keys (external agent access)
   async listApiKeys(agentId?: string): Promise<Array<{
     id: string;

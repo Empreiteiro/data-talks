@@ -288,6 +288,46 @@ class WhatsAppConnection(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class SlackBotConfig(Base):
+    """User-managed Slack app credentials (obtained via OAuth2 or manual entry)."""
+    __tablename__ = "slack_bot_configs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(128))
+    client_id: Mapped[str] = mapped_column(String(128))
+    client_secret: Mapped[str] = mapped_column(String(256))
+    signing_secret: Mapped[str] = mapped_column(String(256))
+    bot_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    team_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    team_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SlackOAuthState(Base):
+    """Temporary state for Slack OAuth2 flow."""
+    __tablename__ = "slack_oauth_states"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    state: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    config_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class SlackConnection(Base):
+    """Maps a Slack channel to an agent."""
+    __tablename__ = "slack_connections"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36))
+    slack_bot_config_id: Mapped[str] = mapped_column(String(36))
+    team_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    channel_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    channel_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class AuditLog(Base):
     """Full audit trail: tracks all user actions for enterprise compliance."""
     __tablename__ = "audit_logs"
