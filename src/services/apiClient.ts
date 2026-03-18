@@ -342,6 +342,16 @@ export const apiClient = {
   async salesforceRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/salesforce/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Google Analytics 4
+  async ga4TestConnection(body: { credentialsContent: string; propertyId: string }) {
+    return api<{ ok: boolean }>('/api/ga4/test-connection', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async ga4Discover(body: { credentialsContent: string; propertyId: string }) {
+    return api<{ tables: Array<{ name: string; rowCount: number }> }>('/api/ga4/discover', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async ga4RefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/ga4/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {

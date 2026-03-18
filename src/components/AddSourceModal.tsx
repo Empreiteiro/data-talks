@@ -24,6 +24,7 @@ import { JiraSourceForm, JiraSourceFormHandle } from "@/components/JiraSourceFor
 import { StripeSourceForm, StripeSourceFormHandle } from "@/components/StripeSourceForm";
 import { PipedriveSourceForm, PipedriveSourceFormHandle } from "@/components/PipedriveSourceForm";
 import { SalesforceSourceForm, SalesforceSourceFormHandle } from "@/components/SalesforceSourceForm";
+import { GA4SourceForm, GA4SourceFormHandle } from "@/components/GA4SourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
@@ -56,6 +57,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "stripe",        label: "Stripe",         connectLabelKey: "addSource.connectStripe",      hasConnect: true },
   { key: "pipedrive",    label: "Pipedrive CRM",  connectLabelKey: "addSource.connectPipedrive",  hasConnect: true },
   { key: "salesforce",  label: "Salesforce CRM", connectLabelKey: "addSource.connectSalesforce", hasConnect: true },
+  { key: "ga4",         label: "Google Analytics 4", connectLabelKey: "addSource.connectGA4",    hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -235,6 +237,12 @@ export function AddSourceModal({
           {selectedType === "salesforce" && (
             <div className="space-y-4">
               <SalesforceSourceForm ref={setRef("salesforce")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("salesforce")} onConnectingChange={setConnectingFor("salesforce")} />
+            </div>
+          )}
+
+          {selectedType === "ga4" && (
+            <div className="space-y-4">
+              <GA4SourceForm ref={setRef("ga4")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("ga4")} onConnectingChange={setConnectingFor("ga4")} />
             </div>
           )}
         </div>

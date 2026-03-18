@@ -22,6 +22,7 @@ from app.routers import dbt_router, github_router, slack_router, mongodb_router,
 from app.routers import template_router
 from app.routers import hubspot_router
 from app.routers import salesforce_router
+from app.routers import ga4_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -247,6 +248,7 @@ app.include_router(stripe_router.router, prefix=prefix)
 app.include_router(template_router.router, prefix=prefix)
 app.include_router(hubspot_router.router, prefix=prefix)
 app.include_router(salesforce_router.router, prefix=prefix)
+app.include_router(ga4_router.router, prefix=prefix)
 app.include_router(pipedrive_router.router, prefix=prefix)
 
 
