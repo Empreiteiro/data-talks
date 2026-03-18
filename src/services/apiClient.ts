@@ -103,7 +103,7 @@ export const apiClient = {
     return (data || []).map((s) => ({
       id: s.id,
       name: s.name,
-      type: s.type as 'csv' | 'xlsx' | 'bigquery' | 'google_sheets' | 'sql_database',
+      type: s.type as 'csv' | 'xlsx' | 'bigquery' | 'google_sheets' | 'sql_database' | 'firebase',
       ownerId: s.ownerId,
       agent_id: s.agent_id,
       is_active: s.is_active,
@@ -122,7 +122,7 @@ export const apiClient = {
     await api(`/api/sources/${id}`, { method: 'DELETE' });
   },
 
-  async createSource(name: string, type: 'bigquery' | 'google_sheets' | 'sql_database' | 'dbt' | 'github_file', metadata: Record<string, unknown>, agentId?: string) {
+  async createSource(name: string, type: 'bigquery' | 'google_sheets' | 'sql_database' | 'dbt' | 'github_file' | 'firebase', metadata: Record<string, unknown>, agentId?: string) {
     const data = await api<{ id: string; name: string; type: string; ownerId: string; createdAt: string; metaJSON: Record<string, unknown> }>('/api/sources', {
       method: 'POST',
       body: JSON.stringify({ name, type, metadata, agent_id: agentId ?? null }),
@@ -198,6 +198,15 @@ export const apiClient = {
   },
   async refreshSourceBigQueryMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
+  async firebaseListCollections(body: { credentialsContent?: string; sourceId?: string }) {
+    return api<{ collections: Array<{ id: string; name: string }> }>('/api/firebase/collections', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async refreshSourceFirebaseMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/firebase/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
   async dbtValidateManifest(body: Record<string, unknown>) {
     return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {

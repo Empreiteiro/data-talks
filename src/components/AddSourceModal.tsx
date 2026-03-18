@@ -13,6 +13,7 @@ import { BigQuerySourceForm, BigQuerySourceFormHandle } from "@/components/BigQu
 import { DbtSourceForm, DbtSourceFormHandle } from "@/components/DbtSourceForm";
 import { GithubFileSourceForm, GithubFileSourceFormHandle } from "@/components/GithubFileSourceForm";
 import { GoogleSheetsSourceForm, GoogleSheetsSourceFormHandle } from "@/components/GoogleSheetsSourceForm";
+import { FirebaseSourceForm, FirebaseSourceFormHandle } from "@/components/FirebaseSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
 
@@ -30,6 +31,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "bigquery",    label: "BigQuery",         connectLabelKey: "addSource.connectBigQuery",  hasConnect: true },
   { key: "sheets",      label: "Google Sheets",    connectLabelKey: "addSource.connectSheets",    hasConnect: true },
   { key: "sql",         label: "SQL Database",     connectLabelKey: "addSource.sqlConnect",       hasConnect: true },
+  { key: "firebase",    label: "Firebase / Firestore", connectLabelKey: "addSource.connectFirebase", hasConnect: true },
   { key: "dbt",         label: "dbt",              connectLabelKey: "addSource.dbtConnect",       hasConnect: true },
   { key: "github_file", label: "GitHub File",      connectLabelKey: "addSource.githubConnect",    hasConnect: true },
 ];
@@ -127,6 +129,12 @@ export function AddSourceModal({
           {selectedType === "sql" && (
             <div className="space-y-4">
               <SqlSourceForm ref={setRef("sql")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("sql")} onConnectingChange={setConnectingFor("sql")} />
+            </div>
+          )}
+
+          {selectedType === "firebase" && (
+            <div className="space-y-4">
+              <FirebaseSourceForm ref={setRef("firebase")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("firebase")} onConnectingChange={setConnectingFor("firebase")} />
             </div>
           )}
 
