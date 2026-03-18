@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
 import { Loader2 } from "lucide-react";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
@@ -19,6 +20,7 @@ export interface FirebaseSourceFormHandle {
 
 export const FirebaseSourceForm = forwardRef<FirebaseSourceFormHandle, FirebaseSourceFormProps>(
   function FirebaseSourceForm({ agentId, onSourceAdded, onClose, onCanConnectChange, onConnectingChange }, ref) {
+    const { t } = useLanguage();
     const [connecting, setConnecting] = useState(false);
     const [credentialsFile, setCredentialsFile] = useState<File | null>(null);
     const [availableCollections, setAvailableCollections] = useState<Array<{ id: string; name: string }>>([]);
@@ -57,7 +59,14 @@ export const FirebaseSourceForm = forwardRef<FirebaseSourceFormHandle, FirebaseS
     }, [credentialsFile]);
 
     const handleConnect = async () => {
-      if (!credentialsFile || selectedCollections.length === 0) return;
+      if (!credentialsFile) {
+        toast.error(t('addSource.firebaseSelectCredentials'));
+        return;
+      }
+      if (selectedCollections.length === 0) {
+        toast.error(t('addSource.firebaseSelectCollections'));
+        return;
+      }
 
       setConnecting(true);
       try {
@@ -93,12 +102,12 @@ export const FirebaseSourceForm = forwardRef<FirebaseSourceFormHandle, FirebaseS
           // non-blocking
         }
 
-        toast.success('Firebase conectado com sucesso!');
+        toast.success(t('addSource.firebaseConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
       } catch (error) {
         console.error('Firebase connection error:', error);
-        toast.error('Erro ao conectar Firebase', { description: error.message });
+        toast.error(t('addSource.firebaseConnectError'), { description: error.message });
       } finally {
         setConnecting(false);
       }
@@ -110,15 +119,15 @@ export const FirebaseSourceForm = forwardRef<FirebaseSourceFormHandle, FirebaseS
       <>
         <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
           <p className="text-sm">
-            <strong>Firebase Firestore</strong> — faça upload do arquivo JSON de conta de serviço do Firebase para conectar ao seu banco Firestore.
+            <strong>Firebase Firestore</strong> — {t('addSource.firebaseDescription')}
           </p>
           <p className="text-xs text-muted-foreground">
-            Acesse o Console do Firebase → Configurações do projeto → Contas de serviço → Gerar nova chave privada.
+            {t('addSource.firebaseHint')}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="firebase-credentials">Arquivo de credenciais (JSON)</Label>
+          <Label htmlFor="firebase-credentials">{t('addSource.firebaseCredentials')}</Label>
           <Input
             id="firebase-credentials"
             type="file"
@@ -134,14 +143,14 @@ export const FirebaseSourceForm = forwardRef<FirebaseSourceFormHandle, FirebaseS
           {loadingCollections && (
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Carregando coleções...
+              {t('addSource.firebaseLoadingCollections')}
             </p>
           )}
         </div>
 
         {availableCollections.length > 0 && (
           <div className="space-y-2">
-            <Label>Coleções disponíveis</Label>
+            <Label>{t('addSource.firebaseAvailableCollections')}</Label>
             <div className="max-h-56 overflow-y-auto rounded-md border p-2 space-y-2">
               {availableCollections.map((col) => {
                 const isChecked = selectedCollections.includes(col.id);
@@ -166,7 +175,7 @@ export const FirebaseSourceForm = forwardRef<FirebaseSourceFormHandle, FirebaseS
             </div>
             {selectedCollections.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                {selectedCollections.length} coleção(ões) selecionada(s)
+                {t('addSource.firebaseSelectedCount', { count: selectedCollections.length })}
               </p>
             )}
           </div>
