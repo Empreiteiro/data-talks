@@ -21,6 +21,7 @@ from app.models import User
 from app.schemas import AskQuestionRequest, AskQuestionResponse
 from app.scripts.ask_csv import ask_csv
 from app.scripts.ask_bigquery import ask_bigquery
+from app.scripts.ask_excel_online import ask_excel_online
 from app.scripts.ask_dbt import ask_dbt
 from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
@@ -347,6 +348,26 @@ async def ask_question(
             source_name=source.name,
             schema=meta.get("schema"),
             preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "excel_online":
+        meta = source.metadata_ or {}
+        excel_token = meta.get("accessToken")
+        if not excel_token:
+            raise HTTPException(400, "Excel Online source missing accessToken in metadata")
+        result = await ask_excel_online(
+            access_token=excel_token,
+            drive_id=meta.get("driveId", ""),
+            item_id=meta.get("itemId", ""),
+            file_name=meta.get("fileName", ""),
+            sheet_name=meta.get("sheetName", "Sheet1"),
+            columns=meta.get("columns"),
+            preview=meta.get("preview"),
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,

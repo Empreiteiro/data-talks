@@ -10,6 +10,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCallback, useRef, useState } from "react";
 import { BigQuerySourceForm, BigQuerySourceFormHandle } from "@/components/BigQuerySourceForm";
+import { ExcelOnlineSourceForm, ExcelOnlineSourceFormHandle } from "@/components/ExcelOnlineSourceForm";
 import { DbtSourceForm, DbtSourceFormHandle } from "@/components/DbtSourceForm";
 import { GithubFileSourceForm, GithubFileSourceFormHandle } from "@/components/GithubFileSourceForm";
 import { GoogleSheetsSourceForm, GoogleSheetsSourceFormHandle } from "@/components/GoogleSheetsSourceForm";
@@ -40,6 +41,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "mongodb",     label: "MongoDB",          connectLabelKey: "addSource.connectMongoDB",   hasConnect: true },
   { key: "snowflake",   label: "Snowflake",        connectLabelKey: "addSource.connectSnowflake", hasConnect: true },
   { key: "notion",      label: "Notion Database",  connectLabelKey: "addSource.connectNotion",    hasConnect: true },
+  { key: "excel_online", label: "Excel Online",   connectLabelKey: "addSource.connectExcelOnline", hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -171,6 +173,12 @@ export function AddSourceModal({
           {selectedType === "notion" && (
             <div className="space-y-4">
               <NotionSourceForm ref={setRef("notion")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("notion")} onConnectingChange={setConnectingFor("notion")} />
+            </div>
+          )}
+
+          {selectedType === "excel_online" && (
+            <div className="space-y-4">
+              <ExcelOnlineSourceForm ref={setRef("excel_online")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("excel_online")} onConnectingChange={setConnectingFor("excel_online")} />
             </div>
           )}
         </div>
