@@ -98,6 +98,24 @@ class Settings(BaseSettings):
     whatsapp_access_token: str = ""
     whatsapp_verify_token: str = ""
 
+    # MCP Server
+    mcp_enabled: bool = True
+
+    @field_validator("mcp_enabled", mode="before")
+    @classmethod
+    def parse_mcp_enabled(cls, v):
+        """When MCP_ENABLED is not provided, empty, or not false/0/no → True (MCP enabled by default)."""
+        if v is None:
+            return True
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if not s:
+                return True
+            return s not in ("false", "0", "no")
+        return True
+
     # Slack App Settings (optional defaults from .env)
     slack_bot_token: str = ""
     slack_signing_secret: str = ""

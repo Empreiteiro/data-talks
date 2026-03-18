@@ -137,6 +137,379 @@ def _build_active_multi_sql_sources(agent: Agent, sources: list[Source]) -> tupl
     return selected_sources, validated_relationships
 
 
+async def dispatch_question(
+    question: str,
+    agent: Agent,
+    sources: list[Source],
+    user: User,
+    db: AsyncSession,
+    llm_overrides: dict | None = None,
+    history: list[dict] | None = None,
+    session_id: str | None = None,
+    channel: str = "workspace",
+    sql_mode: bool = False,
+) -> dict:
+    """Route question to the correct ask script, save QA session, return result.
+
+    Returns dict with keys: answer, session_id, turn_id, follow_up_questions,
+    image_url, chart_input.
+    """
+    if history is None:
+        history = []
+
+    multi_sql_sources, multi_sql_relationships = _build_active_multi_sql_sources(agent, sources)
+    active_sources = [s for s in sources if s.is_active]
+    source = active_sources[0] if active_sources else sources[0]
+    settings = get_settings()
+    data_files_dir = settings.data_files_dir
+
+    # Route by source type
+    if len(multi_sql_sources) >= 2:
+        result = await ask_sql_multi_source(
+            sources=multi_sql_sources,
+            relationships=multi_sql_relationships,
+            question=question,
+            agent_description=agent.description or "",
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
+        )
+    elif source.type in ("csv", "xlsx", "parquet", "json"):
+        file_path = (source.metadata_ or {}).get("file_path")
+        if not file_path:
+            raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
+        meta = source.metadata_ or {}
+        result = await ask_csv(
+            file_path=file_path,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            columns=meta.get("columns"),
+            preview_rows=meta.get("preview_rows"),
+            sample_profile=meta.get("sample_profile"),
+            sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
+            data_files_dir=data_files_dir,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "sqlite":
+        meta = source.metadata_ or {}
+        file_path = meta.get("file_path")
+        if not file_path:
+            raise HTTPException(400, "SQLite source missing file_path in metadata")
+        result = await ask_sqlite(
+            file_path=file_path,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            table_infos=meta.get("table_infos"),
+            data_files_dir=data_files_dir,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
+        )
+    elif source.type == "google_sheets":
+        meta = source.metadata_ or {}
+        result = await ask_google_sheets(
+            spreadsheet_id=meta.get("spreadsheetId", ""),
+            sheet_name=meta.get("sheetName", "Sheet1"),
+            available_columns=meta.get("availableColumns") or meta.get("available_columns"),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "sql_database":
+        meta = source.metadata_ or {}
+        result = await ask_sql(
+            connection_string=meta.get("connectionString", ""),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            table_infos=meta.get("table_infos"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
+        )
+    elif source.type == "bigquery":
+        meta = source.metadata_ or {}
+        creds = meta.get("credentialsContent") or meta.get("credentials_content")
+        if not creds:
+            raise HTTPException(400, "BigQuery source missing credentialsContent in metadata")
+        result = await ask_bigquery(
+            credentials_content=creds,
+            project_id=meta.get("projectId", ""),
+            dataset_id=meta.get("datasetId", ""),
+            tables=meta.get("tables", []),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            table_infos=meta.get("table_infos"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
+        )
+    elif source.type == "dbt":
+        meta = source.metadata_ or {}
+        result = await ask_dbt(
+            project_source=meta.get("projectSource", "github"),
+            connection_string=meta.get("connectionString", ""),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            github_token=meta.get("githubToken"),
+            github_repo=meta.get("githubRepo", ""),
+            github_branch=meta.get("githubBranch", "main"),
+            manifest_path=meta.get("manifestPath", "target/manifest.json"),
+            dbt_cloud_token=meta.get("dbtCloudToken"),
+            dbt_cloud_account_id=str(meta.get("dbtCloudAccountId", "")),
+            dbt_cloud_job_id=str(meta.get("dbtCloudJobId", "")),
+            selected_models=meta.get("selectedModels") or None,
+            table_infos=meta.get("table_infos"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
+        )
+    elif source.type == "github_file":
+        meta = source.metadata_ or {}
+        github_repo = meta.get("githubRepo", "")
+        file_path = meta.get("filePath", "")
+        if not github_repo or not file_path:
+            raise HTTPException(400, "GitHub file source missing githubRepo or filePath in metadata")
+        result = await ask_github_file(
+            github_repo=github_repo,
+            file_path=file_path,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            github_token=meta.get("githubToken"),
+            github_branch=meta.get("githubBranch", "main"),
+            columns=meta.get("columns"),
+            preview_rows=meta.get("preview_rows"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "firebase":
+        meta = source.metadata_ or {}
+        creds = meta.get("credentialsContent") or meta.get("credentials_content")
+        if not creds:
+            raise HTTPException(400, "Firebase source missing credentialsContent in metadata")
+        result = await ask_firebase(
+            credentials_content=creds,
+            project_id=meta.get("projectId", ""),
+            collections=meta.get("collections", []),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            collection_infos=meta.get("collection_infos"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "mongodb":
+        meta = source.metadata_ or {}
+        conn_str = meta.get("connectionString")
+        if not conn_str:
+            raise HTTPException(400, "MongoDB source missing connectionString in metadata")
+        result = await ask_mongodb(
+            connection_string=conn_str,
+            database=meta.get("database", ""),
+            collection=meta.get("collection", ""),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            schema=meta.get("schema"),
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "excel_online":
+        meta = source.metadata_ or {}
+        excel_token = meta.get("accessToken")
+        if not excel_token:
+            raise HTTPException(400, "Excel Online source missing accessToken in metadata")
+        result = await ask_excel_online(
+            access_token=excel_token,
+            drive_id=meta.get("driveId", ""),
+            item_id=meta.get("itemId", ""),
+            file_name=meta.get("fileName", ""),
+            sheet_name=meta.get("sheetName", "Sheet1"),
+            columns=meta.get("columns"),
+            preview=meta.get("preview"),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "notion":
+        meta = source.metadata_ or {}
+        notion_token = meta.get("integrationToken")
+        if not notion_token:
+            raise HTTPException(400, "Notion source missing integrationToken in metadata")
+        result = await ask_notion(
+            integration_token=notion_token,
+            database_id=meta.get("databaseId", ""),
+            database_title=meta.get("databaseTitle", ""),
+            properties=meta.get("properties"),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "snowflake":
+        meta = source.metadata_ or {}
+        sf_account = meta.get("account", "")
+        sf_user = meta.get("user", "")
+        sf_password = meta.get("password", "")
+        if not sf_account or not sf_user or not sf_password:
+            raise HTTPException(400, "Snowflake source missing credentials in metadata")
+        result = await ask_snowflake(
+            account=sf_account,
+            user=sf_user,
+            password=sf_password,
+            warehouse=meta.get("warehouse", ""),
+            database=meta.get("database", ""),
+            schema=meta.get("schema", ""),
+            tables=meta.get("tables", []),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            table_infos=meta.get("table_infos"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+            sql_mode=sql_mode,
+        )
+    elif source.type == "rest_api":
+        meta = source.metadata_ or {}
+        api_url = meta.get("url", "")
+        if not api_url:
+            raise HTTPException(400, "REST API source missing url in metadata")
+        result = await ask_rest_api(
+            url=api_url,
+            method=meta.get("method", "GET"),
+            headers=meta.get("headers"),
+            query_params=meta.get("queryParams"),
+            body=meta.get("body"),
+            data_path=meta.get("dataPath"),
+            pagination=meta.get("pagination"),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            columns=meta.get("columns"),
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "s3":
+        meta = source.metadata_ or {}
+        ak = meta.get("accessKeyId", "")
+        sk = meta.get("secretAccessKey", "")
+        if not ak or not sk:
+            raise HTTPException(400, "S3 source missing credentials in metadata")
+        result = await ask_s3(
+            access_key_id=ak,
+            secret_access_key=sk,
+            region=meta.get("region", "us-east-1"),
+            endpoint=meta.get("endpoint") or None,
+            bucket=meta.get("bucket", ""),
+            key=meta.get("key", ""),
+            file_type=meta.get("fileType"),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            columns=meta.get("columns"),
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    else:
+        raise HTTPException(400, f"Unsupported source type: {source.type}")
+
+    # Save QA session
+    turn_id = str(uuid.uuid4())
+    conversation_entry = {
+        "id": turn_id,
+        "question": question,
+        "answer": result["answer"],
+        "imageUrl": result.get("imageUrl"),
+        "followUpQuestions": result.get("followUpQuestions", []),
+        "chartInput": result.get("chartInput"),
+        "chartSpec": result.get("chartSpec"),
+        "chartScript": result.get("chartScript"),
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+    if session_id:
+        r = await db.execute(select(QASession).where(QASession.id == session_id))
+        qa = r.scalar_one_or_none()
+        if qa:
+            updated_history = [*(qa.conversation_history or []), conversation_entry]
+            qa.conversation_history = updated_history
+            qa.follow_up_questions = result.get("followUpQuestions", [])
+            if result.get("imageUrl"):
+                qa.table_data = {
+                    **(qa.table_data or {}),
+                    "image_url": result.get("imageUrl"),
+                    "last_turn_id": turn_id,
+                }
+            await db.flush()
+            session_id = str(qa.id)
+        else:
+            session_id = None
+
+    if not session_id:
+        qa = QASession(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            agent_id=agent.id,
+            source_id=source.id,
+            question=question,
+            answer=result["answer"],
+            table_data=(
+                {
+                    "image_url": result.get("imageUrl"),
+                    "last_turn_id": turn_id,
+                }
+                if result.get("imageUrl")
+                else None
+            ),
+            follow_up_questions=result.get("followUpQuestions", []),
+            conversation_history=[conversation_entry],
+        )
+        db.add(qa)
+        await db.flush()
+        session_id = qa.id
+
+    await db.commit()
+
+    return {
+        "answer": result["answer"],
+        "image_url": result.get("imageUrl"),
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "follow_up_questions": result.get("followUpQuestions", []),
+        "chart_input": result.get("chartInput"),
+    }
+
+
 @router.post("", response_model=AskQuestionResponse)
 async def ask_question(
     body: AskQuestionRequest,
@@ -200,352 +573,28 @@ async def ask_question(
         if qa_session and qa_session.conversation_history:
             history = qa_session.conversation_history
 
-    # Route by source type
     sql_mode = getattr(agent, "sql_mode", False)
 
-    if len(multi_sql_sources) >= 2:
-        result = await ask_sql_multi_source(
-            sources=multi_sql_sources,
-            relationships=multi_sql_relationships,
-            question=body.question,
-            agent_description=agent.description or "",
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-            sql_mode=sql_mode,
-        )
-    elif source.type in ("csv", "xlsx", "parquet", "json"):
-        file_path = (source.metadata_ or {}).get("file_path")
-        if not file_path:
-            raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
-        meta = source.metadata_ or {}
-        result = await ask_csv(
-            file_path=file_path,
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            columns=meta.get("columns"),
-            preview_rows=meta.get("preview_rows"),
-            sample_profile=meta.get("sample_profile"),
-            sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
-            data_files_dir=data_files_dir,
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "sqlite":
-        meta = source.metadata_ or {}
-        file_path = meta.get("file_path")
-        if not file_path:
-            raise HTTPException(400, "SQLite source missing file_path in metadata")
-        result = await ask_sqlite(
-            file_path=file_path,
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            table_infos=meta.get("table_infos"),
-            data_files_dir=data_files_dir,
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-            sql_mode=sql_mode,
-        )
-    elif source.type == "google_sheets":
-        meta = source.metadata_ or {}
-        result = await ask_google_sheets(
-            spreadsheet_id=meta.get("spreadsheetId", ""),
-            sheet_name=meta.get("sheetName", "Sheet1"),
-            available_columns=meta.get("availableColumns") or meta.get("available_columns"),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "sql_database":
-        meta = source.metadata_ or {}
-        result = await ask_sql(
-            connection_string=meta.get("connectionString", ""),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            table_infos=meta.get("table_infos"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-            sql_mode=sql_mode,
-        )
-    elif source.type == "bigquery":
-        meta = source.metadata_ or {}
-        creds = meta.get("credentialsContent") or meta.get("credentials_content")
-        if not creds:
-            raise HTTPException(400, "BigQuery source missing credentialsContent in metadata")
-        result = await ask_bigquery(
-            credentials_content=creds,
-            project_id=meta.get("projectId", ""),
-            dataset_id=meta.get("datasetId", ""),
-            tables=meta.get("tables", []),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            table_infos=meta.get("table_infos"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-            sql_mode=sql_mode,
-        )
-    elif source.type == "dbt":
-        meta = source.metadata_ or {}
-        result = await ask_dbt(
-            project_source=meta.get("projectSource", "github"),
-            connection_string=meta.get("connectionString", ""),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            github_token=meta.get("githubToken"),
-            github_repo=meta.get("githubRepo", ""),
-            github_branch=meta.get("githubBranch", "main"),
-            manifest_path=meta.get("manifestPath", "target/manifest.json"),
-            dbt_cloud_token=meta.get("dbtCloudToken"),
-            dbt_cloud_account_id=str(meta.get("dbtCloudAccountId", "")),
-            dbt_cloud_job_id=str(meta.get("dbtCloudJobId", "")),
-            selected_models=meta.get("selectedModels") or None,
-            table_infos=meta.get("table_infos"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-            sql_mode=sql_mode,
-        )
-    elif source.type == "github_file":
-        meta = source.metadata_ or {}
-        github_repo = meta.get("githubRepo", "")
-        file_path = meta.get("filePath", "")
-        if not github_repo or not file_path:
-            raise HTTPException(400, "GitHub file source missing githubRepo or filePath in metadata")
-        result = await ask_github_file(
-            github_repo=github_repo,
-            file_path=file_path,
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            github_token=meta.get("githubToken"),
-            github_branch=meta.get("githubBranch", "main"),
-            columns=meta.get("columns"),
-            preview_rows=meta.get("preview_rows"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "firebase":
-        meta = source.metadata_ or {}
-        creds = meta.get("credentialsContent") or meta.get("credentials_content")
-        if not creds:
-            raise HTTPException(400, "Firebase source missing credentialsContent in metadata")
-        result = await ask_firebase(
-            credentials_content=creds,
-            project_id=meta.get("projectId", ""),
-            collections=meta.get("collections", []),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            collection_infos=meta.get("collection_infos"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "mongodb":
-        meta = source.metadata_ or {}
-        conn_str = meta.get("connectionString")
-        if not conn_str:
-            raise HTTPException(400, "MongoDB source missing connectionString in metadata")
-        result = await ask_mongodb(
-            connection_string=conn_str,
-            database=meta.get("database", ""),
-            collection=meta.get("collection", ""),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            schema=meta.get("schema"),
-            preview=meta.get("preview"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "excel_online":
-        meta = source.metadata_ or {}
-        excel_token = meta.get("accessToken")
-        if not excel_token:
-            raise HTTPException(400, "Excel Online source missing accessToken in metadata")
-        result = await ask_excel_online(
-            access_token=excel_token,
-            drive_id=meta.get("driveId", ""),
-            item_id=meta.get("itemId", ""),
-            file_name=meta.get("fileName", ""),
-            sheet_name=meta.get("sheetName", "Sheet1"),
-            columns=meta.get("columns"),
-            preview=meta.get("preview"),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "notion":
-        meta = source.metadata_ or {}
-        notion_token = meta.get("integrationToken")
-        if not notion_token:
-            raise HTTPException(400, "Notion source missing integrationToken in metadata")
-        result = await ask_notion(
-            integration_token=notion_token,
-            database_id=meta.get("databaseId", ""),
-            database_title=meta.get("databaseTitle", ""),
-            properties=meta.get("properties"),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            preview=meta.get("preview"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "snowflake":
-        meta = source.metadata_ or {}
-        sf_account = meta.get("account", "")
-        sf_user = meta.get("user", "")
-        sf_password = meta.get("password", "")
-        if not sf_account or not sf_user or not sf_password:
-            raise HTTPException(400, "Snowflake source missing credentials in metadata")
-        result = await ask_snowflake(
-            account=sf_account,
-            user=sf_user,
-            password=sf_password,
-            warehouse=meta.get("warehouse", ""),
-            database=meta.get("database", ""),
-            schema=meta.get("schema", ""),
-            tables=meta.get("tables", []),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            table_infos=meta.get("table_infos"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-            sql_mode=sql_mode,
-        )
-    elif source.type == "rest_api":
-        meta = source.metadata_ or {}
-        api_url = meta.get("url", "")
-        if not api_url:
-            raise HTTPException(400, "REST API source missing url in metadata")
-        result = await ask_rest_api(
-            url=api_url,
-            method=meta.get("method", "GET"),
-            headers=meta.get("headers"),
-            query_params=meta.get("queryParams"),
-            body=meta.get("body"),
-            data_path=meta.get("dataPath"),
-            pagination=meta.get("pagination"),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            columns=meta.get("columns"),
-            preview=meta.get("preview"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    elif source.type == "s3":
-        meta = source.metadata_ or {}
-        ak = meta.get("accessKeyId", "")
-        sk = meta.get("secretAccessKey", "")
-        if not ak or not sk:
-            raise HTTPException(400, "S3 source missing credentials in metadata")
-        result = await ask_s3(
-            access_key_id=ak,
-            secret_access_key=sk,
-            region=meta.get("region", "us-east-1"),
-            endpoint=meta.get("endpoint") or None,
-            bucket=meta.get("bucket", ""),
-            key=meta.get("key", ""),
-            file_type=meta.get("fileType"),
-            question=body.question,
-            agent_description=agent.description or "",
-            source_name=source.name,
-            columns=meta.get("columns"),
-            preview=meta.get("preview"),
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
-        )
-    else:
-        raise HTTPException(400, f"Unsupported source type: {source.type}")
-
-    turn_id = str(uuid.uuid4())
-    conversation_entry = {
-        "id": turn_id,
-        "question": body.question,
-        "answer": result["answer"],
-        "imageUrl": result.get("imageUrl"),
-        "followUpQuestions": result.get("followUpQuestions", []),
-        "chartInput": result.get("chartInput"),
-        "chartSpec": result.get("chartSpec"),
-        "chartScript": result.get("chartScript"),
-        "timestamp": datetime.utcnow().isoformat(),
-    }
-
-    # Create or update QA session in SQLite
-    session_id = body.sessionId
-    if session_id:
-        r = await db.execute(select(QASession).where(QASession.id == session_id))
-        qa = r.scalar_one_or_none()
-        if qa:
-            history = [*(qa.conversation_history or []), conversation_entry]
-            qa.conversation_history = history
-            qa.follow_up_questions = result.get("followUpQuestions", [])
-            if result.get("imageUrl"):
-                qa.table_data = {
-                    **(qa.table_data or {}),
-                    "image_url": result.get("imageUrl"),
-                    "last_turn_id": turn_id,
-                }
-            await db.flush()
-            session_id = str(qa.id)
-        else:
-            session_id = None
-    if not session_id:
-        qa = QASession(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            agent_id=body.agentId,
-            source_id=source.id,
-            question=body.question,
-            answer=result["answer"],
-            table_data=(
-                {
-                    "image_url": result.get("imageUrl"),
-                    "last_turn_id": turn_id,
-                }
-                if result.get("imageUrl")
-                else None
-            ),
-            follow_up_questions=result.get("followUpQuestions", []),
-            conversation_history=[conversation_entry],
-        )
-        db.add(qa)
-        await db.flush()
-        session_id = qa.id
-
-    await db.commit()
+    result = await dispatch_question(
+        question=body.question,
+        agent=agent,
+        sources=sources,
+        user=user,
+        db=db,
+        llm_overrides=llm_overrides,
+        history=history,
+        session_id=body.sessionId,
+        channel=channel,
+        sql_mode=sql_mode,
+    )
 
     return AskQuestionResponse(
         answer=result["answer"],
-        imageUrl=result.get("imageUrl"),
-        sessionId=session_id,
-        followUpQuestions=result.get("followUpQuestions", []),
-        turnId=turn_id,
-        chartInput=result.get("chartInput"),
+        imageUrl=result.get("image_url"),
+        sessionId=result["session_id"],
+        followUpQuestions=result.get("follow_up_questions", []),
+        turnId=result["turn_id"],
+        chartInput=result.get("chart_input"),
     )
 
 

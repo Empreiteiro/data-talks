@@ -258,6 +258,17 @@ def favicon():
     return Response(status_code=204)
 
 
+# Mount MCP server (SSE transport) at /mcp when enabled
+if get_settings().mcp_enabled:
+    try:
+        from app.mcp_server import mcp as mcp_server
+        app.mount("/mcp", mcp_server.sse_app(mount_path="/mcp"))
+    except ImportError:
+        import logging
+        logging.getLogger("uvicorn.error").warning(
+            "MCP dependencies not installed. Install with: uv pip install 'mcp[cli]>=1.8.0'"
+        )
+
 if _SERVE_FRONTEND:
     app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
 
