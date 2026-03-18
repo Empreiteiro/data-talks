@@ -547,7 +547,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
             )}
 
             {configs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center p-4 border rounded-lg bg-muted/10">
+              <div className="flex flex-col items-center justify-center h-full text-center p-4">
                 <Bot className="h-12 w-12 text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">{t("llmConfig.empty")}</p>
                 <p className="text-xs text-muted-foreground mt-2">{t("llmConfig.emptyHelp")}</p>

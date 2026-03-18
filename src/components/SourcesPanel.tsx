@@ -224,13 +224,23 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                 >
                   <div className="flex items-center gap-2">
                     <FileText className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${isActive ? 'text-primary' : ''}`}>
                         {source.name}
                       </p>
-                      <Badge variant="outline" className="text-xs flex-shrink-0">
-                        {source.type}
-                      </Badge>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <Badge variant="outline" className="text-xs flex-shrink-0">
+                          {source.type}
+                        </Badge>
+                        {source.createdAt && (
+                          <>
+                            <span className="text-xs text-muted-foreground/60 flex-shrink-0" aria-hidden>·</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(source.createdAt).toLocaleDateString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
