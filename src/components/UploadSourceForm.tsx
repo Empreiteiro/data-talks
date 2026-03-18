@@ -108,7 +108,7 @@ export function UploadSourceForm({ agentId, onSourceAdded, onClose }: UploadSour
         {t('addSource.uploadText')}
       </p>
 
-      <input id="file-upload" type="file" className="hidden" multiple accept=".csv,.xlsx,.xls,.db,.sqlite,.sqlite3" onChange={handleFileInput} disabled={uploading} />
+      <input id="file-upload" type="file" className="hidden" multiple accept=".csv,.xlsx,.xls,.db,.sqlite,.sqlite3,.parquet,.json,.jsonl" onChange={handleFileInput} disabled={uploading} />
     </div>
   );
 }

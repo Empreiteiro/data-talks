@@ -157,12 +157,32 @@ async def ask_csv(
 
 
 def _load_full_dataframe(full_path: Path) -> pd.DataFrame:
-    """Load full CSV or XLSX into a DataFrame (up to MAX_CSV_ROWS)."""
+    """Load full CSV, XLSX, Parquet, or JSON into a DataFrame (up to MAX_CSV_ROWS)."""
     ext = full_path.suffix.lower()
     if ext == ".csv":
         return pd.read_csv(full_path, nrows=MAX_CSV_ROWS)
     if ext in (".xlsx", ".xls"):
         return pd.read_excel(full_path, nrows=MAX_CSV_ROWS)
+    if ext == ".parquet":
+        df = pd.read_parquet(full_path)
+        return df.head(MAX_CSV_ROWS)
+    if ext == ".jsonl":
+        return pd.read_json(full_path, lines=True, nrows=MAX_CSV_ROWS)
+    if ext == ".json":
+        import json as json_mod
+        raw_data = json_mod.loads(full_path.read_text())
+        if isinstance(raw_data, list):
+            df = pd.json_normalize(raw_data)
+        elif isinstance(raw_data, dict):
+            for data_key in ("data", "results", "items", "records"):
+                if data_key in raw_data and isinstance(raw_data[data_key], list):
+                    df = pd.json_normalize(raw_data[data_key])
+                    break
+            else:
+                df = pd.json_normalize([raw_data])
+        else:
+            df = pd.DataFrame([{"value": raw_data}])
+        return df.head(MAX_CSV_ROWS)
     raise ValueError(f"Unsupported file type: {ext}")
 
 
