@@ -23,6 +23,7 @@ import { HubspotSourceForm, HubspotSourceFormHandle } from "@/components/Hubspot
 import { JiraSourceForm, JiraSourceFormHandle } from "@/components/JiraSourceForm";
 import { StripeSourceForm, StripeSourceFormHandle } from "@/components/StripeSourceForm";
 import { PipedriveSourceForm, PipedriveSourceFormHandle } from "@/components/PipedriveSourceForm";
+import { SalesforceSourceForm, SalesforceSourceFormHandle } from "@/components/SalesforceSourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
@@ -54,6 +55,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "hubspot",      label: "HubSpot CRM",   connectLabelKey: "addSource.connectHubspot",     hasConnect: true },
   { key: "stripe",        label: "Stripe",         connectLabelKey: "addSource.connectStripe",      hasConnect: true },
   { key: "pipedrive",    label: "Pipedrive CRM",  connectLabelKey: "addSource.connectPipedrive",  hasConnect: true },
+  { key: "salesforce",  label: "Salesforce CRM", connectLabelKey: "addSource.connectSalesforce", hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -227,6 +229,12 @@ export function AddSourceModal({
           {selectedType === "pipedrive" && (
             <div className="space-y-4">
               <PipedriveSourceForm ref={setRef("pipedrive")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("pipedrive")} onConnectingChange={setConnectingFor("pipedrive")} />
+            </div>
+          )}
+
+          {selectedType === "salesforce" && (
+            <div className="space-y-4">
+              <SalesforceSourceForm ref={setRef("salesforce")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("salesforce")} onConnectingChange={setConnectingFor("salesforce")} />
             </div>
           )}
         </div>
