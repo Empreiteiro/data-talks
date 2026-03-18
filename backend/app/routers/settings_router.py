@@ -17,6 +17,9 @@ from app.config import get_settings
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
+VALID_PROVIDERS = ("openai", "ollama", "litellm", "google", "anthropic")
+
+
 class LlmSettingsResponse(BaseModel):
     llm_provider: str
     openai_api_key: Optional[str] = None  # Masked in response; empty if not set
@@ -29,6 +32,10 @@ class LlmSettingsResponse(BaseModel):
     litellm_model: Optional[str] = None
     litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None  # Masked
+    google_api_key: Optional[str] = None  # Masked
+    google_model: Optional[str] = None
+    anthropic_api_key: Optional[str] = None  # Masked
+    anthropic_model: Optional[str] = None
 
 
 class LlmSettingsUpdate(BaseModel):
@@ -43,6 +50,10 @@ class LlmSettingsUpdate(BaseModel):
     litellm_model: Optional[str] = None
     litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
+    google_model: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    anthropic_model: Optional[str] = None
 
 
 def _mask_api_key(key: str | None) -> str:
@@ -74,6 +85,10 @@ async def get_llm_status(
         has_env = True  # Ollama doesn't need API key
     elif env.llm_provider == "litellm":
         has_env = True  # LiteLLM proxy doesn't strictly need a key
+    elif env.llm_provider == "google" and (env.google_api_key or "").strip():
+        has_env = True
+    elif env.llm_provider == "anthropic" and (env.anthropic_api_key or "").strip():
+        has_env = True
 
     # Check user LlmSettings (account-level override)
     has_account = False
@@ -86,6 +101,10 @@ async def get_llm_status(
         elif provider == "ollama":
             has_account = True
         elif provider == "litellm":
+            has_account = True
+        elif provider == "google" and (row.google_api_key or "").strip():
+            has_account = True
+        elif provider == "anthropic" and (row.anthropic_api_key or "").strip():
             has_account = True
 
     # Check user LlmConfigs
@@ -119,6 +138,10 @@ async def get_llm_settings(
             litellm_model=row.litellm_model or env.litellm_model,
             litellm_audio_model=row.litellm_audio_model or env.litellm_audio_model,
             litellm_api_key=_mask_api_key(row.litellm_api_key) if row.litellm_api_key else _mask_api_key(env.litellm_api_key or ""),
+            google_api_key=_mask_api_key(row.google_api_key) if row.google_api_key else _mask_api_key(env.google_api_key),
+            google_model=row.google_model or env.google_model,
+            anthropic_api_key=_mask_api_key(row.anthropic_api_key) if row.anthropic_api_key else _mask_api_key(env.anthropic_api_key),
+            anthropic_model=row.anthropic_model or env.anthropic_model,
         )
     return LlmSettingsResponse(
         llm_provider=env.llm_provider,
@@ -132,6 +155,10 @@ async def get_llm_settings(
         litellm_model=env.litellm_model,
         litellm_audio_model=env.litellm_audio_model,
         litellm_api_key=_mask_api_key(env.litellm_api_key or ""),
+        google_api_key=_mask_api_key(env.google_api_key),
+        google_model=env.google_model,
+        anthropic_api_key=_mask_api_key(env.anthropic_api_key),
+        anthropic_model=env.anthropic_model,
     )
 
 
@@ -151,7 +178,7 @@ async def update_llm_settings(
         await db.flush()
 
     if body.llm_provider is not None:
-        row.llm_provider = body.llm_provider if body.llm_provider in ("openai", "ollama", "litellm") else row.llm_provider
+        row.llm_provider = body.llm_provider if body.llm_provider in VALID_PROVIDERS else row.llm_provider
     if body.openai_api_key is not None:
         val = body.openai_api_key.strip()
         # Don't overwrite with masked placeholder; empty string clears
@@ -181,6 +208,22 @@ async def update_llm_settings(
             row.litellm_api_key = None
         elif "••••" not in val and len(val) > 4:
             row.litellm_api_key = val
+    if body.google_api_key is not None:
+        val = body.google_api_key.strip()
+        if val == "":
+            row.google_api_key = None
+        elif "••••" not in val and len(val) > 4:
+            row.google_api_key = val
+    if body.google_model is not None:
+        row.google_model = body.google_model.strip() or None
+    if body.anthropic_api_key is not None:
+        val = body.anthropic_api_key.strip()
+        if val == "":
+            row.anthropic_api_key = None
+        elif "••••" not in val and len(val) > 4:
+            row.anthropic_api_key = val
+    if body.anthropic_model is not None:
+        row.anthropic_model = body.anthropic_model.strip() or None
 
     await db.commit()
     await db.refresh(row)
@@ -197,6 +240,10 @@ async def update_llm_settings(
         litellm_model=row.litellm_model or env.litellm_model,
         litellm_audio_model=row.litellm_audio_model or env.litellm_audio_model,
         litellm_api_key=_mask_api_key(row.litellm_api_key),
+        google_api_key=_mask_api_key(row.google_api_key),
+        google_model=row.google_model or env.google_model,
+        anthropic_api_key=_mask_api_key(row.anthropic_api_key),
+        anthropic_model=row.anthropic_model or env.anthropic_model,
     )
 
 
@@ -264,7 +311,7 @@ async def list_ollama_models(
 
 class LlmConfigCreate(BaseModel):
     name: str
-    llm_provider: str  # openai | ollama | litellm
+    llm_provider: str  # openai | ollama | litellm | google | anthropic
     openai_api_key: Optional[str] = None
     openai_base_url: Optional[str] = None
     openai_model: Optional[str] = None
@@ -275,6 +322,10 @@ class LlmConfigCreate(BaseModel):
     litellm_model: Optional[str] = None
     litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
+    google_model: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    anthropic_model: Optional[str] = None
 
 
 class LlmConfigUpdate(BaseModel):
@@ -291,6 +342,10 @@ class LlmConfigUpdate(BaseModel):
     litellm_model: Optional[str] = None
     litellm_audio_model: Optional[str] = None
     litellm_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
+    google_model: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    anthropic_model: Optional[str] = None
 
 
 def _config_to_response(c: LlmConfig, env) -> dict:
@@ -302,6 +357,10 @@ def _config_to_response(c: LlmConfig, env) -> dict:
         model = c.ollama_model or env.ollama_model
     elif c.llm_provider == "litellm":
         model = c.litellm_model or env.litellm_model
+    elif c.llm_provider == "google":
+        model = c.google_model or env.google_model
+    elif c.llm_provider == "anthropic":
+        model = c.anthropic_model or env.anthropic_model
     return {
         "id": c.id,
         "name": c.name,
@@ -317,6 +376,10 @@ def _config_to_response(c: LlmConfig, env) -> dict:
         "litellm_model": c.litellm_model or env.litellm_model,
         "litellm_audio_model": c.litellm_audio_model or env.litellm_audio_model,
         "litellm_api_key": _mask_api_key(c.litellm_api_key) if c.litellm_api_key else "",
+        "google_api_key": _mask_api_key(c.google_api_key) if c.google_api_key else "",
+        "google_model": c.google_model or env.google_model,
+        "anthropic_api_key": _mask_api_key(c.anthropic_api_key) if c.anthropic_api_key else "",
+        "anthropic_model": c.anthropic_model or env.anthropic_model,
         "is_default": getattr(c, "is_default", False),
         "created_at": c.created_at.isoformat() if c.created_at else None,
     }
@@ -350,7 +413,7 @@ async def create_llm_config(
         id=config_id,
         user_id=user.id,
         name=body.name.strip(),
-        llm_provider=body.llm_provider if body.llm_provider in ("openai", "ollama", "litellm") else "openai",
+        llm_provider=body.llm_provider if body.llm_provider in VALID_PROVIDERS else "openai",
         openai_api_key=_opt(body.openai_api_key),
         openai_base_url=_opt(body.openai_base_url.rstrip("/") if body.openai_base_url else None),
         openai_model=_opt(body.openai_model),
@@ -361,6 +424,10 @@ async def create_llm_config(
         litellm_model=_opt(body.litellm_model),
         litellm_audio_model=_opt(body.litellm_audio_model),
         litellm_api_key=_opt(body.litellm_api_key),
+        google_api_key=_opt(body.google_api_key),
+        google_model=_opt(body.google_model),
+        anthropic_api_key=_opt(body.anthropic_api_key),
+        anthropic_model=_opt(body.anthropic_model),
     )
     db.add(c)
     await db.commit()
@@ -398,7 +465,7 @@ async def update_llm_config(
         raise HTTPException(404, "LLM config not found")
     if body.name is not None:
         c.name = body.name.strip()
-    if body.llm_provider is not None and body.llm_provider in ("openai", "ollama", "litellm"):
+    if body.llm_provider is not None and body.llm_provider in VALID_PROVIDERS:
         c.llm_provider = body.llm_provider
     if body.openai_api_key is not None:
         val = body.openai_api_key.strip()
@@ -422,6 +489,16 @@ async def update_llm_config(
     if body.litellm_api_key is not None:
         val = body.litellm_api_key.strip()
         c.litellm_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.litellm_api_key)
+    if body.google_api_key is not None:
+        val = body.google_api_key.strip()
+        c.google_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.google_api_key)
+    if body.google_model is not None:
+        c.google_model = body.google_model.strip() or None
+    if body.anthropic_api_key is not None:
+        val = body.anthropic_api_key.strip()
+        c.anthropic_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.anthropic_api_key)
+    if body.anthropic_model is not None:
+        c.anthropic_model = body.anthropic_model.strip() or None
     if body.is_default is True:
         # Unset other configs, set this one as default
         await db.execute(update(LlmConfig).where(LlmConfig.user_id == user.id).values(is_default=False))

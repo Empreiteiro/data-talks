@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 
 const OPENAI_AUDIO_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"];
-const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI-compatible", ollama: "Ollama", litellm: "LiteLLM" };
+const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI-compatible", ollama: "Ollama", litellm: "LiteLLM", google: "Google Gemini", anthropic: "Anthropic Claude" };
 
 interface LlmConfig {
   id: string;
@@ -51,6 +51,10 @@ interface LlmConfig {
   litellm_model?: string;
   litellm_audio_model?: string;
   litellm_api_key?: string;
+  google_api_key?: string;
+  google_model?: string;
+  anthropic_api_key?: string;
+  anthropic_model?: string;
   model?: string;
   is_default?: boolean;
   created_at?: string;
@@ -64,6 +68,8 @@ interface EffectiveLlmSettings {
   ollama_model?: string;
   litellm_model?: string;
   litellm_audio_model?: string;
+  google_model?: string;
+  anthropic_model?: string;
 }
 
 interface LLMPanelProps {
@@ -81,7 +87,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
   const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm">("openai");
+  const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm" | "google" | "anthropic">("openai");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiBaseUrl, setOpenaiBaseUrl] = useState("https://api.openai.com/v1");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
@@ -94,6 +100,10 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
   const [litellmAudioModel, setLitellmAudioModel] = useState("");
   const [litellmApiKey, setLitellmApiKey] = useState("");
   const [litellmModels, setLitellmModels] = useState<string[]>([]);
+  const [googleApiKey, setGoogleApiKey] = useState("");
+  const [googleModel, setGoogleModel] = useState("gemini-2.0-flash");
+  const [anthropicApiKey, setAnthropicApiKey] = useState("");
+  const [anthropicModel, setAnthropicModel] = useState("claude-sonnet-4-20250514");
   const [fetchingOllama, setFetchingOllama] = useState(false);
   const [fetchingLitellm, setFetchingLitellm] = useState(false);
 
@@ -161,12 +171,16 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
     setLitellmAudioModel("");
     setLitellmApiKey("");
     setLitellmModels([]);
+    setGoogleApiKey("");
+    setGoogleModel("gemini-2.0-flash");
+    setAnthropicApiKey("");
+    setAnthropicModel("claude-sonnet-4-20250514");
     setEditingConfigId(null);
   };
 
   const loadConfigIntoForm = (cfg: LlmConfig) => {
     setName(cfg.name || "");
-    setLlmProvider((cfg.llm_provider as "openai" | "ollama" | "litellm") || "openai");
+    setLlmProvider((cfg.llm_provider as "openai" | "ollama" | "litellm" | "google" | "anthropic") || "openai");
     setOpenaiApiKey(cfg.openai_api_key || "");
     setOpenaiBaseUrl(cfg.openai_base_url || "https://api.openai.com/v1");
     setOpenaiModel(cfg.openai_model || "gpt-4o-mini");
@@ -177,6 +191,10 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
     setLitellmModel(cfg.litellm_model || "gpt-4o-mini");
     setLitellmAudioModel(cfg.litellm_audio_model || "");
     setLitellmApiKey(cfg.litellm_api_key || "");
+    setGoogleApiKey(cfg.google_api_key || "");
+    setGoogleModel(cfg.google_model || "gemini-2.0-flash");
+    setAnthropicApiKey(cfg.anthropic_api_key || "");
+    setAnthropicModel(cfg.anthropic_model || "claude-sonnet-4-20250514");
   };
 
   const openEdit = (cfg: LlmConfig) => {
@@ -205,6 +223,10 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
         litellm_model: llmProvider === "litellm" ? litellmModel : undefined,
         litellm_audio_model: llmProvider === "litellm" ? (litellmAudioModel || undefined) : undefined,
         litellm_api_key: llmProvider === "litellm" ? (litellmApiKey || undefined) : undefined,
+        google_api_key: llmProvider === "google" ? (googleApiKey || undefined) : undefined,
+        google_model: llmProvider === "google" ? googleModel : undefined,
+        anthropic_api_key: llmProvider === "anthropic" ? (anthropicApiKey || undefined) : undefined,
+        anthropic_model: llmProvider === "anthropic" ? anthropicModel : undefined,
       });
       toast.success(t("llmSettings.saveSuccess"));
       resetForm();
@@ -240,6 +262,10 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
         litellm_model: llmProvider === "litellm" ? litellmModel : undefined,
         litellm_audio_model: llmProvider === "litellm" ? (litellmAudioModel || undefined) : undefined,
         litellm_api_key: llmProvider === "litellm" ? (litellmApiKey || undefined) : undefined,
+        google_api_key: llmProvider === "google" ? (googleApiKey || undefined) : undefined,
+        google_model: llmProvider === "google" ? googleModel : undefined,
+        anthropic_api_key: llmProvider === "anthropic" ? (anthropicApiKey || undefined) : undefined,
+        anthropic_model: llmProvider === "anthropic" ? anthropicModel : undefined,
       });
       toast.success(t("llmSettings.saveSuccess"));
       resetForm();
@@ -296,10 +322,12 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
       </div>
       <div className="space-y-2">
         <Label>{t("llmSettings.provider")}</Label>
-        <Select value={llmProvider} onValueChange={(v) => setLlmProvider(v as "openai" | "ollama" | "litellm")}>
+        <Select value={llmProvider} onValueChange={(v) => setLlmProvider(v as "openai" | "ollama" | "litellm" | "google" | "anthropic")}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="openai">OpenAI-compatible</SelectItem>
+            <SelectItem value="google">Google Gemini</SelectItem>
+            <SelectItem value="anthropic">Anthropic Claude</SelectItem>
             <SelectItem value="ollama">Ollama</SelectItem>
             <SelectItem value="litellm">LiteLLM</SelectItem>
           </SelectContent>
@@ -411,6 +439,52 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
           </div>
         </>
       )}
+      {llmProvider === "google" && (
+        <>
+          <div className="space-y-2">
+            <Label>{t("llmSettings.googleApiKey")}</Label>
+            <Input
+              type={isApiKeyMasked(googleApiKey) ? "text" : "password"}
+              placeholder="AIza..."
+              value={googleApiKey}
+              onChange={(e) => setGoogleApiKey(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("llmSettings.googleModel")}</Label>
+            <Input
+              placeholder="gemini-2.0-flash"
+              value={googleModel}
+              onChange={(e) => setGoogleModel(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+        </>
+      )}
+      {llmProvider === "anthropic" && (
+        <>
+          <div className="space-y-2">
+            <Label>{t("llmSettings.anthropicApiKey")}</Label>
+            <Input
+              type={isApiKeyMasked(anthropicApiKey) ? "text" : "password"}
+              placeholder="sk-ant-..."
+              value={anthropicApiKey}
+              onChange={(e) => setAnthropicApiKey(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("llmSettings.anthropicModel")}</Label>
+            <Input
+              placeholder="claude-sonnet-4-20250514"
+              value={anthropicModel}
+              onChange={(e) => setAnthropicModel(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -419,7 +493,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
     : "—";
 
   const effectiveTextModel = effectiveSettings
-    ? effectiveSettings.openai_model || effectiveSettings.ollama_model || effectiveSettings.litellm_model || "—"
+    ? effectiveSettings.openai_model || effectiveSettings.ollama_model || effectiveSettings.litellm_model || effectiveSettings.google_model || effectiveSettings.anthropic_model || "—"
     : "—";
 
   const effectiveAudioModel = effectiveSettings
