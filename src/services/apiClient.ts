@@ -280,6 +280,22 @@ export const apiClient = {
   async notionRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/notion/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Excel Online
+  async excelOnlineListFiles(body: { accessToken: string }) {
+    return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async excelOnlineListSheets(body: { accessToken: string; driveId: string; itemId: string }) {
+    return api<{ sheets: Array<{ id: string; name: string }> }>('/api/excel-online/sheets', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async excelOnlineRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/excel-online/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   async dbtValidateManifest(body: Record<string, unknown>) {
     return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {
       method: 'POST',
