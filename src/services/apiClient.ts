@@ -264,6 +264,22 @@ export const apiClient = {
   async snowflakeRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/snowflake/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Notion
+  async notionTestConnection(body: { integrationToken: string }) {
+    return api<{ ok: boolean }>('/api/notion/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async notionListDatabases(body: { integrationToken: string }) {
+    return api<{ databases: Array<{ id: string; name: string }> }>('/api/notion/databases', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async notionRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/notion/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   async dbtValidateManifest(body: Record<string, unknown>) {
     return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {
       method: 'POST',
