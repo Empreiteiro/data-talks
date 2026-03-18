@@ -30,6 +30,7 @@ from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
 from app.scripts.ask_google_sheets import ask_google_sheets
 from app.scripts.ask_mongodb import ask_mongodb
+from app.scripts.ask_hubspot import ask_hubspot
 from app.scripts.ask_jira import ask_jira
 from app.scripts.ask_notion import ask_notion
 from app.scripts.ask_snowflake import ask_snowflake
@@ -437,6 +438,20 @@ async def dispatch_question(
             source_name=source.name,
             columns=meta.get("columns"),
             preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "hubspot":
+        meta = source.metadata_ or {}
+        hb_key = meta.get("apiKey", "")
+        if not hb_key:
+            raise HTTPException(400, "HubSpot source missing apiKey in metadata")
+        result = await ask_hubspot(
+            api_key=hb_key,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
