@@ -34,6 +34,7 @@ from app.scripts.ask_hubspot import ask_hubspot
 from app.scripts.ask_jira import ask_jira
 from app.scripts.ask_notion import ask_notion
 from app.scripts.ask_snowflake import ask_snowflake
+from app.scripts.ask_stripe import ask_stripe
 from app.scripts.ask_sql import ask_sql
 from app.scripts.ask_sql_multi import ask_sql_multi_source
 from app.scripts.sql_utils import validate_source_relationships
@@ -470,6 +471,22 @@ async def dispatch_question(
             question=question,
             agent_description=agent.description or "",
             source_name=source.name,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "stripe":
+        meta = source.metadata_ or {}
+        stripe_api_key = meta.get("apiKey", "")
+        if not stripe_api_key:
+            raise HTTPException(400, "Stripe source missing apiKey in metadata")
+        result = await ask_stripe(
+            api_key=stripe_api_key,
+            tables=meta.get("tables", []),
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,

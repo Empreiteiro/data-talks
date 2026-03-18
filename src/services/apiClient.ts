@@ -304,6 +304,20 @@ export const apiClient = {
   async hubspotRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/hubspot/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Stripe
+  async stripeTestConnection(body: { apiKey: string }) {
+    return api<{ ok: boolean; balance: Record<string, unknown> }>('/api/stripe/test-connection', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  },
+  async stripeDiscover(body: { apiKey: string; tables?: string[] }) {
+    return api<{ resources: Array<{ table: string; fields: string[]; has_more: boolean; sample_count: number; preview: Record<string, unknown>[]; _error?: string }> }>('/api/stripe/discover', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  },
+  async stripeRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/stripe/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {
