@@ -22,6 +22,7 @@ from app.schemas import AskQuestionRequest, AskQuestionResponse
 from app.scripts.ask_csv import ask_csv
 from app.scripts.ask_bigquery import ask_bigquery
 from app.scripts.ask_excel_online import ask_excel_online
+from app.scripts.ask_rest_api import ask_rest_api
 from app.scripts.ask_s3 import ask_s3
 from app.scripts.ask_dbt import ask_dbt
 from app.scripts.ask_firebase import ask_firebase
@@ -414,6 +415,28 @@ async def ask_question(
             history=history,
             channel=channel,
             sql_mode=sql_mode,
+        )
+    elif source.type == "rest_api":
+        meta = source.metadata_ or {}
+        api_url = meta.get("url", "")
+        if not api_url:
+            raise HTTPException(400, "REST API source missing url in metadata")
+        result = await ask_rest_api(
+            url=api_url,
+            method=meta.get("method", "GET"),
+            headers=meta.get("headers"),
+            query_params=meta.get("queryParams"),
+            body=meta.get("body"),
+            data_path=meta.get("dataPath"),
+            pagination=meta.get("pagination"),
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            columns=meta.get("columns"),
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
         )
     elif source.type == "s3":
         meta = source.metadata_ or {}
