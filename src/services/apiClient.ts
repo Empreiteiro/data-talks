@@ -208,6 +208,28 @@ export const apiClient = {
   async refreshSourceFirebaseMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/firebase/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // MongoDB
+  async mongodbTestConnection(body: { connectionString: string }) {
+    return api<{ ok: boolean }>('/api/mongodb/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async mongodbListDatabases(body: { connectionString: string }) {
+    return api<{ databases: Array<{ id: string; name: string }> }>('/api/mongodb/databases', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async mongodbListCollections(body: { connectionString: string; database: string }) {
+    return api<{ collections: Array<{ id: string; name: string }> }>('/api/mongodb/collections', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  async mongodbRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/mongodb/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   async dbtValidateManifest(body: Record<string, unknown>) {
     return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {
       method: 'POST',
