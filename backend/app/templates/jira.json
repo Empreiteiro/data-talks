@@ -1,0 +1,173 @@
+[
+  {
+    "id": "jira_sprint_report",
+    "name": "Sprint Report",
+    "source_type": "jira",
+    "description": "Summary of sprint progress: completed vs remaining issues, velocity, and burndown data.",
+    "queries": [
+      {
+        "id": "sprint_status_breakdown",
+        "title": "Sprint Issues by Status",
+        "question": "For each active sprint, how many issues are in each status category (To Do, In Progress, Done)?",
+        "chart_type": "stacked_bar",
+        "chart_config": {
+          "xKey": "sprint_name",
+          "yKey": "issue_count",
+          "groupKey": "status_category"
+        }
+      },
+      {
+        "id": "sprint_velocity",
+        "title": "Sprint Velocity",
+        "question": "What is the total story points completed per sprint for the last 5 closed sprints?",
+        "chart_type": "bar",
+        "chart_config": {
+          "xKey": "sprint_name",
+          "yKey": "total_points"
+        }
+      }
+    ],
+    "layout": "grid_2x2",
+    "refresh_interval": 3600
+  },
+  {
+    "id": "jira_issue_breakdown",
+    "name": "Issue Breakdown",
+    "source_type": "jira",
+    "description": "Issue distribution by type, status, priority, and project.",
+    "queries": [
+      {
+        "id": "issues_by_type",
+        "title": "Issues by Type",
+        "question": "How many issues are there for each issue type (Bug, Story, Task, Epic, etc.)?",
+        "chart_type": "pie",
+        "chart_config": {
+          "labelKey": "issue_type",
+          "valueKey": "count"
+        }
+      },
+      {
+        "id": "issues_by_priority",
+        "title": "Issues by Priority",
+        "question": "How many issues are there for each priority level?",
+        "chart_type": "bar",
+        "chart_config": {
+          "xKey": "priority",
+          "yKey": "count"
+        }
+      },
+      {
+        "id": "issues_by_status",
+        "title": "Issues by Status",
+        "question": "How many issues are in each status?",
+        "chart_type": "horizontal_bar",
+        "chart_config": {
+          "xKey": "status",
+          "yKey": "count"
+        }
+      }
+    ],
+    "layout": "grid_2x2",
+    "refresh_interval": 3600
+  },
+  {
+    "id": "jira_team_workload",
+    "name": "Team Workload",
+    "source_type": "jira",
+    "description": "Work distribution across team members: assigned issues, logged hours, and completion rates.",
+    "queries": [
+      {
+        "id": "issues_per_assignee",
+        "title": "Open Issues per Assignee",
+        "question": "How many open issues (not Done) does each assignee have?",
+        "chart_type": "horizontal_bar",
+        "chart_config": {
+          "xKey": "assignee",
+          "yKey": "open_issues"
+        }
+      },
+      {
+        "id": "hours_logged_per_user",
+        "title": "Hours Logged per User",
+        "question": "How many total hours has each user logged in worklogs?",
+        "chart_type": "bar",
+        "chart_config": {
+          "xKey": "author",
+          "yKey": "total_hours"
+        }
+      }
+    ],
+    "layout": "grid_2x2",
+    "refresh_interval": 3600
+  },
+  {
+    "id": "jira_cycle_time",
+    "name": "Cycle Time",
+    "source_type": "jira",
+    "description": "Measure how long issues take from creation to resolution, grouped by type and priority.",
+    "queries": [
+      {
+        "id": "avg_cycle_time_by_type",
+        "title": "Average Cycle Time by Issue Type",
+        "question": "What is the average number of days from creation to resolution for each issue type, for resolved issues?",
+        "chart_type": "bar",
+        "chart_config": {
+          "xKey": "issue_type",
+          "yKey": "avg_days"
+        }
+      },
+      {
+        "id": "avg_cycle_time_by_priority",
+        "title": "Average Cycle Time by Priority",
+        "question": "What is the average number of days from creation to resolution for each priority level, for resolved issues?",
+        "chart_type": "bar",
+        "chart_config": {
+          "xKey": "priority",
+          "yKey": "avg_days"
+        }
+      }
+    ],
+    "layout": "grid_2x2",
+    "refresh_interval": 7200
+  },
+  {
+    "id": "jira_bug_tracking",
+    "name": "Bug Tracking",
+    "source_type": "jira",
+    "description": "Track open bugs by severity, project, assignee, and resolution trends over time.",
+    "queries": [
+      {
+        "id": "open_bugs_by_priority",
+        "title": "Open Bugs by Priority",
+        "question": "How many open bugs are there for each priority level?",
+        "chart_type": "bar",
+        "chart_config": {
+          "xKey": "priority",
+          "yKey": "count"
+        }
+      },
+      {
+        "id": "bugs_by_project",
+        "title": "Bugs by Project",
+        "question": "How many bug-type issues are in each project?",
+        "chart_type": "horizontal_bar",
+        "chart_config": {
+          "xKey": "project_key",
+          "yKey": "count"
+        }
+      },
+      {
+        "id": "bug_resolution_trend",
+        "title": "Bug Resolution Trend",
+        "question": "How many bugs were resolved each month over the last 6 months?",
+        "chart_type": "line",
+        "chart_config": {
+          "xKey": "month",
+          "yKey": "resolved_count"
+        }
+      }
+    ],
+    "layout": "grid_2x2",
+    "refresh_interval": 3600
+  }
+]

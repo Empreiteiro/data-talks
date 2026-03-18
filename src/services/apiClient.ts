@@ -280,6 +280,20 @@ export const apiClient = {
   async notionRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/notion/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Jira
+  async jiraTestConnection(body: { domain: string; email: string; apiToken: string }) {
+    return api<{ ok: boolean; displayName: string }>('/api/jira/test-connection', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  },
+  async jiraDiscover(body: { domain: string; email: string; apiToken: string }) {
+    return api<{ projects: Array<{ id: string; key: string; name: string }>; boards: Array<{ id: number; name: string; type: string }> }>('/api/jira/discover', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  },
+  async jiraRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/jira/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {

@@ -30,6 +30,7 @@ from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
 from app.scripts.ask_google_sheets import ask_google_sheets
 from app.scripts.ask_mongodb import ask_mongodb
+from app.scripts.ask_jira import ask_jira
 from app.scripts.ask_notion import ask_notion
 from app.scripts.ask_snowflake import ask_snowflake
 from app.scripts.ask_sql import ask_sql
@@ -436,6 +437,24 @@ async def dispatch_question(
             source_name=source.name,
             columns=meta.get("columns"),
             preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "jira":
+        meta = source.metadata_ or {}
+        jira_domain = meta.get("domain", "")
+        jira_email = meta.get("email", "")
+        jira_token = meta.get("apiToken", "")
+        if not jira_domain or not jira_email or not jira_token:
+            raise HTTPException(400, "Jira source missing domain, email, or apiToken in metadata")
+        result = await ask_jira(
+            domain=jira_domain,
+            email=jira_email,
+            api_token=jira_token,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,

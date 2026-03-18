@@ -19,6 +19,7 @@ import { MongoDbSourceForm, MongoDbSourceFormHandle } from "@/components/MongoDb
 import { RestApiSourceForm, RestApiSourceFormHandle } from "@/components/RestApiSourceForm";
 import { S3SourceForm, S3SourceFormHandle } from "@/components/S3SourceForm";
 import { NotionSourceForm, NotionSourceFormHandle } from "@/components/NotionSourceForm";
+import { JiraSourceForm, JiraSourceFormHandle } from "@/components/JiraSourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
@@ -46,6 +47,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "excel_online", label: "Excel Online",   connectLabelKey: "addSource.connectExcelOnline", hasConnect: true },
   { key: "s3",           label: "S3 / MinIO",     connectLabelKey: "addSource.connectS3",          hasConnect: true },
   { key: "rest_api",     label: "REST API",       connectLabelKey: "addSource.connectRestApi",     hasConnect: true },
+  { key: "jira",          label: "Jira",           connectLabelKey: "addSource.connectJira",        hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -195,6 +197,12 @@ export function AddSourceModal({
           {selectedType === "rest_api" && (
             <div className="space-y-4">
               <RestApiSourceForm ref={setRef("rest_api")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("rest_api")} onConnectingChange={setConnectingFor("rest_api")} />
+            </div>
+          )}
+
+          {selectedType === "jira" && (
+            <div className="space-y-4">
+              <JiraSourceForm ref={setRef("jira")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("jira")} onConnectingChange={setConnectingFor("jira")} />
             </div>
           )}
         </div>
