@@ -36,6 +36,7 @@ from app.scripts.ask_notion import ask_notion
 from app.scripts.ask_snowflake import ask_snowflake
 from app.scripts.ask_stripe import ask_stripe
 from app.scripts.ask_pipedrive import ask_pipedrive
+from app.scripts.ask_salesforce import ask_salesforce
 from app.scripts.ask_sql import ask_sql
 from app.scripts.ask_sql_multi import ask_sql_multi_source
 from app.scripts.sql_utils import validate_source_relationships
@@ -499,6 +500,22 @@ async def dispatch_question(
             raise HTTPException(400, "Pipedrive source missing apiToken in metadata")
         result = await ask_pipedrive(
             api_token=pd_token,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "salesforce":
+        meta = source.metadata_ or {}
+        sf_token = meta.get("accessToken", "")
+        sf_url = meta.get("instanceUrl", "")
+        if not sf_token or not sf_url:
+            raise HTTPException(400, "Salesforce source missing accessToken or instanceUrl in metadata")
+        result = await ask_salesforce(
+            access_token=sf_token,
+            instance_url=sf_url,
             question=question,
             agent_description=agent.description or "",
             source_name=source.name,

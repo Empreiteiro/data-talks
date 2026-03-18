@@ -332,6 +332,16 @@ export const apiClient = {
   async pipedriveRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/pipedrive/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Salesforce CRM
+  async salesforceTestConnection(body: { accessToken: string; instanceUrl: string }) {
+    return api<{ ok: boolean }>('/api/salesforce/test-connection', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async salesforceDiscover(body: { accessToken: string; instanceUrl: string }) {
+    return api<{ objectCounts: Record<string, number> }>('/api/salesforce/discover', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async salesforceRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/salesforce/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {

@@ -21,6 +21,7 @@ from app.routers import api_keys_router, public_api_router, whatsapp_router, aud
 from app.routers import dbt_router, github_router, slack_router, mongodb_router, snowflake_router, notion_router, excel_online_router, s3_router, rest_api_router, jira_router, stripe_router, pipedrive_router
 from app.routers import template_router
 from app.routers import hubspot_router
+from app.routers import salesforce_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -245,6 +246,7 @@ app.include_router(jira_router.router, prefix=prefix)
 app.include_router(stripe_router.router, prefix=prefix)
 app.include_router(template_router.router, prefix=prefix)
 app.include_router(hubspot_router.router, prefix=prefix)
+app.include_router(salesforce_router.router, prefix=prefix)
 app.include_router(pipedrive_router.router, prefix=prefix)
 
 
