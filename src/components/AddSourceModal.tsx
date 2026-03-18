@@ -651,12 +651,11 @@ export function AddSourceModal({
           </p>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="upload">{t('addSource.uploadTab')}</TabsTrigger>
               <TabsTrigger value="bigquery">{t('addSource.bigQueryTab')}</TabsTrigger>
               <TabsTrigger value="sheets">{t('addSource.sheetsTab')}</TabsTrigger>
               <TabsTrigger value="sql">{t('addSource.sqlTab')}</TabsTrigger>
-              <TabsTrigger value="firebase">Firebase</TabsTrigger>
               <TabsTrigger value="dbt">dbt</TabsTrigger>
               <TabsTrigger value="github_file">GitHub File</TabsTrigger>
             </TabsList>
@@ -899,12 +898,17 @@ export function AddSourceModal({
                 {!useExistingSqlCredential && (
                 <div className="space-y-2">
                   <Label htmlFor="sql-type">{t('addSource.sqlDatabaseType')}</Label>
-                  <Select 
-                    value={sqlDatabaseType} 
+                  <Select
+                    value={sqlDatabaseType}
                     onValueChange={(value) => {
                       setSqlDatabaseType(value);
                       setAvailableSqlTables([]);
                       setSelectedSqlTables([]);
+                      if (value !== 'firebase') {
+                        setFirebaseCredentialsFile(null);
+                        setAvailableFirebaseCollections([]);
+                        setSelectedFirebaseCollections([]);
+                      }
                     }}
                   >
                     <SelectTrigger className="w-full">
@@ -913,16 +917,19 @@ export function AddSourceModal({
                     <SelectContent>
                       <SelectItem value="postgresql">PostgreSQL</SelectItem>
                       <SelectItem value="mysql">MySQL</SelectItem>
+                      <SelectItem value="firebase">Firebase / Firestore</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 )}
 
+                {/* SQL connection fields (PostgreSQL / MySQL) */}
+                {sqlDatabaseType !== 'firebase' && (<>
                 {!useExistingSqlCredential && (
                 <div className="space-y-2">
                   <Label htmlFor="sql-connection">{t('addSource.sqlConnectionString')}</Label>
-                  <Input 
-                    id="sql-connection" 
+                  <Input
+                    id="sql-connection"
                     type="password"
                     placeholder={sqlDatabaseType === 'mysql' ? 'mysql://user:password@host:3306/database' : 'postgresql://user:password@host:5432/database'}
                     value={sqlConnectionString}
@@ -996,12 +1003,11 @@ export function AddSourceModal({
                     </p>
                   )}
                 </div>
+                </>)}
 
-              </div>
-            </TabsContent>
-
-            <TabsContent value="firebase" className="space-y-4">
-              <div className="space-y-4">
+                {/* Firebase / Firestore connection fields */}
+                {sqlDatabaseType === 'firebase' && (
+                <>
                 <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
                   <p className="text-sm">
                     <strong>Firebase Firestore</strong> — faça upload do arquivo JSON de conta de serviço do Firebase para conectar ao seu banco Firestore.
@@ -1065,6 +1071,9 @@ export function AddSourceModal({
                     )}
                   </div>
                 )}
+                </>
+                )}
+
               </div>
             </TabsContent>
 
@@ -1079,7 +1088,7 @@ export function AddSourceModal({
 
         </div>
 
-        {(activeTab === "bigquery" || activeTab === "sheets" || activeTab === "sql" || activeTab === "firebase" || activeTab === "dbt" || activeTab === "github_file") && (
+        {(activeTab === "bigquery" || activeTab === "sheets" || activeTab === "sql" || activeTab === "dbt" || activeTab === "github_file") && (
           <div className="flex-shrink-0 pt-6 px-1 border-t">
             {activeTab === "bigquery" && (
               <Button 
@@ -1099,7 +1108,7 @@ export function AddSourceModal({
                 {connecting ? t('addSource.connecting') : t('addSource.connectSheets')}
               </Button>
             )}
-            {activeTab === "sql" && (
+            {activeTab === "sql" && sqlDatabaseType !== 'firebase' && (
               <Button
                 className="w-full"
                 onClick={handleSqlConnect}
@@ -1108,7 +1117,7 @@ export function AddSourceModal({
                 {connecting ? t('addSource.connecting') : t('addSource.sqlConnect')}
               </Button>
             )}
-            {activeTab === "firebase" && (
+            {activeTab === "sql" && sqlDatabaseType === 'firebase' && (
               <Button
                 className="w-full"
                 onClick={handleFirebaseConnect}
