@@ -38,6 +38,7 @@ from app.scripts.ask_stripe import ask_stripe
 from app.scripts.ask_pipedrive import ask_pipedrive
 from app.scripts.ask_ga4 import ask_ga4
 from app.scripts.ask_github_analytics import ask_github_analytics
+from app.scripts.ask_shopify import ask_shopify
 from app.scripts.ask_intercom import ask_intercom
 from app.scripts.ask_salesforce import ask_salesforce
 from app.scripts.ask_sql import ask_sql
@@ -580,6 +581,22 @@ async def dispatch_question(
             tables_data=meta.get("tablesData"),
             schema_text=meta.get("schemaText"),
             preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "shopify":
+        meta = source.metadata_ or {}
+        sh_store = meta.get("store", "")
+        sh_token = meta.get("accessToken", "")
+        if not sh_store or not sh_token:
+            raise HTTPException(400, "Shopify source missing store or accessToken in metadata")
+        result = await ask_shopify(
+            store=sh_store,
+            access_token=sh_token,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,

@@ -372,6 +372,16 @@ export const apiClient = {
   async githubAnalyticsRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/github-analytics/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Shopify
+  async shopifyTestConnection(body: { store: string; accessToken: string }) {
+    return api<{ ok: boolean }>('/api/shopify/test-connection', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async shopifyDiscover(body: { store: string; accessToken: string }) {
+    return api<{ resources: Array<{ name: string; count: number }> }>('/api/shopify/discover', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async shopifyRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/shopify/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {
