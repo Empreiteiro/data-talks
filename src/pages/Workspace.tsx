@@ -16,6 +16,7 @@ import { SlackModal } from "@/components/SlackModal";
 import { ApiAccessModal } from "@/components/ApiAccessModal";
 import { AutoMLModal } from "@/components/AutoMLModal";
 import { ReportModal } from "@/components/ReportModal";
+import { TemplateModal } from "@/components/TemplateModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -294,6 +295,7 @@ export default function Workspace() {
   const [audioOverviewModalOpen, setAudioOverviewModalOpen] = useState(false);
   const [autoMLModalOpen, setAutoMLModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [sourcesRefreshTrigger, setSourcesRefreshTrigger] = useState(0); // Trigger para atualizar SourcesPanel
   const [sqlRelationshipsOpen, setSqlRelationshipsOpen] = useState(false);
@@ -1078,6 +1080,7 @@ export default function Workspace() {
               onOpenAudio={() => setAudioOverviewModalOpen(true)}
               onOpenAutoML={() => setAutoMLModalOpen(true)}
               onOpenReport={() => setReportModalOpen(true)}
+              onOpenTemplates={() => setTemplateModalOpen(true)}
               onOpenTelegram={() => setIsTelegramModalOpen(true)}
               onOpenWhatsApp={() => setIsWhatsAppModalOpen(true)}
               onOpenSlack={() => setIsSlackModalOpen(true)}
@@ -1179,6 +1182,16 @@ export default function Workspace() {
         open={reportModalOpen}
         onOpenChange={setReportModalOpen}
         workspaceId={id || ''}
+      />
+
+      <TemplateModal
+        open={templateModalOpen}
+        onOpenChange={setTemplateModalOpen}
+        workspaceId={id || ''}
+        onUseInChat={(question) => {
+          setQuestionInput(question);
+          setTemplateModalOpen(false);
+        }}
       />
 
       <LogsModal open={logsModalOpen} onOpenChange={setLogsModalOpen} />

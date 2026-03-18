@@ -1153,4 +1153,72 @@ export const apiClient = {
   async applyAuditRetention(): Promise<{ deleted: number }> {
     return api('/api/audit/retention/apply', { method: 'POST' });
   },
+
+  // Report Templates
+  async listTemplates(sourceId: string) {
+    return api<Array<{
+      id: string;
+      name: string;
+      sourceType: string;
+      description: string;
+      queries: Array<{ id: string; title: string; sql: string; chart_type: string; chart_config: Record<string, unknown> }>;
+      layout: string;
+      refreshInterval: number;
+      isBuiltin: boolean;
+      queryCount: number;
+    }>>(`/api/templates/sources/${sourceId}/templates`);
+  },
+
+  async runTemplate(sourceId: string, templateId: string, body?: {
+    filters?: Record<string, unknown>;
+    dateRange?: { start?: string; end?: string };
+    disabledQueries?: string[];
+  }) {
+    return api<{
+      runId: string;
+      templateId: string;
+      templateName: string;
+      status: string;
+      results: Array<{
+        queryId: string;
+        title: string;
+        rows: Record<string, unknown>[];
+        chartSpec: { chartType: string; title: string; categories: string[]; series: Array<{ name: string; values: number[] }> } | null;
+        error: string | null;
+      }>;
+      durationMs: number | null;
+      createdAt: string;
+    }>(`/api/templates/sources/${sourceId}/templates/${templateId}/run`, {
+      method: 'POST',
+      body: JSON.stringify(body || {}),
+    });
+  },
+
+  async listTemplateRuns(sourceId: string, templateId: string, limit?: number) {
+    const params = limit ? `?limit=${limit}` : '';
+    return api<Array<{
+      runId: string;
+      templateId: string;
+      status: string;
+      durationMs: number | null;
+      createdAt: string;
+    }>>(`/api/templates/sources/${sourceId}/templates/${templateId}/runs${params}`);
+  },
+
+  async customizeTemplate(sourceId: string, templateId: string, body: {
+    filters?: Record<string, unknown>;
+    dateRange?: { start?: string; end?: string };
+    disabledQueries?: string[];
+  }) {
+    return api<{ ok: boolean }>(`/api/templates/sources/${sourceId}/templates/${templateId}/customize`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async resetTemplateCustomization(sourceId: string, templateId: string) {
+    return api<{ ok: boolean }>(`/api/templates/sources/${sourceId}/templates/${templateId}/customize`, {
+      method: 'DELETE',
+    });
+  },
 };
