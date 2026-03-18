@@ -22,6 +22,7 @@ from app.schemas import AskQuestionRequest, AskQuestionResponse
 from app.scripts.ask_csv import ask_csv
 from app.scripts.ask_bigquery import ask_bigquery
 from app.scripts.ask_excel_online import ask_excel_online
+from app.scripts.ask_s3 import ask_s3
 from app.scripts.ask_dbt import ask_dbt
 from app.scripts.ask_firebase import ask_firebase
 from app.scripts.ask_github_file import ask_github_file
@@ -413,6 +414,29 @@ async def ask_question(
             history=history,
             channel=channel,
             sql_mode=sql_mode,
+        )
+    elif source.type == "s3":
+        meta = source.metadata_ or {}
+        ak = meta.get("accessKeyId", "")
+        sk = meta.get("secretAccessKey", "")
+        if not ak or not sk:
+            raise HTTPException(400, "S3 source missing credentials in metadata")
+        result = await ask_s3(
+            access_key_id=ak,
+            secret_access_key=sk,
+            region=meta.get("region", "us-east-1"),
+            endpoint=meta.get("endpoint") or None,
+            bucket=meta.get("bucket", ""),
+            key=meta.get("key", ""),
+            file_type=meta.get("fileType"),
+            question=body.question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            columns=meta.get("columns"),
+            preview=meta.get("preview"),
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
         )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")
