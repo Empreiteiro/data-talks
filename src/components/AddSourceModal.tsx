@@ -19,6 +19,7 @@ import { MongoDbSourceForm, MongoDbSourceFormHandle } from "@/components/MongoDb
 import { RestApiSourceForm, RestApiSourceFormHandle } from "@/components/RestApiSourceForm";
 import { S3SourceForm, S3SourceFormHandle } from "@/components/S3SourceForm";
 import { NotionSourceForm, NotionSourceFormHandle } from "@/components/NotionSourceForm";
+import { HubspotSourceForm, HubspotSourceFormHandle } from "@/components/HubspotSourceForm";
 import { JiraSourceForm, JiraSourceFormHandle } from "@/components/JiraSourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
@@ -48,6 +49,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "s3",           label: "S3 / MinIO",     connectLabelKey: "addSource.connectS3",          hasConnect: true },
   { key: "rest_api",     label: "REST API",       connectLabelKey: "addSource.connectRestApi",     hasConnect: true },
   { key: "jira",          label: "Jira",           connectLabelKey: "addSource.connectJira",        hasConnect: true },
+  { key: "hubspot",      label: "HubSpot CRM",   connectLabelKey: "addSource.connectHubspot",     hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -203,6 +205,12 @@ export function AddSourceModal({
           {selectedType === "jira" && (
             <div className="space-y-4">
               <JiraSourceForm ref={setRef("jira")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("jira")} onConnectingChange={setConnectingFor("jira")} />
+            </div>
+          )}
+
+          {selectedType === "hubspot" && (
+            <div className="space-y-4">
+              <HubspotSourceForm ref={setRef("hubspot")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("hubspot")} onConnectingChange={setConnectingFor("hubspot")} />
             </div>
           )}
         </div>

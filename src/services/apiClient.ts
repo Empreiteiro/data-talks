@@ -294,6 +294,16 @@ export const apiClient = {
   async jiraRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/jira/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // HubSpot CRM
+  async hubspotTestConnection(body: { apiKey: string }) {
+    return api<{ ok: boolean }>('/api/hubspot/test-connection', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async hubspotDiscover(body: { apiKey: string }) {
+    return api<{ objectCounts: Record<string, number> }>('/api/hubspot/discover', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async hubspotRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/hubspot/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {
