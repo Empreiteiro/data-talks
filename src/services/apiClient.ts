@@ -318,6 +318,20 @@ export const apiClient = {
   async stripeRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/stripe/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // Pipedrive CRM
+  async pipedriveTestConnection(body: { apiToken: string }) {
+    return api<{ ok: boolean; userName: string }>('/api/pipedrive/test-connection', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  },
+  async pipedriveDiscover(body: { apiToken: string }) {
+    return api<{ resourceCounts: Record<string, number> }>('/api/pipedrive/discover', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  },
+  async pipedriveRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/pipedrive/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {
