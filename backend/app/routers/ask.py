@@ -36,6 +36,7 @@ from app.scripts.ask_notion import ask_notion
 from app.scripts.ask_snowflake import ask_snowflake
 from app.scripts.ask_stripe import ask_stripe
 from app.scripts.ask_pipedrive import ask_pipedrive
+from app.scripts.ask_ga4 import ask_ga4
 from app.scripts.ask_salesforce import ask_salesforce
 from app.scripts.ask_sql import ask_sql
 from app.scripts.ask_sql_multi import ask_sql_multi_source
@@ -519,6 +520,26 @@ async def dispatch_question(
             question=question,
             agent_description=agent.description or "",
             source_name=source.name,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
+    elif source.type == "ga4":
+        meta = source.metadata_ or {}
+        ga4_creds = meta.get("credentialsContent", "")
+        ga4_prop = meta.get("propertyId", "")
+        ga4_tables = meta.get("tables") or None
+        ga4_table_infos = meta.get("tableInfos") or None
+        if not ga4_creds or not ga4_prop:
+            raise HTTPException(400, "GA4 source missing credentialsContent or propertyId in metadata")
+        result = await ask_ga4(
+            credentials_content=ga4_creds,
+            property_id=ga4_prop,
+            tables=ga4_tables,
+            question=question,
+            agent_description=agent.description or "",
+            source_name=source.name,
+            table_infos=ga4_table_infos,
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
