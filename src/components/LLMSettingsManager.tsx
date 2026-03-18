@@ -14,7 +14,7 @@ export const LLMSettingsManager = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
-  const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm">("openai");
+  const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm" | "google" | "anthropic">("openai");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiBaseUrl, setOpenaiBaseUrl] = useState("https://api.openai.com/v1");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
@@ -25,12 +25,16 @@ export const LLMSettingsManager = () => {
   const [litellmModel, setLitellmModel] = useState("gpt-4o-mini");
   const [litellmApiKey, setLitellmApiKey] = useState("");
   const [litellmModels, setLitellmModels] = useState<string[]>([]);
+  const [googleApiKey, setGoogleApiKey] = useState("");
+  const [googleModel, setGoogleModel] = useState("gemini-2.0-flash");
+  const [anthropicApiKey, setAnthropicApiKey] = useState("");
+  const [anthropicModel, setAnthropicModel] = useState("claude-sonnet-4-20250514");
   const [fetchingLitellmModels, setFetchingLitellmModels] = useState(false);
 
   const loadSettings = async () => {
     try {
       const data = await dataClient.getLlmSettings();
-      setLlmProvider((data.llm_provider as "openai" | "ollama" | "litellm") || "openai");
+      setLlmProvider((data.llm_provider as "openai" | "ollama" | "litellm" | "google" | "anthropic") || "openai");
       setOpenaiApiKey(data.openai_api_key || "");
       setOpenaiBaseUrl(data.openai_base_url || "https://api.openai.com/v1");
       setOpenaiModel(data.openai_model || "gpt-4o-mini");
@@ -39,6 +43,10 @@ export const LLMSettingsManager = () => {
       setLitellmBaseUrl(data.litellm_base_url || "http://localhost:4000");
       setLitellmModel(data.litellm_model || "gpt-4o-mini");
       setLitellmApiKey(data.litellm_api_key || "");
+      setGoogleApiKey(data.google_api_key || "");
+      setGoogleModel(data.google_model || "gemini-2.0-flash");
+      setAnthropicApiKey(data.anthropic_api_key || "");
+      setAnthropicModel(data.anthropic_model || "claude-sonnet-4-20250514");
     } catch (error) {
       console.error("Error loading LLM settings:", error);
       toast.error(t("llmSettings.loadError"));
@@ -106,6 +114,10 @@ export const LLMSettingsManager = () => {
         litellm_base_url: litellmBaseUrl || undefined,
         litellm_model: litellmModel || undefined,
         litellm_api_key: litellmApiKey || undefined,
+        google_api_key: googleApiKey || undefined,
+        google_model: googleModel || undefined,
+        anthropic_api_key: anthropicApiKey || undefined,
+        anthropic_model: anthropicModel || undefined,
       });
       toast.success(t("llmSettings.saveSuccess"));
     } catch (error: unknown) {
@@ -143,13 +155,15 @@ export const LLMSettingsManager = () => {
             <Label>{t("llmSettings.provider")}</Label>
             <Select
               value={llmProvider}
-              onValueChange={(v) => setLlmProvider(v as "openai" | "ollama" | "litellm")}
+              onValueChange={(v) => setLlmProvider(v as "openai" | "ollama" | "litellm" | "google" | "anthropic")}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openai">OpenAI-compatible</SelectItem>
+                <SelectItem value="google">Google Gemini</SelectItem>
+                <SelectItem value="anthropic">Anthropic Claude</SelectItem>
                 <SelectItem value="ollama">Ollama (local/remote)</SelectItem>
                 <SelectItem value="litellm">LiteLLM (proxy)</SelectItem>
               </SelectContent>
@@ -334,6 +348,70 @@ export const LLMSettingsManager = () => {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {t("llmSettings.litellmModelHelp")}
+                </p>
+              </div>
+            </>
+          )}
+
+          {llmProvider === "google" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="google-api-key">{t("llmSettings.googleApiKey")}</Label>
+                <Input
+                  id="google-api-key"
+                  type={isApiKeyMasked(googleApiKey) ? "text" : "password"}
+                  placeholder="AIza..."
+                  value={googleApiKey}
+                  onChange={(e) => setGoogleApiKey(e.target.value)}
+                  disabled={saving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("llmSettings.googleApiKeyHelp")}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="google-model">{t("llmSettings.googleModel")}</Label>
+                <Input
+                  id="google-model"
+                  placeholder="gemini-2.0-flash"
+                  value={googleModel}
+                  onChange={(e) => setGoogleModel(e.target.value)}
+                  disabled={saving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("llmSettings.googleModelHelp")}
+                </p>
+              </div>
+            </>
+          )}
+
+          {llmProvider === "anthropic" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="anthropic-api-key">{t("llmSettings.anthropicApiKey")}</Label>
+                <Input
+                  id="anthropic-api-key"
+                  type={isApiKeyMasked(anthropicApiKey) ? "text" : "password"}
+                  placeholder="sk-ant-..."
+                  value={anthropicApiKey}
+                  onChange={(e) => setAnthropicApiKey(e.target.value)}
+                  disabled={saving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("llmSettings.anthropicApiKeyHelp")}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="anthropic-model">{t("llmSettings.anthropicModel")}</Label>
+                <Input
+                  id="anthropic-model"
+                  placeholder="claude-sonnet-4-20250514"
+                  value={anthropicModel}
+                  onChange={(e) => setAnthropicModel(e.target.value)}
+                  disabled={saving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("llmSettings.anthropicModelHelp")}
                 </p>
               </div>
             </>

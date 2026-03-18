@@ -29,6 +29,10 @@ def _effective_settings(overrides: dict[str, Any] | None = None) -> dict[str, An
         "litellm_model": s.litellm_model,
         "litellm_audio_model": s.litellm_audio_model,
         "litellm_api_key": s.litellm_api_key or "",
+        "google_api_key": s.google_api_key or "",
+        "google_model": s.google_model,
+        "anthropic_api_key": s.anthropic_api_key or "",
+        "anthropic_model": s.anthropic_model,
     }
     if overrides:
         for k, v in overrides.items():
@@ -124,6 +128,10 @@ async def chat_completion(
         return await _ollama_chat(messages, max_tokens, cfg)
     if provider == "litellm":
         return await _litellm_chat(messages, max_tokens, cfg)
+    if provider == "google":
+        return await _google_chat(messages, max_tokens, cfg)
+    if provider == "anthropic":
+        return await _anthropic_chat(messages, max_tokens, cfg)
     return await _openai_chat(messages, max_tokens, cfg)
 
 
@@ -201,6 +209,78 @@ async def _litellm_chat(messages: list[dict[str, str]], max_tokens: int, cfg: di
     finish = getattr(resp.choices[0], "finish_reason", None)
     trace = _build_trace(messages, msg, content=content, finish_reason=finish)
     return content, _usage("litellm", model, input_t or 0, output_t or 0), trace
+
+
+async def _google_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    """Use Google Gemini via its OpenAI-compatible API endpoint."""
+    from openai import AsyncOpenAI
+
+    api_key = (cfg.get("google_api_key") or "").strip() or None
+    model = cfg.get("google_model", "gemini-2.0-flash")
+    if not api_key:
+        raise ValueError(
+            "Google API key is not configured. "
+            "Set it in Account > LLM / AI settings or via the GOOGLE_API_KEY environment variable."
+        )
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url="https://generativelanguage.googleapis.com/openai/",
+    )
+    resp = await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=max_tokens,
+    )
+    msg = resp.choices[0].message
+    content = (msg.content or "").strip()
+    usage_data = resp.usage
+    input_t = getattr(usage_data, "prompt_tokens", None) or getattr(usage_data, "input_tokens", 0) if usage_data else 0
+    output_t = getattr(usage_data, "completion_tokens", None) or getattr(usage_data, "output_tokens", 0) if usage_data else 0
+    finish = getattr(resp.choices[0], "finish_reason", None)
+    trace = _build_trace(messages, msg, content=content, finish_reason=finish)
+    return content, _usage("google", model, input_t or 0, output_t or 0), trace
+
+
+async def _anthropic_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    """Use Anthropic Claude via the official Anthropic SDK."""
+    from anthropic import AsyncAnthropic
+
+    api_key = (cfg.get("anthropic_api_key") or "").strip() or None
+    model = cfg.get("anthropic_model", "claude-sonnet-4-20250514")
+    if not api_key:
+        raise ValueError(
+            "Anthropic API key is not configured. "
+            "Set it in Account > LLM / AI settings or via the ANTHROPIC_API_KEY environment variable."
+        )
+    # Anthropic API requires system message as a separate parameter
+    system_text = ""
+    user_messages = []
+    for m in messages:
+        if m.get("role") == "system":
+            system_text = (system_text + "\n" + m.get("content", "")).strip()
+        else:
+            user_messages.append({"role": m["role"], "content": m.get("content", "")})
+
+    client = AsyncAnthropic(api_key=api_key)
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "messages": user_messages,
+        "max_tokens": max_tokens,
+    }
+    if system_text:
+        kwargs["system"] = system_text
+
+    resp = await client.messages.create(**kwargs)
+    content = ""
+    for block in resp.content:
+        if getattr(block, "text", None):
+            content += block.text
+    content = content.strip()
+    input_t = getattr(resp.usage, "input_tokens", 0) if resp.usage else 0
+    output_t = getattr(resp.usage, "output_tokens", 0) if resp.usage else 0
+    finish = getattr(resp, "stop_reason", None)
+    trace = _build_trace(messages, None, content=content, finish_reason=finish)
+    return content, _usage("anthropic", model, input_t, output_t), trace
 
 
 async def synthesize_speech(
