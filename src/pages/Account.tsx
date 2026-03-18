@@ -31,7 +31,7 @@ const Account = () => {
   const menuItems = useMemo(() => {
     const items = [
       { id: "usage", label: t('account.tabs.usage'), icon: Activity },
-      ...(hasEnvLlm ? [{ id: "llm", label: t('account.tabs.llm'), icon: Bot }] : []),
+      { id: "llm", label: t('account.tabs.llm'), icon: Bot },
       { id: "connections", label: t('account.tabs.connections'), icon: PlugZap },
       ...(loginRequired ? [{ id: "users", label: t('account.tabs.users'), icon: Users }] : []),
       { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
@@ -39,15 +39,11 @@ const Account = () => {
       { id: "audit", label: t('account.tabs.audit'), icon: ShieldCheck },
     ];
     return items;
-  }, [t, loginRequired, hasEnvLlm]);
+  }, [t, loginRequired]);
 
   useEffect(() => {
     if (!loginRequired && activeSection === "users") setActiveSection("usage");
   }, [loginRequired, activeSection]);
-
-  useEffect(() => {
-    if (hasEnvLlm === false && activeSection === "llm") setActiveSection("usage");
-  }, [hasEnvLlm, activeSection]);
 
   useEffect(() => {
     const requestedSection = searchParams.get("section");
@@ -103,7 +99,7 @@ const Account = () => {
           <div className="min-h-0 flex flex-col overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" style={{ minHeight: 0 }}>
               {activeSection === "usage" && <UsageMonitoring />}
-              {activeSection === "llm" && <LLMPanel />}
+              {activeSection === "llm" && <LLMPanel hasEnvLlm={hasEnvLlm ?? false} />}
               {activeSection === "connections" && <ConnectionsPanel />}
               {activeSection === "users" && <UsersManagement />}
               {activeSection === "sources" && (
