@@ -21,6 +21,7 @@ import { S3SourceForm, S3SourceFormHandle } from "@/components/S3SourceForm";
 import { NotionSourceForm, NotionSourceFormHandle } from "@/components/NotionSourceForm";
 import { HubspotSourceForm, HubspotSourceFormHandle } from "@/components/HubspotSourceForm";
 import { JiraSourceForm, JiraSourceFormHandle } from "@/components/JiraSourceForm";
+import { StripeSourceForm, StripeSourceFormHandle } from "@/components/StripeSourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
@@ -50,6 +51,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "rest_api",     label: "REST API",       connectLabelKey: "addSource.connectRestApi",     hasConnect: true },
   { key: "jira",          label: "Jira",           connectLabelKey: "addSource.connectJira",        hasConnect: true },
   { key: "hubspot",      label: "HubSpot CRM",   connectLabelKey: "addSource.connectHubspot",     hasConnect: true },
+  { key: "stripe",        label: "Stripe",         connectLabelKey: "addSource.connectStripe",      hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -211,6 +213,12 @@ export function AddSourceModal({
           {selectedType === "hubspot" && (
             <div className="space-y-4">
               <HubspotSourceForm ref={setRef("hubspot")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("hubspot")} onConnectingChange={setConnectingFor("hubspot")} />
+            </div>
+          )}
+
+          {selectedType === "stripe" && (
+            <div className="space-y-4">
+              <StripeSourceForm ref={setRef("stripe")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("stripe")} onConnectingChange={setConnectingFor("stripe")} />
             </div>
           )}
         </div>
