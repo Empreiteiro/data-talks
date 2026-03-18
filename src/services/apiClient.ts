@@ -296,6 +296,19 @@ export const apiClient = {
   async excelOnlineRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/excel-online/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // S3 / MinIO
+  async s3TestConnection(body: { accessKeyId: string; secretAccessKey: string; region?: string; endpoint?: string }) {
+    return api<{ ok: boolean }>('/api/s3/test-connection', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async s3ListBuckets(body: { accessKeyId: string; secretAccessKey: string; region?: string; endpoint?: string }) {
+    return api<{ buckets: Array<{ id: string; name: string }> }>('/api/s3/buckets', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async s3ListObjects(body: { accessKeyId: string; secretAccessKey: string; region?: string; endpoint?: string; bucket: string; prefix?: string }) {
+    return api<{ objects: Array<{ key: string; size: number; lastModified: string }> }>('/api/s3/objects', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async s3RefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/s3/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   async dbtValidateManifest(body: Record<string, unknown>) {
     return api<{ models: Array<{ name: string; columns: string[]; description: string }>; total: number }>('/api/dbt/validate-manifest', {
       method: 'POST',
