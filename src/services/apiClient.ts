@@ -362,6 +362,16 @@ export const apiClient = {
   async intercomRefreshMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/intercom/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
   },
+  // GitHub Analytics
+  async githubAnalyticsTestConnection(body: { token: string; owner: string; repo: string }) {
+    return api<{ ok: boolean }>('/api/github-analytics/test-connection', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async githubAnalyticsDiscover(body: { token: string; owner: string; repo: string }) {
+    return api<{ tables: Array<{ name: string; count: number }> }>('/api/github-analytics/discover', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async githubAnalyticsRefreshMetadata(sourceId: string) {
+    return api<{ metaJSON: Record<string, unknown> }>(`/api/github-analytics/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
+  },
   // Excel Online
   async excelOnlineListFiles(body: { accessToken: string }) {
     return api<{ files: Array<{ id: string; name: string; driveId: string; size: number; webUrl: string }> }>('/api/excel-online/files', {

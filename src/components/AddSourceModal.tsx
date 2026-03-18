@@ -26,6 +26,7 @@ import { PipedriveSourceForm, PipedriveSourceFormHandle } from "@/components/Pip
 import { SalesforceSourceForm, SalesforceSourceFormHandle } from "@/components/SalesforceSourceForm";
 import { GA4SourceForm, GA4SourceFormHandle } from "@/components/GA4SourceForm";
 import { IntercomSourceForm, IntercomSourceFormHandle } from "@/components/IntercomSourceForm";
+import { GithubAnalyticsSourceForm, GithubAnalyticsSourceFormHandle } from "@/components/GithubAnalyticsSourceForm";
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
@@ -60,6 +61,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "salesforce",  label: "Salesforce CRM", connectLabelKey: "addSource.connectSalesforce", hasConnect: true },
   { key: "ga4",         label: "Google Analytics 4", connectLabelKey: "addSource.connectGA4",    hasConnect: true },
   { key: "intercom",   label: "Intercom",          connectLabelKey: "addSource.connectIntercom", hasConnect: true },
+  { key: "github_analytics", label: "GitHub Analytics", connectLabelKey: "addSource.connectGithubAnalytics", hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -251,6 +253,12 @@ export function AddSourceModal({
           {selectedType === "intercom" && (
             <div className="space-y-4">
               <IntercomSourceForm ref={setRef("intercom")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("intercom")} onConnectingChange={setConnectingFor("intercom")} />
+            </div>
+          )}
+
+          {selectedType === "github_analytics" && (
+            <div className="space-y-4">
+              <GithubAnalyticsSourceForm ref={setRef("github_analytics")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("github_analytics")} onConnectingChange={setConnectingFor("github_analytics")} />
             </div>
           )}
         </div>
