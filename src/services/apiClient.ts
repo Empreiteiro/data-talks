@@ -468,6 +468,10 @@ export const apiClient = {
       litellm_model?: string;
       litellm_audio_model?: string;
       litellm_api_key?: string;
+      google_api_key?: string;
+      google_model?: string;
+      anthropic_api_key?: string;
+      anthropic_model?: string;
     }>('/api/settings/llm');
   },
 
@@ -483,6 +487,10 @@ export const apiClient = {
     litellm_model?: string;
     litellm_audio_model?: string;
     litellm_api_key?: string;
+    google_api_key?: string;
+    google_model?: string;
+    anthropic_api_key?: string;
+    anthropic_model?: string;
   }) {
     return api<{
       llm_provider: string;
@@ -496,6 +504,10 @@ export const apiClient = {
       litellm_model?: string;
       litellm_audio_model?: string;
       litellm_api_key?: string;
+      google_api_key?: string;
+      google_model?: string;
+      anthropic_api_key?: string;
+      anthropic_model?: string;
     }>('/api/settings/llm', { method: 'PATCH', body: JSON.stringify(body) });
   },
 
@@ -524,6 +536,10 @@ export const apiClient = {
       litellm_model?: string;
       litellm_audio_model?: string;
       litellm_api_key?: string;
+      google_api_key?: string;
+      google_model?: string;
+      anthropic_api_key?: string;
+      anthropic_model?: string;
       created_at?: string;
     }>>('/api/settings/llm-configs');
   },
@@ -541,6 +557,10 @@ export const apiClient = {
     litellm_model?: string;
     litellm_audio_model?: string;
     litellm_api_key?: string;
+    google_api_key?: string;
+    google_model?: string;
+    anthropic_api_key?: string;
+    anthropic_model?: string;
   }) {
     return api('/api/settings/llm-configs', { method: 'POST', body: JSON.stringify(body) });
   },

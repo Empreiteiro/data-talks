@@ -568,7 +568,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
                             {PROVIDER_LABELS[cfg.llm_provider] || cfg.llm_provider}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {cfg.model || cfg.openai_model || cfg.ollama_model || cfg.litellm_model || "—"}
+                            {cfg.model || cfg.openai_model || cfg.ollama_model || cfg.litellm_model || cfg.google_model || cfg.anthropic_model || "—"}
                           </span>
                           {(cfg.openai_audio_model || cfg.litellm_audio_model) && (
                             <>
