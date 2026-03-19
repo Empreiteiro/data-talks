@@ -66,9 +66,9 @@ export const JiraSourceForm = forwardRef<JiraSourceFormHandle, JiraSourceFormPro
         } finally {
           setLoadingDiscovery(false);
         }
-      } catch (error: any) {
+      } catch (error) {
         setConnectionTested(false);
-        toast.error(t('addSource.jiraConnectionFailed'), { description: error.message });
+        toast.error(t('addSource.jiraConnectionFailed'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setTestingConnection(false);
       }
@@ -93,13 +93,13 @@ export const JiraSourceForm = forwardRef<JiraSourceFormHandle, JiraSourceFormPro
           boardCount: boards.length,
         };
 
-        const source = await dataClient.createSource(name, 'jira' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'jira', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
             existingSources
-              .filter((s: any) => s.id !== source.id && s.type !== 'sql_database')
-              .map((s: any) => dataClient.updateSource(s.id, { is_active: false }))
+              .filter((s: { id: string; type: string }) => s.id !== source.id && s.type !== 'sql_database')
+              .map((s: { id: string; type: string }) => dataClient.updateSource(s.id, { is_active: false }))
           );
           await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
         }
@@ -110,9 +110,9 @@ export const JiraSourceForm = forwardRef<JiraSourceFormHandle, JiraSourceFormPro
         toast.success(t('addSource.jiraConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
-      } catch (error: any) {
+      } catch (error) {
         console.error('Jira connection error:', error);
-        toast.error(t('addSource.jiraConnectError'), { description: error.message });
+        toast.error(t('addSource.jiraConnectError'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setConnecting(false);
       }

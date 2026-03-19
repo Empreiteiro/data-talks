@@ -83,12 +83,12 @@ export const S3SourceForm = forwardRef<S3SourceFormHandle, S3SourceFormProps>(
       if (!accessKeyId.trim() || !secretAccessKey.trim()) return;
       setTestingConnection(true);
       try {
-        await dataClient.s3TestConnection(creds as any);
+        await dataClient.s3TestConnection(creds);
         setConnectionTested(true);
         toast.success(t('addSource.s3ConnectionSuccess'));
         setLoadingBuckets(true);
         try {
-          const res = await dataClient.s3ListBuckets(creds as any);
+          const res = await dataClient.s3ListBuckets(creds);
           setBuckets(res.buckets || []);
         } catch { setBuckets([]); }
         finally { setLoadingBuckets(false); }
@@ -111,7 +111,7 @@ export const S3SourceForm = forwardRef<S3SourceFormHandle, S3SourceFormProps>(
           endpoint: endpoint || undefined,
           bucket: selectedBucket, key: selectedKey,
         };
-        const source = await dataClient.createSource(name, 's3' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 's3', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(

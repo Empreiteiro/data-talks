@@ -165,7 +165,7 @@ export const SnowflakeSourceForm = forwardRef<SnowflakeSourceFormHandle, Snowfla
           tables: selectedTables,
         };
 
-        const source = await dataClient.createSource(name, 'snowflake' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'snowflake', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(

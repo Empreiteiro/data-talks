@@ -116,7 +116,7 @@ export const ExcelOnlineSourceForm = forwardRef<ExcelOnlineSourceFormHandle, Exc
           sheetName,
         };
 
-        const source = await dataClient.createSource(name, 'excel_online' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'excel_online', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(

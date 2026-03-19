@@ -120,7 +120,7 @@ export const MongoDbSourceForm = forwardRef<MongoDbSourceFormHandle, MongoDbSour
           collection: selectedCollection,
         };
 
-        const source = await dataClient.createSource(name, 'mongodb' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'mongodb', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(

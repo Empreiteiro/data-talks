@@ -37,7 +37,7 @@ export const RestApiSourceForm = forwardRef<RestApiSourceFormHandle, RestApiSour
     const [dataPath, setDataPath] = useState("");
     const [testing, setTesting] = useState(false);
     const [tested, setTested] = useState(false);
-    const [previewData, setPreviewData] = useState<{ columns: string[]; preview: any[]; rowCount: number } | null>(null);
+    const [previewData, setPreviewData] = useState<{ columns: string[]; preview: Record<string, unknown>[]; rowCount: number } | null>(null);
 
     const canConnect = tested && !!url.trim();
 
@@ -83,7 +83,7 @@ export const RestApiSourceForm = forwardRef<RestApiSourceFormHandle, RestApiSour
           preview: previewData?.preview,
           rowCount: previewData?.rowCount,
         };
-        const source = await dataClient.createSource(name, 'rest_api' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'rest_api', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(

@@ -91,7 +91,7 @@ export const NotionSourceForm = forwardRef<NotionSourceFormHandle, NotionSourceF
           databaseTitle: dbTitle,
         };
 
-        const source = await dataClient.createSource(name, 'notion' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'notion', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
