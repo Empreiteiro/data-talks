@@ -52,9 +52,9 @@ export const HubspotSourceForm = forwardRef<HubspotSourceFormHandle, HubspotSour
         } catch {
           setObjectCounts(null);
         }
-      } catch (error: any) {
+      } catch (error) {
         setConnectionTested(false);
-        toast.error(t('addSource.hubspotConnectionFailed'), { description: error.message });
+        toast.error(t('addSource.hubspotConnectionFailed'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setTestingConnection(false);
       }
@@ -74,13 +74,13 @@ export const HubspotSourceForm = forwardRef<HubspotSourceFormHandle, HubspotSour
           objectCounts: objectCounts || {},
         };
 
-        const source = await dataClient.createSource(name, 'hubspot' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'hubspot', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
             existingSources
-              .filter((s: any) => s.id !== source.id && s.type !== 'sql_database')
-              .map((s: any) => dataClient.updateSource(s.id, { is_active: false }))
+              .filter((s: { id: string; type: string }) => s.id !== source.id && s.type !== 'sql_database')
+              .map((s: { id: string; type: string }) => dataClient.updateSource(s.id, { is_active: false }))
           );
           await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
         }
@@ -91,9 +91,9 @@ export const HubspotSourceForm = forwardRef<HubspotSourceFormHandle, HubspotSour
         toast.success(t('addSource.hubspotConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
-      } catch (error: any) {
+      } catch (error) {
         console.error('HubSpot connection error:', error);
-        toast.error(t('addSource.hubspotConnectError'), { description: error.message });
+        toast.error(t('addSource.hubspotConnectError'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setConnecting(false);
       }
