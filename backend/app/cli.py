@@ -39,6 +39,11 @@ def _run_server(host: str = "0.0.0.0", port: int = 8000) -> None:
         port = _find_available_port(host, port + 1)
         print(f"⚠️  Port {original_port} is in use. Starting on port {port} instead.")
 
+    # Write the resolved port to a temp file so other tools (Makefile, frontend) can read it
+    port_file = os.path.join(backend_dir, ".backend_port")
+    with open(port_file, "w") as f:
+        f.write(str(port))
+
     uvicorn.run(
         "app.main:app",
         host=host,

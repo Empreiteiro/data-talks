@@ -27,6 +27,7 @@ dist-ssr
 env
 .venv
 
+backend/.backend_port
 backend/data_files
 backend/.venv
 backend/*.db

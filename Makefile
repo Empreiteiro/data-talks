@@ -44,8 +44,16 @@ run: build setup-env
 
 dev: setup-env
 	@echo "Starting backend and frontend dev server..."
+	@rm -f backend/.backend_port
 	@uv run data-talks run &
-	@VITE_API_URL=http://localhost:8000 npm run dev
+	@echo "Waiting for backend to start..."
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		if [ -f backend/.backend_port ]; then break; fi; \
+		sleep 1; \
+	done
+	@BACKEND_PORT=$$(cat backend/.backend_port 2>/dev/null || echo 8000); \
+	echo "Backend running on port $$BACKEND_PORT"; \
+	VITE_API_URL=http://localhost:$$BACKEND_PORT npm run dev
 
 # ------------------------------------------------------------------
 # Database
