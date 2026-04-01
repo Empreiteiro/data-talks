@@ -3,8 +3,28 @@ CLI for data-talks: run server, run migrations.
 Usage: data-talks run | data-talks migrate
 """
 import argparse
+import socket
 import sys
 import os
+
+
+def _is_port_available(host: str, port: int) -> bool:
+    """Check if a port is available for binding."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("0.0.0.0" if host == "::" else host, port))
+            return True
+        except OSError:
+            return False
+
+
+def _find_available_port(host: str, start_port: int, max_attempts: int = 10) -> int:
+    """Find the next available port starting from start_port."""
+    for offset in range(max_attempts):
+        port = start_port + offset
+        if _is_port_available(host, port):
+            return port
+    raise RuntimeError(f"No available port found in range {start_port}-{start_port + max_attempts - 1}")
 
 
 def _run_server(host: str = "0.0.0.0", port: int = 8000) -> None:
@@ -13,6 +33,12 @@ def _run_server(host: str = "0.0.0.0", port: int = 8000) -> None:
     backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     os.chdir(backend_dir)
     sys.path.insert(0, backend_dir)
+
+    if not _is_port_available(host, port):
+        original_port = port
+        port = _find_available_port(host, port + 1)
+        print(f"⚠️  Port {original_port} is in use. Starting on port {port} instead.")
+
     uvicorn.run(
         "app.main:app",
         host=host,
