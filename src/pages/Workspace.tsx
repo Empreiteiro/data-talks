@@ -39,6 +39,8 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
+import { workspaceSteps } from "@/components/walkthrough/steps/workspaceSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
 import { BarChart3, Bot, ChevronRight, History, Layout, Link2, RotateCcw, Send, Table, Terminal, Upload, X } from "lucide-react";
@@ -242,6 +244,7 @@ interface QASessionRecord {
 export default function Workspace() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  usePageWalkthrough('workspace', workspaceSteps);
   const stripFollowUpsFromAnswer = (answer: string, followUps?: string[]) => {
     if (!answer) return answer;
     if (!followUps || followUps.length === 0) return answer;
@@ -709,7 +712,7 @@ export default function Workspace() {
       
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Sources Panel - Left */}
-        <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col">
+        <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col" data-walkthrough="ws-sources-panel">
           <SourcesPanel 
             agentId={id} 
             onAddSource={() => setAddSourceOpen(true)}
@@ -720,7 +723,7 @@ export default function Workspace() {
 
         {/* Chat Panel - Center */}
         <div className="flex-1 min-h-0 flex flex-col bg-card border rounded-xl overflow-hidden">
-          <div className="p-4 border-b flex items-center justify-between h-[57px]">
+          <div className="p-4 border-b flex items-center justify-between h-[57px]" data-walkthrough="ws-header">
             <h1 className="font-semibold">{t('workspace.chat')}</h1>
             
             <div className="flex items-center gap-2">
@@ -744,7 +747,7 @@ export default function Workspace() {
               </Button>
               <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" data-walkthrough="ws-history-btn">
                     <History className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -825,7 +828,7 @@ export default function Workspace() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6" data-walkthrough="ws-chat-area">
             {availableColumns.length > 0 && messages.length === 0 && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
@@ -1016,7 +1019,7 @@ export default function Workspace() {
                   ))}
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2" data-walkthrough="ws-chat-input">
                 <div className="flex-1 min-w-0 h-12 flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 has-[:disabled]:opacity-50">
                   {questionSegments.map((seg, i) =>
                     seg.type === "text" ? (
@@ -1071,7 +1074,7 @@ export default function Workspace() {
         </div>
 
         {/* Studio Panel - Right */}
-        {!studioPanelCollapsed && <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col">
+        {!studioPanelCollapsed && <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col" data-walkthrough="ws-studio-panel">
             <StudioPanel
               collapsed={studioPanelCollapsed}
               onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)}

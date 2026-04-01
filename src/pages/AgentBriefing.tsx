@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { agentClient, Agent, Source } from "@/services/agentClient";
 import { dataClient } from "@/services/dataClient";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
+import { agentBriefingSteps } from "@/components/walkthrough/steps/agentBriefingSteps";
 
 export default function AgentBriefing() {
   const { id } = useParams();
@@ -30,6 +32,7 @@ export default function AgentBriefing() {
 
   const isEditing = !!id;
   const isCreating = !isEditing;
+  usePageWalkthrough('agentBriefing', agentBriefingSteps);
 
   useEffect(() => {
     loadData();
@@ -192,14 +195,14 @@ export default function AgentBriefing() {
               Remover
             </Button>
           )}
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving} data-walkthrough="agent-save-btn">
             {saving ? 'Salvando...' : isEditing ? 'Atualizar' : 'Criar'}
           </Button>
         </div>
       </div>
 
       <div className="grid gap-6">
-        <Card>
+        <Card data-walkthrough="agent-name-section">
           <CardHeader>
             <CardTitle>Informações Básicas</CardTitle>
             <CardDescription>
@@ -230,7 +233,7 @@ export default function AgentBriefing() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-walkthrough="agent-sources-section">
           <CardHeader>
             <CardTitle>Fontes de Dados</CardTitle>
             <CardDescription>
@@ -271,7 +274,7 @@ export default function AgentBriefing() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-walkthrough="agent-questions-section">
           <CardHeader>
             <CardTitle>Perguntas Sugeridas</CardTitle>
             <CardDescription>

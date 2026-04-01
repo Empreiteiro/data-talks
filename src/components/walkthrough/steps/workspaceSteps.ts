@@ -1,0 +1,56 @@
+import { WalkthroughStep } from '../types';
+
+export const workspaceSteps: WalkthroughStep[] = [
+  {
+    id: 'welcome',
+    target: 'ws-header',
+    titleKey: 'walkthrough.workspace.welcome.title',
+    descriptionKey: 'walkthrough.workspace.welcome.description',
+    position: 'bottom',
+  },
+  {
+    id: 'sources-panel',
+    target: 'ws-sources-panel',
+    titleKey: 'walkthrough.workspace.sources.title',
+    descriptionKey: 'walkthrough.workspace.sources.description',
+    position: 'right',
+  },
+  {
+    id: 'add-source',
+    target: 'ws-add-source',
+    titleKey: 'walkthrough.workspace.addSource.title',
+    descriptionKey: 'walkthrough.workspace.addSource.description',
+    position: 'right',
+    optional: true,
+  },
+  {
+    id: 'chat-input',
+    target: 'ws-chat-input',
+    titleKey: 'walkthrough.workspace.chatInput.title',
+    descriptionKey: 'walkthrough.workspace.chatInput.description',
+    position: 'top',
+  },
+  {
+    id: 'chat-area',
+    target: 'ws-chat-area',
+    titleKey: 'walkthrough.workspace.chatArea.title',
+    descriptionKey: 'walkthrough.workspace.chatArea.description',
+    position: 'bottom',
+    optional: true,
+  },
+  {
+    id: 'studio-panel',
+    target: 'ws-studio-panel',
+    titleKey: 'walkthrough.workspace.studio.title',
+    descriptionKey: 'walkthrough.workspace.studio.description',
+    position: 'left',
+    optional: true,
+  },
+  {
+    id: 'history',
+    target: 'ws-history-btn',
+    titleKey: 'walkthrough.workspace.history.title',
+    descriptionKey: 'walkthrough.workspace.history.description',
+    position: 'bottom',
+  },
+];

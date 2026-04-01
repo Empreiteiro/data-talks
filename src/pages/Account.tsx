@@ -14,6 +14,8 @@ import { ConnectionsPanel } from "@/components/ConnectionsPanel";
 import AuditTrail from "@/components/AuditTrail";
 import { useSearchParams } from "react-router-dom";
 import { dataClient } from "@/services/dataClient";
+import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
+import { accountSteps } from "@/components/walkthrough/steps/accountSteps";
 
 const Account = () => {
   const { t } = useLanguage();
@@ -23,6 +25,7 @@ const Account = () => {
   const [showAddSourceModal, setShowAddSourceModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [hasEnvLlm, setHasEnvLlm] = useState<boolean | null>(null);
+  usePageWalkthrough('account', accountSteps);
 
   useEffect(() => {
     dataClient.getLlmStatus().then(s => setHasEnvLlm(s.has_env)).catch(() => setHasEnvLlm(false));
@@ -71,7 +74,7 @@ const Account = () => {
 
         {/* Grid: uma linha com altura total = as duas colunas sempre na mesma altura */}
         <div className="grid grid-cols-[14rem_1fr] sm:grid-cols-[16rem_1fr] grid-rows-[minmax(0,1fr)] gap-4 flex-1 min-h-0 overflow-hidden">
-          <div className="min-h-0 flex flex-col overflow-hidden">
+          <div className="min-h-0 flex flex-col overflow-hidden" data-walkthrough="account-sidebar">
             <div className="flex-1 min-h-0 bg-background border rounded-lg p-1.5 flex flex-col">
               <div className="space-y-0.5">
                 {menuItems.map((item) => {
@@ -86,6 +89,7 @@ const Account = () => {
                           ? "bg-primary/10 border border-primary/20 text-primary font-medium"
                           : "hover:bg-muted/50 text-muted-foreground"
                       )}
+                      {...(item.id === 'llm' ? { 'data-walkthrough': 'account-tab-llm' } : item.id === 'connections' ? { 'data-walkthrough': 'account-tab-connections' } : item.id === 'sources' ? { 'data-walkthrough': 'account-tab-sources' } : {})}
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
                       <span className="text-sm">{item.label}</span>
