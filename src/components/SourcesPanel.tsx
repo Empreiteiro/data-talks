@@ -166,6 +166,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
             size="sm"
             onClick={onAddSource}
             disabled={false}
+            data-walkthrough="ws-add-source"
           >
             <Plus className="h-4 w-4 mr-2" />
             {t('sources.add')}

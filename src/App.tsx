@@ -5,6 +5,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { WalkthroughProvider } from "@/contexts/WalkthroughContext";
+import { WalkthroughOverlay } from "@/components/walkthrough/WalkthroughOverlay";
 import { useAuth } from "@/hooks/useAuth";
 import Account from "@/pages/Account";
 import AgentBriefing from "@/pages/AgentBriefing";
@@ -74,13 +76,16 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
+      <WalkthroughProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+          <WalkthroughOverlay />
+        </TooltipProvider>
+      </WalkthroughProvider>
     </LanguageProvider>
   </QueryClientProvider>
 );

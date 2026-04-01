@@ -15,6 +15,8 @@ import { ArrowLeft, Layout, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
+import { dashboardSteps } from "@/components/walkthrough/steps/dashboardSteps";
 
 interface DashboardData {
   id: string;
@@ -55,7 +57,8 @@ const Dashboard = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  
+  usePageWalkthrough('dashboard', dashboardSteps);
+
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -215,7 +218,7 @@ const Dashboard = () => {
       
       <div className="w-full max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8" data-walkthrough="dash-header">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="h-4 w-4" />
@@ -269,7 +272,7 @@ const Dashboard = () => {
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-walkthrough="dash-charts-grid">
             {dashboard.dashboard_charts.map((chart) => (
               <Card key={chart.id} className="overflow-hidden">
                 <div className="relative">
@@ -284,7 +287,7 @@ const Dashboard = () => {
                       </div>
                     }
                   />
-                  <div className="absolute top-2 right-2">
+                  <div className="absolute top-2 right-2" data-walkthrough="dash-chart-actions">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="secondary" size="icon" className="h-8 w-8">

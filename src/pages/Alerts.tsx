@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { dataClient } from "@/services/dataClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
+import { alertsSteps } from "@/components/walkthrough/steps/alertsSteps";
 
 const Alerts = () => {
   const { t } = useLanguage();
@@ -32,6 +34,7 @@ const Alerts = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  usePageWalkthrough('alerts', alertsSteps);
 
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
@@ -155,7 +158,7 @@ const Alerts = () => {
   return (
     <main className="container py-10">
       <SEO title={`${t('alerts.title')} | ${t('nav.tagline')}`} description="Crie alertas recorrentes" canonical="/alerts" />
-      <h1 className="text-3xl font-semibold mb-6">{t('alerts.title')}</h1>
+      <h1 className="text-3xl font-semibold mb-6" data-walkthrough="alerts-header">{t('alerts.title')}</h1>
 
       {agents.length === 0 ? (
         <Card className="shadow-sm">
@@ -169,7 +172,7 @@ const Alerts = () => {
       ) : (
         <div className="space-y-8">
           {/* Create Alert Form */}
-          <Card className="shadow-sm">
+          <Card className="shadow-sm" data-walkthrough="alerts-form">
             <CardHeader>
               <CardTitle>{t('alerts.newAlert')}</CardTitle>
             </CardHeader>
@@ -398,7 +401,7 @@ const Alerts = () => {
           </div>
 
           {/* Webhooks Section */}
-          <div className="space-y-4">
+          <div className="space-y-4" data-walkthrough="alerts-webhooks">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">{t('alerts.webhooks')}</h2>
               <Button variant="outline" onClick={() => setShowWebhookForm(!showWebhookForm)}>

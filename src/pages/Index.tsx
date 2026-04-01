@@ -6,6 +6,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
+import { indexSteps } from "@/components/walkthrough/steps/indexSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
 import { BarChart3, Grid3x3, Layout, List, MoreVertical, Pencil, Plus } from "lucide-react";
@@ -37,6 +39,7 @@ const Index = () => {
   const { isAuthenticated, initializing, loginRequired } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  usePageWalkthrough('index', indexSteps);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,10 +199,10 @@ const Index = () => {
       <SEO title={t('workspace.title')} description={t('workspace.description')} canonical="/" />
       
       <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex items-center mb-8">
+        <div className="flex items-center mb-8" data-walkthrough="index-hero">
           <h1 className="text-2xl font-semibold">{t('workspace.title')}</h1>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto" data-walkthrough="index-view-controls">
             <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" onClick={() => setViewMode("grid")}>
               <Grid3x3 className="h-4 w-4" />
             </Button>
@@ -228,14 +231,14 @@ const Index = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={handleCreateWorkspace}>
+            <Button onClick={handleCreateWorkspace} data-walkthrough="index-create-btn">
               <Plus className="h-4 w-4 mr-2" />
               {t('workspace.newWorkspace')}
             </Button>
           </div>
         </div>
 
-        {viewMode === "grid" ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+        {viewMode === "grid" ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4" data-walkthrough="index-agents-grid">
             {/* Create new card */}
             <Card className="p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors min-h-[200px]" onClick={handleCreateWorkspace}>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
@@ -279,7 +282,7 @@ const Index = () => {
                   </p>
                 </div>
               </Card>)}
-          </div> : <div className="space-y-2">
+          </div> : <div className="space-y-2" data-walkthrough="index-agents-grid">
             {/* Create new list item */}
             <Card className="p-4 flex items-center gap-4 cursor-pointer hover:bg-accent/50 transition-colors" onClick={handleCreateWorkspace}>
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">

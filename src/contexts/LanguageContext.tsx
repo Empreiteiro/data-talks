@@ -1470,6 +1470,75 @@ const translations = {
       'dashboard.chartUpdateSuccess': 'Chart updated successfully!',
       'dashboard.chartUpdateError': 'Error updating chart',
       'dashboard.chartLoadError': 'Could not load chart image',
+
+      // Walkthrough
+      'walkthrough.stepOf': '{current} of {total}',
+      'walkthrough.skip': 'Skip tutorial',
+      'walkthrough.next': 'Next',
+      'walkthrough.prev': 'Back',
+      'walkthrough.finish': 'Finish',
+
+      // Walkthrough — Index
+      'walkthrough.index.welcome.title': 'Welcome to Data Talks!',
+      'walkthrough.index.welcome.description': 'This is your home page where you manage all your workspaces. Each workspace is a separate data analysis environment.',
+      'walkthrough.index.create.title': 'Create a workspace',
+      'walkthrough.index.create.description': 'Click here to create a new workspace and start analyzing your data with AI.',
+      'walkthrough.index.agents.title': 'Your workspaces',
+      'walkthrough.index.agents.description': 'Your workspaces will appear here. Click on any card to open it and start asking questions.',
+      'walkthrough.index.viewSort.title': 'View & sort',
+      'walkthrough.index.viewSort.description': 'Switch between grid and list views, or sort your workspaces by date or name.',
+
+      // Walkthrough — Workspace
+      'walkthrough.workspace.welcome.title': 'Your workspace',
+      'walkthrough.workspace.welcome.description': 'This is the main area for data analysis. Here you connect data sources and ask questions in natural language.',
+      'walkthrough.workspace.sources.title': 'Data sources',
+      'walkthrough.workspace.sources.description': 'Your connected data sources appear in this panel. You can have CSV files, databases, Google Sheets, and more.',
+      'walkthrough.workspace.addSource.title': 'Add a data source',
+      'walkthrough.workspace.addSource.description': 'Click here to connect a new data source — upload a CSV, connect to a database, BigQuery, or Google Sheets.',
+      'walkthrough.workspace.chatInput.title': 'Ask a question',
+      'walkthrough.workspace.chatInput.description': 'Type your questions here in natural language. For example: "What were the top 5 products by revenue last month?"',
+      'walkthrough.workspace.chatArea.title': 'AI responses',
+      'walkthrough.workspace.chatArea.description': 'The AI responses with text, tables, and charts will appear here. You can also see follow-up suggestions.',
+      'walkthrough.workspace.studio.title': 'Tools & integrations',
+      'walkthrough.workspace.studio.description': 'Use these tools to generate reports, summaries, audio overviews, and connect to Slack, Telegram, or WhatsApp.',
+      'walkthrough.workspace.history.title': 'Conversation history',
+      'walkthrough.workspace.history.description': 'Access your previous conversations and resume them anytime.',
+
+      // Walkthrough — Dashboard
+      'walkthrough.dashboard.overview.title': 'Your dashboard',
+      'walkthrough.dashboard.overview.description': 'Dashboards display your saved charts in a visual layout. Organize your most important visualizations here.',
+      'walkthrough.dashboard.charts.title': 'Chart cards',
+      'walkthrough.dashboard.charts.description': 'Each card shows a chart from your analysis sessions. Add charts from the workspace to build your dashboard.',
+      'walkthrough.dashboard.actions.title': 'Chart actions',
+      'walkthrough.dashboard.actions.description': 'Edit titles, descriptions, or remove charts using the menu on each card.',
+
+      // Walkthrough — Agent Briefing
+      'walkthrough.agentBriefing.nameDesc.title': 'Name your agent',
+      'walkthrough.agentBriefing.nameDesc.description': 'Give your agent a name and description so you can easily identify it later.',
+      'walkthrough.agentBriefing.sources.title': 'Select data sources',
+      'walkthrough.agentBriefing.sources.description': 'Choose which data sources this agent will have access to for answering questions.',
+      'walkthrough.agentBriefing.questions.title': 'Suggested questions',
+      'walkthrough.agentBriefing.questions.description': 'Add suggested questions that will appear as quick-start prompts when users open this workspace.',
+      'walkthrough.agentBriefing.save.title': 'Save your agent',
+      'walkthrough.agentBriefing.save.description': 'When you are done configuring, click save to create or update your agent.',
+
+      // Walkthrough — Account
+      'walkthrough.account.overview.title': 'Settings',
+      'walkthrough.account.overview.description': 'Manage your account settings, AI model configuration, connections, and more from this sidebar.',
+      'walkthrough.account.llm.title': 'AI model settings',
+      'walkthrough.account.llm.description': 'Configure which AI model (OpenAI, Ollama, or LiteLLM) is used for your data analysis.',
+      'walkthrough.account.connections.title': 'Connections',
+      'walkthrough.account.connections.description': 'Manage your database and API connections here.',
+      'walkthrough.account.sources.title': 'Data sources',
+      'walkthrough.account.sources.description': 'View and manage all your connected data sources across workspaces.',
+
+      // Walkthrough — Alerts
+      'walkthrough.alerts.overview.title': 'Alerts',
+      'walkthrough.alerts.overview.description': 'Set up automated alerts to monitor your data and receive notifications by email or webhook.',
+      'walkthrough.alerts.create.title': 'Create an alert',
+      'walkthrough.alerts.create.description': 'Define what to monitor, how often to check, and where to send notifications.',
+      'walkthrough.alerts.webhooks.title': 'Webhooks',
+      'walkthrough.alerts.webhooks.description': 'Configure webhook URLs for advanced integrations with external tools.',
    },
   pt: {
     // Common
@@ -2929,6 +2998,75 @@ const translations = {
       'dashboard.chartUpdateSuccess': 'Gráfico atualizado com sucesso!',
       'dashboard.chartUpdateError': 'Erro ao atualizar gráfico',
       'dashboard.chartLoadError': 'Nao foi possivel carregar a imagem do grafico',
+
+      // Walkthrough
+      'walkthrough.stepOf': '{current} de {total}',
+      'walkthrough.skip': 'Pular tutorial',
+      'walkthrough.next': 'Proximo',
+      'walkthrough.prev': 'Voltar',
+      'walkthrough.finish': 'Concluir',
+
+      // Walkthrough — Index
+      'walkthrough.index.welcome.title': 'Bem-vindo ao Data Talks!',
+      'walkthrough.index.welcome.description': 'Esta e sua pagina inicial onde voce gerencia todos os seus workspaces. Cada workspace e um ambiente separado de analise de dados.',
+      'walkthrough.index.create.title': 'Crie um workspace',
+      'walkthrough.index.create.description': 'Clique aqui para criar um novo workspace e comecar a analisar seus dados com IA.',
+      'walkthrough.index.agents.title': 'Seus workspaces',
+      'walkthrough.index.agents.description': 'Seus workspaces aparecerao aqui. Clique em qualquer card para abri-lo e comecar a fazer perguntas.',
+      'walkthrough.index.viewSort.title': 'Visualizacao e ordenacao',
+      'walkthrough.index.viewSort.description': 'Alterne entre visualizacao em grade e lista, ou ordene seus workspaces por data ou nome.',
+
+      // Walkthrough — Workspace
+      'walkthrough.workspace.welcome.title': 'Seu workspace',
+      'walkthrough.workspace.welcome.description': 'Esta e a area principal de analise de dados. Aqui voce conecta fontes de dados e faz perguntas em linguagem natural.',
+      'walkthrough.workspace.sources.title': 'Fontes de dados',
+      'walkthrough.workspace.sources.description': 'Suas fontes de dados conectadas aparecem neste painel. Voce pode ter arquivos CSV, bancos de dados, Google Sheets e mais.',
+      'walkthrough.workspace.addSource.title': 'Adicionar fonte de dados',
+      'walkthrough.workspace.addSource.description': 'Clique aqui para conectar uma nova fonte — envie um CSV, conecte a um banco de dados, BigQuery ou Google Sheets.',
+      'walkthrough.workspace.chatInput.title': 'Faca uma pergunta',
+      'walkthrough.workspace.chatInput.description': 'Digite suas perguntas aqui em linguagem natural. Ex: "Quais foram os 5 principais produtos por receita no ultimo mes?"',
+      'walkthrough.workspace.chatArea.title': 'Respostas da IA',
+      'walkthrough.workspace.chatArea.description': 'As respostas da IA com texto, tabelas e graficos aparecerao aqui. Voce tambem vera sugestoes de perguntas.',
+      'walkthrough.workspace.studio.title': 'Ferramentas e integracoes',
+      'walkthrough.workspace.studio.description': 'Use estas ferramentas para gerar relatorios, resumos, audio e conectar ao Slack, Telegram ou WhatsApp.',
+      'walkthrough.workspace.history.title': 'Historico de conversas',
+      'walkthrough.workspace.history.description': 'Acesse suas conversas anteriores e retome-as a qualquer momento.',
+
+      // Walkthrough — Dashboard
+      'walkthrough.dashboard.overview.title': 'Seu dashboard',
+      'walkthrough.dashboard.overview.description': 'Dashboards exibem seus graficos salvos em um layout visual. Organize suas visualizacoes mais importantes aqui.',
+      'walkthrough.dashboard.charts.title': 'Cards de graficos',
+      'walkthrough.dashboard.charts.description': 'Cada card mostra um grafico de suas sessoes de analise. Adicione graficos do workspace para montar seu dashboard.',
+      'walkthrough.dashboard.actions.title': 'Acoes do grafico',
+      'walkthrough.dashboard.actions.description': 'Edite titulos, descricoes ou remova graficos usando o menu em cada card.',
+
+      // Walkthrough — Agent Briefing
+      'walkthrough.agentBriefing.nameDesc.title': 'Nomeie seu agente',
+      'walkthrough.agentBriefing.nameDesc.description': 'De um nome e descricao ao seu agente para identifica-lo facilmente depois.',
+      'walkthrough.agentBriefing.sources.title': 'Selecione fontes de dados',
+      'walkthrough.agentBriefing.sources.description': 'Escolha quais fontes de dados este agente tera acesso para responder perguntas.',
+      'walkthrough.agentBriefing.questions.title': 'Perguntas sugeridas',
+      'walkthrough.agentBriefing.questions.description': 'Adicione perguntas sugeridas que aparecerao como atalhos quando usuarios abrirem este workspace.',
+      'walkthrough.agentBriefing.save.title': 'Salvar agente',
+      'walkthrough.agentBriefing.save.description': 'Quando terminar de configurar, clique em salvar para criar ou atualizar seu agente.',
+
+      // Walkthrough — Account
+      'walkthrough.account.overview.title': 'Configuracoes',
+      'walkthrough.account.overview.description': 'Gerencie suas configuracoes de conta, modelo de IA, conexoes e mais nesta barra lateral.',
+      'walkthrough.account.llm.title': 'Configuracoes do modelo de IA',
+      'walkthrough.account.llm.description': 'Configure qual modelo de IA (OpenAI, Ollama ou LiteLLM) sera usado para sua analise de dados.',
+      'walkthrough.account.connections.title': 'Conexoes',
+      'walkthrough.account.connections.description': 'Gerencie suas conexoes com bancos de dados e APIs aqui.',
+      'walkthrough.account.sources.title': 'Fontes de dados',
+      'walkthrough.account.sources.description': 'Visualize e gerencie todas as suas fontes de dados conectadas em todos os workspaces.',
+
+      // Walkthrough — Alerts
+      'walkthrough.alerts.overview.title': 'Alertas',
+      'walkthrough.alerts.overview.description': 'Configure alertas automatizados para monitorar seus dados e receber notificacoes por e-mail ou webhook.',
+      'walkthrough.alerts.create.title': 'Criar um alerta',
+      'walkthrough.alerts.create.description': 'Defina o que monitorar, com que frequencia verificar e para onde enviar notificacoes.',
+      'walkthrough.alerts.webhooks.title': 'Webhooks',
+      'walkthrough.alerts.webhooks.description': 'Configure URLs de webhook para integracoes avancadas com ferramentas externas.',
    },
   es: {
     // Common
@@ -4357,6 +4495,76 @@ const translations = {
     'dashboard.chartUpdateSuccess': '¡Gráfico actualizado exitosamente!',
     'dashboard.chartUpdateError': 'Error al actualizar gráfico',
     'dashboard.chartLoadError': 'No se pudo cargar la imagen del grafico',
+
+    // Walkthrough
+    'walkthrough.stepOf': '{current} de {total}',
+    'walkthrough.skip': 'Saltar tutorial',
+    'walkthrough.next': 'Siguiente',
+    'walkthrough.prev': 'Atras',
+    'walkthrough.finish': 'Finalizar',
+
+    // Walkthrough — Index
+    'walkthrough.index.welcome.title': 'Bienvenido a Data Talks!',
+    'walkthrough.index.welcome.description': 'Esta es tu pagina de inicio donde gestionas todos tus workspaces. Cada workspace es un entorno separado de analisis de datos.',
+    'walkthrough.index.create.title': 'Crea un workspace',
+    'walkthrough.index.create.description': 'Haz clic aqui para crear un nuevo workspace y comenzar a analizar tus datos con IA.',
+    'walkthrough.index.agents.title': 'Tus workspaces',
+    'walkthrough.index.agents.description': 'Tus workspaces apareceran aqui. Haz clic en cualquier tarjeta para abrirlo y comenzar a hacer preguntas.',
+    'walkthrough.index.viewSort.title': 'Vista y orden',
+    'walkthrough.index.viewSort.description': 'Alterna entre vista de cuadricula y lista, u ordena tus workspaces por fecha o nombre.',
+
+    // Walkthrough — Workspace
+    'walkthrough.workspace.welcome.title': 'Tu workspace',
+    'walkthrough.workspace.welcome.description': 'Esta es el area principal de analisis de datos. Aqui conectas fuentes de datos y haces preguntas en lenguaje natural.',
+    'walkthrough.workspace.sources.title': 'Fuentes de datos',
+    'walkthrough.workspace.sources.description': 'Tus fuentes de datos conectadas aparecen en este panel. Puedes tener archivos CSV, bases de datos, Google Sheets y mas.',
+    'walkthrough.workspace.addSource.title': 'Agregar fuente de datos',
+    'walkthrough.workspace.addSource.description': 'Haz clic aqui para conectar una nueva fuente — sube un CSV, conecta a una base de datos, BigQuery o Google Sheets.',
+    'walkthrough.workspace.chatInput.title': 'Haz una pregunta',
+    'walkthrough.workspace.chatInput.description': 'Escribe tus preguntas aqui en lenguaje natural. Ej: "Cuales fueron los 5 principales productos por ingresos el mes pasado?"',
+    'walkthrough.workspace.chatArea.title': 'Respuestas de la IA',
+    'walkthrough.workspace.chatArea.description': 'Las respuestas de la IA con texto, tablas y graficos apareceran aqui. Tambien veras sugerencias de preguntas.',
+    'walkthrough.workspace.studio.title': 'Herramientas e integraciones',
+    'walkthrough.workspace.studio.description': 'Usa estas herramientas para generar informes, resumenes, audio y conectar con Slack, Telegram o WhatsApp.',
+    'walkthrough.workspace.history.title': 'Historial de conversaciones',
+    'walkthrough.workspace.history.description': 'Accede a tus conversaciones anteriores y retormalas en cualquier momento.',
+
+    // Walkthrough — Dashboard
+    'walkthrough.dashboard.overview.title': 'Tu dashboard',
+    'walkthrough.dashboard.overview.description': 'Los dashboards muestran tus graficos guardados en un diseno visual. Organiza tus visualizaciones mas importantes aqui.',
+    'walkthrough.dashboard.charts.title': 'Tarjetas de graficos',
+    'walkthrough.dashboard.charts.description': 'Cada tarjeta muestra un grafico de tus sesiones de analisis. Agrega graficos del workspace para armar tu dashboard.',
+    'walkthrough.dashboard.actions.title': 'Acciones del grafico',
+    'walkthrough.dashboard.actions.description': 'Edita titulos, descripciones o elimina graficos usando el menu de cada tarjeta.',
+
+    // Walkthrough — Agent Briefing
+    'walkthrough.agentBriefing.nameDesc.title': 'Nombra tu agente',
+    'walkthrough.agentBriefing.nameDesc.description': 'Dale un nombre y descripcion a tu agente para identificarlo facilmente despues.',
+    'walkthrough.agentBriefing.sources.title': 'Selecciona fuentes de datos',
+    'walkthrough.agentBriefing.sources.description': 'Elige a que fuentes de datos tendra acceso este agente para responder preguntas.',
+    'walkthrough.agentBriefing.questions.title': 'Preguntas sugeridas',
+    'walkthrough.agentBriefing.questions.description': 'Agrega preguntas sugeridas que apareceran como atajos cuando los usuarios abran este workspace.',
+    'walkthrough.agentBriefing.save.title': 'Guardar agente',
+    'walkthrough.agentBriefing.save.description': 'Cuando termines de configurar, haz clic en guardar para crear o actualizar tu agente.',
+
+    // Walkthrough — Account
+    'walkthrough.account.overview.title': 'Configuraciones',
+    'walkthrough.account.overview.description': 'Gestiona la configuracion de tu cuenta, modelo de IA, conexiones y mas desde esta barra lateral.',
+    'walkthrough.account.llm.title': 'Configuracion del modelo de IA',
+    'walkthrough.account.llm.description': 'Configura que modelo de IA (OpenAI, Ollama o LiteLLM) se usara para tu analisis de datos.',
+    'walkthrough.account.connections.title': 'Conexiones',
+    'walkthrough.account.connections.description': 'Gestiona tus conexiones a bases de datos y APIs aqui.',
+    'walkthrough.account.sources.title': 'Fuentes de datos',
+    'walkthrough.account.sources.description': 'Visualiza y gestiona todas tus fuentes de datos conectadas en todos los workspaces.',
+
+    // Walkthrough — Alerts
+    'walkthrough.alerts.overview.title': 'Alertas',
+    'walkthrough.alerts.overview.description': 'Configura alertas automatizadas para monitorear tus datos y recibir notificaciones por correo o webhook.',
+    'walkthrough.alerts.create.title': 'Crear una alerta',
+    'walkthrough.alerts.create.description': 'Define que monitorear, con que frecuencia verificar y donde enviar notificaciones.',
+    'walkthrough.alerts.webhooks.title': 'Webhooks',
+    'walkthrough.alerts.webhooks.description': 'Configura URLs de webhook para integraciones avanzadas con herramientas externas.',
+
     // Footer
     'footer.copyright': '© {year} Habla con tus datos. Todos los derechos reservados.',
   }
