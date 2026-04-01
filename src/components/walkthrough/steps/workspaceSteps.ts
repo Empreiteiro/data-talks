@@ -39,6 +39,27 @@ export const workspaceSteps: WalkthroughStep[] = [
     optional: true,
   },
   {
+    id: 'logs',
+    target: 'ws-logs-btn',
+    titleKey: 'walkthrough.workspace.logs.title',
+    descriptionKey: 'walkthrough.workspace.logs.description',
+    position: 'bottom',
+  },
+  {
+    id: 'clear',
+    target: 'ws-clear-btn',
+    titleKey: 'walkthrough.workspace.clear.title',
+    descriptionKey: 'walkthrough.workspace.clear.description',
+    position: 'bottom',
+  },
+  {
+    id: 'agent-settings',
+    target: 'ws-agent-settings-btn',
+    titleKey: 'walkthrough.workspace.agentSettings.title',
+    descriptionKey: 'walkthrough.workspace.agentSettings.description',
+    position: 'bottom',
+  },
+  {
     id: 'studio-panel',
     target: 'ws-studio-panel',
     titleKey: 'walkthrough.workspace.studio.title',

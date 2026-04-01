@@ -30,4 +30,12 @@ export const indexSteps: WalkthroughStep[] = [
     descriptionKey: 'walkthrough.index.viewSort.description',
     position: 'bottom',
   },
+  {
+    id: 'settings-menu',
+    target: 'nav-settings-btn',
+    titleKey: 'walkthrough.index.settings.title',
+    descriptionKey: 'walkthrough.index.settings.description',
+    position: 'bottom',
+    optional: true,
+  },
 ];

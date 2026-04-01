@@ -742,6 +742,7 @@ export default function Workspace() {
                 size="icon"
                 onClick={() => setLogsModalOpen(true)}
                 title={t('logs.button')}
+                data-walkthrough="ws-logs-btn"
               >
                 <Terminal className="h-4 w-4" />
               </Button>
@@ -752,20 +753,22 @@ export default function Workspace() {
                   </Button>
                 </SheetTrigger>
                 
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="icon"
                 onClick={clearConversation}
                 title={t('questions.clearConversation')}
+                data-walkthrough="ws-clear-btn"
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
 
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="icon"
                 onClick={() => setIsSettingsOpen(true)}
                 title={t('agentSettings.title')}
+                data-walkthrough="ws-agent-settings-btn"
               >
                 <Bot className="h-4 w-4" />
               </Button>
