@@ -200,9 +200,9 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                 <div
                   key={source.id}
                   className={`group relative p-3 rounded-lg border transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-primary/15 border-primary/30 hover:bg-primary/20' 
-                      : 'bg-muted/30 border-muted hover:bg-muted/50'
+                    isActive
+                      ? 'bg-primary/15 border-primary hover:bg-primary/20'
+                      : 'bg-muted/30 border-border hover:bg-muted/50'
                   }`}
                   onClick={async () => {
                     if (agentId) {
