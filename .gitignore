@@ -35,3 +35,9 @@ backend/*.db
 __pycache__/
 **/__pycache__/
 
+# Claude Code
+.claude/
+
+# Lock files
+package-lock.json
+
