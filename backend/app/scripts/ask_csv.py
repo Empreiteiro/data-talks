@@ -33,6 +33,8 @@ async def ask_csv(
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
     channel: str = "workspace",
+    source_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """
     file_path: path relative to data_files (e.g. user_id/timestamp.csv).
@@ -43,24 +45,68 @@ async def ask_csv(
     if not full_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    # Load full file for SQL execution (CSV or XLSX)
-    df_full = _load_full_dataframe(full_path)
-    columns = list(df_full.columns)
-    full_row_count = len(df_full)
-    preview = df_full.head(10).to_dict(orient="records")
-    schema_text = _format_schema(columns, preview)
-    sample_json = str(preview[:5])
-    sample_profile = _build_sample_profile(df_full.head(1000))
-    profile_text = _format_profile(sample_profile)
+    # ── Medallion routing: prefer Silver/Gold tables when available ──
+    medallion_conn = None
+    medallion_tables: dict[str, list[tuple[str, str]]] = {}
+    if source_id and user_id:
+        try:
+            from app.services.medallion_service import get_medallion_connection, list_medallion_tables
+            medallion_conn = get_medallion_connection(data_files_dir, user_id, source_id)
+            if medallion_conn:
+                medallion_tables = list_medallion_tables(medallion_conn)
+        except Exception:
+            medallion_conn = None
 
-    # Create in-memory SQLite with table "data" for SQL execution
-    conn = sqlite3.connect(":memory:")
-    df_full.to_sql("data", conn, index=False, if_exists="replace")
+    # If we have silver or gold tables, use the medallion DB instead of raw CSV
+    silver_tables = {k: v for k, v in medallion_tables.items() if k.startswith("silver_")}
+    gold_tables = {k: v for k, v in medallion_tables.items() if k.startswith("gold_")}
+    use_medallion = bool(silver_tables or gold_tables)
 
-    schema_for_sql = (
-        f"Table 'data' with columns: {', '.join(columns)}. "
-        "Use SELECT ... FROM data. Quote column names with double quotes if they have spaces or special chars (e.g. \"Release Year\")."
-    )
+    if use_medallion and medallion_conn:
+        conn = medallion_conn
+        # Build schema from all available medallion tables
+        all_tables = {**silver_tables, **gold_tables}
+        table_descs = []
+        all_columns_flat: list[str] = []
+        for tname, cols in all_tables.items():
+            col_names = [c[0] for c in cols]
+            all_columns_flat.extend(col_names)
+            table_descs.append(f"Table '{tname}' with columns: {', '.join(f'{c[0]} ({c[1]})' for c in cols)}")
+        columns = list(set(all_columns_flat))
+
+        # Load sample from first silver table for profile
+        first_table = list(silver_tables.keys())[0] if silver_tables else list(gold_tables.keys())[0]
+        df_sample = pd.read_sql_query(f'SELECT * FROM "{first_table}" LIMIT 1000', conn)
+        full_row_count = pd.read_sql_query(f'SELECT COUNT(*) as c FROM "{first_table}"', conn).iloc[0]["c"]
+        preview = df_sample.head(10).to_dict(orient="records")
+        schema_text = _format_schema(list(df_sample.columns), preview)
+        sample_json = str(preview[:5])
+        sample_profile = _build_sample_profile(df_sample)
+        profile_text = _format_profile(sample_profile)
+
+        schema_for_sql = "\n".join(table_descs) + (
+            "\nUse SELECT ... FROM <table_name>. "
+            "Quote column names with double quotes if they have spaces or special chars."
+        )
+    else:
+        # Load full file for SQL execution (CSV or XLSX) — original behavior
+        df_full = _load_full_dataframe(full_path)
+        columns = list(df_full.columns)
+        full_row_count = len(df_full)
+        preview = df_full.head(10).to_dict(orient="records")
+        schema_text = _format_schema(columns, preview)
+        sample_json = str(preview[:5])
+        sample_profile = _build_sample_profile(df_full.head(1000))
+        profile_text = _format_profile(sample_profile)
+
+        # Create in-memory SQLite with table "data" for SQL execution
+        conn = sqlite3.connect(":memory:")
+        df_full.to_sql("data", conn, index=False, if_exists="replace")
+
+        schema_for_sql = (
+            f"Table 'data' with columns: {', '.join(columns)}. "
+            "Use SELECT ... FROM data. Quote column names with double quotes if they have spaces or special chars (e.g. \"Release Year\")."
+        )
 
     system = (
         "You are an assistant that answers questions about tabular data (CSV/spreadsheet). "

@@ -13,6 +13,72 @@ export interface SqlSourceRelationship {
   rightColumn: string;
 }
 
+// Medallion Architecture types
+export interface MedallionLayerOut {
+  id: string;
+  sourceId: string;
+  agentId: string;
+  layer: 'bronze' | 'silver' | 'gold';
+  tableName: string;
+  status: 'pending' | 'ready' | 'error';
+  schemaConfig: Record<string, unknown>;
+  ddlSql: string;
+  transformSql?: string | null;
+  rowCount?: number | null;
+  errorMessage?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface MedallionBuildLogOut {
+  id: string;
+  layerId?: string | null;
+  action: string;
+  layer: string;
+  inputFeedback?: string | null;
+  suggestion?: Record<string, unknown> | null;
+  appliedConfig?: Record<string, unknown> | null;
+  llmUsage?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+  createdAt?: string | null;
+}
+
+export interface SilverColumnSuggestion {
+  source_column: string;
+  silver_name: string;
+  target_type: string;
+  cast_expression: string;
+  null_strategy: string;
+  null_default?: string | null;
+}
+
+export interface SilverSuggestResponse {
+  suggestion: {
+    columns: SilverColumnSuggestion[];
+    dedup_key: string[];
+    dedup_order_by?: string | null;
+    explanation?: string;
+  };
+  ddlPreview: string;
+  transformPreview: string;
+  buildLogId: string;
+}
+
+export interface GoldTableSuggestion {
+  name: string;
+  description: string;
+  sql: string;
+  dimensions: string[];
+  measures: { column: string; agg_func: string; alias: string }[];
+  explanation?: string;
+}
+
+export interface GoldSuggestResponse {
+  suggestions: GoldTableSuggestion[];
+  ddlPreviews: string[];
+  buildLogId: string;
+}
+
 function toApiAssetUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//i.test(path) || path.startsWith('blob:') || path.startsWith('data:')) return path;
@@ -1322,5 +1388,60 @@ export const apiClient = {
     return api<{ ok: boolean }>(`/api/templates/sources/${sourceId}/templates/${templateId}/customize`, {
       method: 'DELETE',
     });
+  },
+
+  // -----------------------------------------------------------------------
+  // Medallion Architecture
+  // -----------------------------------------------------------------------
+
+  async medallionListLayers(sourceId: string) {
+    return api<MedallionLayerOut[]>(`/api/medallion/sources/${sourceId}/layers`);
+  },
+
+  async medallionListLogs(sourceId: string) {
+    return api<MedallionBuildLogOut[]>(`/api/medallion/sources/${sourceId}/logs`);
+  },
+
+  async medallionGetLayer(layerId: string) {
+    return api<MedallionLayerOut>(`/api/medallion/layers/${layerId}`);
+  },
+
+  async medallionGenerateBronze(body: { sourceId: string; agentId: string }) {
+    return api<MedallionLayerOut>('/api/medallion/bronze/generate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async medallionSuggestSilver(body: { sourceId: string; agentId: string; feedback?: string }) {
+    return api<SilverSuggestResponse>('/api/medallion/silver/suggest', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async medallionApplySilver(body: { sourceId: string; agentId: string; buildLogId: string; config: Record<string, unknown> }) {
+    return api<MedallionLayerOut>('/api/medallion/silver/apply', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async medallionSuggestGold(body: { sourceId: string; agentId: string; feedback?: string }) {
+    return api<GoldSuggestResponse>('/api/medallion/gold/suggest', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async medallionApplyGold(body: { sourceId: string; agentId: string; buildLogId: string; selectedTables: Record<string, unknown>[] }) {
+    return api<{ layers: MedallionLayerOut[]; totalRows: number }>('/api/medallion/gold/apply', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async medallionDeleteLayer(layerId: string) {
+    return api<{ ok: boolean }>(`/api/medallion/layers/${layerId}`, { method: 'DELETE' });
   },
 };

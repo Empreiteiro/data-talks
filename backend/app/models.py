@@ -437,3 +437,45 @@ class ApiKey(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+
+# ---------------------------------------------------------------------------
+# Medallion Architecture (Bronze / Silver / Gold layers)
+# ---------------------------------------------------------------------------
+
+class MedallionLayer(Base):
+    """One row per layer per source. Bronze and silver get one each; gold can have multiple."""
+    __tablename__ = "medallion_layers"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    source_id: Mapped[str] = mapped_column(String(36), ForeignKey("sources.id"), index=True)
+    agent_id: Mapped[str] = mapped_column(String(36))
+    layer: Mapped[str] = mapped_column(String(10))  # bronze | silver | gold
+    table_name: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | ready | error
+    schema_config: Mapped[dict] = mapped_column(JSON, default=dict)
+    ddl_sql: Mapped[str] = mapped_column(Text, default="")
+    transform_sql: Mapped[str | None] = mapped_column(Text, nullable=True)
+    row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MedallionBuildLog(Base):
+    """Audit trail: every AI suggestion, redo, and apply action is logged."""
+    __tablename__ = "medallion_build_logs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    layer_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("medallion_layers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_id: Mapped[str] = mapped_column(String(36), index=True)
+    user_id: Mapped[str] = mapped_column(String(36))
+    action: Mapped[str] = mapped_column(String(30))  # suggest | apply | redo | error
+    layer: Mapped[str] = mapped_column(String(10))  # bronze | silver | gold
+    input_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suggestion: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    applied_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    llm_usage: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

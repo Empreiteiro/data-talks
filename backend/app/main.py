@@ -21,6 +21,7 @@ from app.routers import api_keys_router, public_api_router, whatsapp_router, aud
 from app.routers import dbt_router, github_router, slack_router, mongodb_router, snowflake_router, notion_router, excel_online_router, s3_router, rest_api_router, jira_router, stripe_router, pipedrive_router
 from app.routers import template_router
 from app.routers import hubspot_router
+from app.routers import medallion_router
 from app.routers import salesforce_router
 from app.routers import ga4_router
 from app.routers import intercom_router
@@ -256,6 +257,7 @@ app.include_router(intercom_router.router, prefix=prefix)
 app.include_router(github_analytics_router.router, prefix=prefix)
 app.include_router(shopify_router.router, prefix=prefix)
 app.include_router(pipedrive_router.router, prefix=prefix)
+app.include_router(medallion_router.router, prefix=prefix)
 
 
 @app.get(prefix + "/config")

@@ -126,3 +126,80 @@ class PublicAskRequest(BaseModel):
     source_ids: Optional[list[str]] = None   # subset of agent sources; None = use all
     sql_mode: Optional[bool] = None          # override agent default; None = use agent setting
     session_id: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Medallion Architecture
+# ---------------------------------------------------------------------------
+
+class BronzeGenerateRequest(BaseModel):
+    sourceId: str
+    agentId: str
+
+
+class SilverSuggestRequest(BaseModel):
+    sourceId: str
+    agentId: str
+    feedback: Optional[str] = None  # when present, acts as "redo with direction"
+
+
+class SilverApplyRequest(BaseModel):
+    sourceId: str
+    agentId: str
+    buildLogId: str
+    config: dict  # user-edited silver suggestion
+
+
+class GoldSuggestRequest(BaseModel):
+    sourceId: str
+    agentId: str
+    feedback: Optional[str] = None
+
+
+class GoldApplyRequest(BaseModel):
+    sourceId: str
+    agentId: str
+    buildLogId: str
+    selectedTables: list[dict]  # list of gold aggregate configs to materialize
+
+
+class MedallionLayerOut(BaseModel):
+    id: str
+    sourceId: str
+    agentId: str
+    layer: str
+    tableName: str
+    status: str
+    schemaConfig: dict = {}
+    ddlSql: str = ""
+    transformSql: Optional[str] = None
+    rowCount: Optional[int] = None
+    errorMessage: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+
+class MedallionBuildLogOut(BaseModel):
+    id: str
+    layerId: Optional[str] = None
+    action: str
+    layer: str
+    inputFeedback: Optional[str] = None
+    suggestion: Optional[dict] = None
+    appliedConfig: Optional[dict] = None
+    llmUsage: Optional[dict] = None
+    errorMessage: Optional[str] = None
+    createdAt: Optional[str] = None
+
+
+class SilverSuggestResponse(BaseModel):
+    suggestion: dict
+    ddlPreview: str
+    transformPreview: str
+    buildLogId: str
+
+
+class GoldSuggestResponse(BaseModel):
+    suggestions: list[dict]
+    ddlPreviews: list[str] = []
+    buildLogId: str
