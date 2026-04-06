@@ -144,13 +144,13 @@ const ChartImage = ({ imageUrl, qaSessionId, t, onRemoveImage }: { imageUrl: str
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
             {onRemoveImage && (
               <Button
-                size="sm"
-                variant="destructive"
+                variant="ghost"
+                size="icon"
                 onClick={onRemoveImage}
-                className="bg-destructive/90 text-destructive-foreground hover:bg-destructive border border-destructive shadow-sm"
+                className="h-6 w-6"
                 title={t('workspace.removeImage') || 'Remover imagem'}
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4 text-destructive" />
               </Button>
             )}
             {qaSessionId && (
@@ -965,13 +965,13 @@ export default function Workspace() {
                               {message.role === "assistant" && (
                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Button
-                                    size="sm"
-                                    variant="destructive"
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => handleRemoveImageFromMessage(index)}
-                                    className="bg-destructive/90 text-destructive-foreground hover:bg-destructive border border-destructive shadow-sm"
+                                    className="h-6 w-6"
                                     title={t('workspace.removeImage') || 'Remover gráfico'}
                                   >
-                                    <X className="h-4 w-4" />
+                                    <X className="h-4 w-4 text-destructive" />
                                   </Button>
                                 </div>
                               )}
