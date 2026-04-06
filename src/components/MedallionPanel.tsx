@@ -127,6 +127,7 @@ function SqlViewer({ label, sql }: { label: string; sql: string }) {
 }
 
 const SQL_TYPES = ["TEXT", "INTEGER", "REAL", "BOOLEAN", "DATE", "TIMESTAMP", "DECIMAL"];
+const TRANSFORMS = ["none", "trim", "lower_trim", "remove_commas", "strip_currency"];
 const NULL_STRATEGIES = ["KEEP_NULL", "DROP_ROW", "FILL_ZERO", "FILL_DEFAULT"];
 
 // ---------------------------------------------------------------------------
@@ -558,11 +559,12 @@ export function MedallionPanel({
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-[120px]">Source</TableHead>
-                            <TableHead className="w-[120px]">Silver Name</TableHead>
-                            <TableHead className="w-[110px]">Type</TableHead>
-                            <TableHead className="w-[120px]">Null Strategy</TableHead>
-                            <TableHead className="w-[60px]">Dedup</TableHead>
+                            <TableHead className="w-[110px]">Source</TableHead>
+                            <TableHead className="w-[110px]">Silver Name</TableHead>
+                            <TableHead className="w-[100px]">Type</TableHead>
+                            <TableHead className="w-[110px]">Transform</TableHead>
+                            <TableHead className="w-[110px]">Nulls</TableHead>
+                            <TableHead className="w-[50px]">Dedup</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -587,6 +589,21 @@ export function MedallionPanel({
                                   <SelectContent>
                                     {SQL_TYPES.map((t) => (
                                       <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={col.transform || "none"}
+                                  onValueChange={(v) => updateSilverColumn(idx, "transform", v)}
+                                >
+                                  <SelectTrigger className="h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {TRANSFORMS.map((tr) => (
+                                      <SelectItem key={tr} value={tr} className="text-xs">{tr}</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
