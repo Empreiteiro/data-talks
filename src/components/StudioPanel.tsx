@@ -5,7 +5,6 @@ import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, H
 import { toast } from "sonner";
 
 interface StudioPanelProps {
-  onAddNote?: () => void;
   onOpenGraph?: () => void;
   onOpenSummary?: () => void;
   onOpenAudio?: () => void;
@@ -21,7 +20,7 @@ interface StudioPanelProps {
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenTelegram, onOpenWhatsApp, onOpenSlack, onOpenApiAccess, onOpenMedallion, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenTelegram, onOpenWhatsApp, onOpenSlack, onOpenApiAccess, onOpenMedallion, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -131,9 +130,17 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
     });
   };
 
+  const allOptions = [
+    ...studioOptions,
+    ...connectionOptions,
+  ];
+
+  // Total rows needed: ceil(items / 2)
+  const totalRows = Math.ceil(allOptions.length / 2);
+
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b flex items-center justify-between h-[57px]">
+      <div className="px-4 border-b flex items-center justify-between h-[57px]">
         <h2 className="font-semibold">{t('studio.title')}</h2>
         <Button
           variant="ghost"
@@ -145,78 +152,35 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {/* Studio Section */}
-        <div>
-          <div className="grid grid-cols-3 gap-2">
-            {studioOptions.map((option) => (
-              <Card
-                key={option.title}
-                className={`p-2 cursor-pointer transition-all ${
-                  option.locked
-                    ? "opacity-50 hover:opacity-75"
-                    : "hover:shadow-md hover:border-blue-400"
-                }`}
-                onClick={option.locked ? handleLockedClick : option.onClick}
-              >
-                <div className="flex flex-col items-center justify-center text-center gap-1.5 py-2">
-                  <div className="relative">
-                    <option.icon className="h-5 w-5 text-muted-foreground" />
-                    {option.locked && (
-                      <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
-                        <Lock className="h-2.5 w-2.5 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs font-medium leading-tight">{option.title}</p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Connections Section */}
-        <div className="border-t pt-3">
-          <h3 className="text-xs font-semibold mb-2 text-muted-foreground">{t('studio.connections')}</h3>
-          <div className="grid grid-cols-4 gap-2">
-            {connectionOptions.map((option) => (
-              <Card
-                key={option.title}
-                className={`p-2 cursor-pointer transition-all ${
-                  option.locked
-                    ? "opacity-50 hover:opacity-75"
-                    : "hover:shadow-md hover:border-blue-400"
-                }`}
-                onClick={option.locked ? handleLockedClick : option.onClick}
-              >
-                <div className="flex flex-col items-center justify-center text-center gap-1.5 py-2">
-                  <div className="relative">
-                    <option.icon className="h-5 w-5 text-muted-foreground" />
-                    {option.locked && (
-                      <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
-                        <Lock className="h-2.5 w-2.5 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs font-medium leading-tight">{option.title}</p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      <div className="p-3 border-t">
-        <Button
-          variant="outline"
-          className="w-full h-9 text-xs opacity-50 cursor-not-allowed"
-          onClick={onAddNote}
-          disabled
+      <div className="flex-1 min-h-0 p-3">
+        <div
+          className="grid grid-cols-2 gap-2 h-full"
+          style={{ gridTemplateRows: `repeat(${totalRows}, 1fr)` }}
         >
-          <Lock className="h-3.5 w-3.5 mr-1.5" />
-          {t('studio.addNote')}
-        </Button>
+          {allOptions.map((option) => (
+            <Card
+              key={option.title}
+              className={`cursor-pointer transition-all flex items-center justify-center ${
+                option.locked
+                  ? "opacity-50 hover:opacity-75"
+                  : "hover:shadow-md hover:border-blue-400"
+              }`}
+              onClick={option.locked ? handleLockedClick : option.onClick}
+            >
+              <div className="flex flex-col items-center justify-center text-center gap-1.5">
+                <div className="relative">
+                  <option.icon className="h-6 w-6 text-muted-foreground" />
+                  {option.locked && (
+                    <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
+                      <Lock className="h-2.5 w-2.5 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs font-semibold leading-tight">{option.title}</p>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
