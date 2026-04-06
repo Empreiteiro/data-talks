@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, LayoutTemplate, Lock, MessageCircle, Network, Send, Terminal } from "lucide-react";
+import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, Layers, LayoutTemplate, Lock, MessageCircle, Network, Send, Terminal } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudioPanelProps {
@@ -16,11 +16,12 @@ interface StudioPanelProps {
   onOpenTemplates?: () => void;
   onOpenSlack?: () => void;
   onOpenApiAccess?: () => void;
+  onOpenMedallion?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenTelegram, onOpenWhatsApp, onOpenSlack, onOpenApiAccess, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenTelegram, onOpenWhatsApp, onOpenSlack, onOpenApiAccess, onOpenMedallion, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -50,6 +51,13 @@ export function StudioPanel({ onAddNote, onOpenGraph, onOpenSummary, onOpenAudio
       description: t('studio.audioOverview'),
       locked: false,
       onClick: onOpenAudio,
+    },
+    {
+      icon: Layers,
+      title: "Medallion",
+      description: "Bronze → Silver → Gold",
+      locked: false,
+      onClick: onOpenMedallion,
     },
     {
       icon: Network,

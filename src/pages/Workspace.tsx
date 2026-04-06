@@ -15,6 +15,7 @@ import { WhatsAppModal } from "@/components/WhatsAppModal";
 import { SlackModal } from "@/components/SlackModal";
 import { ApiAccessModal } from "@/components/ApiAccessModal";
 import { AutoMLModal } from "@/components/AutoMLModal";
+import { MedallionPanel } from "@/components/MedallionPanel";
 import { ReportModal } from "@/components/ReportModal";
 import { TemplateModal } from "@/components/TemplateModal";
 import { Badge } from "@/components/ui/badge";
@@ -297,6 +298,7 @@ export default function Workspace() {
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [audioOverviewModalOpen, setAudioOverviewModalOpen] = useState(false);
   const [autoMLModalOpen, setAutoMLModalOpen] = useState(false);
+  const [medallionOpen, setMedallionOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
@@ -1091,6 +1093,7 @@ export default function Workspace() {
               onOpenWhatsApp={() => setIsWhatsAppModalOpen(true)}
               onOpenSlack={() => setIsSlackModalOpen(true)}
               onOpenApiAccess={() => setIsApiAccessModalOpen(true)}
+              onOpenMedallion={() => setMedallionOpen(true)}
             />
           </div>}
 
@@ -1182,6 +1185,13 @@ export default function Workspace() {
         open={autoMLModalOpen}
         onOpenChange={setAutoMLModalOpen}
         workspaceId={id || ''}
+      />
+
+      <MedallionPanel
+        open={medallionOpen}
+        onOpenChange={setMedallionOpen}
+        agentId={id || ''}
+        sourceId=""
       />
 
       <ReportModal
