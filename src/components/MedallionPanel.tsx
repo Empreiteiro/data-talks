@@ -53,6 +53,7 @@ import {
   RefreshCw,
   History,
   Copy,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -353,6 +354,29 @@ export function MedallionPanel({
     } finally {
       setGoldApplying(false);
     }
+  }
+
+  async function handleDeleteGoldLayer(layerId: string) {
+    try {
+      await dataClient.medallionDeleteLayer(layerId);
+      toast.success("Gold table removed");
+      await refresh();
+    } catch (e: unknown) {
+      toast.error("Error deleting gold table", { description: (e as Error)?.message });
+    }
+  }
+
+  function removeGoldSuggestion(idx: number) {
+    if (!goldSuggestion) return;
+    const updated = goldSuggestion.suggestions.filter((_, i) => i !== idx);
+    setGoldSuggestion({ ...goldSuggestion, suggestions: updated });
+    // Rebuild selection indices
+    const newSelected = new Set<number>();
+    goldSelected.forEach((i) => {
+      if (i < idx) newSelected.add(i);
+      else if (i > idx) newSelected.add(i - 1);
+    });
+    setGoldSelected(newSelected);
   }
 
   // ---------------------------------------------------------------------------
@@ -665,10 +689,17 @@ export function MedallionPanel({
                       </Button>
                     </div>
                     {goldLayers.map((gl) => (
-                      <Card key={gl.id} className="p-3 space-y-2">
+                      <Card key={gl.id} className="p-3 space-y-2 group">
                         <div className="flex items-center justify-between">
                           <code className="text-sm bg-muted px-2 py-0.5 rounded">{gl.tableName}</code>
-                          <span className="text-xs text-muted-foreground">{gl.rowCount?.toLocaleString()} rows</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteGoldLayer(gl.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                         {gl.schemaConfig?.description && (
                           <p className="text-xs text-muted-foreground">{gl.schemaConfig.description as string}</p>
@@ -735,14 +766,22 @@ export function MedallionPanel({
                           <Checkbox
                             checked={goldSelected.has(idx)}
                             onCheckedChange={() => toggleGoldSelection(idx)}
-                            className="mt-0.5"
+                            className="mt-1"
                           />
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{s.name}</span>
+                              <span className="font-medium text-sm flex-1">{s.name}</span>
                               {s.dimensions?.map((d) => (
                                 <Badge key={d} variant="outline" className="text-[10px]">{d}</Badge>
                               ))}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 text-destructive hover:text-destructive flex-shrink-0"
+                                onClick={(e) => { e.stopPropagation(); removeGoldSuggestion(idx); }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </div>
                             <p className="text-xs text-muted-foreground">{s.description}</p>
                             {s.measures && (
