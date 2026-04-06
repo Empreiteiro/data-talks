@@ -47,7 +47,7 @@ export interface SilverColumnSuggestion {
   source_column: string;
   silver_name: string;
   target_type: string;
-  cast_expression: string;
+  transform: string;
   null_strategy: string;
   null_default?: string | null;
 }

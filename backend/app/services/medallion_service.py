@@ -195,25 +195,40 @@ _SILVER_SYSTEM_PROMPT = """\
 You are a data engineer. Analyze this raw data profile from a Bronze (raw staging) layer \
 and suggest a Silver (cleaned) schema.
 
-For each column, suggest:
-1. **target_type**: Appropriate SQL data type (INTEGER, REAL, TEXT, DATE, TIMESTAMP, BOOLEAN)
-2. **cast_expression**: SQL expression to transform from TEXT (e.g., `CAST(col AS INTEGER)`, `LOWER(TRIM(col))`)
-3. **null_strategy**: One of DROP_ROW, FILL_DEFAULT, FILL_ZERO, KEEP_NULL
-4. **null_default**: Default value when null_strategy is FILL_DEFAULT (optional)
+All Bronze columns are stored as TEXT. For each column, suggest:
+1. **target_type**: The appropriate SQL data type to cast to. One of: INTEGER, REAL, TEXT, DATE, TIMESTAMP, BOOLEAN, DECIMAL
+2. **transform**: Optional extra transformation to apply BEFORE casting. One of:
+   - "none" (just cast the column as-is)
+   - "trim" (TRIM whitespace)
+   - "lower_trim" (LOWER + TRIM, good for emails/slugs)
+   - "remove_commas" (REPLACE commas then cast, good for "1,234.56" numbers)
+   - "strip_currency" (remove $€£ symbols then cast)
+3. **null_strategy**: How to handle NULL/empty values. One of: KEEP_NULL, DROP_ROW, FILL_ZERO, FILL_DEFAULT
+4. **null_default**: Default value when null_strategy is FILL_DEFAULT (optional, ignored otherwise)
 5. **silver_name**: Cleaned snake_case column name
 
 Also suggest deduplication if you detect a primary key candidate:
-- **dedup_key**: list of column names forming the unique key
-- **dedup_order_by**: column to ORDER BY DESC for keeping latest
+- **dedup_key**: list of source_column names forming the unique key (empty list if no dedup needed)
+- **dedup_order_by**: source_column to ORDER BY DESC for keeping latest row (null if no dedup)
+
+IMPORTANT: source_column must EXACTLY match one of the Bronze column names provided. Do NOT invent column names.
 
 Return ONLY valid JSON in this exact format:
 {
   "columns": [
     {
-      "source_column": "original_name",
-      "silver_name": "clean_name",
-      "target_type": "INTEGER",
-      "cast_expression": "CAST(\\"original_name\\" AS INTEGER)",
+      "source_column": "Revenue",
+      "silver_name": "revenue",
+      "target_type": "REAL",
+      "transform": "remove_commas",
+      "null_strategy": "FILL_ZERO",
+      "null_default": null
+    },
+    {
+      "source_column": "Email Address",
+      "silver_name": "email",
+      "target_type": "TEXT",
+      "transform": "lower_trim",
       "null_strategy": "KEEP_NULL",
       "null_default": null
     }
@@ -650,6 +665,28 @@ def _build_silver_ddl(config: dict, short_id: str) -> str:
     return f'CREATE TABLE IF NOT EXISTS "{silver_table}" (\n' + ",\n".join(col_defs) + "\n);"
 
 
+def _build_cast_expression(source_col_quoted: str, target_type: str, transform: str) -> str:
+    """Build a safe CAST expression from structured params (never from LLM raw SQL)."""
+    # Start with the quoted column reference
+    expr = source_col_quoted
+
+    # Apply transform first (before casting)
+    if transform == "trim":
+        expr = f"TRIM({expr})"
+    elif transform == "lower_trim":
+        expr = f"LOWER(TRIM({expr}))"
+    elif transform == "remove_commas":
+        expr = f"REPLACE({expr}, ',', '')"
+    elif transform == "strip_currency":
+        expr = f"REPLACE(REPLACE(REPLACE(REPLACE({expr}, '$', ''), '€', ''), '£', ''), ',', '')"
+
+    # Apply CAST for non-TEXT types
+    if target_type and target_type.upper() != "TEXT":
+        expr = f"CAST({expr} AS {target_type})"
+
+    return expr
+
+
 def _build_silver_transform(config: dict, bronze_table: str, silver_table: str) -> str:
     """Generate INSERT INTO ... SELECT for silver layer from config."""
     columns = config.get("columns", [])
@@ -659,8 +696,17 @@ def _build_silver_transform(config: dict, bronze_table: str, silver_table: str) 
     select_exprs = []
     target_cols = []
     for col in columns:
-        expr = col.get("cast_expression", f'"{col.get("source_column", "")}"')
-        alias = col.get("silver_name", col.get("source_column", ""))
+        source_col = col.get("source_column", "")
+        safe_source = source_col.replace('"', '""')
+        source_col_quoted = f'"{safe_source}"'
+
+        target_type = col.get("target_type", "TEXT")
+        transform = col.get("transform", "none")
+
+        # Build the expression programmatically (safe, no LLM raw SQL)
+        expr = _build_cast_expression(source_col_quoted, target_type, transform)
+
+        alias = col.get("silver_name", source_col)
         safe_alias = alias.replace('"', '""')
         target_cols.append(f'"{safe_alias}"')
 
@@ -671,7 +717,8 @@ def _build_silver_transform(config: dict, bronze_table: str, silver_table: str) 
         if null_strategy == "FILL_ZERO":
             expr = f"COALESCE({expr}, 0)"
         elif null_strategy == "FILL_DEFAULT" and null_default is not None:
-            expr = f"COALESCE({expr}, '{null_default}')"
+            safe_default = str(null_default).replace("'", "''")
+            expr = f"COALESCE({expr}, '{safe_default}')"
         elif null_strategy == "DROP_ROW":
             pass  # handled in WHERE clause
 
