@@ -202,8 +202,6 @@ async def dispatch_question(
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
-            source_id=source.id,
-            user_id=user.id,
         )
     elif source.type == "sqlite":
         meta = source.metadata_ or {}
