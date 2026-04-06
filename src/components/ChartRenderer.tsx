@@ -43,6 +43,18 @@ const PALETTE = [
   "#06b6d4",
 ];
 
+const tooltipStyle: React.CSSProperties = {
+  backgroundColor: "hsl(var(--popover))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: "8px",
+  color: "#fff",
+  fontSize: "12px",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+};
+
+const tooltipLabelStyle: React.CSSProperties = { color: "#fff" };
+const tooltipItemStyle: React.CSSProperties = { color: "#fff" };
+
 interface ChartRendererProps {
   spec: ChartSpec;
   className?: string;
@@ -90,7 +102,7 @@ export function ChartRenderer({ spec, className }: ChartRendererProps) {
             <Cell key={idx} fill={PALETTE[idx % PALETTE.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+        <Tooltip formatter={(value: number) => value.toLocaleString()} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
         {renderLegend && <Legend />}
       </PieChart>
     );
@@ -125,7 +137,7 @@ export function ChartRenderer({ spec, className }: ChartRendererProps) {
               : undefined
           }
         />
-        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+        <Tooltip formatter={(value: number) => value.toLocaleString()} cursor={{ stroke: "hsl(var(--border))" }} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
         {renderLegend && <Legend />}
         {spec.series.map((s, idx) => (
           <Line
@@ -158,7 +170,7 @@ export function ChartRenderer({ spec, className }: ChartRendererProps) {
           width={120}
           tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
         />
-        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+        <Tooltip formatter={(value: number) => value.toLocaleString()} cursor={{ fill: "transparent" }} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
         {renderLegend && <Legend />}
         {spec.series.map((s, idx) =>
           multiSeries ? (
@@ -205,7 +217,7 @@ export function ChartRenderer({ spec, className }: ChartRendererProps) {
               : undefined
           }
         />
-        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+        <Tooltip formatter={(value: number) => value.toLocaleString()} cursor={{ fill: "transparent" }} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
         {renderLegend && <Legend />}
         {spec.series.map((s, idx) =>
           multiSeries ? (
