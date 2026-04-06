@@ -1,19 +1,18 @@
 """
-Medallion Architecture service — Bronze / Silver / Gold layer generation.
+Medallion Architecture service — Bronze / Silver / Gold SQL generation.
 
-Each source gets a persistent SQLite file at
-  {data_files_dir}/{user_id}/medallion_{source_id}.db
-The platform app DB (async SQLAlchemy) stores only metadata
-(MedallionLayer, MedallionBuildLog); the medallion DB holds actual row data.
+This service generates SQL suggestions for a medallion architecture
+(Bronze → Silver → Gold) but does NOT execute any SQL on client databases.
+
+All suggestions, schemas, and generated SQL are stored in the app DB
+(MedallionLayer, MedallionBuildLog) for the user to review, copy,
+and apply externally.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import sqlite3
 import uuid
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -38,21 +37,6 @@ def _uid() -> str:
 def _short_id(source_id: str) -> str:
     """First 8 chars of the source UUID (safe for table names)."""
     return source_id.replace("-", "")[:8]
-
-
-def _medallion_db_path(data_files_dir: str, user_id: str, source_id: str) -> Path:
-    return Path(data_files_dir) / user_id / f"medallion_{source_id}.db"
-
-
-def _get_medallion_conn(data_files_dir: str, user_id: str, source_id: str) -> sqlite3.Connection:
-    path = _medallion_db_path(data_files_dir, user_id, source_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(str(path))
-
-
-def _row_hash(row: dict) -> str:
-    raw = json.dumps(row, sort_keys=True, default=str)
-    return hashlib.md5(raw.encode()).hexdigest()
 
 
 def _layer_to_dict(layer: MedallionLayer) -> dict:
@@ -89,7 +73,7 @@ def _log_to_dict(entry: MedallionBuildLog) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Bronze
+# Bronze — generate DDL (no execution)
 # ---------------------------------------------------------------------------
 
 async def generate_bronze(
@@ -99,7 +83,7 @@ async def generate_bronze(
     data_files_dir: str,
     db: AsyncSession,
 ) -> dict:
-    """Create bronze table from raw source file. Returns layer dict."""
+    """Generate Bronze DDL from raw source file. Does NOT execute SQL."""
     meta = source.metadata_ or {}
     file_path_str = meta.get("file_path", "")
     if not file_path_str:
@@ -112,10 +96,11 @@ async def generate_bronze(
     df = _load_full_dataframe(full_path)
     sid = _short_id(source.id)
     table_name = f"bronze_{sid}"
+    row_count = len(df)
 
     # Build DDL: all columns as TEXT + metadata columns
     col_defs = [
-        "_loaded_at TEXT",
+        "_loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "_source_file TEXT",
         "_row_hash TEXT",
     ]
@@ -125,38 +110,21 @@ async def generate_bronze(
 
     ddl = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n  ' + ",\n  ".join(col_defs) + "\n);"
 
-    # Insert data
-    conn = _get_medallion_conn(data_files_dir, user_id, source.id)
-    try:
-        conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-        conn.execute(ddl)
-
-        now_str = datetime.utcnow().isoformat()
-        source_file = Path(file_path_str).name
-
-        placeholders = ", ".join(["?"] * (len(df.columns) + 3))
-        insert_sql = f'INSERT INTO "{table_name}" VALUES ({placeholders})'
-
-        rows_to_insert = []
-        for _, row in df.iterrows():
-            row_dict = row.to_dict()
-            rh = _row_hash(row_dict)
-            values = [now_str, source_file, rh] + [
-                str(v) if pd.notna(v) else None for v in row.values
-            ]
-            rows_to_insert.append(values)
-
-        conn.executemany(insert_sql, rows_to_insert)
-        conn.commit()
-        row_count = len(rows_to_insert)
-    finally:
-        conn.close()
-
-    # Save layer metadata in app DB
     schema_config = {
-        "columns": list(df.columns),
+        "columns": [str(c) for c in df.columns],
         "metadata_columns": ["_loaded_at", "_source_file", "_row_hash"],
+        "row_count": row_count,
     }
+
+    # Delete existing bronze layer if any
+    old = await db.execute(
+        select(MedallionLayer).where(
+            MedallionLayer.source_id == source.id,
+            MedallionLayer.layer == "bronze",
+        )
+    )
+    for old_layer in old.scalars().all():
+        await db.delete(old_layer)
 
     layer = MedallionLayer(
         id=_uid(),
@@ -177,9 +145,9 @@ async def generate_bronze(
         layer_id=layer.id,
         source_id=source.id,
         user_id=user_id,
-        action="apply",
+        action="suggest",
         layer="bronze",
-        applied_config=schema_config,
+        suggestion=schema_config,
     )
     db.add(build_log)
     await db.flush()
@@ -249,8 +217,8 @@ async def suggest_silver(
     llm_overrides: dict | None = None,
     feedback: str | None = None,
 ) -> dict:
-    """Use LLM to suggest silver schema. Returns {suggestion, ddlPreview, transformPreview, buildLogId}."""
-    # Get bronze layer
+    """Use LLM to suggest silver schema. Returns suggestion + SQL previews (no execution)."""
+    # Get bronze layer for column info
     result = await db.execute(
         select(MedallionLayer).where(
             MedallionLayer.source_id == source.id,
@@ -260,23 +228,19 @@ async def suggest_silver(
     )
     bronze = result.scalar_one_or_none()
     if not bronze:
-        raise ValueError("Bronze layer must be built first")
+        raise ValueError("Bronze layer must be generated first")
 
-    # Load sample data from medallion DB for profiling
-    conn = _get_medallion_conn(data_files_dir, user_id, source.id)
-    try:
-        df = pd.read_sql_query(
-            f'SELECT * FROM "{bronze.table_name}" LIMIT 1000',
-            conn,
-        )
-    finally:
-        conn.close()
+    # Load source data for profiling (from original file, NOT from any client DB)
+    meta = source.metadata_ or {}
+    file_path_str = meta.get("file_path", "")
+    full_path = Path(data_files_dir) / file_path_str
+    if not full_path.exists():
+        raise FileNotFoundError(f"Source file not found: {full_path}")
 
-    # Drop metadata columns for profiling
-    data_cols = [c for c in df.columns if not c.startswith("_")]
-    df_data = df[data_cols]
+    df = _load_full_dataframe(full_path)
+    data_cols = [str(c) for c in df.columns]
 
-    profile = _build_sample_profile(df_data)
+    profile = _build_sample_profile(df.head(1000))
     profile_text = _format_profile(profile)
 
     user_msg = f"""Bronze table: {bronze.table_name}
@@ -287,7 +251,7 @@ Data profile:
 {profile_text}
 
 Sample rows (first 3):
-{df_data.head(3).to_string(index=False)}
+{df.head(3).to_string(index=False)}
 """
 
     if feedback:
@@ -300,15 +264,13 @@ Sample rows (first 3):
 
     raw_content, usage, _trace = await chat_completion(messages, max_tokens=2048, llm_overrides=llm_overrides)
 
-    # Parse JSON from LLM response
     suggestion = _parse_json_response(raw_content)
     sid = _short_id(source.id)
 
-    # Generate preview SQL
+    # Generate SQL previews (for display only — never executed)
     ddl_preview = _build_silver_ddl(suggestion, sid)
     transform_preview = _build_silver_transform(suggestion, bronze.table_name, f"silver_{sid}")
 
-    # Log
     action = "redo" if feedback else "suggest"
     build_log = MedallionBuildLog(
         id=_uid(),
@@ -332,7 +294,7 @@ Sample rows (first 3):
 
 
 # ---------------------------------------------------------------------------
-# Silver — Apply
+# Silver — Save (stores accepted config + SQL, no execution)
 # ---------------------------------------------------------------------------
 
 async def apply_silver(
@@ -344,8 +306,7 @@ async def apply_silver(
     build_log_id: str,
     config: dict,
 ) -> dict:
-    """Apply user-edited silver config. Returns layer dict."""
-    # Get bronze
+    """Save user-accepted silver config and generated SQL. Does NOT execute SQL."""
     result = await db.execute(
         select(MedallionLayer).where(
             MedallionLayer.source_id == source.id,
@@ -355,34 +316,12 @@ async def apply_silver(
     )
     bronze = result.scalar_one_or_none()
     if not bronze:
-        raise ValueError("Bronze layer must be built first")
+        raise ValueError("Bronze layer must be generated first")
 
     sid = _short_id(source.id)
     silver_table = f"silver_{sid}"
     ddl = _build_silver_ddl(config, sid)
     transform = _build_silver_transform(config, bronze.table_name, silver_table)
-
-    # Execute on medallion DB
-    conn = _get_medallion_conn(data_files_dir, user_id, source.id)
-    try:
-        conn.execute(f'DROP TABLE IF EXISTS "{silver_table}"')
-        conn.execute(ddl)
-        conn.execute(transform)
-        conn.commit()
-        cursor = conn.execute(f'SELECT COUNT(*) FROM "{silver_table}"')
-        row_count = cursor.fetchone()[0]
-    except Exception as e:
-        conn.rollback()
-        # Log error
-        err_log = MedallionBuildLog(
-            id=_uid(), source_id=source.id, user_id=user_id,
-            action="error", layer="silver", error_message=str(e),
-        )
-        db.add(err_log)
-        await db.flush()
-        raise
-    finally:
-        conn.close()
 
     # Delete existing silver layer if any
     old = await db.execute(
@@ -405,17 +344,16 @@ async def apply_silver(
         schema_config=config,
         ddl_sql=ddl,
         transform_sql=transform,
-        row_count=row_count,
+        row_count=bronze.row_count,  # estimated from bronze
     )
     db.add(layer)
 
-    # Update build log
     apply_log = MedallionBuildLog(
         id=_uid(),
         layer_id=layer.id,
         source_id=source.id,
         user_id=user_id,
-        action="apply",
+        action="save",
         layer="silver",
         applied_config=config,
     )
@@ -437,7 +375,7 @@ Suggest 3-5 Gold tables with:
 1. **name**: short snake_case identifier (e.g., "monthly_revenue")
 2. **description**: one-line business explanation
 3. **sql**: A SELECT query against the silver table that creates this aggregate. \
-Use standard SQL (SQLite compatible). Include GROUP BY for aggregates.
+Use standard SQL. Include GROUP BY for aggregates.
 4. **dimensions**: list of grouping columns
 5. **measures**: list of {column, agg_func, alias} objects
 
@@ -447,7 +385,7 @@ Return ONLY valid JSON:
     {
       "name": "monthly_revenue",
       "description": "Monthly revenue totals",
-      "sql": "SELECT strftime('%Y-%m', created_at) AS month, SUM(revenue) AS total_revenue ...",
+      "sql": "SELECT strftime('%Y-%m', created_at) AS month, SUM(revenue) AS total_revenue FROM silver_abc123 GROUP BY 1",
       "dimensions": ["month"],
       "measures": [{"column": "revenue", "agg_func": "SUM", "alias": "total_revenue"}],
       "explanation": "..."
@@ -466,7 +404,7 @@ async def suggest_gold(
     llm_overrides: dict | None = None,
     feedback: str | None = None,
 ) -> dict:
-    """Use LLM to suggest gold aggregate tables. Returns {suggestions, buildLogId}."""
+    """Use LLM to suggest gold aggregate tables. Returns suggestions + SQL previews (no execution)."""
     result = await db.execute(
         select(MedallionLayer).where(
             MedallionLayer.source_id == source.id,
@@ -476,30 +414,34 @@ async def suggest_gold(
     )
     silver = result.scalar_one_or_none()
     if not silver:
-        raise ValueError("Silver layer must be built first")
+        raise ValueError("Silver layer must be saved first")
 
-    # Get silver schema from medallion DB
-    conn = _get_medallion_conn(data_files_dir, user_id, source.id)
-    try:
-        cursor = conn.execute(f'PRAGMA table_info("{silver.table_name}")')
-        columns = [(row[1], row[2]) for row in cursor.fetchall()]
-        df_sample = pd.read_sql_query(
-            f'SELECT * FROM "{silver.table_name}" LIMIT 5',
-            conn,
-        )
-    finally:
-        conn.close()
+    # Build column info from the saved silver schema config
+    silver_config = silver.schema_config or {}
+    silver_columns = silver_config.get("columns", [])
 
-    col_desc = "\n".join(f"- {name} ({dtype})" for name, dtype in columns)
-    sample_text = df_sample.to_string(index=False)
+    col_desc = "\n".join(
+        f"- {c.get('silver_name', c.get('source_column', '?'))} ({c.get('target_type', 'TEXT')})"
+        for c in silver_columns
+    )
+
+    # Load a sample from the original file for context
+    meta = source.metadata_ or {}
+    file_path_str = meta.get("file_path", "")
+    sample_text = ""
+    if file_path_str:
+        full_path = Path(data_files_dir) / file_path_str
+        if full_path.exists():
+            df = _load_full_dataframe(full_path)
+            sample_text = df.head(5).to_string(index=False)
 
     user_msg = f"""Silver table: {silver.table_name}
 Row count: {silver.row_count}
 
-Columns:
+Columns (cleaned types):
 {col_desc}
 
-Sample rows (first 5):
+Sample data from source (first 5 rows):
 {sample_text}
 """
 
@@ -515,7 +457,7 @@ Sample rows (first 5):
     parsed = _parse_json_response(raw_content)
     suggestions = parsed.get("suggestions", [])
 
-    # Generate DDL previews
+    # Generate DDL previews (for display only)
     sid = _short_id(source.id)
     ddl_previews = []
     for s in suggestions:
@@ -546,7 +488,7 @@ Sample rows (first 5):
 
 
 # ---------------------------------------------------------------------------
-# Gold — Apply
+# Gold — Save (stores accepted config + SQL, no execution)
 # ---------------------------------------------------------------------------
 
 async def apply_gold(
@@ -558,90 +500,44 @@ async def apply_gold(
     build_log_id: str,
     selected_tables: list[dict],
 ) -> list[dict]:
-    """Materialize selected gold aggregate tables. Returns list of layer dicts."""
+    """Save selected gold aggregate configs and SQL. Does NOT execute SQL."""
     sid = _short_id(source.id)
     layers = []
 
-    conn = _get_medallion_conn(data_files_dir, user_id, source.id)
-    try:
-        for tbl in selected_tables:
-            name = tbl.get("name", "agg")
-            sql = tbl.get("sql", "")
-            gold_table = f"gold_{sid}_{name}"
+    for tbl in selected_tables:
+        name = tbl.get("name", "agg")
+        sql = tbl.get("sql", "")
+        gold_table = f"gold_{sid}_{name}"
+        create_sql = f'CREATE TABLE IF NOT EXISTS "{gold_table}" AS\n{sql};'
 
-            create_sql = f'CREATE TABLE IF NOT EXISTS "{gold_table}" AS\n{sql};'
+        layer = MedallionLayer(
+            id=_uid(),
+            user_id=user_id,
+            source_id=source.id,
+            agent_id=agent_id,
+            layer="gold",
+            table_name=gold_table,
+            status="ready",
+            schema_config=tbl,
+            ddl_sql=create_sql,
+            transform_sql=sql,
+        )
+        db.add(layer)
 
-            try:
-                conn.execute(f'DROP TABLE IF EXISTS "{gold_table}"')
-                conn.execute(create_sql)
-                conn.commit()
-                cursor = conn.execute(f'SELECT COUNT(*) FROM "{gold_table}"')
-                row_count = cursor.fetchone()[0]
-            except Exception as e:
-                conn.rollback()
-                err_log = MedallionBuildLog(
-                    id=_uid(), source_id=source.id, user_id=user_id,
-                    action="error", layer="gold", error_message=f"{gold_table}: {e}",
-                )
-                db.add(err_log)
-                continue
-
-            layer = MedallionLayer(
-                id=_uid(),
-                user_id=user_id,
-                source_id=source.id,
-                agent_id=agent_id,
-                layer="gold",
-                table_name=gold_table,
-                status="ready",
-                schema_config=tbl,
-                ddl_sql=create_sql,
-                transform_sql=sql,
-                row_count=row_count,
-            )
-            db.add(layer)
-
-            apply_log = MedallionBuildLog(
-                id=_uid(),
-                layer_id=layer.id,
-                source_id=source.id,
-                user_id=user_id,
-                action="apply",
-                layer="gold",
-                applied_config=tbl,
-            )
-            db.add(apply_log)
-            layers.append(_layer_to_dict(layer))
-
-    finally:
-        conn.close()
+        apply_log = MedallionBuildLog(
+            id=_uid(),
+            layer_id=layer.id,
+            source_id=source.id,
+            user_id=user_id,
+            action="save",
+            layer="gold",
+            applied_config=tbl,
+        )
+        db.add(apply_log)
+        layers.append(_layer_to_dict(layer))
 
     await db.flush()
     return layers
-
-
-# ---------------------------------------------------------------------------
-# Query helpers (for ask_csv query routing)
-# ---------------------------------------------------------------------------
-
-def get_medallion_connection(
-    data_files_dir: str, user_id: str, source_id: str
-) -> sqlite3.Connection | None:
-    """Return a connection to the medallion DB if it exists, else None."""
-    path = _medallion_db_path(data_files_dir, user_id, source_id)
-    if not path.exists():
-        return None
-    return sqlite3.connect(str(path))
-
-
-def list_medallion_tables(conn: sqlite3.Connection) -> dict[str, list[tuple[str, str]]]:
-    """Return {table_name: [(col_name, col_type), ...]} for all medallion tables."""
-    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    tables = {}
-    for (tname,) in cursor.fetchall():
-        cols = conn.execute(f'PRAGMA table_info("{tname}")')
-        tables[tname] = [(r[1], r[2]) for r in cols.fetchall()]
-    return tables
 
 
 # ---------------------------------------------------------------------------
@@ -649,7 +545,7 @@ def list_medallion_tables(conn: sqlite3.Connection) -> dict[str, list[tuple[str,
 # ---------------------------------------------------------------------------
 
 def _build_silver_ddl(config: dict, short_id: str) -> str:
-    """Generate CREATE TABLE for silver layer from config."""
+    """Generate CREATE TABLE DDL for silver layer from config."""
     silver_table = f"silver_{short_id}"
     columns = config.get("columns", [])
     col_defs = []
@@ -666,11 +562,9 @@ def _build_silver_ddl(config: dict, short_id: str) -> str:
 
 
 def _build_cast_expression(source_col_quoted: str, target_type: str, transform: str) -> str:
-    """Build a safe CAST expression from structured params (never from LLM raw SQL)."""
-    # Start with the quoted column reference
+    """Build a safe CAST expression from structured params."""
     expr = source_col_quoted
 
-    # Apply transform first (before casting)
     if transform == "trim":
         expr = f"TRIM({expr})"
     elif transform == "lower_trim":
@@ -680,7 +574,6 @@ def _build_cast_expression(source_col_quoted: str, target_type: str, transform: 
     elif transform == "strip_currency":
         expr = f"REPLACE(REPLACE(REPLACE(REPLACE({expr}, '$', ''), '€', ''), '£', ''), ',', '')"
 
-    # Apply CAST for non-TEXT types
     if target_type and target_type.upper() != "TEXT":
         expr = f"CAST({expr} AS {target_type})"
 
@@ -688,7 +581,7 @@ def _build_cast_expression(source_col_quoted: str, target_type: str, transform: 
 
 
 def _build_silver_transform(config: dict, bronze_table: str, silver_table: str) -> str:
-    """Generate INSERT INTO ... SELECT for silver layer from config."""
+    """Generate INSERT INTO ... SELECT SQL for silver layer from config."""
     columns = config.get("columns", [])
     dedup_key = config.get("dedup_key", [])
     dedup_order = config.get("dedup_order_by")
@@ -702,15 +595,12 @@ def _build_silver_transform(config: dict, bronze_table: str, silver_table: str) 
 
         target_type = col.get("target_type", "TEXT")
         transform = col.get("transform", "none")
-
-        # Build the expression programmatically (safe, no LLM raw SQL)
         expr = _build_cast_expression(source_col_quoted, target_type, transform)
 
         alias = col.get("silver_name", source_col)
         safe_alias = alias.replace('"', '""')
         target_cols.append(f'"{safe_alias}"')
 
-        # Apply null strategy
         null_strategy = col.get("null_strategy", "KEEP_NULL")
         null_default = col.get("null_default")
 
@@ -719,14 +609,11 @@ def _build_silver_transform(config: dict, bronze_table: str, silver_table: str) 
         elif null_strategy == "FILL_DEFAULT" and null_default is not None:
             safe_default = str(null_default).replace("'", "''")
             expr = f"COALESCE({expr}, '{safe_default}')"
-        elif null_strategy == "DROP_ROW":
-            pass  # handled in WHERE clause
 
         select_exprs.append(f"  {expr} AS \"{safe_alias}\"")
 
     select_clause = ",\n".join(select_exprs)
 
-    # WHERE clause for DROP_ROW columns
     drop_conditions = []
     for col in columns:
         if col.get("null_strategy") == "DROP_ROW":
@@ -737,7 +624,6 @@ def _build_silver_transform(config: dict, bronze_table: str, silver_table: str) 
     if drop_conditions:
         where_clause = "\nWHERE " + " AND ".join(drop_conditions)
 
-    # Deduplication via subquery
     if dedup_key and dedup_order:
         key_cols = ", ".join(f'"{k}"' for k in dedup_key)
         inner = f"""SELECT *, ROW_NUMBER() OVER (PARTITION BY {key_cols} ORDER BY "{dedup_order}" DESC) AS _rn
@@ -759,17 +645,14 @@ FROM "{bronze_table}"{where_clause};"""
 def _parse_json_response(raw: str) -> dict:
     """Extract JSON object from LLM response, handling markdown fences."""
     text = raw.strip()
-    # Strip markdown code fences
     if text.startswith("```"):
         lines = text.split("\n")
-        # Remove first and last fence lines
         if lines[0].startswith("```"):
             lines = lines[1:]
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
         text = "\n".join(lines)
 
-    # Find JSON object boundaries
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:

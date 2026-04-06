@@ -235,7 +235,7 @@ export function MedallionPanel({
     setBronzeLoading(true);
     try {
       await dataClient.medallionGenerateBronze({ sourceId: effectiveSourceId, agentId });
-      toast.success("Bronze layer generated");
+      toast.success("Bronze DDL generated");
       await refresh();
       setActiveTab("silver");
     } catch (e: unknown) {
@@ -299,7 +299,7 @@ export function MedallionPanel({
           dedup_order_by: silverDedupOrder || null,
         },
       });
-      toast.success("Silver layer applied");
+      toast.success("Silver schema saved");
       setSilverSuggestion(null);
       await refresh();
       setActiveTab("gold");
@@ -354,7 +354,7 @@ export function MedallionPanel({
         buildLogId: goldSuggestion.buildLogId,
         selectedTables: selected,
       });
-      toast.success("Gold layers materialized");
+      toast.success("Gold SQL saved");
       setGoldSuggestion(null);
       await refresh();
     } catch (e: unknown) {
@@ -377,7 +377,7 @@ export function MedallionPanel({
             Medallion Architecture
           </DialogTitle>
           <DialogDescription>
-            {selectedSourceName ? `Source: ${selectedSourceName}` : "Build Bronze → Silver → Gold data layers"}
+            {selectedSourceName ? `Source: ${selectedSourceName}` : "Generate Bronze → Silver → Gold SQL suggestions"}
           </DialogDescription>
         </DialogHeader>
 
@@ -673,10 +673,10 @@ export function MedallionPanel({
                       </Button>
                     </div>
 
-                    {/* Apply */}
+                    {/* Save */}
                     <Button onClick={handleApplySilver} disabled={silverApplying} className="w-full">
                       {silverApplying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Apply Silver Layer
+                      Save Silver Schema
                     </Button>
                   </div>
                 )}
@@ -804,7 +804,7 @@ export function MedallionPanel({
                       className="w-full"
                     >
                       {goldApplying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Materialize {goldSelected.size} Selected Table(s)
+                      Save {goldSelected.size} Selected Table(s)
                     </Button>
                   </div>
                 )}
