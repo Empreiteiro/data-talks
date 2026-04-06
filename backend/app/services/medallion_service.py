@@ -403,6 +403,7 @@ async def suggest_gold(
     db: AsyncSession,
     llm_overrides: dict | None = None,
     feedback: str | None = None,
+    report_prompt: str | None = None,
 ) -> dict:
     """Use LLM to suggest gold aggregate tables. Returns suggestions + SQL previews (no execution)."""
     result = await db.execute(
@@ -444,6 +445,9 @@ Columns (cleaned types):
 Sample data from source (first 5 rows):
 {sample_text}
 """
+
+    if report_prompt:
+        user_msg += f"\n\nThe user wants to build a specific report. Focus your suggestions on this goal:\n{report_prompt}"
 
     if feedback:
         user_msg += f"\n\nUser feedback on previous suggestions — please adjust accordingly:\n{feedback}"

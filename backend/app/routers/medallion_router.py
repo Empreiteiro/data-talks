@@ -202,6 +202,7 @@ async def suggest_gold(
             source, user.id, body.agentId, settings.data_files_dir, db,
             llm_overrides=llm_overrides,
             feedback=body.feedback,
+            report_prompt=body.reportPrompt,
         )
         return result
     except Exception as e:
