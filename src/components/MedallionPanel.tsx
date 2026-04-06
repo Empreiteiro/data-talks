@@ -51,8 +51,6 @@ import {
   Trophy,
   Loader2,
   RefreshCw,
-  Check,
-  AlertCircle,
   History,
   Copy,
 } from "lucide-react";
@@ -92,15 +90,6 @@ type LayerStatus = "none" | "pending" | "ready" | "error";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function statusBadge(status: LayerStatus) {
-  if (status === "ready")
-    return <Badge variant="default" className="bg-green-600 text-white"><Check className="h-3 w-3 mr-1" /> Ready</Badge>;
-  if (status === "pending")
-    return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Building</Badge>;
-  if (status === "error")
-    return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" /> Error</Badge>;
-  return <Badge variant="outline">Not built</Badge>;
-}
 
 function SqlViewer({ label, sql }: { label: string; sql: string }) {
   return (
@@ -412,31 +401,11 @@ export function MedallionPanel({
           </div>
         )}
 
-        {/* Progress indicators */}
-        {effectiveSourceId && <><div className="flex items-center gap-2 px-1">
-          <div className="flex items-center gap-1">
-            <Database className="h-4 w-4" />
-            <span className="text-xs">Bronze</span>
-            {statusBadge(bronzeStatus)}
-          </div>
-          <span className="text-muted-foreground">→</span>
-          <div className="flex items-center gap-1">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-xs">Silver</span>
-            {statusBadge(silverStatus)}
-          </div>
-          <span className="text-muted-foreground">→</span>
-          <div className="flex items-center gap-1">
-            <Trophy className="h-4 w-4" />
-            <span className="text-xs">Gold</span>
-            {statusBadge(goldStatus)}
-          </div>
-          <div className="ml-auto">
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
-              <History className="h-4 w-4 mr-1" />
-              {showHistory ? "Hide" : "History"}
-            </Button>
-          </div>
+        {effectiveSourceId && <><div className="flex items-center justify-end px-1">
+          <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
+            <History className="h-4 w-4 mr-1" />
+            {showHistory ? "Hide" : "History"}
+          </Button>
         </div>
 
         {/* Main content */}
