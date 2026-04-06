@@ -154,6 +154,7 @@ class GoldSuggestRequest(BaseModel):
     sourceId: str
     agentId: str
     feedback: Optional[str] = None
+    reportPrompt: Optional[str] = None  # user describes the report they want to build
 
 
 class GoldApplyRequest(BaseModel):

@@ -1427,7 +1427,7 @@ export const apiClient = {
     });
   },
 
-  async medallionSuggestGold(body: { sourceId: string; agentId: string; feedback?: string }) {
+  async medallionSuggestGold(body: { sourceId: string; agentId: string; feedback?: string; reportPrompt?: string }) {
     return api<GoldSuggestResponse>('/api/medallion/gold/suggest', {
       method: 'POST',
       body: JSON.stringify(body),

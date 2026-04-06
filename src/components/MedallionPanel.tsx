@@ -170,6 +170,7 @@ export function MedallionPanel({
   // Gold
   const [goldSuggestion, setGoldSuggestion] = useState<GoldSuggestResponse | null>(null);
   const [goldSelected, setGoldSelected] = useState<Set<number>>(new Set());
+  const [goldReportPrompt, setGoldReportPrompt] = useState("");
   const [goldFeedback, setGoldFeedback] = useState("");
   const [goldLoading, setGoldLoading] = useState(false);
   const [goldApplying, setGoldApplying] = useState(false);
@@ -314,13 +315,14 @@ export function MedallionPanel({
   // Gold — suggest / select / redo / apply
   // ---------------------------------------------------------------------------
 
-  async function handleSuggestGold(feedback?: string) {
+  async function handleSuggestGold(feedback?: string, reportPrompt?: string) {
     setGoldLoading(true);
     try {
       const result = await dataClient.medallionSuggestGold({
         sourceId: effectiveSourceId,
         agentId,
         feedback: feedback || undefined,
+        reportPrompt: reportPrompt || goldReportPrompt || undefined,
       });
       setGoldSuggestion(result);
       setGoldSelected(new Set(result.suggestions.map((_, i) => i)));
@@ -717,15 +719,35 @@ export function MedallionPanel({
 
                 {/* No gold + no suggestion yet */}
                 {goldLayers.length === 0 && !goldSuggestion && (
-                  <div className="text-center py-8 space-y-4">
-                    <Trophy className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      AI will suggest business aggregate tables based on your Silver schema.
-                    </p>
-                    <Button onClick={() => handleSuggestGold()} disabled={goldLoading}>
-                      {goldLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Suggest Gold Aggregates
-                    </Button>
+                  <div className="py-6 space-y-5">
+                    <div className="text-center space-y-2">
+                      <Trophy className="h-12 w-12 mx-auto text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        AI will suggest business aggregate tables based on your Silver schema.
+                      </p>
+                    </div>
+
+                    {/* Report prompt */}
+                    <div className="border rounded-md p-3 space-y-2">
+                      <span className="text-xs font-medium">What report do you want to build? <span className="text-muted-foreground">(optional)</span></span>
+                      <Textarea
+                        className="text-xs min-h-[70px]"
+                        placeholder="e.g. I need a monthly revenue report by product category with YoY comparison, a customer cohort analysis by signup month, and a funnel conversion report..."
+                        value={goldReportPrompt}
+                        onChange={(e) => setGoldReportPrompt(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleSuggestGold(undefined, goldReportPrompt || undefined)}
+                        disabled={goldLoading}
+                        className="flex-1"
+                      >
+                        {goldLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        {goldReportPrompt.trim() ? "Generate Report SQL" : "Auto-suggest Aggregates"}
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -778,20 +800,31 @@ export function MedallionPanel({
                       </Card>
                     ))}
 
-                    {/* Redo feedback */}
-                    <div className="border rounded-md p-3 space-y-2">
-                      <span className="text-xs font-medium text-muted-foreground">Redo with feedback</span>
-                      <Textarea
-                        className="text-xs min-h-[60px]"
-                        placeholder="e.g. Add a weekly cohort analysis table, group revenue by product category..."
-                        value={goldFeedback}
-                        onChange={(e) => setGoldFeedback(e.target.value)}
-                      />
+                    {/* Redo: report prompt + feedback */}
+                    <div className="border rounded-md p-3 space-y-3">
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium">Report description <span className="text-muted-foreground">(optional — change to re-generate)</span></span>
+                        <Textarea
+                          className="text-xs min-h-[50px]"
+                          placeholder="e.g. Monthly revenue by product category with YoY comparison..."
+                          value={goldReportPrompt}
+                          onChange={(e) => setGoldReportPrompt(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground">Adjustment feedback</span>
+                        <Textarea
+                          className="text-xs min-h-[50px]"
+                          placeholder="e.g. Add a weekly cohort analysis, remove the daily table..."
+                          value={goldFeedback}
+                          onChange={(e) => setGoldFeedback(e.target.value)}
+                        />
+                      </div>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleSuggestGold(goldFeedback)}
-                        disabled={goldLoading || !goldFeedback.trim()}
+                        onClick={() => handleSuggestGold(goldFeedback || undefined, goldReportPrompt || undefined)}
+                        disabled={goldLoading || (!goldFeedback.trim() && !goldReportPrompt.trim())}
                       >
                         {goldLoading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
                         <RefreshCw className="h-3 w-3 mr-1" /> Re-suggest
