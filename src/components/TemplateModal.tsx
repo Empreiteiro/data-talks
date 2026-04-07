@@ -459,7 +459,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
             onClick={() => setDetailTab(tab)}
             className={`flex-1 text-xs font-medium py-1.5 rounded-sm transition-all ${detailTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
-            {tab === "queries" ? `Queries (${selectedTemplate!.queries.length})` : tab === "results" ? "Results" : `Reports (${savedReports.length})`}
+            {tab === "queries" ? `Queries (${selectedTemplate!.queries.length})` : tab === "results" ? "Query Results" : `Reports (${savedReports.length})`}
           </button>
         ))}
       </div>
@@ -467,9 +467,12 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
       {/* Tab content — fills remaining space */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
 
-        {/* ── Results ── */}
+        {/* ── Query Results ── */}
         {detailTab === "results" && (
           <div className="flex-1 overflow-y-auto">
+            <Button className="w-full mb-3" onClick={handleRunTemplate} disabled={running}>
+              {running ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("studio.templateRunning") || "Running..."}</> : <><Play className="h-4 w-4 mr-2" />{t("studio.templateRun") || "Run Template"}</>}
+            </Button>
             {runResult ? (
               <div className="space-y-3">
                 <div className={layoutClass(selectedTemplate!.layout)}>
@@ -503,11 +506,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
                 </div>
                 <p className="text-xs text-muted-foreground text-right">{runResult.status} &middot; {runResult.durationMs ? `${runResult.durationMs}ms` : ""}</p>
               </div>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground">Click "{t("studio.templateRun")}" to execute queries.</p>
-              </div>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -567,9 +566,12 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         {/* ── Reports ── */}
         {detailTab === "reports" && (
           <div className="flex-1 flex flex-col min-h-0">
+            <Button className="w-full mb-3 shrink-0" onClick={handleGenerateReport} disabled={generatingReport}>
+              {generatingReport ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("studio.templateGeneratingReport") || "Generating Report..."}</> : <><FileText className="h-4 w-4 mr-2" />{t("studio.templateGenerateReport") || "Generate Full Report"}</>}
+            </Button>
             <ScrollArea className="h-28 border rounded-md shrink-0">
               {savedReports.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-6">No reports generated yet. Click "Full Report" to create one.</p>
+                <p className="text-xs text-muted-foreground text-center py-6">No reports generated yet.</p>
               ) : (
                 <ul className="p-2 space-y-1">
                   {savedReports.map((r) => (
@@ -645,17 +647,9 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
                 <DialogTitle className="truncate">{selectedTemplate.name}</DialogTitle>
                 <DialogDescription className="truncate">{selectedTemplate.description}</DialogDescription>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Button variant="outline" size="sm" className="h-7" onClick={() => setCustomizeOpen(true)}>
-                  <Settings2 className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateCustomize")}</span>
-                </Button>
-                <Button size="sm" className="h-7" onClick={handleRunTemplate} disabled={running}>
-                  {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Play className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateRun")}</span></>}
-                </Button>
-                <Button variant="outline" size="sm" className="h-7" onClick={handleGenerateReport} disabled={generatingReport}>
-                  {generatingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><FileText className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateGenerateReport") || "Full Report"}</span></>}
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" className="h-7 shrink-0" onClick={() => setCustomizeOpen(true)}>
+                <Settings2 className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateCustomize")}</span>
+              </Button>
             </DialogHeader>
           ) : (
             <DialogHeader>
