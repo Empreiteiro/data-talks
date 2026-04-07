@@ -53,8 +53,8 @@ class Settings(BaseSettings):
     # Local file storage
     data_files_dir: str = "./data_files"
 
-    # LLM: OpenAI-compatible, Ollama, LiteLLM proxy, Google Gemini, or Anthropic Claude
-    llm_provider: str = "openai"  # "openai" | "ollama" | "litellm" | "google" | "anthropic"
+    # LLM: OpenAI-compatible, Ollama, LiteLLM proxy, Google Gemini, Anthropic Claude, or Claude CLI
+    llm_provider: str = "openai"  # "openai" | "ollama" | "litellm" | "google" | "anthropic" | "claude-code"
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     google_model: str = "gemini-2.0-flash"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-20250514"
+    # Claude Code CLI (subprocess)
+    claude_code_model: str = ""  # model flag for claude CLI (e.g. "claude-sonnet-4-20250514"); empty = CLI default
+    claude_code_oauth_token: str = ""  # OAuth token; also loaded from ~/.claude/oauth_token
 
     @model_validator(mode="after")
     def apply_openai_defaults(self):

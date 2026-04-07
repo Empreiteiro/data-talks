@@ -17,7 +17,7 @@ from app.config import get_settings
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
-VALID_PROVIDERS = ("openai", "ollama", "litellm", "google", "anthropic")
+VALID_PROVIDERS = ("openai", "ollama", "litellm", "google", "anthropic", "claude-code")
 
 
 class LlmSettingsResponse(BaseModel):
@@ -36,6 +36,8 @@ class LlmSettingsResponse(BaseModel):
     google_model: Optional[str] = None
     anthropic_api_key: Optional[str] = None  # Masked
     anthropic_model: Optional[str] = None
+    claude_code_model: Optional[str] = None
+    claude_code_oauth_token: Optional[str] = None  # Masked
 
 
 class LlmSettingsUpdate(BaseModel):
@@ -54,6 +56,8 @@ class LlmSettingsUpdate(BaseModel):
     google_model: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     anthropic_model: Optional[str] = None
+    claude_code_model: Optional[str] = None
+    claude_code_oauth_token: Optional[str] = None
 
 
 def _mask_api_key(key: str | None) -> str:
@@ -89,6 +93,8 @@ async def get_llm_status(
         has_env = True
     elif env.llm_provider == "anthropic" and (env.anthropic_api_key or "").strip():
         has_env = True
+    elif env.llm_provider == "claude-code":
+        has_env = True  # Claude CLI uses OAuth token from file or env; no mandatory config
 
     # Check user LlmSettings (account-level override)
     has_account = False
@@ -142,6 +148,8 @@ async def get_llm_settings(
             google_model=row.google_model or env.google_model,
             anthropic_api_key=_mask_api_key(row.anthropic_api_key) if row.anthropic_api_key else _mask_api_key(env.anthropic_api_key),
             anthropic_model=row.anthropic_model or env.anthropic_model,
+            claude_code_model=row.claude_code_model or env.claude_code_model,
+            claude_code_oauth_token=_mask_api_key(row.claude_code_oauth_token) if row.claude_code_oauth_token else _mask_api_key(env.claude_code_oauth_token),
         )
     return LlmSettingsResponse(
         llm_provider=env.llm_provider,
@@ -159,6 +167,8 @@ async def get_llm_settings(
         google_model=env.google_model,
         anthropic_api_key=_mask_api_key(env.anthropic_api_key),
         anthropic_model=env.anthropic_model,
+        claude_code_model=env.claude_code_model,
+        claude_code_oauth_token=_mask_api_key(env.claude_code_oauth_token),
     )
 
 
@@ -224,6 +234,14 @@ async def update_llm_settings(
             row.anthropic_api_key = val
     if body.anthropic_model is not None:
         row.anthropic_model = body.anthropic_model.strip() or None
+    if body.claude_code_model is not None:
+        row.claude_code_model = body.claude_code_model.strip() or None
+    if body.claude_code_oauth_token is not None:
+        val = body.claude_code_oauth_token.strip()
+        if val == "":
+            row.claude_code_oauth_token = None
+        elif "••••" not in val and len(val) > 4:
+            row.claude_code_oauth_token = val
 
     await db.commit()
     await db.refresh(row)
@@ -244,6 +262,8 @@ async def update_llm_settings(
         google_model=row.google_model or env.google_model,
         anthropic_api_key=_mask_api_key(row.anthropic_api_key),
         anthropic_model=row.anthropic_model or env.anthropic_model,
+        claude_code_model=row.claude_code_model or env.claude_code_model,
+        claude_code_oauth_token=_mask_api_key(row.claude_code_oauth_token),
     )
 
 
@@ -361,6 +381,8 @@ def _config_to_response(c: LlmConfig, env) -> dict:
         model = c.google_model or env.google_model
     elif c.llm_provider == "anthropic":
         model = c.anthropic_model or env.anthropic_model
+    elif c.llm_provider == "claude-code":
+        model = c.claude_code_model or env.claude_code_model or "claude-code"
     return {
         "id": c.id,
         "name": c.name,
@@ -380,6 +402,8 @@ def _config_to_response(c: LlmConfig, env) -> dict:
         "google_model": c.google_model or env.google_model,
         "anthropic_api_key": _mask_api_key(c.anthropic_api_key) if c.anthropic_api_key else "",
         "anthropic_model": c.anthropic_model or env.anthropic_model,
+        "claude_code_model": c.claude_code_model or env.claude_code_model,
+        "claude_code_oauth_token": _mask_api_key(c.claude_code_oauth_token) if c.claude_code_oauth_token else "",
         "is_default": getattr(c, "is_default", False),
         "created_at": c.created_at.isoformat() if c.created_at else None,
     }
@@ -428,6 +452,8 @@ async def create_llm_config(
         google_model=_opt(body.google_model),
         anthropic_api_key=_opt(body.anthropic_api_key),
         anthropic_model=_opt(body.anthropic_model),
+        claude_code_model=_opt(body.claude_code_model),
+        claude_code_oauth_token=_opt(body.claude_code_oauth_token),
     )
     db.add(c)
     await db.commit()
@@ -499,6 +525,11 @@ async def update_llm_config(
         c.anthropic_api_key = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.anthropic_api_key)
     if body.anthropic_model is not None:
         c.anthropic_model = body.anthropic_model.strip() or None
+    if body.claude_code_model is not None:
+        c.claude_code_model = body.claude_code_model.strip() or None
+    if body.claude_code_oauth_token is not None:
+        val = body.claude_code_oauth_token.strip()
+        c.claude_code_oauth_token = None if val == "" else (val if "••••" not in val and len(val) > 4 else c.claude_code_oauth_token)
     if body.is_default is True:
         # Unset other configs, set this one as default
         await db.execute(update(LlmConfig).where(LlmConfig.user_id == user.id).values(is_default=False))
