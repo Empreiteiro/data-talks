@@ -468,6 +468,7 @@ async def run_template_as_report(
         agent_id=body.agentId,
         source_id=source.id,
         source_name=f"{source.name} — {template.get('name', 'Template')}",
+        template_id=template_id,
         html_content=result["html_content"],
         chart_count=result.get("chart_count", 0),
     )
@@ -482,6 +483,239 @@ async def run_template_as_report(
         "chartCount": report.chart_count,
         "createdAt": report.created_at.isoformat(),
     }
+
+
+@router.get("/sources/{source_id}/templates/{template_id}/reports")
+async def list_template_reports(
+    source_id: str,
+    template_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """List reports generated from a specific template."""
+    r = await db.execute(
+        select(Report)
+        .where(Report.template_id == template_id, Report.user_id == user.id)
+        .order_by(Report.created_at.desc())
+        .limit(20)
+    )
+    reports = r.scalars().all()
+    return [
+        {
+            "id": rpt.id,
+            "sourceName": rpt.source_name,
+            "chartCount": rpt.chart_count,
+            "createdAt": rpt.created_at.isoformat(),
+        }
+        for rpt in reports
+    ]
+
+
+class UpdateQueriesRequest(BaseModel):
+    queries: list[dict]
+
+
+@router.patch("/sources/{source_id}/templates/{template_id}/queries")
+async def update_template_queries(
+    source_id: str,
+    template_id: str,
+    body: UpdateQueriesRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Update the queries array of a user-created template."""
+    r = await db.execute(
+        select(ReportTemplate).where(
+            ReportTemplate.id == template_id,
+            ReportTemplate.user_id == user.id,
+            ReportTemplate.is_builtin == False,
+        )
+    )
+    tpl = r.scalar_one_or_none()
+    if not tpl:
+        raise HTTPException(404, "Template not found or is built-in (read-only)")
+    # Ensure each query has an id
+    for i, q in enumerate(body.queries):
+        if "id" not in q:
+            q["id"] = f"q{i+1}"
+    tpl.queries = body.queries
+    await db.commit()
+    await db.refresh(tpl)
+    return {"queries": tpl.queries, "queryCount": len(tpl.queries or [])}
+
+
+class AddQueryRequest(BaseModel):
+    agentId: str
+    description: str
+    language: Optional[str] = None
+
+
+@router.post("/sources/{source_id}/templates/{template_id}/add-query")
+async def add_query_to_template(
+    source_id: str,
+    template_id: str,
+    body: AddQueryRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Use AI to generate a new query and add it to the template."""
+    r_src = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    source = r_src.scalar_one_or_none()
+    if not source:
+        raise HTTPException(404, "Source not found")
+
+    r_tpl = await db.execute(
+        select(ReportTemplate).where(
+            ReportTemplate.id == template_id,
+            ReportTemplate.user_id == user.id,
+            ReportTemplate.is_builtin == False,
+        )
+    )
+    tpl = r_tpl.scalar_one_or_none()
+    if not tpl:
+        raise HTTPException(404, "Template not found or is built-in (read-only)")
+
+    # Resolve LLM
+    llm_overrides = None
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    agent = r_agent.scalar_one_or_none()
+    if agent and agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            llm_overrides = _llm_overrides_from_cfg(cfg)
+
+    # Build schema context
+    meta = source.metadata_ or {}
+    existing_titles = [q.get("title", "") for q in (tpl.queries or [])]
+
+    lang_name = LANGUAGE_NAMES.get(body.language or "", "")
+    lang_inst = f"Write the title in {lang_name}. " if lang_name else ""
+
+    system = (
+        "You are a data analyst. Generate a SINGLE SQL query for a report template.\n"
+        f"{lang_inst}"
+        "Return ONLY valid JSON:\n"
+        '{"title": "...", "sql": "SELECT ...", "chart_type": "bar"}\n'
+        'chart_type: bar, line, pie, histogram, scatter.\n'
+        "For CSV sources, the table is 'data'. Quote column names with double quotes if needed."
+    )
+    user_msg = f"Source: {source.name} ({source.type})\nExisting queries: {', '.join(existing_titles)}\n\nUser request: {body.description}"
+
+    try:
+        raw, _usage, _trace = await chat_completion(
+            [{"role": "system", "content": system}, {"role": "user", "content": user_msg}],
+            max_tokens=1024, llm_overrides=llm_overrides,
+        )
+    except Exception as exc:
+        raise HTTPException(400, f"LLM error: {exc}")
+
+    # Parse
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if lines[0].startswith("```"): lines = lines[1:]
+        if lines and lines[-1].strip() == "```": lines = lines[:-1]
+        text = "\n".join(lines)
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1:
+        raise HTTPException(500, "Failed to parse LLM response")
+    parsed = json.loads(text[start:end+1])
+
+    new_query = {
+        "id": f"q{len(tpl.queries or []) + 1}",
+        "title": parsed.get("title", "New Query"),
+        "sql": parsed.get("sql", ""),
+        "chart_type": parsed.get("chart_type", "bar"),
+        "chart_config": {},
+    }
+
+    queries = list(tpl.queries or [])
+    queries.append(new_query)
+    tpl.queries = queries
+    await db.commit()
+    await db.refresh(tpl)
+    return {"query": new_query, "queryCount": len(tpl.queries or [])}
+
+
+class RunWithCommentaryRequest(BaseModel):
+    agentId: str
+    language: Optional[str] = None
+    filters: Optional[dict] = None
+    dateRange: Optional[dict] = None
+    disabledQueries: Optional[list[str]] = None
+
+
+@router.post("/sources/{source_id}/templates/{template_id}/run-with-commentary")
+async def run_template_with_commentary(
+    source_id: str,
+    template_id: str,
+    body: RunWithCommentaryRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Execute template queries then generate AI commentary per result."""
+    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    source = r.scalar_one_or_none()
+    if not source:
+        raise HTTPException(404, "Source not found")
+
+    # Resolve template
+    template = template_registry.get_template(template_id)
+    if not template:
+        r_tpl = await db.execute(select(ReportTemplate).where(ReportTemplate.id == template_id))
+        tpl_row = r_tpl.scalar_one_or_none()
+        if not tpl_row:
+            raise HTTPException(404, "Template not found")
+        template = {
+            "id": tpl_row.id, "name": tpl_row.name,
+            "queries": tpl_row.queries or [], "layout": tpl_row.layout,
+            "refresh_interval": tpl_row.refresh_interval,
+        }
+
+    # Resolve LLM
+    llm_overrides = None
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    agent = r_agent.scalar_one_or_none()
+    if agent and agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            llm_overrides = _llm_overrides_from_cfg(cfg)
+
+    settings = get_settings()
+
+    # Execute queries
+    run_result = await template_executor.execute_template(
+        template=template, source=source, db=db,
+        user_id=user.id, organization_id=user.organization_id,
+        filters=body.filters, date_range=body.dateRange,
+        disabled_queries=body.disabledQueries,
+        data_files_dir=settings.data_files_dir,
+    )
+
+    # Generate commentary per result
+    lang_name = LANGUAGE_NAMES.get(body.language or "", "")
+    lang_inst = f"Write in {lang_name}. " if lang_name else ""
+
+    for res in run_result.get("results", []):
+        if res.get("error") or not res.get("rows"):
+            res["explanation"] = None
+            continue
+        rows_preview = res["rows"][:10]
+        try:
+            raw, _, _ = await chat_completion(
+                [
+                    {"role": "system", "content": f"You are a data analyst. {lang_inst}Given query results, provide a 2-3 sentence business insight. Be concise and specific."},
+                    {"role": "user", "content": f"Query: {res.get('title', '')}\nData (first rows):\n{json.dumps(rows_preview, default=str)}"},
+                ],
+                max_tokens=256, llm_overrides=llm_overrides,
+            )
+            res["explanation"] = raw.strip()
+        except Exception:
+            res["explanation"] = None
+
+    return run_result
 
 
 @router.put("/sources/{source_id}/templates/{template_id}/customize")

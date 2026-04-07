@@ -1414,7 +1414,43 @@ export const apiClient = {
   },
 
   async runTemplateAsReport(sourceId: string, templateId: string, body: { agentId: string; language?: string }) {
-    return api<{ htmlContent: string; chartCount: number }>(`/api/templates/sources/${sourceId}/templates/${templateId}/run-report`, {
+    return api<{ id: string; sourceName: string; chartCount: number; createdAt: string }>(`/api/templates/sources/${sourceId}/templates/${templateId}/run-report`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async listTemplateReports(sourceId: string, templateId: string) {
+    return api<Array<{ id: string; sourceName: string; chartCount: number; createdAt: string }>>(`/api/templates/sources/${sourceId}/templates/${templateId}/reports`);
+  },
+
+  async updateTemplateQueries(sourceId: string, templateId: string, queries: Record<string, unknown>[]) {
+    return api<{ queries: Record<string, unknown>[]; queryCount: number }>(`/api/templates/sources/${sourceId}/templates/${templateId}/queries`, {
+      method: 'PATCH',
+      body: JSON.stringify({ queries }),
+    });
+  },
+
+  async addQueryToTemplate(sourceId: string, templateId: string, body: { agentId: string; description: string; language?: string }) {
+    return api<{ query: Record<string, unknown>; queryCount: number }>(`/api/templates/sources/${sourceId}/templates/${templateId}/add-query`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async runTemplateWithCommentary(sourceId: string, templateId: string, body: {
+    agentId: string; language?: string; filters?: Record<string, unknown>;
+    dateRange?: { start?: string; end?: string }; disabledQueries?: string[];
+  }) {
+    return api<{
+      runId: string; templateId: string; templateName: string; status: string;
+      results: Array<{
+        queryId: string; title: string; rows: Record<string, unknown>[];
+        chartSpec: Record<string, unknown> | null; error: string | null;
+        explanation?: string | null;
+      }>;
+      durationMs: number | null; createdAt: string;
+    }>(`/api/templates/sources/${sourceId}/templates/${templateId}/run-with-commentary`, {
       method: 'POST',
       body: JSON.stringify(body),
     });
