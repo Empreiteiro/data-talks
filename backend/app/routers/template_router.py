@@ -1,20 +1,50 @@
 """
-Report Templates: browse, execute, and customize pre-configured report templates for data sources.
+Report Templates: browse, execute, customize, and AI-generate report templates for data sources.
 """
+import json
+import logging
 import uuid
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User, Source, ReportTemplate, ReportTemplateRun
+from app.models import User, Source, Agent, ReportTemplate, ReportTemplateRun, LlmConfig, LlmSettings
 from app.auth import require_user
+from app.config import get_settings
 from app.schemas import TemplateRunRequest
 from app.services import template_registry, template_executor
+from app.llm.client import chat_completion
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/templates", tags=["templates"])
+
+
+def _llm_overrides_from_cfg(cfg: LlmConfig | LlmSettings | None) -> dict | None:
+    if not cfg:
+        return None
+    overrides: dict[str, Any] = {}
+    for attr in ("llm_provider", "openai_api_key", "openai_base_url", "openai_model",
+                 "ollama_base_url", "ollama_model", "litellm_base_url", "litellm_model",
+                 "litellm_api_key", "claude_code_model", "claude_code_oauth_token"):
+        val = getattr(cfg, attr, None)
+        if val:
+            overrides[attr] = val
+    return overrides or None
+
+
+LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+
+
+class GenerateTemplateRequest(BaseModel):
+    agentId: str
+    prompt: Optional[str] = None
+    language: Optional[str] = None
 
 
 @router.get("/sources/{source_id}/templates")
@@ -155,6 +185,182 @@ async def list_template_runs(
         }
         for run in runs
     ]
+
+
+@router.post("/sources/{source_id}/generate")
+async def generate_template(
+    source_id: str,
+    body: GenerateTemplateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Use AI to generate a report template with SQL queries for a source."""
+    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    source = r.scalar_one_or_none()
+    if not source:
+        raise HTTPException(404, "Source not found")
+
+    # Resolve LLM config
+    llm_overrides = None
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    agent = r_agent.scalar_one_or_none()
+    if agent and agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            llm_overrides = _llm_overrides_from_cfg(cfg)
+
+    # Build schema context from source metadata
+    meta = source.metadata_ or {}
+    schema_lines: list[str] = []
+
+    if source.type in ("csv", "xlsx"):
+        columns = meta.get("columns", [])
+        profile = meta.get("sample_profile", {})
+        schema_lines.append(f"Table: data (CSV, {meta.get('row_count', '?')} rows)")
+        for col in columns:
+            col_info = profile.get("columns", {}).get(col, {})
+            dtype = col_info.get("type", "unknown")
+            schema_lines.append(f"  - {col} ({dtype})")
+    elif source.type == "sql_database":
+        for ti in meta.get("table_infos", []):
+            table_name = ti.get("table", ti.get("name", "?"))
+            schema_lines.append(f"Table: {table_name}")
+            for c in ti.get("columns", []):
+                cname = c.get("name", c) if isinstance(c, dict) else c
+                ctype = c.get("type", "") if isinstance(c, dict) else ""
+                schema_lines.append(f"  - {cname} {ctype}".strip())
+    elif source.type == "bigquery":
+        for ti in meta.get("table_infos", []):
+            table_name = ti.get("table", "?")
+            schema_lines.append(f"Table: {table_name}")
+            for c in ti.get("columns", []):
+                cname = c.get("name", c) if isinstance(c, dict) else c
+                ctype = c.get("type", "") if isinstance(c, dict) else ""
+                schema_lines.append(f"  - {cname} {ctype}".strip())
+    else:
+        columns = meta.get("columns", [])
+        if columns:
+            schema_lines.append(f"Table: data ({source.type})")
+            for col in columns:
+                schema_lines.append(f"  - {col}")
+
+    if not schema_lines:
+        raise HTTPException(400, "Could not extract schema from source metadata")
+
+    schema_text = "\n".join(schema_lines)
+    lang_name = LANGUAGE_NAMES.get(body.language or "", "")
+    lang_instruction = f"Write ALL text (template name, description, query titles) in {lang_name}. " if lang_name else ""
+
+    system = (
+        "You are a data analyst. Given a database schema, create a report template with 3-6 SQL queries "
+        "that provide useful analytical insights. Each query should produce data suitable for charting.\n\n"
+        f"{lang_instruction}"
+        "Return ONLY valid JSON in this format:\n"
+        '{\n'
+        '  "name": "Template name",\n'
+        '  "description": "One-line description",\n'
+        '  "queries": [\n'
+        '    {\n'
+        '      "title": "Query title",\n'
+        '      "sql": "SELECT ... FROM ...",\n'
+        '      "chart_type": "bar"\n'
+        '    }\n'
+        '  ],\n'
+        '  "layout": "grid_2x2"\n'
+        '}\n\n'
+        "chart_type must be one of: bar, line, pie, histogram, scatter.\n"
+        "For CSV sources, the table name is 'data'. Quote column names with double quotes if they have spaces."
+    )
+
+    user_msg = f"Source: {source.name} ({source.type})\n\nSchema:\n{schema_text}"
+    if body.prompt:
+        user_msg += f"\n\nUser request: {body.prompt}"
+
+    try:
+        raw, usage, _trace = await chat_completion(
+            [{"role": "system", "content": system}, {"role": "user", "content": user_msg}],
+            max_tokens=2048,
+            llm_overrides=llm_overrides,
+        )
+    except Exception as exc:
+        raise HTTPException(400, f"LLM error: {exc}")
+
+    # Parse JSON
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines)
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1:
+        raise HTTPException(500, "Failed to parse LLM response as JSON")
+    try:
+        parsed = json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        raise HTTPException(500, "Failed to parse LLM response as JSON")
+
+    queries = parsed.get("queries", [])
+    for i, q in enumerate(queries):
+        if "id" not in q:
+            q["id"] = f"q{i+1}"
+        if "chart_config" not in q:
+            q["chart_config"] = {}
+
+    tpl = ReportTemplate(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        organization_id=user.organization_id,
+        source_type=source.type,
+        name=parsed.get("name", "AI-Generated Template"),
+        description=parsed.get("description", ""),
+        queries=queries,
+        layout=parsed.get("layout", "grid_2x2"),
+        refresh_interval=3600,
+        is_builtin=False,
+    )
+    db.add(tpl)
+    await db.commit()
+    await db.refresh(tpl)
+
+    return {
+        "id": tpl.id,
+        "name": tpl.name,
+        "sourceType": tpl.source_type,
+        "description": tpl.description or "",
+        "queries": tpl.queries,
+        "layout": tpl.layout,
+        "refreshInterval": tpl.refresh_interval,
+        "isBuiltin": False,
+        "queryCount": len(tpl.queries or []),
+    }
+
+
+@router.delete("/sources/{source_id}/templates/{template_id}")
+async def delete_template(
+    source_id: str,
+    template_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Delete a user-created template."""
+    r = await db.execute(
+        select(ReportTemplate).where(
+            ReportTemplate.id == template_id,
+            ReportTemplate.user_id == user.id,
+            ReportTemplate.is_builtin == False,
+        )
+    )
+    tpl = r.scalar_one_or_none()
+    if not tpl:
+        raise HTTPException(404, "Template not found or is built-in")
+    await db.delete(tpl)
+    await db.commit()
+    return {"ok": True}
 
 
 @router.put("/sources/{source_id}/templates/{template_id}/customize")

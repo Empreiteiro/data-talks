@@ -21,7 +21,9 @@ import { apiClient } from "@/services/apiClient";
 import { ChartRenderer, type ChartSpec } from "@/components/ChartRenderer";
 import { TemplateCustomizeDialog } from "@/components/TemplateCustomizeDialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MessageCircle, Play, Settings2 } from "lucide-react";
+import { ArrowLeft, Loader2, MessageCircle, Play, Settings2, Sparkles, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface TemplateDef {
   id: string;
@@ -61,7 +63,7 @@ interface TemplateModalProps {
 }
 
 export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: TemplateModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [sources, setSources] = useState<Array<{ id: string; name: string; type: string }>>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
@@ -73,6 +75,8 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [disabledQueries, setDisabledQueries] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [generatePrompt, setGeneratePrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   // Load sources when modal opens
   useEffect(() => {
@@ -145,6 +149,43 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     setDateRange(newDateRange);
   };
 
+  const handleGenerateTemplate = async () => {
+    if (!selectedSourceId) return;
+    setGenerating(true);
+    try {
+      const result = await apiClient.generateTemplate(selectedSourceId, {
+        agentId: workspaceId,
+        prompt: generatePrompt || undefined,
+        language,
+      });
+      setTemplates((prev) => [...prev, result]);
+      setGeneratePrompt("");
+      toast.success(t("studio.templateGenerated") || "Template generated!");
+    } catch (err: unknown) {
+      toast.error(t("studio.templateGenerateError") || "Failed to generate template", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (e: React.MouseEvent, templateId: string) => {
+    e.stopPropagation();
+    if (!selectedSourceId) return;
+    try {
+      await apiClient.deleteTemplate(selectedSourceId, templateId);
+      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
+      if (selectedTemplate?.id === templateId) {
+        setSelectedTemplate(null);
+        setRunResult(null);
+      }
+      toast.success(t("studio.templateDeleted") || "Template deleted");
+    } catch {
+      toast.error(t("studio.templateDeleteError") || "Failed to delete template");
+    }
+  };
+
   const layoutClass = (layout: string) => {
     switch (layout) {
       case "grid_2x2":
@@ -188,8 +229,29 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         </div>
       )}
 
-      {!loading && selectedSourceId && templates.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-8">
+      {/* AI Generate section */}
+      {!loading && selectedSourceId && (
+        <div className="border rounded-md p-3 space-y-2">
+          <Label className="text-xs font-medium">{t("studio.templateCreateLabel") || "Create template with AI"}</Label>
+          <Textarea
+            className="text-xs min-h-[60px]"
+            placeholder={t("studio.templateCreatePlaceholder") || "Describe the report you want (optional)... e.g. 'Monthly revenue by category with trends'"}
+            value={generatePrompt}
+            onChange={(e) => setGeneratePrompt(e.target.value)}
+            disabled={generating}
+          />
+          <Button size="sm" onClick={handleGenerateTemplate} disabled={generating}>
+            {generating ? (
+              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("studio.templateGenerating") || "Generating..."}</>
+            ) : (
+              <><Sparkles className="h-3.5 w-3.5 mr-1.5" />{t("studio.templateGenerate") || "Generate Template"}</>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {!loading && selectedSourceId && templates.length === 0 && !generating && (
+        <p className="text-sm text-muted-foreground text-center py-4">
           {t("studio.templateNoTemplates")}
         </p>
       )}
@@ -200,14 +262,26 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
           {templates.map((tpl) => (
             <Card
               key={tpl.id}
-              className="p-4 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all"
+              className="p-4 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all group"
               onClick={() => {
                 setSelectedTemplate(tpl);
                 setDisabledQueries([]);
                 setDateRange({ start: "", end: "" });
               }}
             >
-              <h4 className="font-semibold text-sm">{tpl.name}</h4>
+              <div className="flex items-start justify-between">
+                <h4 className="font-semibold text-sm flex-1">{tpl.name}</h4>
+                {!tpl.isBuiltin && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive flex-shrink-0"
+                    onClick={(e) => handleDeleteTemplate(e, tpl.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tpl.description}</p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-xs bg-muted px-2 py-0.5 rounded">{tpl.queryCount} queries</span>
