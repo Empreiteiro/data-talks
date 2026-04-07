@@ -331,7 +331,7 @@ async def list_ollama_models(
 
 class LlmConfigCreate(BaseModel):
     name: str
-    llm_provider: str  # openai | ollama | litellm | google | anthropic
+    llm_provider: str  # openai | ollama | litellm | google | anthropic | claude-code
     openai_api_key: Optional[str] = None
     openai_base_url: Optional[str] = None
     openai_model: Optional[str] = None
@@ -346,6 +346,8 @@ class LlmConfigCreate(BaseModel):
     google_model: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     anthropic_model: Optional[str] = None
+    claude_code_model: Optional[str] = None
+    claude_code_oauth_token: Optional[str] = None
 
 
 class LlmConfigUpdate(BaseModel):
@@ -366,6 +368,8 @@ class LlmConfigUpdate(BaseModel):
     google_model: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     anthropic_model: Optional[str] = None
+    claude_code_model: Optional[str] = None
+    claude_code_oauth_token: Optional[str] = None
 
 
 def _config_to_response(c: LlmConfig, env) -> dict:
