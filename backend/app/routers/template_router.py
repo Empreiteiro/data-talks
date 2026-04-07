@@ -365,6 +365,107 @@ async def delete_template(
     return {"ok": True}
 
 
+class RunReportRequest(BaseModel):
+    agentId: str
+    language: Optional[str] = None
+
+
+@router.post("/sources/{source_id}/templates/{template_id}/run-report")
+async def run_template_as_report(
+    source_id: str,
+    template_id: str,
+    body: RunReportRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Run a template and generate a full HTML report with charts and LLM commentary."""
+    from app.scripts.report_generator import generate_report as gen_report
+    import pandas as pd
+
+    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    source = r.scalar_one_or_none()
+    if not source:
+        raise HTTPException(404, "Source not found")
+
+    # Resolve template
+    template = template_registry.get_template(template_id)
+    if not template:
+        r_tpl = await db.execute(select(ReportTemplate).where(ReportTemplate.id == template_id))
+        tpl_row = r_tpl.scalar_one_or_none()
+        if not tpl_row:
+            raise HTTPException(404, "Template not found")
+        template = {
+            "id": tpl_row.id,
+            "name": tpl_row.name,
+            "queries": tpl_row.queries or [],
+        }
+
+    # Resolve LLM config
+    llm_overrides = None
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    agent = r_agent.scalar_one_or_none()
+    if agent and agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            llm_overrides = _llm_overrides_from_cfg(cfg)
+
+    settings = get_settings()
+    meta = source.metadata_ or {}
+    source_type = source.type or ""
+
+    # Load the source data into a DataFrame (same as report_csv)
+    if source_type in ("csv", "xlsx", "parquet", "json"):
+        file_path = meta.get("file_path", "")
+        full_path = Path(settings.data_files_dir) / file_path
+        if not full_path.exists():
+            raise HTTPException(400, f"Source file not found: {file_path}")
+        ext = full_path.suffix.lower()
+        if ext == ".csv":
+            df = pd.read_csv(full_path, nrows=100_000)
+        elif ext in (".xlsx", ".xls"):
+            df = pd.read_excel(full_path, nrows=100_000)
+        elif ext == ".parquet":
+            df = pd.read_parquet(full_path)
+        elif ext == ".json":
+            df = pd.read_json(full_path)
+        else:
+            df = pd.read_csv(full_path, nrows=100_000)
+    elif source_type == "sql_database":
+        conn_str = meta.get("connectionString") or meta.get("connection_string", "")
+        # Load from first table
+        table_infos = meta.get("table_infos", [])
+        table_name = table_infos[0].get("table", table_infos[0].get("name", "")) if table_infos else ""
+        if not conn_str or not table_name:
+            raise HTTPException(400, "SQL source missing connection info")
+        from sqlalchemy import create_engine
+        eng = create_engine(conn_str)
+        df = pd.read_sql_table(table_name, eng)
+        if len(df) > 100_000:
+            df = df.head(100_000)
+    else:
+        raise HTTPException(400, f"Report generation not supported for source type: {source_type}")
+
+    try:
+        result = await gen_report(
+            df=df,
+            source_name=f"{source.name} — {template.get('name', 'Template')}",
+            llm_overrides=llm_overrides,
+            channel="studio",
+            language=body.language,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        logger.exception("Template report generation failed")
+        raise HTTPException(500, f"Report generation failed: {exc}")
+
+    return {
+        "htmlContent": result["html_content"],
+        "chartCount": result.get("chart_count", 0),
+    }
+
+
 @router.put("/sources/{source_id}/templates/{template_id}/customize")
 async def customize_template(
     source_id: str,
