@@ -136,6 +136,7 @@ async def run_template(
     disabled_queries = body.disabledQueries if body else None
 
     try:
+        settings = get_settings()
         result = await template_executor.execute_template(
             template=template,
             source=source,
@@ -145,6 +146,7 @@ async def run_template(
             filters=filters,
             date_range=date_range,
             disabled_queries=disabled_queries,
+            data_files_dir=settings.data_files_dir,
         )
     except Exception as exc:
         import logging
