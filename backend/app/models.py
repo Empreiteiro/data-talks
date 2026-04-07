@@ -97,7 +97,7 @@ class LlmConfig(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # used for new workspaces
-    llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm | google | anthropic
+    llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm | google | anthropic | claude-code
     openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -112,6 +112,8 @@ class LlmConfig(Base):
     google_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     anthropic_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     anthropic_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claude_code_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claude_code_oauth_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -120,7 +122,7 @@ class LlmSettings(Base):
     """Per-user LLM configuration. Falls back to env vars when not set."""
     __tablename__ = "llm_settings"
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
-    llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm | google | anthropic
+    llm_provider: Mapped[str] = mapped_column(String(20), default="openai")  # openai | ollama | litellm | google | anthropic | claude-code
     openai_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     openai_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -135,6 +137,8 @@ class LlmSettings(Base):
     google_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     anthropic_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     anthropic_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claude_code_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claude_code_oauth_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 

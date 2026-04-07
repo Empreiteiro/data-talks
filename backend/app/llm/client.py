@@ -33,6 +33,8 @@ def _effective_settings(overrides: dict[str, Any] | None = None) -> dict[str, An
         "google_model": s.google_model,
         "anthropic_api_key": s.anthropic_api_key or "",
         "anthropic_model": s.anthropic_model,
+        "claude_code_model": s.claude_code_model,
+        "claude_code_oauth_token": s.claude_code_oauth_token or "",
     }
     if overrides:
         for k, v in overrides.items():
@@ -132,6 +134,8 @@ async def chat_completion(
         return await _google_chat(messages, max_tokens, cfg)
     if provider == "anthropic":
         return await _anthropic_chat(messages, max_tokens, cfg)
+    if provider == "claude-code":
+        return await _claude_code_chat(messages, max_tokens, cfg)
     return await _openai_chat(messages, max_tokens, cfg)
 
 
@@ -281,6 +285,142 @@ async def _anthropic_chat(messages: list[dict[str, str]], max_tokens: int, cfg: 
     finish = getattr(resp, "stop_reason", None)
     trace = _build_trace(messages, None, content=content, finish_reason=finish)
     return content, _usage("anthropic", model, input_t, output_t), trace
+
+
+async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    """
+    Use the Claude CLI binary as an LLM provider via async subprocess.
+
+    The CLI is invoked as:
+      claude -p "<prompt>" --output-format stream-json --model <model> --verbose
+
+    Authentication: OAuth token passed via CLAUDE_CODE_OAUTH_TOKEN env var
+    (loaded from config or ~/.claude/oauth_token).
+    """
+    import asyncio
+    import json as _json
+    import os
+    import shutil
+    from pathlib import Path as _Path
+
+    model = cfg.get("claude_code_model", "")
+
+    # ── Discover the claude binary ──
+    claude_bin = shutil.which("claude")
+    if not claude_bin:
+        # macOS Claude Desktop bundle
+        support_dir = _Path.home() / "Library" / "Application Support" / "Claude" / "claude-code"
+        if support_dir.exists():
+            for version_dir in sorted(support_dir.iterdir(), reverse=True):
+                candidate = version_dir / "claude.app" / "Contents" / "MacOS" / "claude"
+                if candidate.exists():
+                    claude_bin = str(candidate)
+                    break
+    if not claude_bin:
+        raise ValueError(
+            "Claude CLI binary not found. Install it with: npm install -g @anthropic-ai/claude-code"
+        )
+
+    # ── Build the prompt from messages ──
+    # Combine system + user messages into a single prompt for the CLI
+    system_parts = []
+    user_parts = []
+    for m in messages:
+        role = m.get("role", "user")
+        content = m.get("content", "")
+        if role == "system":
+            system_parts.append(content)
+        else:
+            user_parts.append(content)
+
+    prompt = ""
+    if system_parts:
+        prompt += "\n".join(system_parts) + "\n\n"
+    prompt += "\n".join(user_parts)
+
+    # ── Build subprocess environment ──
+    env = {**os.environ, "CLAUDE_CODE_ENTRYPOINT": "cli"}
+
+    # OAuth token: config > env var > file on disk
+    oauth_token = (cfg.get("claude_code_oauth_token") or "").strip()
+    if not oauth_token:
+        oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if not oauth_token:
+        token_paths = [
+            _Path.home() / ".claude" / "oauth_token",
+            _Path.home() / ".last-intelligence" / "claude_oauth_token",
+        ]
+        for tp in token_paths:
+            if tp.exists():
+                oauth_token = tp.read_text().strip()
+                if oauth_token:
+                    break
+    if oauth_token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
+
+    # ── Build CLI args ──
+    args = [claude_bin, "-p", prompt, "--output-format", "stream-json", "--verbose"]
+    if model:
+        args.extend(["--model", model])
+
+    # ── Execute subprocess ──
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env=env,
+    )
+
+    stdout_data, stderr_data = await proc.communicate()
+
+    if proc.returncode != 0:
+        err_text = stderr_data.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"Claude CLI exited with code {proc.returncode}: {err_text}")
+
+    # ── Parse stream-json output ──
+    # Each line is a JSON object. We look for:
+    # - {"type": "assistant", "message": {"content": [{"type": "text", "text": "..."}]}}
+    # - {"type": "content_block_delta", "delta": {"text": "..."}}
+    # - {"type": "result", "result": "...", "text": "..."}
+    content_parts: list[str] = []
+    result_text = ""
+
+    for line in stdout_data.decode("utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = _json.loads(line)
+        except _json.JSONDecodeError:
+            continue
+
+        msg_type = obj.get("type", "")
+
+        if msg_type == "assistant":
+            # Extract text blocks from message.content
+            message = obj.get("message", {})
+            for block in message.get("content", []):
+                if block.get("type") == "text":
+                    content_parts.append(block.get("text", ""))
+
+        elif msg_type == "content_block_delta":
+            delta = obj.get("delta", {})
+            if delta.get("text"):
+                content_parts.append(delta["text"])
+
+        elif msg_type == "result":
+            result_text = obj.get("result", "") or obj.get("text", "")
+
+    content = result_text or "".join(content_parts)
+    content = content.strip()
+
+    # Usage: CLI doesn't report tokens, estimate from content length
+    est_input = len(prompt) // 4
+    est_output = len(content) // 4
+
+    display_model = model or "claude-code"
+    trace = _build_trace(messages, None, content=content, finish_reason="end_turn")
+    return content, _usage("claude-code", display_model, est_input, est_output), trace
 
 
 async def synthesize_speech(

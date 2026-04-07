@@ -71,6 +71,10 @@ def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None
         overrides["litellm_model"] = cfg.litellm_model
     if getattr(cfg, "litellm_api_key", None):
         overrides["litellm_api_key"] = cfg.litellm_api_key
+    if getattr(cfg, "claude_code_model", None):
+        overrides["claude_code_model"] = cfg.claude_code_model
+    if getattr(cfg, "claude_code_oauth_token", None):
+        overrides["claude_code_oauth_token"] = cfg.claude_code_oauth_token
     return overrides if overrides else None
 
 
