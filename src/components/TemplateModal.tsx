@@ -21,7 +21,7 @@ import { apiClient } from "@/services/apiClient";
 import { ChartRenderer, type ChartSpec } from "@/components/ChartRenderer";
 import { TemplateCustomizeDialog } from "@/components/TemplateCustomizeDialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MessageCircle, Play, Settings2, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Maximize2, MessageCircle, Play, Settings2, Sparkles, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
@@ -186,6 +186,75 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     }
   };
 
+  const buildReportHtml = (): string => {
+    if (!runResult || !selectedTemplate) return "";
+    const title = selectedTemplate.name;
+    const desc = selectedTemplate.description;
+    const cards = runResult.results.map((r) => {
+      if (r.error) {
+        return `<div class="card"><h3>${r.title}</h3><p class="error">${r.error}</p></div>`;
+      }
+      let tableHtml = "";
+      if (r.rows.length > 0) {
+        const cols = Object.keys(r.rows[0]);
+        const thead = cols.map((c) => `<th>${c}</th>`).join("");
+        const tbody = r.rows.slice(0, 50).map((row) =>
+          "<tr>" + cols.map((c) => `<td>${row[c] ?? ""}</td>`).join("") + "</tr>"
+        ).join("\n");
+        tableHtml = `<table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
+      }
+      return `<div class="card"><h3>${r.title}</h3>${tableHtml || '<p class="empty">No data</p>'}</div>`;
+    }).join("\n");
+
+    return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f13;color:#e4e4e7;padding:2rem}
+h1{font-size:1.5rem;margin-bottom:.25rem}
+.desc{color:#a1a1aa;font-size:.875rem;margin-bottom:1.5rem}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+@media(max-width:768px){.grid{grid-template-columns:1fr}}
+.card{background:#1a1a23;border:1px solid #27272a;border-radius:.75rem;padding:1.25rem}
+.card h3{font-size:.875rem;font-weight:600;margin-bottom:.75rem;color:#f4f4f5}
+table{width:100%;border-collapse:collapse;font-size:.75rem}
+th{text-align:left;padding:.375rem .5rem;border-bottom:1px solid #3f3f46;color:#a1a1aa;font-weight:500}
+td{padding:.375rem .5rem;border-bottom:1px solid #27272a}
+.error{color:#f87171;font-size:.8rem}
+.empty{color:#71717a;font-size:.8rem}
+.meta{text-align:right;color:#71717a;font-size:.75rem;margin-top:1rem}
+</style></head><body>
+<h1>${title}</h1>
+<p class="desc">${desc}</p>
+<div class="grid">${cards}</div>
+<p class="meta">${runResult.status} &middot; ${runResult.durationMs ? runResult.durationMs + "ms" : ""} &middot; ${runResult.createdAt ? new Date(runResult.createdAt).toLocaleString() : ""}</p>
+</body></html>`;
+  };
+
+  const handleOpenHtmlNewTab = () => {
+    const html = buildReportHtml();
+    if (!html) return;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+
+  const handleDownloadHtml = () => {
+    const html = buildReportHtml();
+    if (!html) return;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `template-${selectedTemplate?.name || "report"}-${new Date().toISOString().slice(0, 10)}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const layoutClass = (layout: string) => {
     switch (layout) {
       case "grid_2x2":
@@ -318,6 +387,16 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
             <><Play className="h-4 w-4 mr-1" />{t("studio.templateRun")}</>
           )}
         </Button>
+        {runResult && (
+          <>
+            <Button variant="ghost" size="sm" onClick={handleOpenHtmlNewTab} className="h-8 gap-1">
+              <Maximize2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleDownloadHtml} className="h-8 gap-1">
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Results */}
