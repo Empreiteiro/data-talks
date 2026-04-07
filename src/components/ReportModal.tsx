@@ -18,7 +18,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
-import { FileText, Loader2, Trash2, Download, BarChart3, Eye } from "lucide-react";
+import { FileText, Loader2, Trash2, Download, BarChart3, Eye, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 
 export interface ReportItem {
@@ -149,6 +149,15 @@ export function ReportModal({ open, onOpenChange, workspaceId }: ReportModalProp
     URL.revokeObjectURL(url);
   };
 
+  const handleOpenNewTab = () => {
+    if (!reportHtml) return;
+    const blob = new Blob([reportHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    // Revoke after a short delay to ensure the tab loads
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+
   // Write HTML into the iframe via srcdoc
   useEffect(() => {
     if (iframeRef.current && reportHtml) {
@@ -257,10 +266,16 @@ export function ReportModal({ open, onOpenChange, workspaceId }: ReportModalProp
                       : t("studio.reportTitle")}
                 </span>
                 {reportHtml && viewingReport && (
-                  <Button variant="ghost" size="sm" onClick={handleDownload} className="h-7 gap-1.5">
-                    <Download className="h-3.5 w-3.5" />
-                    {t("studio.reportDownload")}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={handleOpenNewTab} className="h-7 gap-1.5">
+                      <Maximize2 className="h-3.5 w-3.5" />
+                      {t("studio.reportOpenNewTab") || "Open in new tab"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleDownload} className="h-7 gap-1.5">
+                      <Download className="h-3.5 w-3.5" />
+                      {t("studio.reportDownload")}
+                    </Button>
+                  </div>
                 )}
               </div>
               <div className="flex-1 min-h-0 overflow-hidden">
