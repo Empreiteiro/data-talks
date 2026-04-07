@@ -25,7 +25,6 @@ import {
 // Tabs replaced with manual tab bar for proper flex layout
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiClient } from "@/services/apiClient";
 import { ChartRenderer, type ChartSpec } from "@/components/ChartRenderer";
@@ -111,7 +110,6 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   // Run results
   const [runResult, setRunResult] = useState<TemplateRunResult | null>(null);
   const [running, setRunning] = useState(false);
-  const [withCommentary, setWithCommentary] = useState(false);
 
   // Customization
   const [customizeOpen, setCustomizeOpen] = useState(false);
@@ -207,20 +205,10 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     if (!selectedTemplate || !selectedSourceId) return;
     setRunning(true);
     try {
-      let result: TemplateRunResult;
-      if (withCommentary) {
-        result = await apiClient.runTemplateWithCommentary(selectedSourceId, selectedTemplate.id, {
-          agentId: workspaceId,
-          language,
-          disabledQueries: disabledQueries.length > 0 ? disabledQueries : undefined,
-          dateRange: dateRange.start || dateRange.end ? dateRange : undefined,
-        });
-      } else {
-        result = await apiClient.runTemplate(selectedSourceId, selectedTemplate.id, {
-          disabledQueries: disabledQueries.length > 0 ? disabledQueries : undefined,
-          dateRange: dateRange.start || dateRange.end ? dateRange : undefined,
-        });
-      }
+      const result = await apiClient.runTemplate(selectedSourceId, selectedTemplate.id, {
+        disabledQueries: disabledQueries.length > 0 ? disabledQueries : undefined,
+        dateRange: dateRange.start || dateRange.end ? dateRange : undefined,
+      });
       setRunResult(result);
       setDetailTab("results");
     } catch (err: unknown) {
@@ -452,10 +440,6 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
           <p className="text-xs text-muted-foreground truncate">{selectedTemplate!.description}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center gap-1.5 mr-2">
-            <Switch id="commentary" checked={withCommentary} onCheckedChange={setWithCommentary} className="scale-75" />
-            <Label htmlFor="commentary" className="text-xs cursor-pointer">AI Commentary</Label>
-          </div>
           <Button variant="outline" size="sm" className="h-7" onClick={() => setCustomizeOpen(true)}>
             <Settings2 className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateCustomize")}</span>
           </Button>
@@ -522,7 +506,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
               </div>
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground">Click "{t("studio.templateRun")}" to execute queries{withCommentary ? " with AI commentary" : ""}.</p>
+                <p className="text-sm text-muted-foreground">Click "{t("studio.templateRun")}" to execute queries.</p>
               </div>
             )}
           </div>
