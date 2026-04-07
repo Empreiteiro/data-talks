@@ -22,7 +22,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Tabs replaced with manual tab bar for proper flex layout
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -135,7 +135,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   const [addingQuery, setAddingQuery] = useState(false);
 
   // Detail tab
-  const [detailTab, setDetailTab] = useState("results");
+  const [detailTab, setDetailTab] = useState("queries");
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -200,7 +200,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     setViewingReportId(null);
     setDisabledQueries([]);
     setDateRange({ start: "", end: "" });
-    setDetailTab("results");
+    setDetailTab("queries");
   };
 
   const handleRunTemplate = async () => {
@@ -468,154 +468,168 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={detailTab} onValueChange={setDetailTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="w-full shrink-0">
-          <TabsTrigger value="results" className="flex-1 text-xs">Results</TabsTrigger>
-          <TabsTrigger value="queries" className="flex-1 text-xs">Queries ({selectedTemplate!.queries.length})</TabsTrigger>
-          <TabsTrigger value="reports" className="flex-1 text-xs">Reports ({savedReports.length})</TabsTrigger>
-        </TabsList>
+      {/* Tab bar */}
+      <div className="flex rounded-md bg-muted p-1 shrink-0">
+        {(["queries", "results", "reports"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setDetailTab(tab)}
+            className={`flex-1 text-xs font-medium py-1.5 rounded-sm transition-all ${detailTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {tab === "queries" ? `Queries (${selectedTemplate!.queries.length})` : tab === "results" ? "Results" : `Reports (${savedReports.length})`}
+          </button>
+        ))}
+      </div>
 
-        {/* ── Results tab ── */}
-        <TabsContent value="results" className="flex-1 overflow-y-auto mt-2 data-[state=active]:flex-1"  style={{ minHeight: 0 }}>
-          {runResult ? (
-            <div className="space-y-3">
-              <div className={layoutClass(selectedTemplate!.layout)}>
-                {runResult.results.map((result) => (
-                  <Card key={result.queryId} className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold">{result.title}</h4>
-                      {onUseInChat && (
-                        <Button variant="ghost" size="sm" onClick={() => handleUseInChat(result)}>
-                          <MessageCircle className="h-3 w-3 mr-1" /><span className="text-xs">{t("studio.templateUseInChat")}</span>
-                        </Button>
-                      )}
-                    </div>
-                    {result.error ? (
-                      <p className="text-sm text-destructive">{result.error}</p>
-                    ) : result.chartSpec ? (
-                      <ChartRenderer spec={result.chartSpec as ChartSpec} />
-                    ) : result.rows.length > 0 ? (
-                      <div className="overflow-x-auto max-h-48">
-                        <table className="text-xs w-full">
-                          <thead><tr>{Object.keys(result.rows[0]).map((col) => <th key={col} className="text-left p-1 border-b font-medium">{col}</th>)}</tr></thead>
-                          <tbody>{result.rows.slice(0, 20).map((row, i) => <tr key={i}>{Object.values(row).map((val, j) => <td key={j} className="p-1 border-b">{String(val ?? "")}</td>)}</tr>)}</tbody>
-                        </table>
+      {/* Tab content — fills remaining space */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
+
+        {/* ── Results ── */}
+        {detailTab === "results" && (
+          <div className="flex-1 overflow-y-auto">
+            {runResult ? (
+              <div className="space-y-3">
+                <div className={layoutClass(selectedTemplate!.layout)}>
+                  {runResult.results.map((result) => (
+                    <Card key={result.queryId} className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-semibold">{result.title}</h4>
+                        {onUseInChat && (
+                          <Button variant="ghost" size="sm" onClick={() => handleUseInChat(result)}>
+                            <MessageCircle className="h-3 w-3 mr-1" /><span className="text-xs">{t("studio.templateUseInChat")}</span>
+                          </Button>
+                        )}
                       </div>
-                    ) : <p className="text-xs text-muted-foreground">No data</p>}
-                    {result.explanation && (
-                      <p className="text-sm text-muted-foreground mt-3 pt-3 border-t italic">{result.explanation}</p>
-                    )}
-                  </Card>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground text-right">{runResult.status} &middot; {runResult.durationMs ? `${runResult.durationMs}ms` : ""}</p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">Click "{t("studio.templateRun")}" to execute queries{withCommentary ? " with AI commentary" : ""}.</p>
-          )}
-        </TabsContent>
-
-        {/* ── Queries tab ── */}
-        <TabsContent value="queries" className="flex-1 overflow-y-auto mt-2" style={{ minHeight: 0 }}>
-          <div className="space-y-2">
-            {selectedTemplate!.queries.map((q) => (
-              <div key={q.id} className="border rounded-md p-3 group">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{q.title}</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{q.chart_type}</span>
-                    {!selectedTemplate!.isBuiltin && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive" onClick={() => handleRemoveQuery(q.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
+                      {result.error ? (
+                        <p className="text-sm text-destructive">{result.error}</p>
+                      ) : result.chartSpec ? (
+                        <ChartRenderer spec={result.chartSpec as ChartSpec} />
+                      ) : result.rows.length > 0 ? (
+                        <div className="overflow-x-auto max-h-48">
+                          <table className="text-xs w-full">
+                            <thead><tr>{Object.keys(result.rows[0]).map((col) => <th key={col} className="text-left p-1 border-b font-medium">{col}</th>)}</tr></thead>
+                            <tbody>{result.rows.slice(0, 20).map((row, i) => <tr key={i}>{Object.values(row).map((val, j) => <td key={j} className="p-1 border-b">{String(val ?? "")}</td>)}</tr>)}</tbody>
+                          </table>
+                        </div>
+                      ) : <p className="text-xs text-muted-foreground">No data</p>}
+                      {result.explanation && (
+                        <p className="text-sm text-muted-foreground mt-3 pt-3 border-t italic">{result.explanation}</p>
+                      )}
+                    </Card>
+                  ))}
                 </div>
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="sql" className="border-0">
-                    <AccordionTrigger className="text-xs py-1">SQL</AccordionTrigger>
-                    <AccordionContent>
-                      <pre className="bg-muted rounded p-2 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{q.sql}</pre>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                <p className="text-xs text-muted-foreground text-right">{runResult.status} &middot; {runResult.durationMs ? `${runResult.durationMs}ms` : ""}</p>
               </div>
-            ))}
-
-            {/* Add query */}
-            {!selectedTemplate!.isBuiltin && (
-              <div className="border rounded-md p-3 border-dashed space-y-2">
-                <Label className="text-xs font-medium flex items-center gap-1"><Plus className="h-3 w-3" /> Add query with AI</Label>
-                <Textarea className="text-xs min-h-[50px]" placeholder="Describe the query... e.g. 'Top 10 products by revenue'" value={addQueryDesc} onChange={(e) => setAddQueryDesc(e.target.value)} disabled={addingQuery} />
-                <Button size="sm" variant="outline" onClick={handleAddQuery} disabled={addingQuery || !addQueryDesc.trim()}>
-                  {addingQuery ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Adding...</> : <><Sparkles className="h-3 w-3 mr-1" />Add Query</>}
-                </Button>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">Click "{t("studio.templateRun")}" to execute queries{withCommentary ? " with AI commentary" : ""}.</p>
               </div>
             )}
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Reports tab ── */}
-        <TabsContent value="reports" className="flex-1 flex flex-col mt-2" style={{ minHeight: 0 }}>
-          {/* Report list */}
-          <ScrollArea className="h-28 border rounded-md shrink-0">
-            {savedReports.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-6">No reports generated yet. Click "Full Report" to create one.</p>
-            ) : (
-              <ul className="p-2 space-y-1">
-                {savedReports.map((r) => (
-                  <li key={r.id}>
-                    <div
-                      role="button" tabIndex={0}
-                      onClick={() => handleViewSavedReport(r.id)}
-                      onKeyDown={(e) => e.key === "Enter" && handleViewSavedReport(r.id)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${viewingReportId === r.id ? "border-accent/40 bg-accent text-accent-foreground" : "border-transparent hover:bg-accent/80"}`}
-                    >
-                      <span className="truncate flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 shrink-0" />
-                        {new Date(r.createdAt).toLocaleDateString()} {new Date(r.createdAt).toLocaleTimeString()}
-                        <span className="text-xs text-muted-foreground">({r.chartCount} charts)</span>
-                      </span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => handleDeleteSavedReport(e, r.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+        {/* ── Queries ── */}
+        {detailTab === "queries" && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-2">
+              {selectedTemplate!.queries.map((q) => (
+                <div key={q.id} className="border rounded-md p-3 group">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{q.title}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{q.chart_type}</span>
+                      {!selectedTemplate!.isBuiltin && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive" onClick={() => handleRemoveQuery(q.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </ScrollArea>
-
-          {/* Report iframe viewer */}
-          <div className="flex-1 min-h-0 border rounded-lg flex flex-col overflow-hidden mt-2">
-            {reportHtml && (
-              <div className="p-2 border-b bg-muted/50 text-xs font-medium shrink-0 flex items-center justify-end gap-1">
-                <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs" onClick={handleOpenReportNewTab}>
-                  <Maximize2 className="h-3 w-3" />{t("studio.reportOpenNewTab") || "Open in new tab"}
-                </Button>
-                <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs" onClick={handleDownloadReport}>
-                  <Download className="h-3 w-3" />{t("studio.reportDownload")}
-                </Button>
-              </div>
-            )}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {generatingReport || loadingReportHtml ? (
-                <div className="flex flex-col items-center justify-center gap-3 h-full text-muted-foreground">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                  <span className="text-sm">{generatingReport ? (t("studio.templateGeneratingReport") || "Generating report...") : "Loading..."}</span>
+                  </div>
+                  <Accordion type="single" collapsible>
+                    <AccordionItem value="sql" className="border-0">
+                      <AccordionTrigger className="text-xs py-1">SQL</AccordionTrigger>
+                      <AccordionContent>
+                        <pre className="bg-muted rounded p-2 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{q.sql}</pre>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
-              ) : reportHtml ? (
-                <iframe ref={iframeRef} title="Template Report" sandbox="allow-same-origin" className="w-full h-full border-0" style={{ background: "#14141a" }} />
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  Select a report from the list or generate a new one.
+              ))}
+
+              {!selectedTemplate!.isBuiltin && (
+                <div className="border rounded-md p-3 border-dashed space-y-2">
+                  <Label className="text-xs font-medium flex items-center gap-1"><Plus className="h-3 w-3" /> Add query with AI</Label>
+                  <Textarea className="text-xs min-h-[50px]" placeholder="Describe the query... e.g. 'Top 10 products by revenue'" value={addQueryDesc} onChange={(e) => setAddQueryDesc(e.target.value)} disabled={addingQuery} />
+                  <Button size="sm" variant="outline" onClick={handleAddQuery} disabled={addingQuery || !addQueryDesc.trim()}>
+                    {addingQuery ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Adding...</> : <><Sparkles className="h-3 w-3 mr-1" />Add Query</>}
+                  </Button>
                 </div>
               )}
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+
+        {/* ── Reports ── */}
+        {detailTab === "reports" && (
+          <div className="flex-1 flex flex-col min-h-0">
+            <ScrollArea className="h-28 border rounded-md shrink-0">
+              {savedReports.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">No reports generated yet. Click "Full Report" to create one.</p>
+              ) : (
+                <ul className="p-2 space-y-1">
+                  {savedReports.map((r) => (
+                    <li key={r.id}>
+                      <div
+                        role="button" tabIndex={0}
+                        onClick={() => handleViewSavedReport(r.id)}
+                        onKeyDown={(e) => e.key === "Enter" && handleViewSavedReport(r.id)}
+                        className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${viewingReportId === r.id ? "border-accent/40 bg-accent text-accent-foreground" : "border-transparent hover:bg-accent/80"}`}
+                      >
+                        <span className="truncate flex items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
+                          {new Date(r.createdAt).toLocaleDateString()} {new Date(r.createdAt).toLocaleTimeString()}
+                          <span className="text-xs text-muted-foreground">({r.chartCount} charts)</span>
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => handleDeleteSavedReport(e, r.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ScrollArea>
+
+            <div className="flex-1 min-h-0 border rounded-lg flex flex-col overflow-hidden mt-2">
+              {reportHtml && (
+                <div className="p-2 border-b bg-muted/50 text-xs font-medium shrink-0 flex items-center justify-end gap-1">
+                  <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs" onClick={handleOpenReportNewTab}>
+                    <Maximize2 className="h-3 w-3" />{t("studio.reportOpenNewTab") || "Open in new tab"}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs" onClick={handleDownloadReport}>
+                    <Download className="h-3 w-3" />{t("studio.reportDownload")}
+                  </Button>
+                </div>
+              )}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {generatingReport || loadingReportHtml ? (
+                  <div className="flex flex-col items-center justify-center gap-3 h-full text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <span className="text-sm">{generatingReport ? (t("studio.templateGeneratingReport") || "Generating report...") : "Loading..."}</span>
+                  </div>
+                ) : reportHtml ? (
+                  <iframe ref={iframeRef} title="Template Report" sandbox="allow-same-origin" className="w-full h-full border-0" style={{ background: "#14141a" }} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    Select a report or click "Full Report" to generate one.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 
