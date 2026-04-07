@@ -14,11 +14,12 @@ interface StudioPanelProps {
   onOpenMessaging?: () => void;
   onOpenApiAccess?: () => void;
   onOpenMedallion?: () => void;
+  onOpenAlerts?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenMessaging, onOpenApiAccess, onOpenMedallion, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenMessaging, onOpenApiAccess, onOpenMedallion, onOpenAlerts, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -81,7 +82,8 @@ export function StudioPanel({ onOpenGraph, onOpenSummary, onOpenAudio, onOpenAut
       icon: Bell,
       title: "Alerts",
       description: t('studio.alertConfig'),
-      locked: true,
+      locked: false,
+      onClick: onOpenAlerts,
     },
   ];
 
