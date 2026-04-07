@@ -22,10 +22,8 @@ MAX_ROWS_FETCH = 500
 _result_cache: dict[str, tuple[list[dict], float]] = {}
 
 
-def _run_query_sync(connection_string: str, query: str) -> list[dict]:
-    """Execute a SELECT query synchronously and return rows."""
-    from sqlalchemy import create_engine, text
-
+def _validate_select_only(query: str) -> None:
+    """Ensure query is a SELECT statement."""
     q = query.strip().upper()
     if not q.startswith("SELECT"):
         raise ValueError("Only SELECT queries are allowed")
@@ -33,11 +31,52 @@ def _run_query_sync(connection_string: str, query: str) -> list[dict]:
         if forbidden in q:
             raise ValueError("Only SELECT queries are allowed")
 
+
+def _run_query_sync(connection_string: str, query: str) -> list[dict]:
+    """Execute a SELECT query synchronously against a SQL database and return rows."""
+    from sqlalchemy import create_engine, text
+
+    _validate_select_only(query)
     engine = create_engine(connection_string)
     with engine.connect() as conn:
         result = conn.execute(text(query))
         rows = result.mappings().fetchmany(MAX_ROWS_FETCH)
     return [dict(r) for r in rows]
+
+
+def _run_query_on_csv_sync(file_path: str, data_files_dir: str, query: str) -> list[dict]:
+    """Execute a SELECT query against a CSV/XLSX file loaded into in-memory SQLite."""
+    import sqlite3
+    from pathlib import Path
+    import pandas as pd
+
+    _validate_select_only(query)
+
+    full_path = Path(data_files_dir) / file_path
+    if not full_path.exists():
+        raise FileNotFoundError(f"Source file not found: {full_path}")
+
+    ext = full_path.suffix.lower()
+    if ext == ".csv":
+        df = pd.read_csv(full_path, nrows=100_000)
+    elif ext in (".xlsx", ".xls"):
+        df = pd.read_excel(full_path, nrows=100_000)
+    elif ext == ".json":
+        df = pd.read_json(full_path)
+    elif ext == ".parquet":
+        df = pd.read_parquet(full_path)
+    else:
+        df = pd.read_csv(full_path, nrows=100_000)
+
+    conn = sqlite3.connect(":memory:")
+    df.to_sql("data", conn, index=False, if_exists="replace")
+
+    cursor = conn.execute(query)
+    columns = [desc[0] for desc in cursor.description] if cursor.description else []
+    rows = cursor.fetchmany(MAX_ROWS_FETCH)
+    conn.close()
+
+    return [dict(zip(columns, row)) for row in rows]
 
 
 def _resolve_sql_placeholders(sql: str, source_meta: dict, filters: dict | None = None) -> str:
@@ -117,6 +156,7 @@ async def execute_template(
     filters: dict | None = None,
     date_range: dict | None = None,
     disabled_queries: list[str] | None = None,
+    data_files_dir: str = "./data_files",
 ) -> dict[str, Any]:
     """
     Execute all queries in a template against the source and return results.
@@ -134,6 +174,9 @@ async def execute_template(
         return cached[0]
 
     source_meta = source.metadata_ or {}
+    source_type = getattr(source, "type", "")
+    is_file_source = source_type in ("csv", "xlsx", "parquet", "json")
+    file_path = source_meta.get("file_path", "") if is_file_source else ""
     connection_string = source_meta.get("connectionString") or source_meta.get("connection_string", "")
     table_infos = source_meta.get("table_infos") or []
 
@@ -169,6 +212,11 @@ async def execute_template(
 
         raw_sql = query_def.get("sql", "")
 
+        def _exec_query(sql: str) -> list[dict]:
+            if is_file_source and file_path:
+                return _run_query_on_csv_sync(file_path, data_files_dir, sql)
+            return _run_query_sync(connection_string, sql)
+
         # If SQL contains {{table}}, expand for each table and union results
         if "{{table}}" in raw_sql and table_names:
             all_rows: list[dict] = []
@@ -176,7 +224,7 @@ async def execute_template(
             for tname in table_names:
                 try:
                     resolved = _resolve_sql_placeholders(raw_sql, {**source_meta, "table": tname}, merged_filters)
-                    rows = await loop.run_in_executor(None, _run_query_sync, connection_string, resolved)
+                    rows = await loop.run_in_executor(None, _exec_query, resolved)
                     all_rows.extend(rows)
                 except Exception as exc:
                     last_error = str(exc)
@@ -203,7 +251,7 @@ async def execute_template(
         else:
             try:
                 resolved = _resolve_sql_placeholders(raw_sql, source_meta, merged_filters)
-                rows = await loop.run_in_executor(None, _run_query_sync, connection_string, resolved)
+                rows = await loop.run_in_executor(None, _exec_query, resolved)
                 safe_rows = [{k: _sanitize_value(v) for k, v in r.items()} for r in rows]
                 chart_spec = _build_chart_spec(safe_rows, query_def)
                 results.append({
