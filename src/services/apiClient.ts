@@ -1413,6 +1413,13 @@ export const apiClient = {
     });
   },
 
+  async runTemplateAsReport(sourceId: string, templateId: string, body: { agentId: string; language?: string }) {
+    return api<{ htmlContent: string; chartCount: number }>(`/api/templates/sources/${sourceId}/templates/${templateId}/run-report`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
   // -----------------------------------------------------------------------
   // Medallion Architecture
   // -----------------------------------------------------------------------
