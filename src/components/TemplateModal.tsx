@@ -25,6 +25,7 @@ import {
 // Tabs replaced with manual tab bar for proper flex layout
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiClient } from "@/services/apiClient";
 import { ChartRenderer, type ChartSpec } from "@/components/ChartRenderer";
@@ -330,6 +331,23 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     } catch { toast.error("Failed to remove query"); }
   };
 
+  const toggleQueryEnabled = (queryId: string) => {
+    setDisabledQueries((prev) =>
+      prev.includes(queryId) ? prev.filter((id) => id !== queryId) : [...prev, queryId]
+    );
+  };
+
+  const handleChangeChartType = async (queryId: string, newType: string) => {
+    if (!selectedTemplate || !selectedSourceId || selectedTemplate.isBuiltin) return;
+    const updated = selectedTemplate.queries.map((q) =>
+      q.id === queryId ? { ...q, chart_type: newType } : q
+    );
+    try {
+      await apiClient.updateTemplateQueries(selectedSourceId, selectedTemplate.id, updated);
+      setSelectedTemplate({ ...selectedTemplate, queries: updated });
+    } catch { toast.error("Failed to update chart type"); }
+  };
+
   const handleAddQuery = async () => {
     if (!selectedTemplate || !selectedSourceId || !addQueryDesc.trim()) return;
     setAddingQuery(true);
@@ -536,29 +554,50 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
                 </>
               )}
 
-              {selectedTemplate!.queries.map((q) => (
-                <div key={q.id} className="border rounded-md p-3 group">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{q.title}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{q.chart_type}</span>
-                      {!selectedTemplate!.isBuiltin && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive" onClick={() => handleRemoveQuery(q.id)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
+              {selectedTemplate!.queries.map((q) => {
+                const isEnabled = !disabledQueries.includes(q.id);
+                return (
+                  <div key={q.id} className={`border rounded-md p-3 group transition-opacity ${isEnabled ? "" : "opacity-50"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={() => toggleQueryEnabled(q.id)}
+                        className="scale-75 shrink-0"
+                      />
+                      <span className={`text-sm font-medium flex-1 min-w-0 truncate ${isEnabled ? "" : "line-through"}`}>{q.title}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!selectedTemplate!.isBuiltin ? (
+                          <Select value={q.chart_type} onValueChange={(v) => handleChangeChartType(q.id, v)}>
+                            <SelectTrigger className="h-6 w-[80px] text-[10px] focus:ring-0 focus:ring-offset-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {["bar", "line", "pie", "scatter", "histogram"].map((ct) => (
+                                <SelectItem key={ct} value={ct} className="text-xs">{ct}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{q.chart_type}</span>
+                        )}
+                        {!selectedTemplate!.isBuiltin && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive" onClick={() => handleRemoveQuery(q.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value="sql" className="border-0">
+                        <AccordionTrigger className="text-xs py-1">SQL</AccordionTrigger>
+                        <AccordionContent>
+                          <pre className="bg-muted rounded p-2 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{q.sql}</pre>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                   </div>
-                  <Accordion type="single" collapsible>
-                    <AccordionItem value="sql" className="border-0">
-                      <AccordionTrigger className="text-xs py-1">SQL</AccordionTrigger>
-                      <AccordionContent>
-                        <pre className="bg-muted rounded p-2 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{q.sql}</pre>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
