@@ -52,8 +52,9 @@ dev: setup-env
 		sleep 1; \
 	done
 	@BACKEND_PORT=$$(cat backend/.backend_port 2>/dev/null || echo 8000); \
-	echo "Backend running on port $$BACKEND_PORT"; \
-	VITE_API_URL=http://localhost:$$BACKEND_PORT npm run dev
+	echo "✅ Backend running on port $$BACKEND_PORT"; \
+	echo "🚀 Starting frontend (Vite will proxy /api → backend:$$BACKEND_PORT)..."; \
+	npm run dev
 
 # ------------------------------------------------------------------
 # Database
