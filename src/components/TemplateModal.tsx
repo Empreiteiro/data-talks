@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,7 +21,7 @@ import { apiClient } from "@/services/apiClient";
 import { ChartRenderer, type ChartSpec } from "@/components/ChartRenderer";
 import { TemplateCustomizeDialog } from "@/components/TemplateCustomizeDialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Maximize2, MessageCircle, Play, Settings2, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Maximize2, MessageCircle, Play, Settings2, Sparkles, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
@@ -78,6 +78,10 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   const [generatePrompt, setGeneratePrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
+  // Saved report state (like ReportModal)
+  const [reportHtml, setReportHtml] = useState<string | null>(null);
+  const [loadingReportHtml, setLoadingReportHtml] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Load sources when modal opens
   useEffect(() => {
@@ -190,16 +194,15 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   const handleGenerateReport = async () => {
     if (!selectedTemplate || !selectedSourceId) return;
     setGeneratingReport(true);
+    setReportHtml(null);
     try {
       const result = await apiClient.runTemplateAsReport(selectedSourceId, selectedTemplate.id, {
         agentId: workspaceId,
         language,
       });
-      const html = result.htmlContent;
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      // Load the HTML for inline display
+      const html = await apiClient.getReportHtml(result.id);
+      setReportHtml(html);
       toast.success(t("studio.templateReportGenerated") || `Report generated with ${result.chartCount} charts`);
     } catch (err: unknown) {
       toast.error(t("studio.templateReportError") || "Failed to generate report", {
@@ -209,6 +212,34 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
       setGeneratingReport(false);
     }
   };
+
+  const handleOpenReportNewTab = () => {
+    if (!reportHtml) return;
+    const blob = new Blob([reportHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+
+  const handleDownloadReport = () => {
+    if (!reportHtml || !selectedTemplate) return;
+    const blob = new Blob([reportHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `report-${selectedTemplate.name}-${new Date().toISOString().slice(0, 10)}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Write HTML into the iframe
+  useEffect(() => {
+    if (iframeRef.current && reportHtml) {
+      iframeRef.current.srcdoc = reportHtml;
+    }
+  }, [reportHtml]);
 
   const layoutClass = (layout: string) => {
     switch (layout) {
@@ -324,7 +355,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     <div className="space-y-4">
       {/* Header with back button */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => { setSelectedTemplate(null); setRunResult(null); }}>
+        <Button variant="ghost" size="icon" onClick={() => { setSelectedTemplate(null); setRunResult(null); setReportHtml(null); }}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -415,14 +446,54 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh]">
+        <DialogContent className="max-w-4xl h-[92vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{t("studio.templateTitle")}</DialogTitle>
             <DialogDescription>{t("studio.templateDescription")}</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[65vh] pr-2">
-            {selectedTemplate ? renderTemplateDetail() : renderTemplateBrowser()}
-          </ScrollArea>
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <ScrollArea className="flex-1 pr-2">
+              {selectedTemplate ? renderTemplateDetail() : renderTemplateBrowser()}
+            </ScrollArea>
+
+            {/* Report viewer (iframe) — like ReportModal */}
+            {(generatingReport || reportHtml) && selectedTemplate && (
+              <div className="border rounded-lg flex-1 min-h-0 flex flex-col overflow-hidden mt-3">
+                <div className="p-3 border-b bg-muted/50 text-sm font-medium shrink-0 flex items-center justify-between">
+                  <span>{selectedTemplate.name}</span>
+                  {reportHtml && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={handleOpenReportNewTab} className="h-7 gap-1.5">
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        {t("studio.reportOpenNewTab") || "Open in new tab"}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={handleDownloadReport} className="h-7 gap-1.5">
+                        <Download className="h-3.5 w-3.5" />
+                        {t("studio.reportDownload")}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {generatingReport ? (
+                    <div className="flex flex-col items-center justify-center gap-3 h-full text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <span>{t("studio.templateGeneratingReport") || "Generating report..."}</span>
+                      <span className="text-xs text-muted-foreground/60">{t("studio.reportGeneratingHint") || "This may take a moment"}</span>
+                    </div>
+                  ) : reportHtml ? (
+                    <iframe
+                      ref={iframeRef}
+                      title="Template Report"
+                      sandbox="allow-same-origin"
+                      className="w-full h-full border-0"
+                      style={{ background: "#14141a" }}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
