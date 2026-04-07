@@ -475,7 +475,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
           <button
             key={tab}
             onClick={() => setDetailTab(tab)}
-            className={`flex-1 text-xs font-medium py-1.5 rounded-sm transition-all ${detailTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex-1 text-sm font-medium py-2.5 rounded-sm transition-all ${detailTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             {tab === "queries" ? `Queries (${selectedTemplate!.queries.length})` : tab === "results" ? "Query Results" : `Reports (${savedReports.length})`}
           </button>
@@ -488,7 +488,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         {/* ── Query Results ── */}
         {detailTab === "results" && (
           <div className="flex-1 overflow-y-auto">
-            <Button className="w-full mb-3" onClick={handleRunTemplate} disabled={running}>
+            <Button variant="outline" className="w-full mb-3" onClick={handleRunTemplate} disabled={running}>
               {running ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("studio.templateRunning") || "Running..."}</> : <><Play className="h-4 w-4 mr-2" />{t("studio.templateRun") || "Run Template"}</>}
             </Button>
             {runResult ? (
@@ -605,7 +605,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         {/* ── Reports ── */}
         {detailTab === "reports" && (
           <div className="flex-1 flex flex-col min-h-0">
-            <Button className="w-full mb-3 shrink-0" onClick={handleGenerateReport} disabled={generatingReport}>
+            <Button variant="outline" className="w-full mb-3 shrink-0" onClick={handleGenerateReport} disabled={generatingReport}>
               {generatingReport ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("studio.templateGeneratingReport") || "Generating Report..."}</> : <><FileText className="h-4 w-4 mr-2" />{t("studio.templateGenerateReport") || "Generate Full Report"}</>}
             </Button>
             <ScrollArea className="h-28 border rounded-md shrink-0">
