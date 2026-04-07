@@ -376,7 +376,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   const renderBrowser = () => (
     <div className="space-y-4">
       <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
-        <SelectTrigger><SelectValue placeholder={t("studio.templateSelectSource")} /></SelectTrigger>
+        <SelectTrigger className="focus:ring-0 focus:ring-offset-0"><SelectValue placeholder={t("studio.templateSelectSource")} /></SelectTrigger>
         <SelectContent>
           {sources.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.type})</SelectItem>)}
         </SelectContent>
