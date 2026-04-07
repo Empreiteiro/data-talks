@@ -40,7 +40,7 @@ interface SummaryModalProps {
 }
 
 export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [sources, setSources] = useState<Array<{ id: string; name: string; type: string; is_active?: boolean }>>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [summaries, setSummaries] = useState<TableSummaryItem[]>([]);
@@ -77,7 +77,7 @@ export function SummaryModal({ open, onOpenChange, workspaceId }: SummaryModalPr
     setGeneratedReport(null);
     setViewingSummary(null);
     try {
-      const result = await dataClient.generateTableSummary(workspaceId, selectedSourceId);
+      const result = await dataClient.generateTableSummary(workspaceId, selectedSourceId, language);
       setGeneratedReport(result.report);
       setSummaries((prev) => [
         {

@@ -51,6 +51,7 @@ router = APIRouter(prefix="/table_summaries", tags=["summary"])
 class GenerateSummaryRequest(BaseModel):
     agentId: str
     sourceId: Optional[str] = None  # if omitted, use active source for agent
+    language: Optional[str] = None  # "en" | "pt" | "es" — output language
 
 
 @router.post("")
@@ -108,6 +109,7 @@ async def generate_summary(
             source_name=source.name,
             llm_overrides=llm_overrides,
             channel="studio",
+            language=body.language,
         )
     elif source.type in ("csv", "xlsx"):
         file_path = meta.get("file_path")
@@ -123,6 +125,7 @@ async def generate_summary(
             sample_row_count=meta.get("sample_row_count") or meta.get("row_count"),
             llm_overrides=llm_overrides,
             channel="studio",
+            language=body.language,
         )
     elif source.type == "sql_database":
         connection_string = meta.get("connectionString") or meta.get("connection_string")
@@ -137,6 +140,7 @@ async def generate_summary(
             source_name=source.name,
             llm_overrides=llm_overrides,
             channel="studio",
+            language=body.language,
         )
     elif source.type == "google_sheets":
         result = await generate_table_summary_google_sheets(
@@ -146,6 +150,7 @@ async def generate_summary(
             source_name=source.name,
             llm_overrides=llm_overrides,
             channel="studio",
+            language=body.language,
         )
     elif source.type == "firebase":
         creds = meta.get("credentialsContent") or meta.get("credentials_content")
@@ -159,6 +164,7 @@ async def generate_summary(
             source_name=source.name,
             llm_overrides=llm_overrides,
             channel="studio",
+            language=body.language,
         )
     else:
         raise HTTPException(400, f"Table summary not supported for source type: {source.type}")

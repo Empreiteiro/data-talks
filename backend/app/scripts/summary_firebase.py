@@ -13,6 +13,14 @@ import re
 MAX_DOCS_PER_COLLECTION = 500   # docs loaded for pandas analysis
 MAX_ROWS_RESULT = 15            # result rows shown to LLM in report
 
+LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+
+
+def _lang_instruction(language: str | None) -> str:
+    if language and language in LANGUAGE_NAMES:
+        return f"Write ALL text output in {LANGUAGE_NAMES[language]}. "
+    return "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+
 
 async def generate_table_summary_firebase(
     credentials_content: str | None,
@@ -22,6 +30,7 @@ async def generate_table_summary_firebase(
     source_name: str = "",
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [ { "query": str, "rows": list }, ... ] }
@@ -141,7 +150,7 @@ async def generate_table_summary_firebase(
         "[Any NULL values, quality issues, or structural notes.]\n\n"
         "Base your report ONLY on the schema, profiling data, and tiny sample provided. "
         "Keep it professional and concise (about 1-2 pages). "
-        "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+        f"{_lang_instruction(language)}"
         "Return ONLY the Markdown content with no preamble."
     )
     user_report = (

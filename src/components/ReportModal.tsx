@@ -37,7 +37,7 @@ interface ReportModalProps {
 }
 
 export function ReportModal({ open, onOpenChange, workspaceId }: ReportModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [sources, setSources] = useState<Array<{ id: string; name: string; type: string; is_active?: boolean }>>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [reports, setReports] = useState<ReportItem[]>([]);
@@ -76,7 +76,7 @@ export function ReportModal({ open, onOpenChange, workspaceId }: ReportModalProp
     setReportHtml(null);
     setViewingReport(null);
     try {
-      const result = await dataClient.generateReport(workspaceId, selectedSourceId);
+      const result = await dataClient.generateReport(workspaceId, selectedSourceId, language);
       setReports((prev) => [
         {
           id: result.id,

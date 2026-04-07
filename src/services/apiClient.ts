@@ -858,7 +858,7 @@ export const apiClient = {
   },
 
   // Studio Summary (table executive reports)
-  async generateTableSummary(agentId: string, sourceId?: string) {
+  async generateTableSummary(agentId: string, sourceId?: string, language?: string) {
     return api<{
       id: string;
       agentId: string;
@@ -869,7 +869,7 @@ export const apiClient = {
       createdAt: string;
     }>('/api/table_summaries', {
       method: 'POST',
-      body: JSON.stringify({ agentId, sourceId }),
+      body: JSON.stringify({ agentId, sourceId, language }),
     });
   },
 
@@ -903,7 +903,7 @@ export const apiClient = {
   },
 
   // Studio Reports (rich HTML reports with exploratory charts)
-  async generateReport(agentId: string, sourceId?: string) {
+  async generateReport(agentId: string, sourceId?: string, language?: string) {
     return api<{
       id: string;
       agentId: string;
@@ -913,7 +913,7 @@ export const apiClient = {
       createdAt: string;
     }>('/api/reports', {
       method: 'POST',
-      body: JSON.stringify({ agentId, sourceId }),
+      body: JSON.stringify({ agentId, sourceId, language }),
     });
   },
 

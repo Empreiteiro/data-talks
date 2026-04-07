@@ -15,6 +15,7 @@ async def generate_report_csv(
     data_files_dir: str = "./data_files",
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: {"html_content": str, "chart_count": int}
@@ -34,4 +35,5 @@ async def generate_report_csv(
         source_name=source_name or file_path,
         llm_overrides=llm_overrides,
         channel=channel,
+        language=language,
     )

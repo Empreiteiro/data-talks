@@ -4,6 +4,14 @@ No full table or row data is passed; avoids token cost and avoids requiring shee
 """
 from typing import Any
 
+LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+
+
+def _lang_instruction(language: str | None) -> str:
+    if language and language in LANGUAGE_NAMES:
+        return f"Write ALL text output in {LANGUAGE_NAMES[language]}. "
+    return "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+
 
 async def generate_table_summary_google_sheets(
     spreadsheet_id: str,
@@ -12,6 +20,7 @@ async def generate_table_summary_google_sheets(
     source_name: str = "",
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [] }.
@@ -39,6 +48,7 @@ async def generate_table_summary_google_sheets(
         "## Notes\n"
         "[Any data quality or structural observations.]\n\n"
         "Keep it professional and concise (about 1 page). "
+        f"{_lang_instruction(language)}"
         "Return ONLY the Markdown content with no preamble."
     )
     user_report = (

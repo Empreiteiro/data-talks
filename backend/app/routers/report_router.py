@@ -72,6 +72,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 class GenerateReportRequest(BaseModel):
     agentId: str
     sourceId: Optional[str] = None
+    language: Optional[str] = None  # "en" | "pt" | "es" — output language
 
 
 @router.post("")
@@ -130,6 +131,7 @@ async def generate_report(
                 data_files_dir=settings.data_files_dir,
                 llm_overrides=llm_overrides,
                 channel="studio",
+                language=body.language,
             )
         elif source.type == "bigquery":
             creds = meta.get("credentialsContent") or meta.get("credentials_content")
@@ -144,6 +146,7 @@ async def generate_report(
                 source_name=source.name,
                 llm_overrides=llm_overrides,
                 channel="studio",
+                language=body.language,
             )
         elif source.type == "sql_database":
             connection_string = meta.get("connectionString") or meta.get("connection_string")
@@ -158,6 +161,7 @@ async def generate_report(
                 source_name=source.name,
                 llm_overrides=llm_overrides,
                 channel="studio",
+                language=body.language,
             )
         elif source.type == "google_sheets":
             result = await generate_report_google_sheets(
@@ -166,6 +170,7 @@ async def generate_report(
                 source_name=source.name,
                 llm_overrides=llm_overrides,
                 channel="studio",
+                language=body.language,
             )
         else:
             raise HTTPException(400, f"Report not supported for source type: {source.type}")
