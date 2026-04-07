@@ -477,7 +477,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         </TabsList>
 
         {/* ── Results tab ── */}
-        <TabsContent value="results" className="flex-1 overflow-y-auto mt-2">
+        <TabsContent value="results" className="flex-1 overflow-y-auto mt-2 data-[state=active]:flex-1"  style={{ minHeight: 0 }}>
           {runResult ? (
             <div className="space-y-3">
               <div className={layoutClass(selectedTemplate!.layout)}>
@@ -517,7 +517,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         </TabsContent>
 
         {/* ── Queries tab ── */}
-        <TabsContent value="queries" className="flex-1 overflow-y-auto mt-2">
+        <TabsContent value="queries" className="flex-1 overflow-y-auto mt-2" style={{ minHeight: 0 }}>
           <div className="space-y-2">
             {selectedTemplate!.queries.map((q) => (
               <div key={q.id} className="border rounded-md p-3 group">
@@ -557,7 +557,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         </TabsContent>
 
         {/* ── Reports tab ── */}
-        <TabsContent value="reports" className="flex-1 flex flex-col min-h-0 mt-2">
+        <TabsContent value="reports" className="flex-1 flex flex-col mt-2" style={{ minHeight: 0 }}>
           {/* Report list */}
           <ScrollArea className="h-28 border rounded-md shrink-0">
             {savedReports.length === 0 ? (
@@ -631,7 +631,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
             <DialogTitle>{t("studio.templateTitle")}</DialogTitle>
             <DialogDescription>{t("studio.templateDescription")}</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className={`flex-1 min-h-0 ${selectedTemplate ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
             {selectedTemplate ? renderDetail() : renderBrowser()}
           </div>
         </DialogContent>
