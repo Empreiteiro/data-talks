@@ -16,6 +16,7 @@ import { AutoMLModal } from "@/components/AutoMLModal";
 import { MedallionPanel } from "@/components/MedallionPanel";
 import { ReportModal } from "@/components/ReportModal";
 import { TemplateModal } from "@/components/TemplateModal";
+import { AlertModal } from "@/components/AlertModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -295,6 +296,7 @@ export default function Workspace() {
   const [audioOverviewModalOpen, setAudioOverviewModalOpen] = useState(false);
   const [autoMLModalOpen, setAutoMLModalOpen] = useState(false);
   const [medallionOpen, setMedallionOpen] = useState(false);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
@@ -1088,6 +1090,7 @@ export default function Workspace() {
               onOpenMessaging={() => setIsMessagingModalOpen(true)}
               onOpenApiAccess={() => setIsApiAccessModalOpen(true)}
               onOpenMedallion={() => setMedallionOpen(true)}
+              onOpenAlerts={() => setAlertModalOpen(true)}
             />
           </div>}
 
@@ -1174,6 +1177,12 @@ export default function Workspace() {
         onOpenChange={setMedallionOpen}
         agentId={id || ''}
         sourceId=""
+      />
+
+      <AlertModal
+        open={alertModalOpen}
+        onOpenChange={setAlertModalOpen}
+        agentId={id || ''}
       />
 
       <ReportModal
