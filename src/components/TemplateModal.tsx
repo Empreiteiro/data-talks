@@ -119,6 +119,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   // AI generation
   const [generatePrompt, setGeneratePrompt] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [showGenerateForm, setShowGenerateForm] = useState(false);
 
   // Report history
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
@@ -296,6 +297,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
       });
       setTemplates((prev) => [...prev, result]);
       setGeneratePrompt("");
+      setShowGenerateForm(false);
       toast.success(t("studio.templateGenerated") || "Template generated!");
     } catch (err: unknown) {
       toast.error(t("studio.templateGenerateError") || "Failed to generate template", {
@@ -386,36 +388,53 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
 
       {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}
 
+      {/* CTA: Generate with AI */}
       {!loading && selectedSourceId && (
-        <div className="border rounded-md p-3 space-y-2">
-          <Label className="text-xs font-medium">{t("studio.templateCreateLabel") || "Create template with AI"}</Label>
-          <Textarea className="text-xs min-h-[60px]" placeholder={t("studio.templateCreatePlaceholder") || "Describe the report you want..."} value={generatePrompt} onChange={(e) => setGeneratePrompt(e.target.value)} disabled={generating} />
-          <Button size="sm" onClick={handleGenerateTemplate} disabled={generating}>
-            {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("studio.templateGenerating") || "Generating..."}</> : <><Sparkles className="h-3.5 w-3.5 mr-1.5" />{t("studio.templateGenerate") || "Generate Template"}</>}
-          </Button>
-        </div>
+        <>
+          {!showGenerateForm ? (
+            <Button variant="outline" className="w-full" onClick={() => setShowGenerateForm(true)} disabled={generating}>
+              <Sparkles className="h-4 w-4 mr-2" />{t("studio.templateGenerate") || "Generate Template with AI"}
+            </Button>
+          ) : (
+            <div className="border rounded-md p-4 space-y-3">
+              <Label className="text-sm font-medium">{t("studio.templateCreateLabel") || "What report do you want to create?"}</Label>
+              <Textarea className="text-sm min-h-[80px]" placeholder={t("studio.templateCreatePlaceholder") || "Describe the report you want..."} value={generatePrompt} onChange={(e) => setGeneratePrompt(e.target.value)} disabled={generating} autoFocus />
+              <div className="flex gap-2">
+                <Button onClick={handleGenerateTemplate} disabled={generating}>
+                  {generating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("studio.templateGenerating") || "Generating..."}</> : <><Sparkles className="h-4 w-4 mr-2" />{t("studio.templateGenerate") || "Generate"}</>}
+                </Button>
+                <Button variant="ghost" onClick={() => { setShowGenerateForm(false); setGeneratePrompt(""); }} disabled={generating}>
+                  {t("llmConfig.cancel") || "Cancel"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {!loading && selectedSourceId && templates.length === 0 && !generating && (
+      {!loading && selectedSourceId && templates.length === 0 && !generating && !showGenerateForm && (
         <p className="text-sm text-muted-foreground text-center py-4">{t("studio.templateNoTemplates")}</p>
       )}
 
+      {/* Template cards — full width */}
       {!loading && templates.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-2">
           {templates.map((tpl) => (
             <Card key={tpl.id} className="p-4 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all group" onClick={() => handleSelectTemplate(tpl)}>
-              <div className="flex items-start justify-between">
-                <h4 className="font-semibold text-sm flex-1">{tpl.name}</h4>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm">{tpl.name}</h4>
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded shrink-0">{tpl.queryCount} queries</span>
+                    {tpl.isBuiltin && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded shrink-0">Built-in</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{tpl.description}</p>
+                </div>
                 {!tpl.isBuiltin && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive flex-shrink-0" onClick={(e) => handleDeleteTemplate(e, tpl.id)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive shrink-0 ml-2" onClick={(e) => handleDeleteTemplate(e, tpl.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tpl.description}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs bg-muted px-2 py-0.5 rounded">{tpl.queryCount} queries</span>
-                {tpl.isBuiltin && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded">Built-in</span>}
               </div>
             </Card>
           ))}
