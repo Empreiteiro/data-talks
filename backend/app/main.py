@@ -152,6 +152,25 @@ async def _ensure_alert_system_columns():
                 await conn.execute(text("ALTER TABLE alerts ADD COLUMN last_status VARCHAR(50)"))
 
 
+async def _ensure_claude_code_columns():
+    async with engine.begin() as conn:
+        table_columns = await conn.run_sync(
+            lambda sync_conn: {
+                table: {c["name"] for c in inspect(sync_conn).get_columns(table)}
+                for table in ("llm_settings", "llm_configs")
+                if inspect(sync_conn).has_table(table)
+            }
+        )
+        for table in ("llm_settings", "llm_configs"):
+            if table not in table_columns:
+                continue
+            cols = table_columns[table]
+            if "claude_code_model" not in cols:
+                await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN claude_code_model VARCHAR(64)"))
+            if "claude_code_oauth_token" not in cols:
+                await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN claude_code_oauth_token VARCHAR(512)"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
@@ -162,6 +181,7 @@ async def lifespan(app: FastAPI):
     await _ensure_telegram_config_columns()
     await _ensure_agent_source_relationships_column()
     await _ensure_alert_system_columns()
+    await _ensure_claude_code_columns()
     Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
     await _ensure_single_user()
     settings = get_settings()
