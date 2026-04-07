@@ -309,7 +309,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
 
   const isApiKeyMasked = (val: string) => val && val.includes("••••");
 
-  const AddForm = () => (
+  const formFields = (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
         <Label>{t("llmConfig.nameLabel")}</Label>
@@ -328,6 +328,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
             <SelectItem value="openai">OpenAI-compatible</SelectItem>
             <SelectItem value="google">Google Gemini</SelectItem>
             <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+            <SelectItem value="claude-code">Claude CLI</SelectItem>
             <SelectItem value="ollama">Ollama</SelectItem>
             <SelectItem value="litellm">LiteLLM</SelectItem>
           </SelectContent>
@@ -640,7 +641,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
             <DialogTitle>{t("llmConfig.addTitle")}</DialogTitle>
             <DialogDescription>{t("llmConfig.addDescription")}</DialogDescription>
           </DialogHeader>
-          <AddForm />
+          {formFields}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddDialogOpen(false)} disabled={saving}>
               {t("llmConfig.cancel")}
@@ -658,7 +659,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
             <DialogTitle>{t("llmConfig.editTitle")}</DialogTitle>
             <DialogDescription>{t("llmConfig.editDescription")}</DialogDescription>
           </DialogHeader>
-          <AddForm />
+          {formFields}
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setEditDialogOpen(false); }} disabled={saving}>
               {t("llmConfig.cancel")}
