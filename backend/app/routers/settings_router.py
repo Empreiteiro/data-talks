@@ -426,6 +426,15 @@ async def list_llm_configs(
 
 
 @router.post("/llm-configs")
+async def _auto_default_if_single(user_id: str, db: AsyncSession) -> None:
+    """If there's exactly one LLM config for the user, mark it as default."""
+    r = await db.execute(select(LlmConfig).where(LlmConfig.user_id == user_id))
+    all_configs = r.scalars().all()
+    if len(all_configs) == 1 and not all_configs[0].is_default:
+        all_configs[0].is_default = True
+        await db.commit()
+
+
 async def create_llm_config(
     body: LlmConfigCreate,
     db: AsyncSession = Depends(get_db),
@@ -461,6 +470,7 @@ async def create_llm_config(
     )
     db.add(c)
     await db.commit()
+    await _auto_default_if_single(user.id, db)
     await db.refresh(c)
     return _config_to_response(c, env)
 
@@ -558,4 +568,5 @@ async def delete_llm_config(
         raise HTTPException(404, "LLM config not found")
     await db.delete(c)
     await db.commit()
+    await _auto_default_if_single(user.id, db)
     return {"ok": True}
