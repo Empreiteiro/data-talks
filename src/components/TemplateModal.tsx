@@ -29,7 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiClient } from "@/services/apiClient";
 import { ChartRenderer, type ChartSpec } from "@/components/ChartRenderer";
-import { TemplateCustomizeDialog } from "@/components/TemplateCustomizeDialog";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -112,10 +112,10 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   const [runResult, setRunResult] = useState<TemplateRunResult | null>(null);
   const [running, setRunning] = useState(false);
 
-  // Customization
-  const [customizeOpen, setCustomizeOpen] = useState(false);
+  // Filters
   const [disabledQueries, setDisabledQueries] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [showFilterForm, setShowFilterForm] = useState(false);
 
   // AI generation
   const [generatePrompt, setGeneratePrompt] = useState("");
@@ -377,11 +377,6 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     onOpenChange(false);
   };
 
-  const handleCustomizeSave = (newDisabled: string[], newDateRange: { start: string; end: string }) => {
-    setDisabledQueries(newDisabled);
-    setDateRange(newDateRange);
-  };
-
   const layoutClass = (layout: string) => {
     switch (layout) {
       case "grid_2x2": case "grid_2x1": return "grid grid-cols-1 md:grid-cols-2 gap-4";
@@ -554,6 +549,34 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
                 </>
               )}
 
+              {/* Date range filter */}
+              {!showFilterForm ? (
+                <Button variant="outline" className="w-full" onClick={() => setShowFilterForm(true)}>
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  {dateRange.start || dateRange.end
+                    ? `Filter: ${dateRange.start || "..."} → ${dateRange.end || "..."}`
+                    : "Add Date Filter"}
+                </Button>
+              ) : (
+                <div className="border rounded-md p-4 space-y-3">
+                  <Label className="text-sm font-medium">Date range filter (applied to all queries)</Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Start</Label>
+                      <Input type="date" value={dateRange.start} onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))} />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">End</Label>
+                      <Input type="date" value={dateRange.end} onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => setShowFilterForm(false)}>Apply</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setDateRange({ start: "", end: "" }); setShowFilterForm(false); }}>Clear</Button>
+                  </div>
+                </div>
+              )}
+
               {selectedTemplate!.queries.map((q) => {
                 const isEnabled = !disabledQueries.includes(q.id);
                 return (
@@ -686,9 +709,6 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
                 <DialogTitle className="truncate">{selectedTemplate.name}</DialogTitle>
                 <DialogDescription className="truncate">{selectedTemplate.description}</DialogDescription>
               </div>
-              <Button variant="outline" size="sm" className="h-7 shrink-0" onClick={() => setCustomizeOpen(true)}>
-                <Settings2 className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateCustomize")}</span>
-              </Button>
             </DialogHeader>
           ) : (
             <DialogHeader>
@@ -702,16 +722,6 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         </DialogContent>
       </Dialog>
 
-      {selectedTemplate && (
-        <TemplateCustomizeDialog
-          open={customizeOpen}
-          onOpenChange={setCustomizeOpen}
-          queries={selectedTemplate.queries.map((q) => ({ id: q.id, title: q.title }))}
-          disabledQueries={disabledQueries}
-          dateRange={dateRange}
-          onSave={handleCustomizeSave}
-        />
-      )}
     </>
   );
 }
