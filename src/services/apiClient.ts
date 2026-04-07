@@ -1390,6 +1390,29 @@ export const apiClient = {
     });
   },
 
+  async generateTemplate(sourceId: string, body: { agentId: string; prompt?: string; language?: string }) {
+    return api<{
+      id: string;
+      name: string;
+      sourceType: string;
+      description: string;
+      queries: Array<{ id: string; title: string; sql: string; chart_type: string; chart_config: Record<string, unknown> }>;
+      layout: string;
+      refreshInterval: number;
+      isBuiltin: boolean;
+      queryCount: number;
+    }>(`/api/templates/sources/${sourceId}/generate`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  async deleteTemplate(sourceId: string, templateId: string) {
+    return api<{ ok: boolean }>(`/api/templates/sources/${sourceId}/templates/${templateId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // -----------------------------------------------------------------------
   // Medallion Architecture
   // -----------------------------------------------------------------------
