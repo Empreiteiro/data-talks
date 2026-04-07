@@ -132,6 +132,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   // Add query
   const [addQueryDesc, setAddQueryDesc] = useState("");
   const [addingQuery, setAddingQuery] = useState(false);
+  const [showAddQueryForm, setShowAddQueryForm] = useState(false);
 
   // Detail tab
   const [detailTab, setDetailTab] = useState("queries");
@@ -343,6 +344,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         queryCount: result.queryCount,
       });
       setAddQueryDesc("");
+      setShowAddQueryForm(false);
       toast.success("Query added");
     } catch (err: unknown) {
       toast.error("Failed to add query", { description: err instanceof Error ? err.message : undefined });
@@ -449,28 +451,6 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
 
   const renderDetail = () => (
     <div className="flex flex-col h-full gap-3">
-      {/* Header */}
-      <div className="flex items-center gap-2 shrink-0">
-        <Button variant="ghost" size="icon" onClick={() => { setSelectedTemplate(null); setRunResult(null); setReportHtml(null); setViewingReportId(null); }}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold truncate">{selectedTemplate!.name}</h3>
-          <p className="text-xs text-muted-foreground truncate">{selectedTemplate!.description}</p>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button variant="outline" size="sm" className="h-7" onClick={() => setCustomizeOpen(true)}>
-            <Settings2 className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateCustomize")}</span>
-          </Button>
-          <Button size="sm" className="h-7" onClick={handleRunTemplate} disabled={running}>
-            {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Play className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateRun")}</span></>}
-          </Button>
-          <Button variant="outline" size="sm" className="h-7" onClick={handleGenerateReport} disabled={generatingReport}>
-            {generatingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><FileText className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateGenerateReport") || "Full Report"}</span></>}
-          </Button>
-        </div>
-      </div>
-
       {/* Tab bar */}
       <div className="flex rounded-md bg-muted p-1 shrink-0">
         {(["queries", "results", "reports"] as const).map((tab) => (
@@ -535,6 +515,28 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         {detailTab === "queries" && (
           <div className="flex-1 overflow-y-auto">
             <div className="space-y-2">
+              {/* Add query CTA / form — top position */}
+              {!selectedTemplate!.isBuiltin && (
+                <>
+                  {!showAddQueryForm ? (
+                    <Button variant="outline" className="w-full" onClick={() => setShowAddQueryForm(true)} disabled={addingQuery}>
+                      <Plus className="h-4 w-4 mr-2" />Add Query with AI
+                    </Button>
+                  ) : (
+                    <div className="border rounded-md p-4 space-y-3">
+                      <Label className="text-sm font-medium">Describe the query you want to add</Label>
+                      <Textarea className="text-sm min-h-[70px]" placeholder="e.g. 'Top 10 products by revenue', 'Monthly trend of new users'..." value={addQueryDesc} onChange={(e) => setAddQueryDesc(e.target.value)} disabled={addingQuery} autoFocus />
+                      <div className="flex gap-2">
+                        <Button onClick={handleAddQuery} disabled={addingQuery || !addQueryDesc.trim()}>
+                          {addingQuery ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding...</> : <><Sparkles className="h-4 w-4 mr-2" />Add Query</>}
+                        </Button>
+                        <Button variant="ghost" onClick={() => { setShowAddQueryForm(false); setAddQueryDesc(""); }} disabled={addingQuery}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               {selectedTemplate!.queries.map((q) => (
                 <div key={q.id} className="border rounded-md p-3 group">
                   <div className="flex items-center justify-between">
@@ -558,16 +560,6 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
                   </Accordion>
                 </div>
               ))}
-
-              {!selectedTemplate!.isBuiltin && (
-                <div className="border rounded-md p-3 border-dashed space-y-2">
-                  <Label className="text-xs font-medium flex items-center gap-1"><Plus className="h-3 w-3" /> Add query with AI</Label>
-                  <Textarea className="text-xs min-h-[50px]" placeholder="Describe the query... e.g. 'Top 10 products by revenue'" value={addQueryDesc} onChange={(e) => setAddQueryDesc(e.target.value)} disabled={addingQuery} />
-                  <Button size="sm" variant="outline" onClick={handleAddQuery} disabled={addingQuery || !addQueryDesc.trim()}>
-                    {addingQuery ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Adding...</> : <><Sparkles className="h-3 w-3 mr-1" />Add Query</>}
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -644,10 +636,33 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl h-[92vh] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>{t("studio.templateTitle")}</DialogTitle>
-            <DialogDescription>{t("studio.templateDescription")}</DialogDescription>
-          </DialogHeader>
+          {selectedTemplate ? (
+            <DialogHeader className="flex-row items-center gap-2 space-y-0">
+              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setSelectedTemplate(null); setRunResult(null); setReportHtml(null); setViewingReportId(null); }}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="truncate">{selectedTemplate.name}</DialogTitle>
+                <DialogDescription className="truncate">{selectedTemplate.description}</DialogDescription>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button variant="outline" size="sm" className="h-7" onClick={() => setCustomizeOpen(true)}>
+                  <Settings2 className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateCustomize")}</span>
+                </Button>
+                <Button size="sm" className="h-7" onClick={handleRunTemplate} disabled={running}>
+                  {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Play className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateRun")}</span></>}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7" onClick={handleGenerateReport} disabled={generatingReport}>
+                  {generatingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><FileText className="h-3.5 w-3.5 mr-1" /><span className="text-xs">{t("studio.templateGenerateReport") || "Full Report"}</span></>}
+                </Button>
+              </div>
+            </DialogHeader>
+          ) : (
+            <DialogHeader>
+              <DialogTitle>{t("studio.templateTitle")}</DialogTitle>
+              <DialogDescription>{t("studio.templateDescription")}</DialogDescription>
+            </DialogHeader>
+          )}
           <div className={`flex-1 min-h-0 ${selectedTemplate ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
             {selectedTemplate ? renderDetail() : renderBrowser()}
           </div>
