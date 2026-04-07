@@ -580,44 +580,44 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
               {selectedTemplate!.queries.map((q) => {
                 const isEnabled = !disabledQueries.includes(q.id);
                 return (
-                  <div key={q.id} className={`border rounded-md p-3 group transition-opacity ${isEnabled ? "" : "opacity-50"}`}>
-                    <div className="flex items-center justify-between gap-2">
+                  <div key={q.id} className={`border rounded-md group transition-opacity ${isEnabled ? "" : "opacity-50"}`}>
+                    <div className="flex items-center gap-3 px-3 py-3">
                       <Switch
                         checked={isEnabled}
                         onCheckedChange={() => toggleQueryEnabled(q.id)}
-                        className="scale-75 shrink-0"
+                        className="shrink-0"
                       />
-                      <span className={`text-sm font-medium flex-1 min-w-0 truncate ${isEnabled ? "" : "line-through"}`}>{q.title}</span>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {!selectedTemplate!.isBuiltin ? (
-                          <Select value={q.chart_type} onValueChange={(v) => handleChangeChartType(q.id, v)}>
-                            <SelectTrigger className="h-6 w-[80px] text-[10px] focus:ring-0 focus:ring-offset-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {["bar", "line", "pie", "scatter", "histogram"].map((ct) => (
-                                <SelectItem key={ct} value={ct} className="text-xs">{ct}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{q.chart_type}</span>
-                        )}
-                        {!selectedTemplate!.isBuiltin && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive" onClick={() => handleRemoveQuery(q.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
+                      <span className={`text-sm font-medium flex-1 min-w-0 truncate ${isEnabled ? "" : "line-through text-muted-foreground"}`}>{q.title}</span>
+                      {!selectedTemplate!.isBuiltin ? (
+                        <Select value={q.chart_type} onValueChange={(v) => handleChangeChartType(q.id, v)}>
+                          <SelectTrigger className="h-7 w-[90px] text-xs shrink-0 focus:ring-0 focus:ring-offset-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {["bar", "line", "pie", "scatter", "histogram"].map((ct) => (
+                              <SelectItem key={ct} value={ct} className="text-xs">{ct}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-xs bg-muted px-2 py-1 rounded shrink-0">{q.chart_type}</span>
+                      )}
+                      {!selectedTemplate!.isBuiltin && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive" onClick={() => handleRemoveQuery(q.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="sql" className="border-0">
-                        <AccordionTrigger className="text-xs py-1">SQL</AccordionTrigger>
-                        <AccordionContent>
-                          <pre className="bg-muted rounded p-2 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{q.sql}</pre>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                    <div className="px-3 pb-2">
+                      <Accordion type="single" collapsible>
+                        <AccordionItem value="sql" className="border-0">
+                          <AccordionTrigger className="text-xs py-1">SQL</AccordionTrigger>
+                          <AccordionContent>
+                            <pre className="bg-muted rounded p-2 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{q.sql}</pre>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </div>
                   </div>
                 );
               })}
