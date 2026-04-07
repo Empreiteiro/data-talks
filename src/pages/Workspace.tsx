@@ -10,9 +10,7 @@ import { SqlRelationshipsModal } from "@/components/SqlRelationshipsModal";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { StudioPanel } from "@/components/StudioPanel";
 import { SummaryModal } from "@/components/SummaryModal";
-import { TelegramModal } from "@/components/TelegramModal";
-import { WhatsAppModal } from "@/components/WhatsAppModal";
-import { SlackModal } from "@/components/SlackModal";
+import { MessagingModal } from "@/components/MessagingModal";
 import { ApiAccessModal } from "@/components/ApiAccessModal";
 import { AutoMLModal } from "@/components/AutoMLModal";
 import { MedallionPanel } from "@/components/MedallionPanel";
@@ -290,9 +288,7 @@ export default function Workspace() {
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
-  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
-  const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
+  const [isMessagingModalOpen, setIsMessagingModalOpen] = useState(false);
   const [isApiAccessModalOpen, setIsApiAccessModalOpen] = useState(false);
   const [graphModalOpen, setGraphModalOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
@@ -1089,9 +1085,7 @@ export default function Workspace() {
               onOpenAutoML={() => setAutoMLModalOpen(true)}
               onOpenReport={() => setReportModalOpen(true)}
               onOpenTemplates={() => setTemplateModalOpen(true)}
-              onOpenTelegram={() => setIsTelegramModalOpen(true)}
-              onOpenWhatsApp={() => setIsWhatsAppModalOpen(true)}
-              onOpenSlack={() => setIsSlackModalOpen(true)}
+              onOpenMessaging={() => setIsMessagingModalOpen(true)}
               onOpenApiAccess={() => setIsApiAccessModalOpen(true)}
               onOpenMedallion={() => setMedallionOpen(true)}
             />
@@ -1139,21 +1133,9 @@ export default function Workspace() {
         }}
       />
 
-      <TelegramModal
-        open={isTelegramModalOpen}
-        onOpenChange={setIsTelegramModalOpen}
-        agentId={id || ''}
-      />
-
-      <WhatsAppModal
-        open={isWhatsAppModalOpen}
-        onOpenChange={setIsWhatsAppModalOpen}
-        agentId={id || ''}
-      />
-
-      <SlackModal
-        open={isSlackModalOpen}
-        onOpenChange={setIsSlackModalOpen}
+      <MessagingModal
+        open={isMessagingModalOpen}
+        onOpenChange={setIsMessagingModalOpen}
         agentId={id || ''}
       />
 

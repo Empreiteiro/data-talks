@@ -1,26 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Hash, Layers, LayoutTemplate, Lock, MessageCircle, Network, Send, Terminal } from "lucide-react";
+import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, Layers, LayoutTemplate, Lock, MessageSquare, Network, Terminal } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudioPanelProps {
   onOpenGraph?: () => void;
   onOpenSummary?: () => void;
   onOpenAudio?: () => void;
-  onOpenTelegram?: () => void;
   onOpenAutoML?: () => void;
-  onOpenWhatsApp?: () => void;
   onOpenReport?: () => void;
   onOpenTemplates?: () => void;
-  onOpenSlack?: () => void;
+  onOpenMessaging?: () => void;
   onOpenApiAccess?: () => void;
   onOpenMedallion?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenTelegram, onOpenWhatsApp, onOpenSlack, onOpenApiAccess, onOpenMedallion, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenMessaging, onOpenApiAccess, onOpenMedallion, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   const studioOptions: Array<{
@@ -95,25 +93,11 @@ export function StudioPanel({ onOpenGraph, onOpenSummary, onOpenAudio, onOpenAut
     onClick?: () => void;
   }> = [
     {
-      icon: MessageCircle,
-      title: "WhatsApp",
-      description: t('studio.connectWhatsApp'),
+      icon: MessageSquare,
+      title: "Messaging",
+      description: "WhatsApp, Slack, Telegram",
       locked: false,
-      onClick: onOpenWhatsApp,
-    },
-    {
-      icon: Hash,
-      title: "Slack",
-      description: t('studio.connectSlack'),
-      locked: false,
-      onClick: onOpenSlack,
-    },
-    {
-      icon: Send,
-      title: "Telegram",
-      description: t('studio.connectTelegram'),
-      locked: false,
-      onClick: onOpenTelegram,
+      onClick: onOpenMessaging,
     },
     {
       icon: Terminal,
