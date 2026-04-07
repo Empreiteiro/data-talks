@@ -425,7 +425,6 @@ async def list_llm_configs(
     return [_config_to_response(c, env) for c in configs]
 
 
-@router.post("/llm-configs")
 async def _auto_default_if_single(user_id: str, db: AsyncSession) -> None:
     """If there's exactly one LLM config for the user, mark it as default."""
     r = await db.execute(select(LlmConfig).where(LlmConfig.user_id == user_id))
@@ -435,6 +434,7 @@ async def _auto_default_if_single(user_id: str, db: AsyncSession) -> None:
         await db.commit()
 
 
+@router.post("/llm-configs")
 async def create_llm_config(
     body: LlmConfigCreate,
     db: AsyncSession = Depends(get_db),
