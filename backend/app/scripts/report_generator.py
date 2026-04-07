@@ -13,6 +13,15 @@ Pipeline:
 import base64
 import io
 import json
+
+LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+
+
+def _language_instruction(language: str | None) -> str:
+    """Return an explicit language instruction for LLM prompts."""
+    if language and language in LANGUAGE_NAMES:
+        return f"Write ALL text output in {LANGUAGE_NAMES[language]}. "
+    return "Write in the same language as the data (e.g., Portuguese if column names are in Portuguese). "
 import math
 import re
 from datetime import datetime
@@ -174,6 +183,7 @@ async def _generate_observations(
     source_name: str,
     llm_overrides: dict | None,
     channel: str,
+    language: str | None = None,
 ) -> str:
     profile_text = _format_profile_for_llm(profile)
     sample_json = json.dumps(profile["sample_rows"][:3], ensure_ascii=False, default=str)
@@ -182,7 +192,7 @@ async def _generate_observations(
         "You are a senior data analyst. Given a dataset profile, write a detailed general observations section for a data report. "
         "Cover: data overview, column types and meanings, data quality (missing values, anomalies), "
         "distributions and notable patterns, and recommendations for further analysis. "
-        "Write in the same language as the data (e.g., Portuguese if column names are in Portuguese). "
+        + _language_instruction(language) +
         "Use HTML formatting: <h3> for subsections, <p> for paragraphs, <ul>/<li> for lists, <strong> for emphasis. "
         "Do NOT wrap in a full HTML document. Return only the inner content. "
         "Be thorough and insightful. Maximum 600 words."
@@ -654,6 +664,7 @@ async def _generate_chart_explanations(
     source_name: str,
     llm_overrides: dict | None,
     channel: str,
+    language: str | None = None,
 ) -> list[str]:
     """Generate explanations for all rendered charts in a single LLM call."""
     if not charts:
@@ -671,7 +682,7 @@ async def _generate_chart_explanations(
     system = (
         "You are a data analyst. For each chart listed below, write a concise explanation (2-4 sentences) "
         "describing what the chart reveals about the data, any interesting patterns, and actionable insights. "
-        "Write in the same language as the data (e.g., Portuguese if data is in Portuguese). "
+        + _language_instruction(language) +
         "Return a JSON array of strings, one explanation per chart, in the same order. "
         "Return ONLY the JSON array."
     )
@@ -1007,6 +1018,7 @@ async def generate_report(
     source_name: str,
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Full report generation pipeline.
@@ -1023,7 +1035,7 @@ async def generate_report(
 
     # Step 2: Observations (LLM call #1)
     try:
-        observations = await _generate_observations(profile, source_name, llm_overrides, channel)
+        observations = await _generate_observations(profile, source_name, llm_overrides, channel, language=language)
     except (ValueError, Exception) as exc:
         if "api_key" in str(exc).lower() or "api key" in str(exc).lower():
             raise ValueError(
@@ -1045,7 +1057,7 @@ async def generate_report(
 
     # Step 5: Explanations (LLM call #3)
     explanations = await _generate_chart_explanations(
-        rendered_charts, profile, source_name, llm_overrides, channel
+        rendered_charts, profile, source_name, llm_overrides, channel, language=language
     )
 
     # Step 6: Assemble HTML

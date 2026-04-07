@@ -12,6 +12,14 @@ from app.scripts.ask_csv import _build_sample_profile, _format_profile, _safe_fl
 MAX_ROWS_FOR_STATS = 2000  # cap when reading file for profile
 MAX_SAMPLE_ROWS_FOR_LLM = 5  # at most this many raw rows in the prompt
 
+LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+
+
+def _lang_instruction(language: str | None) -> str:
+    if language and language in LANGUAGE_NAMES:
+        return f"Write ALL text output in {LANGUAGE_NAMES[language]}. "
+    return "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+
 
 def _format_schema(columns: list[str]) -> str:
     return "Columns: " + ", ".join(columns)
@@ -27,6 +35,7 @@ async def generate_table_summary_csv(
     sample_row_count: int | None = None,
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [] }.
@@ -85,7 +94,7 @@ async def generate_table_summary_csv(
         "[Brief recommendation for analysis.]\n\n"
         "Base your report ONLY on: the column list, the sample profile, total row count, and the tiny sample provided. "
         "Do not assume you have the full dataset. Keep it professional and concise. "
-        "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+        f"{_lang_instruction(language)}"
         "Return ONLY the Markdown content with no preamble."
     )
     user_report = (

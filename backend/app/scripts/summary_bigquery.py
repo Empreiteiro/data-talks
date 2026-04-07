@@ -17,6 +17,14 @@ from app.scripts.ask_bigquery import (
 
 MAX_ROWS_PER_QUERY = 15  # cap for report context
 
+LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+
+
+def _lang_instruction(language: str | None) -> str:
+    if language and language in LANGUAGE_NAMES:
+        return f"Write ALL text output in {LANGUAGE_NAMES[language]}. "
+    return "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+
 
 def _schema_text(project_id: str, dataset_id: str, table_infos: list[dict]) -> str:
     t = f"Project: {project_id}, Dataset: {dataset_id}, Tables: {[x.get('table') for x in table_infos]}"
@@ -54,6 +62,7 @@ async def generate_table_summary_bigquery(
     source_name: str = "",
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [ { "query": str, "rows": list }, ... ] }
@@ -153,7 +162,7 @@ async def generate_table_summary_bigquery(
         "[Any NULL values, quality issues, or structural notes.]\n\n"
         "Base your report ONLY on the schema, profiling data, and tiny sample provided. "
         "Keep it professional and concise (about 1-2 pages). "
-        "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+        f"{_lang_instruction(language)}"
         "Return ONLY the Markdown content with no preamble."
     )
     user_report = (

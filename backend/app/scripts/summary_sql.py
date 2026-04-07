@@ -9,6 +9,14 @@ import re
 
 MAX_ROWS_PER_QUERY = 15
 
+LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+
+
+def _lang_instruction(language: str | None) -> str:
+    if language and language in LANGUAGE_NAMES:
+        return f"Write ALL text output in {LANGUAGE_NAMES[language]}. "
+    return "Write in the same language as the data (e.g. Portuguese if data is in Portuguese). "
+
 
 def _schema_text(table_infos: list[dict]) -> str:
     lines = []
@@ -66,6 +74,7 @@ async def generate_table_summary_sql(
     source_name: str = "",
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: { "report": str (markdown), "queries_run": [ { "query": str, "rows": list }, ... ] }
@@ -158,7 +167,7 @@ async def generate_table_summary_sql(
         "- [**Observation 2:** Notable patterns found in the query results]\n\n"
         "## Data Quality\n"
         "[Notes on missing data, types, or structure caveats.]\n\n"
-        "Keep it professional and concise. Write in the same language as the data. "
+        f"Keep it professional and concise. {_lang_instruction(language)}"
         "Return ONLY the Markdown content with no preamble."
     )
     user_report = (

@@ -30,6 +30,7 @@ async def generate_report_sql(
     source_name: str = "",
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: {"html_content": str, "chart_count": int}
@@ -52,4 +53,5 @@ async def generate_report_sql(
         source_name=source_name or table_name,
         llm_overrides=llm_overrides,
         channel=channel,
+        language=language,
     )

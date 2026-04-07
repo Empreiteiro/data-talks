@@ -33,6 +33,7 @@ async def generate_report_google_sheets(
     source_name: str = "",
     llm_overrides: dict | None = None,
     channel: str = "studio",
+    language: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns: {"html_content": str, "chart_count": int}
@@ -50,4 +51,5 @@ async def generate_report_google_sheets(
         source_name=source_name or sheet_name,
         llm_overrides=llm_overrides,
         channel=channel,
+        language=language,
     )
