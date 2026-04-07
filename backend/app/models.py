@@ -391,6 +391,7 @@ class Report(Base):
     agent_id: Mapped[str] = mapped_column(String(36))
     source_id: Mapped[str] = mapped_column(String(36))
     source_name: Mapped[str] = mapped_column(String(255))
+    template_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     html_content: Mapped[str] = mapped_column(Text)
     chart_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
