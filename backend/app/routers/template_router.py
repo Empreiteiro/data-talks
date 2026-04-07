@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User, Source, Agent, ReportTemplate, ReportTemplateRun, LlmConfig, LlmSettings
+from app.models import User, Source, Agent, Report, ReportTemplate, ReportTemplateRun, LlmConfig, LlmSettings
 from app.auth import require_user
 from app.config import get_settings
 from app.schemas import TemplateRunRequest
@@ -460,9 +460,27 @@ async def run_template_as_report(
         logger.exception("Template report generation failed")
         raise HTTPException(500, f"Report generation failed: {exc}")
 
+    # Save as a Report (same model as Exploratory Report) for future viewing
+    report_id = str(uuid.uuid4())
+    report = Report(
+        id=report_id,
+        user_id=user.id,
+        agent_id=body.agentId,
+        source_id=source.id,
+        source_name=f"{source.name} — {template.get('name', 'Template')}",
+        html_content=result["html_content"],
+        chart_count=result.get("chart_count", 0),
+    )
+    db.add(report)
+    await db.commit()
+
     return {
-        "htmlContent": result["html_content"],
-        "chartCount": result.get("chart_count", 0),
+        "id": report.id,
+        "agentId": report.agent_id,
+        "sourceId": report.source_id,
+        "sourceName": report.source_name,
+        "chartCount": report.chart_count,
+        "createdAt": report.created_at.isoformat(),
     }
 
 
