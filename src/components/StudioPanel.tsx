@@ -95,10 +95,10 @@ export function StudioPanel({ workspaceType = "analysis", onOpenGraph, onOpenSum
         </Button>
       </div>
 
-      <div className="flex-1 min-h-0 p-3">
+      <div className="flex-1 min-h-0 p-3 overflow-y-auto">
         <div
-          className="grid grid-cols-2 gap-2 h-full"
-          style={{ gridTemplateRows: `repeat(${totalRows}, 1fr)` }}
+          className="grid grid-cols-2 gap-2"
+          style={{ gridTemplateRows: `repeat(${totalRows}, minmax(0, 80px))` }}
         >
           {allOptions.map((option) => (
             <Card

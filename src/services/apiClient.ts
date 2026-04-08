@@ -520,7 +520,7 @@ export const apiClient = {
   },
 
   async getAgent(id: string) {
-    return api<{ id: string; name: string; description: string; source_ids: string[]; source_relationships: SqlSourceRelationship[]; suggested_questions: string[]; llm_config_id?: string | null; sql_mode?: boolean }>(`/api/agents/${id}`);
+    return api<{ id: string; name: string; description: string; workspace_type?: string; workspace_config?: Record<string, unknown>; source_ids: string[]; source_relationships: SqlSourceRelationship[]; suggested_questions: string[]; llm_config_id?: string | null; sql_mode?: boolean }>(`/api/agents/${id}`);
   },
 
   async listAgents() {
