@@ -47,7 +47,7 @@ import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
 import { workspaceSteps } from "@/components/walkthrough/steps/workspaceSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { BarChart3, Bot, ChevronRight, History, Layout, Link2, Loader2, RotateCcw, Send, Table, Terminal, Upload, X } from "lucide-react";
+import { BarChart3, Bot, ChevronRight, History, Layout, Link2, Loader2, RotateCcw, Send, Sparkles, Table, Terminal, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -879,9 +879,10 @@ export default function Workspace() {
                   <h3 className="text-sm font-medium">{t('questions.warmupQuestions')}</h3>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-6 gap-1 text-xs text-muted-foreground"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
                     disabled={generatingSuggestions}
+                    title={warmupQuestions.length > 0 ? "Regenerate suggestions" : "Generate suggestions with AI"}
                     onClick={async () => {
                       if (!id) return;
                       setGeneratingSuggestions(true);
@@ -892,7 +893,7 @@ export default function Workspace() {
                       finally { setGeneratingSuggestions(false); }
                     }}
                   >
-                    {generatingSuggestions ? <Loader2 className="h-3 w-3 animate-spin" /> : <><BarChart3 className="h-3 w-3" />{warmupQuestions.length > 0 ? t('questions.regenerate') || 'Regenerate' : t('questions.generate') || 'Generate with AI'}</>}
+                    {generatingSuggestions ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
                 {warmupQuestions.length > 0 && (
