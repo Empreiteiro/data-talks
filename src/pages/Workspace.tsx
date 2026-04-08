@@ -920,18 +920,6 @@ export default function Workspace() {
                         }`}
                       >
                         <div className="absolute -top-2 right-0 flex items-center gap-1">
-                          {message.role === "assistant" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm hover:bg-primary/10 hover:text-primary"
-                              onClick={() => handleGenerateChart(index)}
-                              title={t('workspace.generateChart')}
-                              disabled={message.isChartLoading || !currentSessionId}
-                            >
-                              <BarChart3 className={`h-3.5 w-3.5 ${message.isChartLoading ? 'animate-pulse' : ''}`} />
-                            </Button>
-                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -956,6 +944,17 @@ export default function Workspace() {
                           <p className="mt-3 text-xs text-muted-foreground">
                             {t('workspace.generatingChart')}
                           </p>
+                        )}
+                        {message.role === "assistant" && !message.isChartLoading && !message.chartSpec && !message.imageUrl && currentSessionId && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 gap-1.5"
+                            onClick={() => handleGenerateChart(index)}
+                          >
+                            <BarChart3 className="h-3.5 w-3.5" />
+                            {t('workspace.generateChart') || 'Generate Chart'}
+                          </Button>
                         )}
                       </div>
                     </div>
