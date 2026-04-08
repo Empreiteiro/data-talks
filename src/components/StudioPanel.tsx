@@ -45,50 +45,38 @@ export function StudioPanel({ workspaceType = "analysis", onOpenGraph, onOpenSum
     });
   };
 
-  // Shared options (available in all workspace types)
-  const sharedOptions: Option[] = [
-    { icon: FileBarChart, title: t('studio.summaryTitle'), description: t('studio.summaryCardDescription'), locked: false, onClick: onOpenSummary },
-    { icon: FileText, title: "Reports", description: t('studio.reports'), locked: false, onClick: onOpenReport },
-    { icon: LayoutTemplate, title: t('studio.templates'), description: t('studio.templateDescription'), locked: false, onClick: onOpenTemplates },
-    { icon: Layers, title: "Medallion", description: "Bronze → Silver → Gold", locked: false, onClick: onOpenMedallion },
-    { icon: Bell, title: "Alerts", description: t('studio.alertConfig'), locked: false, onClick: onOpenAlerts },
-  ];
-
-  // Analysis-specific
-  const analysisOptions: Option[] = [
-    { icon: GitBranch, title: "Graph", description: t('studio.graphDescription'), locked: false, onClick: onOpenGraph },
-    { icon: AudioWaveform, title: "Audio", description: t('studio.audioOverview'), locked: false, onClick: onOpenAudio },
-    { icon: Network, title: "Auto ML", description: t('studio.autoML'), locked: false, onClick: onOpenAutoML },
-  ];
-
-  // CDP-specific
-  const cdpOptions: Option[] = [
-    { icon: UserCheck, title: "CDP Wizard", description: "Identity resolution & enrichment", locked: false, onClick: onOpenCdpWizard },
-    { icon: Users, title: "Segments", description: "Customer segmentation", locked: false, onClick: onOpenSegments },
-    { icon: GitBranch, title: "Profiles", description: "Unified customer profiles", locked: false, onClick: onOpenProfiles },
-  ];
-
-  // ETL-specific
-  const etlOptions: Option[] = [
-    { icon: Route, title: "Pipelines", description: "Build data pipelines", locked: false, onClick: onOpenPipelines },
-    { icon: GitMerge, title: "Transforms", description: "SQL transformations", locked: false, onClick: onOpenTransforms },
-    { icon: Network, title: "Lineage", description: "Data flow graph", locked: false, onClick: onOpenLineage },
-  ];
-
-  // Connection options
-  const connectionOptions: Option[] = [
-    { icon: MessageSquare, title: "Messaging", description: "WhatsApp, Slack, Telegram", locked: false, onClick: onOpenMessaging },
-    { icon: Terminal, title: "API", description: t('studio.connectApi'), locked: false, onClick: onOpenApiAccess },
-  ];
-
-  // Build options based on workspace type
-  const typeSpecific = workspaceType === "cdp" ? cdpOptions : workspaceType === "etl" ? etlOptions : analysisOptions;
-
-  const allOptions = [
-    ...typeSpecific,
-    ...sharedOptions,
-    ...connectionOptions,
-  ];
+  // Options per workspace type (exclusive assignment per user spec)
+  const allOptions: Option[] = (() => {
+    if (workspaceType === "cdp") {
+      return [
+        { icon: UserCheck, title: "CDP Wizard", description: "Identity resolution & enrichment", locked: false, onClick: onOpenCdpWizard },
+        { icon: Users, title: "Segments", description: "Customer segmentation", locked: false, onClick: onOpenSegments },
+        { icon: GitBranch, title: "Profiles", description: "Unified customer profiles", locked: false, onClick: onOpenProfiles },
+        { icon: Layers, title: "Medallion", description: "Bronze → Silver → Gold", locked: false, onClick: onOpenMedallion },
+        { icon: Network, title: "Auto ML", description: t('studio.autoML'), locked: false, onClick: onOpenAutoML },
+      ];
+    }
+    if (workspaceType === "etl") {
+      return [
+        { icon: Route, title: "Pipelines", description: "Build data pipelines", locked: false, onClick: onOpenPipelines },
+        { icon: GitMerge, title: "Transforms", description: "SQL transformations", locked: false, onClick: onOpenTransforms },
+        { icon: Network, title: "Lineage", description: "Data flow graph", locked: false, onClick: onOpenLineage },
+        { icon: GitBranch, title: "Graph", description: t('studio.graphDescription'), locked: false, onClick: onOpenGraph },
+        { icon: Layers, title: "Medallion", description: "Bronze → Silver → Gold", locked: false, onClick: onOpenMedallion },
+        { icon: Network, title: "Auto ML", description: t('studio.autoML'), locked: false, onClick: onOpenAutoML },
+      ];
+    }
+    // analysis (default)
+    return [
+      { icon: FileBarChart, title: t('studio.summaryTitle'), description: t('studio.summaryCardDescription'), locked: false, onClick: onOpenSummary },
+      { icon: FileText, title: "Reports", description: t('studio.reports'), locked: false, onClick: onOpenReport },
+      { icon: LayoutTemplate, title: t('studio.templates'), description: t('studio.templateDescription'), locked: false, onClick: onOpenTemplates },
+      { icon: AudioWaveform, title: "Audio", description: t('studio.audioOverview'), locked: false, onClick: onOpenAudio },
+      { icon: Bell, title: "Alerts", description: t('studio.alertConfig'), locked: false, onClick: onOpenAlerts },
+      { icon: MessageSquare, title: "Messaging", description: "WhatsApp, Slack, Telegram", locked: false, onClick: onOpenMessaging },
+      { icon: Terminal, title: "API", description: t('studio.connectApi'), locked: false, onClick: onOpenApiAccess },
+    ];
+  })();
 
   // Total rows needed: ceil(items / 2)
   const totalRows = Math.ceil(allOptions.length / 2);
