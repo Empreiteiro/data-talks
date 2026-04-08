@@ -303,15 +303,15 @@ const Index = () => {
                 </div>
 
                 <h3 className="font-semibold text-lg mb-1 line-clamp-2">{agent.name}</h3>
-                {agent.workspace_type && agent.workspace_type !== "analysis" && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
-                    {agent.workspace_type}
-                  </span>
-                )}
 
                 <div className="mt-auto pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
                     {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_count || 0} {(agent.source_count || 0) === 1 ? t('workspace.source') : t('workspace.sources')}
+                    {agent.workspace_type && agent.workspace_type !== "analysis" && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
+                        {agent.workspace_type}
+                      </span>
+                    )}
                   </p>
                 </div>
               </Card>)}
