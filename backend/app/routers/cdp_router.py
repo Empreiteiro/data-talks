@@ -1,7 +1,12 @@
-"""CDP (Customer Data Platform) API — identity resolution, enrichment, segmentation."""
+"""CDP (Customer Data Platform) API — identity resolution, enrichment, segmentation, materialization."""
 from __future__ import annotations
 
-from typing import Optional
+import sqlite3
+import uuid
+from pathlib import Path
+from typing import Any, Optional
+
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -157,3 +162,117 @@ async def get_cdp_config(
     if not agent:
         raise HTTPException(404, "Workspace not found")
     return agent.workspace_config or {}
+
+
+class MaterializeRequest(BaseModel):
+    agentId: str
+    sql: str  # The SQL to execute (from identity_resolution, enrichment, or segmentation)
+    tableName: str = "unified_customers"  # Name for the output CSV
+
+
+def _make_table_name_from_source(name: str) -> str:
+    """Convert source filename to SQLite table name."""
+    import re
+    n = name.rsplit(".", 1)[0]
+    n = re.sub(r"[^a-zA-Z0-9_]", "_", n)
+    n = re.sub(r"_+", "_", n).strip("_")
+    return n.lower() or "data"
+
+
+@router.post("/materialize")
+async def materialize_cdp_table(
+    body: MaterializeRequest,
+    user: User = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Execute CDP SQL against all workspace sources and save result as a new CSV source."""
+    from app.scripts.ask_csv import _load_full_dataframe
+    from app.routers.crud import _build_sample_profile, _sanitize_for_json
+
+    r = await db.execute(select(Agent).where(Agent.id == body.agentId, Agent.user_id == user.id))
+    agent = r.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Workspace not found")
+
+    settings = get_settings()
+    data_dir = Path(settings.data_files_dir)
+
+    # Load all active sources into in-memory SQLite
+    r_src = await db.execute(
+        select(Source).where(Source.agent_id == agent.id, Source.user_id == user.id, Source.is_active == True)
+    )
+    sources = list(r_src.scalars().all())
+    if not sources:
+        raise HTTPException(400, "No active sources")
+
+    conn = sqlite3.connect(":memory:")
+    for src in sources:
+        meta = src.metadata_ or {}
+        file_path = meta.get("file_path", "")
+        if not file_path:
+            continue
+        full_path = data_dir / file_path
+        if not full_path.exists():
+            continue
+        try:
+            df = _load_full_dataframe(full_path)
+            tname = _make_table_name_from_source(src.name)
+            df.to_sql(tname, conn, index=False, if_exists="replace")
+        except Exception:
+            continue
+
+    # Execute the CDP SQL
+    try:
+        result_df = pd.read_sql_query(body.sql, conn)
+    except Exception as e:
+        conn.close()
+        raise HTTPException(400, f"SQL error: {e}")
+    finally:
+        conn.close()
+
+    if result_df.empty:
+        raise HTTPException(400, "Query returned no results")
+
+    # Save as new CSV file
+    output_filename = f"{user.id}/{uuid.uuid4().hex[:8]}_{body.tableName}.csv"
+    output_path = data_dir / output_filename
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    result_df.to_csv(output_path, index=False)
+
+    # Build metadata
+    profile = _build_sample_profile(result_df.head(1000))
+    metadata = {
+        "file_path": output_filename,
+        "columns": [str(c) for c in result_df.columns],
+        "preview_rows": _sanitize_for_json(result_df.head(5).to_dict(orient="records")),
+        "row_count": len(result_df),
+        "sample_row_count": min(len(result_df), 1000),
+        "sample_profile": profile,
+    }
+
+    # Create new Source in DB
+    source = Source(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        organization_id=user.organization_id or user.id,
+        agent_id=agent.id,
+        name=f"{body.tableName}.csv",
+        type="csv",
+        metadata_=metadata,
+        is_active=True,
+    )
+    db.add(source)
+
+    # Update agent source_ids
+    source_ids = list(agent.source_ids or [])
+    source_ids.append(source.id)
+    agent.source_ids = source_ids
+
+    await db.commit()
+
+    return {
+        "sourceId": source.id,
+        "sourceName": source.name,
+        "rowCount": len(result_df),
+        "columns": list(result_df.columns),
+    }
