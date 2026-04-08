@@ -97,6 +97,19 @@ const Index = () => {
     setWorkspaceTypeDialogOpen(true);
   };
 
+  const handleCreateDemoWorkspace = async (workspaceType: string) => {
+    setWorkspaceTypeDialogOpen(false);
+    try {
+      const result = await dataClient.createDemoWorkspace(workspaceType);
+      toast.success(`Demo workspace created with ${result.source_count} sample sources`);
+      navigate(`/workspace/${result.id}`);
+    } catch (error) {
+      toast.error("Failed to create demo workspace", {
+        description: error.message
+      });
+    }
+  };
+
   const handleCreateWorkspaceWithType = async (workspaceType: string) => {
     setWorkspaceTypeDialogOpen(false);
     try {
@@ -582,17 +595,24 @@ const Index = () => {
             {WORKSPACE_TYPES.map((wt) => (
               <Card
                 key={wt.id}
-                className="p-4 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all"
-                onClick={() => handleCreateWorkspaceWithType(wt.id)}
+                className="p-4 hover:shadow-md hover:border-blue-400 transition-all"
               >
                 <div className="flex items-center gap-4">
                   <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
                     <wt.icon className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-semibold">{wt.label}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{wt.description}</p>
                   </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" className="flex-1" onClick={() => handleCreateWorkspaceWithType(wt.id)}>
+                    Create
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => handleCreateDemoWorkspace(wt.id)}>
+                    <Database className="h-3.5 w-3.5 mr-1" />Try Demo
+                  </Button>
                 </div>
               </Card>
             ))}

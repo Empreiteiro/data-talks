@@ -607,6 +607,109 @@ async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = D
     return {"id": c.id, "title": c.title, "description": c.description}
 
 
+# --- Demo workspace ---
+
+
+@router.post("/demo/create")
+async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+    """Create a demo workspace with sample data sources."""
+    from app.services.demo_data import generate_analysis_data, generate_cdp_data, generate_etl_data, _build_metadata
+
+    workspace_type = body.get("workspace_type", "analysis")
+    settings = get_settings()
+    data_dir = Path(settings.data_files_dir)
+
+    # Generate demo data based on type
+    if workspace_type == "cdp":
+        demo_sources = generate_cdp_data(data_dir, user.id)
+        ws_name = "CDP Demo"
+        ws_desc = "Demo workspace with sample customer, orders, and website event data for CDP analysis."
+        suggested = [
+            "Which customers have the highest total order value?",
+            "What is the average order amount by payment method?",
+            "Show me the most active customers by website events",
+        ]
+    elif workspace_type == "etl":
+        demo_sources = generate_etl_data(data_dir, user.id)
+        ws_name = "ETL Demo"
+        ws_desc = "Demo workspace with raw logs, inventory, and shipping data to practice ETL pipelines."
+        suggested = [
+            "How many 500 errors occurred in the last 30 days?",
+            "Which warehouse has the lowest stock?",
+            "What is the average shipping time by carrier?",
+        ]
+    else:
+        demo_sources = generate_analysis_data(data_dir, user.id)
+        ws_name = "Analysis Demo"
+        ws_desc = "Demo workspace with sample sales, product catalog, and customer feedback data."
+        suggested = [
+            "What are the top 5 products by total revenue?",
+            "Show me sales by region over time",
+            "What is the average customer rating by product?",
+        ]
+
+    # Create sources in DB
+    source_ids = []
+    for src_info in demo_sources:
+        meta = _build_metadata(src_info["file_path_rel"], src_info["df"])
+        src = Source(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            organization_id=user.organization_id or user.id,
+            name=src_info["name"],
+            type=src_info["type"],
+            metadata_=meta,
+            is_active=True,
+        )
+        db.add(src)
+        source_ids.append(src.id)
+
+    # Auto-assign default LLM config
+    llm_config_id = None
+    r_def = await db.execute(
+        select(LlmConfig.id).where(LlmConfig.user_id == user.id, LlmConfig.is_default == True).limit(1)
+    )
+    row = r_def.scalar_one_or_none()
+    if row:
+        llm_config_id = row
+
+    # Create workspace
+    agent = Agent(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        organization_id=user.organization_id or user.id,
+        name=ws_name,
+        description=ws_desc,
+        workspace_type=workspace_type,
+        source_ids=source_ids,
+        suggested_questions=suggested,
+        llm_config_id=llm_config_id,
+    )
+    db.add(agent)
+
+    # Link sources to agent
+    for src_id in source_ids:
+        await db.execute(
+            select(Source).where(Source.id == src_id)
+        )
+
+    await db.flush()
+    for src_id in source_ids:
+        r_src = await db.execute(select(Source).where(Source.id == src_id))
+        s = r_src.scalar_one_or_none()
+        if s:
+            s.agent_id = agent.id
+
+    await db.commit()
+
+    return {
+        "id": agent.id,
+        "name": agent.name,
+        "workspace_type": workspace_type,
+        "source_count": len(source_ids),
+    }
+
+
 # --- Alerts ---
 def _serialize_alert(a: Alert) -> dict:
     return {
