@@ -532,10 +532,10 @@ export const apiClient = {
     }));
   },
 
-  async createAgent(name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], sourceRelationships?: SqlSourceRelationship[]) {
+  async createAgent(name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], sourceRelationships?: SqlSourceRelationship[], workspaceType?: string) {
     return api('/api/agents', {
       method: 'POST',
-      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], source_relationships: sourceRelationships || [] }),
+      body: JSON.stringify({ name, source_ids: sourceIds, description: description || '', suggested_questions: suggestedQuestions || [], source_relationships: sourceRelationships || [], workspace_type: workspaceType || 'analysis' }),
     });
   },
 

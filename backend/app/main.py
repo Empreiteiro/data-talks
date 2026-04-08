@@ -171,6 +171,17 @@ async def _ensure_claude_code_columns():
                 await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN claude_code_oauth_token VARCHAR(512)"))
 
 
+async def _ensure_workspace_type_columns():
+    async with engine.begin() as conn:
+        has_table = await conn.run_sync(lambda sync_conn: inspect(sync_conn).has_table("agents"))
+        if has_table:
+            cols = await conn.run_sync(lambda sync_conn: {c["name"] for c in inspect(sync_conn).get_columns("agents")})
+            if "workspace_type" not in cols:
+                await conn.execute(text("ALTER TABLE agents ADD COLUMN workspace_type VARCHAR(30) DEFAULT 'analysis'"))
+            if "workspace_config" not in cols:
+                await conn.execute(text("ALTER TABLE agents ADD COLUMN workspace_config JSON DEFAULT '{}'"))
+
+
 async def _ensure_report_template_id_column():
     async with engine.begin() as conn:
         has_table = await conn.run_sync(lambda sync_conn: inspect(sync_conn).has_table("reports"))
@@ -191,6 +202,7 @@ async def lifespan(app: FastAPI):
     await _ensure_agent_source_relationships_column()
     await _ensure_alert_system_columns()
     await _ensure_claude_code_columns()
+    await _ensure_workspace_type_columns()
     await _ensure_report_template_id_column()
     Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
     await _ensure_single_user()
