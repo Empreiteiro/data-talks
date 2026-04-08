@@ -25,6 +25,7 @@ import {
 // Tabs replaced with manual tab bar for proper flex layout
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiClient } from "@/services/apiClient";
@@ -103,7 +104,8 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
 
   // Source & template browsing
   const [sources, setSources] = useState<Array<{ id: string; name: string; type: string }>>([]);
-  const [selectedSourceId, setSelectedSourceId] = useState("");
+  const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
+  const selectedSourceId = Array.from(selectedSourceIds)[0] || ""; // primary source for API calls
   const [templates, setTemplates] = useState<TemplateDef[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateDef | null>(null);
   const [loading, setLoading] = useState(false);
@@ -151,6 +153,10 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
       try {
         const sourceList = await apiClient.listSources(workspaceId);
         setSources(sourceList || []);
+        // Auto-select all sources
+        if (sourceList && sourceList.length > 0) {
+          setSelectedSourceIds(new Set(sourceList.map((s: { id: string }) => s.id)));
+        }
       } catch {
         toast.error(t("studio.templateLoadError"));
       }
@@ -388,23 +394,50 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
   // Template browser view
   // ---------------------------------------------------------------------------
 
+  const toggleSource = (id: string) => {
+    setSelectedSourceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllSources = () => {
+    if (selectedSourceIds.size === sources.length) {
+      setSelectedSourceIds(new Set());
+    } else {
+      setSelectedSourceIds(new Set(sources.map((s) => s.id)));
+    }
+  };
+
   const renderBrowser = () => (
     <div className="space-y-4">
-      <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
-        <SelectTrigger className="focus:ring-0 focus:ring-offset-0"><SelectValue placeholder={t("studio.templateSelectSource")} /></SelectTrigger>
-        <SelectContent>
-          {sources.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.type})</SelectItem>)}
-        </SelectContent>
-      </Select>
+      {/* Source multi-select */}
+      <div className="border rounded-md p-3 space-y-2">
+        <Label className="text-xs font-medium text-muted-foreground">{t("studio.templateSelectSource") || "Select sources"}</Label>
+        <label className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer">
+          <Checkbox checked={sources.length > 0 && selectedSourceIds.size === sources.length} onCheckedChange={toggleAllSources} />
+          <span className="text-sm font-medium">All Sources ({sources.length})</span>
+        </label>
+        <div className="border-t pt-1 space-y-0.5 max-h-32 overflow-y-auto">
+          {sources.map((s) => (
+            <label key={s.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer">
+              <Checkbox checked={selectedSourceIds.has(s.id)} onCheckedChange={() => toggleSource(s.id)} />
+              <span className="text-sm">{s.name}</span>
+              <span className="text-xs text-muted-foreground">({s.type})</span>
+            </label>
+          ))}
+        </div>
+      </div>
 
-      {!selectedSourceId && sources.length === 0 && (
+      {selectedSourceIds.size === 0 && sources.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">{t("studio.templateNoSource")}</p>
       )}
 
       {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}
 
       {/* CTA: Generate with AI */}
-      {!loading && selectedSourceId && (
+      {!loading && selectedSourceIds.size > 0 && (
         <>
           {!showGenerateForm ? (
             <Button variant="outline" className="w-full" onClick={() => setShowGenerateForm(true)} disabled={generating}>
@@ -427,7 +460,7 @@ export function TemplateModal({ open, onOpenChange, workspaceId, onUseInChat }: 
         </>
       )}
 
-      {!loading && selectedSourceId && templates.length === 0 && !generating && !showGenerateForm && (
+      {!loading && selectedSourceIds.size > 0 && templates.length === 0 && !generating && !showGenerateForm && (
         <p className="text-sm text-muted-foreground text-center py-4">{t("studio.templateNoTemplates")}</p>
       )}
 
