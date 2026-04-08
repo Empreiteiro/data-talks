@@ -539,6 +539,13 @@ export const apiClient = {
     });
   },
 
+  async suggestQuestions(agentId: string, language?: string) {
+    return api<{ questions: string[] }>(`/api/agents/${agentId}/suggest-questions`, {
+      method: 'POST',
+      body: JSON.stringify({ language }),
+    });
+  },
+
   async createDemoWorkspace(workspaceType: string) {
     return api<{ id: string; name: string; workspace_type: string; source_count: number }>('/api/demo/create', {
       method: 'POST',
