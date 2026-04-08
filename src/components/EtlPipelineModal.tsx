@@ -171,7 +171,7 @@ export function EtlPipelineModal({ open, onOpenChange, agentId }: EtlPipelineMod
           <button onClick={() => { setTab("lineage"); loadLineage(); }} className={`flex-1 text-sm font-medium py-2 rounded-sm transition-all ${tab === "lineage" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>
             Lineage
           </button>
-          <button onClick={() => setTab("pipelines"); setShowTransformForm(!showTransformForm)} className={`flex-1 text-sm font-medium py-2 rounded-sm transition-all text-muted-foreground hover:text-foreground`}>
+          <button onClick={() => { setTab("pipelines"); setShowTransformForm(!showTransformForm); }} className={`flex-1 text-sm font-medium py-2 rounded-sm transition-all text-muted-foreground hover:text-foreground`}>
             Transforms
           </button>
         </div>
