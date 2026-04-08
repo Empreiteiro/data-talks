@@ -231,9 +231,17 @@ async def materialize_cdp_table(
         except Exception:
             continue
 
-    # Execute the CDP SQL
+    # Extract SELECT from "CREATE TABLE ... AS SELECT ..." if present
+    import re
+    sql = body.sql.strip().rstrip(";")
+    # Strip CREATE TABLE wrapper
+    match = re.match(r"(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?\w+[\"']?\s+AS\s+", sql)
+    if match:
+        sql = sql[match.end():]
+
+    # Execute the SELECT
     try:
-        result_df = pd.read_sql_query(body.sql, conn)
+        result_df = pd.read_sql_query(sql, conn)
     except Exception as e:
         conn.close()
         available = ", ".join(loaded_tables) if loaded_tables else "none"
