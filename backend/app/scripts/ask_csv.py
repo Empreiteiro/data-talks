@@ -20,6 +20,15 @@ from app.scripts.sql_utils import extract_sql_from_field
 MAX_CSV_ROWS = 100_000
 
 
+def _make_table_name(source_name: str) -> str:
+    """Convert a source filename to a valid SQLite table name."""
+    import re
+    name = source_name.rsplit(".", 1)[0]  # remove extension
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", name)  # replace special chars
+    name = re.sub(r"_+", "_", name).strip("_")  # collapse underscores
+    return name.lower() or "data"
+
+
 async def ask_csv(
     file_path: str,
     question: str,
@@ -33,18 +42,41 @@ async def ask_csv(
     llm_overrides: dict | None = None,
     history: list[dict] | None = None,
     channel: str = "workspace",
+    extra_sources: list[dict] | None = None,
 ) -> dict[str, Any]:
     """
     file_path: path relative to data_files (e.g. user_id/timestamp.csv).
     question: natural language question.
+    extra_sources: optional list of {"file_path": str, "name": str} for multi-CSV analysis.
     Returns: { "answer", "imageUrl" (optional), "followUpQuestions" }.
     """
     full_path = Path(data_files_dir) / file_path
     if not full_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    # Load full file for SQL execution (CSV or XLSX)
+    # Create in-memory SQLite
+    conn = sqlite3.connect(":memory:")
+
+    # Load primary source
     df_full = _load_full_dataframe(full_path)
+    primary_table = _make_table_name(source_name or Path(file_path).name) if extra_sources else "data"
+    df_full.to_sql(primary_table, conn, index=False, if_exists="replace")
+
+    # Load extra sources (multi-CSV mode)
+    table_descriptions = []
+    if extra_sources:
+        for extra in extra_sources:
+            extra_path = Path(data_files_dir) / extra["file_path"]
+            if not extra_path.exists():
+                continue
+            df_extra = _load_full_dataframe(extra_path)
+            tname = _make_table_name(extra["name"])
+            if tname == primary_table:
+                tname = tname + "_2"
+            df_extra.to_sql(tname, conn, index=False, if_exists="replace")
+            extra_cols = list(df_extra.columns)
+            table_descriptions.append(f"Table '{tname}' with columns: {', '.join(extra_cols)} ({len(df_extra)} rows)")
+
     columns = list(df_full.columns)
     full_row_count = len(df_full)
     preview = df_full.head(10).to_dict(orient="records")
@@ -53,13 +85,18 @@ async def ask_csv(
     sample_profile = _build_sample_profile(df_full.head(1000))
     profile_text = _format_profile(sample_profile)
 
-    # Create in-memory SQLite with table "data" for SQL execution
-    conn = sqlite3.connect(":memory:")
-    df_full.to_sql("data", conn, index=False, if_exists="replace")
-
-    schema_for_sql = (
-        f"Table 'data' with columns: {', '.join(columns)}. "
-        "Use SELECT ... FROM data. Quote column names with double quotes if they have spaces or special chars (e.g. \"Release Year\")."
+    # Build schema description for SQL
+    if extra_sources and table_descriptions:
+        all_tables = [f"Table '{primary_table}' with columns: {', '.join(columns)} ({full_row_count} rows)"] + table_descriptions
+        schema_for_sql = (
+            "Multiple tables available:\n" + "\n".join(all_tables) + "\n"
+            "Use SELECT ... FROM <table_name>. You can JOIN tables if they share common columns (e.g., email, product). "
+            "Quote column names with double quotes if they have spaces or special chars."
+        )
+    else:
+        schema_for_sql = (
+            f"Table 'data' with columns: {', '.join(columns)}. "
+            "Use SELECT ... FROM data. Quote column names with double quotes if they have spaces or special chars (e.g. \"Release Year\")."
     )
 
     system = (
