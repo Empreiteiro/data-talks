@@ -64,6 +64,7 @@ def _sanitize_for_json(obj: Any) -> Any:
 
 
 def _build_sample_profile(df) -> dict:
+    import pandas as _pd
     sample_rows = len(df)
     profile = {
         "sample_rows": sample_rows,
@@ -71,8 +72,14 @@ def _build_sample_profile(df) -> dict:
     }
     if sample_rows == 0:
         return profile
+    # Deduplicate column names to avoid DataFrame returned instead of Series
+    if df.columns.duplicated().any():
+        df = df.loc[:, ~df.columns.duplicated()]
     for col in df.columns:
         series = df[col]
+        # Safety: if still a DataFrame (shouldn't happen after dedup), take first column
+        if isinstance(series, _pd.DataFrame):
+            series = series.iloc[:, 0]
         col_profile = {
             "type": str(series.dtype),
             "missing": int(series.isna().sum()),
