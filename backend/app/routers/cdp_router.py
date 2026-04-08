@@ -197,15 +197,24 @@ async def materialize_cdp_table(
     settings = get_settings()
     data_dir = Path(settings.data_files_dir)
 
-    # Load all active sources into in-memory SQLite
+    # Load ALL workspace sources into in-memory SQLite (active + materialized)
+    from sqlalchemy import or_
+    source_ids = agent.source_ids or []
     r_src = await db.execute(
-        select(Source).where(Source.agent_id == agent.id, Source.user_id == user.id, Source.is_active == True)
+        select(Source).where(
+            Source.user_id == user.id,
+            or_(
+                Source.agent_id == agent.id,
+                Source.id.in_(source_ids) if source_ids else Source.agent_id == agent.id,
+            ),
+        )
     )
     sources = list(r_src.scalars().all())
     if not sources:
-        raise HTTPException(400, "No active sources")
+        raise HTTPException(400, "No sources found")
 
     conn = sqlite3.connect(":memory:")
+    loaded_tables = []
     for src in sources:
         meta = src.metadata_ or {}
         file_path = meta.get("file_path", "")
@@ -218,6 +227,7 @@ async def materialize_cdp_table(
             df = _load_full_dataframe(full_path)
             tname = _make_table_name_from_source(src.name)
             df.to_sql(tname, conn, index=False, if_exists="replace")
+            loaded_tables.append(tname)
         except Exception:
             continue
 
@@ -226,7 +236,8 @@ async def materialize_cdp_table(
         result_df = pd.read_sql_query(body.sql, conn)
     except Exception as e:
         conn.close()
-        raise HTTPException(400, f"SQL error: {e}")
+        available = ", ".join(loaded_tables) if loaded_tables else "none"
+        raise HTTPException(400, f"SQL error: {e}. Available tables: {available}")
     finally:
         conn.close()
 
