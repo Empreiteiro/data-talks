@@ -54,18 +54,13 @@ export function UploadSourceForm({ agentId, onSourceAdded, onClose }: UploadSour
       if (agentId && results.length > 0) {
         try {
           const newIds = results.map((r) => r?.id).filter(Boolean) as string[];
-          const existingSources = await dataClient.listSources(agentId);
-          // Desativar fontes já existentes do agent
+          // Associar e ativar todas as novas fontes
           await Promise.all(
-            existingSources.map((s) => dataClient.updateSource(s.id, { is_active: false }))
-          );
-          // Associar e ativar a primeira nova fonte; demais ficam inativas
-          for (let i = 0; i < newIds.length; i++) {
-            await dataClient.updateSource(newIds[i], {
+            newIds.map((id) => dataClient.updateSource(id, {
               agent_id: agentId,
-              is_active: i === 0,
-            });
-          }
+              is_active: true,
+            }))
+          );
         } catch (err) {
           console.error('Error associating source to agent:', err);
         }
