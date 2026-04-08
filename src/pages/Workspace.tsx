@@ -246,7 +246,7 @@ interface QASessionRecord {
 }
 
 export default function Workspace() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   usePageWalkthrough('workspace', workspaceSteps);
   const stripFollowUpsFromAnswer = (answer: string, followUps?: string[]) => {
@@ -292,6 +292,7 @@ export default function Workspace() {
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
+  const [generatingSuggestions, setGeneratingSuggestions] = useState(false);
   const [workspaceType, setWorkspaceType] = useState("analysis");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMessagingModalOpen, setIsMessagingModalOpen] = useState(false);
@@ -872,27 +873,46 @@ export default function Workspace() {
             )}
             
             {/* Perguntas de Aquecimento */}
-            {warmupQuestions.length > 0 && messages.length === 0 && (
+            {messages.length === 0 && hasSources && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="text-sm font-medium">{t('questions.warmupQuestions')}</h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {warmupQuestions.map((question, idx) => (
-                    <Button
-                      key={idx}
-                      variant="secondary"
-                      size="sm"
-                      className="text-xs h-auto py-2 px-3"
-                      onClick={() => {
-                      setQuestionSegments([{ type: "text", value: question }]);
-                      setQuestionInput("");
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 text-xs text-muted-foreground"
+                    disabled={generatingSuggestions}
+                    onClick={async () => {
+                      if (!id) return;
+                      setGeneratingSuggestions(true);
+                      try {
+                        const result = await dataClient.suggestQuestions(id, language);
+                        setWarmupQuestions(result.questions || []);
+                      } catch { /* silent */ }
+                      finally { setGeneratingSuggestions(false); }
                     }}
-                    >
-                      {question}
-                    </Button>
-                  ))}
+                  >
+                    {generatingSuggestions ? <Loader2 className="h-3 w-3 animate-spin" /> : <><BarChart3 className="h-3 w-3" />{warmupQuestions.length > 0 ? t('questions.regenerate') || 'Regenerate' : t('questions.generate') || 'Generate with AI'}</>}
+                  </Button>
                 </div>
+                {warmupQuestions.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {warmupQuestions.map((question, idx) => (
+                      <Button
+                        key={idx}
+                        variant="secondary"
+                        size="sm"
+                        className="text-xs h-auto py-2 px-3"
+                        onClick={() => {
+                          setQuestionSegments([{ type: "text", value: question }]);
+                          setQuestionInput("");
+                        }}
+                      >
+                        {question}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             

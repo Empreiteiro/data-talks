@@ -631,6 +631,124 @@ async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = D
     return {"id": c.id, "title": c.title, "description": c.description}
 
 
+# --- AI suggested questions ---
+
+
+@router.post("/agents/{agent_id}/suggest-questions")
+async def suggest_questions(agent_id: str, body: dict = {}, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+    """Use AI to generate suggested questions based on the workspace sources."""
+    from app.llm.client import chat_completion
+    from app.routers.ask import _build_agent_description
+
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    agent = r.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    # Load active sources for schema context
+    r_src = await db.execute(
+        select(Source).where(
+            Source.user_id == user.id,
+            (Source.agent_id == agent.id) | (Source.id.in_(agent.source_ids or [])),
+            Source.is_active == True,
+        )
+    )
+    sources = list(r_src.scalars().all())
+    if not sources:
+        raise HTTPException(400, "No active sources")
+
+    # Build schema context
+    source_schemas = []
+    for src in sources:
+        meta = src.metadata_ or {}
+        columns = meta.get("columns", [])
+        row_count = meta.get("row_count", "?")
+        profile = meta.get("sample_profile", {})
+        col_details = []
+        for col in columns[:20]:
+            info = profile.get("columns", {}).get(col, {})
+            dtype = info.get("type", "?")
+            col_details.append(f"  - {col} ({dtype})")
+        source_schemas.append(f"Source: {src.name} ({src.type}, {row_count} rows)\n" + "\n".join(col_details))
+
+    schema_text = "\n\n".join(source_schemas)
+    agent_desc = _build_agent_description(agent)
+    workspace_type = getattr(agent, "workspace_type", "analysis") or "analysis"
+
+    language = body.get("language", "en")
+    lang_names = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
+    lang_inst = f"Write ALL questions in {lang_names.get(language, 'English')}. " if language else ""
+
+    system = (
+        f"You are a data analyst. {lang_inst}"
+        f"Given the data sources below, suggest 5-6 insightful questions a user could ask.\n"
+        f"Workspace type: {workspace_type}\n"
+    )
+    if workspace_type == "cdp":
+        system += "Focus on customer unification, identity resolution, LTV, segmentation, churn, and marketing insights.\n"
+    elif workspace_type == "etl":
+        system += "Focus on data quality, cleaning, transformations, schema issues, and pipeline design.\n"
+    else:
+        system += "Focus on analysis, trends, comparisons, rankings, and actionable business insights.\n"
+
+    system += (
+        "Return ONLY a JSON array of strings. Each question should be specific to the actual columns and data available.\n"
+        "Example: [\"What is the total revenue by region?\", \"Which product has the highest rating?\"]\n"
+    )
+
+    if agent_desc:
+        system += f"\nContext: {agent_desc}\n"
+
+    # Resolve LLM config
+    llm_overrides = None
+    if agent.llm_config_id:
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
+        cfg = r_cfg.scalar_one_or_none()
+        if cfg:
+            from app.routers.ask import _llm_config_to_overrides
+            llm_overrides = _llm_config_to_overrides(cfg)
+
+    try:
+        raw, _, _ = await chat_completion(
+            [{"role": "system", "content": system}, {"role": "user", "content": schema_text}],
+            max_tokens=512, llm_overrides=llm_overrides,
+        )
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+    # Parse JSON array
+    import json as _json
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if lines[0].startswith("```"): lines = lines[1:]
+        if lines and lines[-1].strip() == "```": lines = lines[:-1]
+        text = "\n".join(lines)
+
+    try:
+        questions = _json.loads(text)
+        if not isinstance(questions, list):
+            questions = []
+    except _json.JSONDecodeError:
+        # Try to find array in text
+        start, end = text.find("["), text.rfind("]")
+        if start != -1 and end != -1:
+            try:
+                questions = _json.loads(text[start:end + 1])
+            except _json.JSONDecodeError:
+                questions = []
+        else:
+            questions = []
+
+    questions = [str(q) for q in questions if isinstance(q, str)][:6]
+
+    # Save to agent
+    agent.suggested_questions = questions
+    await db.commit()
+
+    return {"questions": questions}
+
+
 # --- Demo workspace ---
 
 
