@@ -19,7 +19,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Check, ChevronRight, Loader2, Sparkles, UserCheck, Users } from "lucide-react";
+import { Check, ChevronRight, Database, Loader2, Sparkles, UserCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getApiUrl, getToken } from "@/config";
@@ -66,6 +66,8 @@ export function CdpWizardModal({ open, onOpenChange, agentId }: CdpWizardModalPr
   const [identityResult, setIdentityResult] = useState<Record<string, unknown> | null>(null);
   const [enrichmentResult, setEnrichmentResult] = useState<Record<string, unknown> | null>(null);
   const [segmentationResult, setSegmentationResult] = useState<Record<string, unknown> | null>(null);
+  const [materializing, setMaterializing] = useState(false);
+  const [materializedResult, setMaterializedResult] = useState<{ sourceName: string; rowCount: number; columns: string[] } | null>(null);
 
   const steps: { id: Step; label: string; done: boolean }[] = [
     { id: "identity", label: "Identity Resolution", done: !!identityResult },
@@ -109,6 +111,21 @@ export function CdpWizardModal({ open, onOpenChange, agentId }: CdpWizardModalPr
       toast.error("Failed", { description: (err as Error)?.message });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleMaterialize(sql: string, tableName: string) {
+    setMaterializing(true);
+    try {
+      const result = await cdpApi<{ sourceName: string; rowCount: number; columns: string[] }>("/materialize", {
+        agentId, sql, tableName,
+      });
+      setMaterializedResult(result);
+      toast.success(`Table "${result.sourceName}" created with ${result.rowCount} rows`);
+    } catch (err: unknown) {
+      toast.error("Failed to materialize", { description: (err as Error)?.message });
+    } finally {
+      setMaterializing(false);
     }
   }
 
@@ -186,12 +203,17 @@ export function CdpWizardModal({ open, onOpenChange, agentId }: CdpWizardModalPr
                     </div>
                   )}
                   {identityResult.silver_sql && (
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="sql">
-                        <AccordionTrigger className="text-xs">View SQL</AccordionTrigger>
-                        <AccordionContent><SqlViewer sql={String(identityResult.silver_sql)} /></AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                    <>
+                      <Accordion type="single" collapsible>
+                        <AccordionItem value="sql">
+                          <AccordionTrigger className="text-xs">View SQL</AccordionTrigger>
+                          <AccordionContent><SqlViewer sql={String(identityResult.silver_sql)} /></AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                      <Button variant="outline" className="w-full" onClick={() => handleMaterialize(String(identityResult.silver_sql), "unified_customers")} disabled={materializing}>
+                        {materializing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Materializing...</> : <><Database className="h-4 w-4 mr-2" />Materialize: unified_customers.csv</>}
+                      </Button>
+                    </>
                   )}
                   <Button className="w-full" onClick={() => setCurrentStep("enrichment")}>
                     Next: Enrichment <ChevronRight className="h-4 w-4 ml-1" />
@@ -235,12 +257,17 @@ export function CdpWizardModal({ open, onOpenChange, agentId }: CdpWizardModalPr
                     <p className="text-sm italic text-muted-foreground">{String(enrichmentResult.explanation)}</p>
                   )}
                   {enrichmentResult.gold_sql && (
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="sql">
-                        <AccordionTrigger className="text-xs">View SQL</AccordionTrigger>
-                        <AccordionContent><SqlViewer sql={String(enrichmentResult.gold_sql)} /></AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                    <>
+                      <Accordion type="single" collapsible>
+                        <AccordionItem value="sql">
+                          <AccordionTrigger className="text-xs">View SQL</AccordionTrigger>
+                          <AccordionContent><SqlViewer sql={String(enrichmentResult.gold_sql)} /></AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                      <Button variant="outline" className="w-full" onClick={() => handleMaterialize(String(enrichmentResult.gold_sql), "enriched_customers")} disabled={materializing}>
+                        {materializing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Materializing...</> : <><Database className="h-4 w-4 mr-2" />Materialize: enriched_customers.csv</>}
+                      </Button>
+                    </>
                   )}
                   <Button className="w-full" onClick={() => setCurrentStep("segmentation")}>
                     Next: Segmentation <ChevronRight className="h-4 w-4 ml-1" />
@@ -284,12 +311,27 @@ export function CdpWizardModal({ open, onOpenChange, agentId }: CdpWizardModalPr
                     <p className="text-sm italic text-muted-foreground">{String(segmentationResult.explanation)}</p>
                   )}
                   {segmentationResult.segment_sql && (
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="sql">
-                        <AccordionTrigger className="text-xs">View SQL</AccordionTrigger>
-                        <AccordionContent><SqlViewer sql={String(segmentationResult.segment_sql)} /></AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                    <>
+                      <Accordion type="single" collapsible>
+                        <AccordionItem value="sql">
+                          <AccordionTrigger className="text-xs">View SQL</AccordionTrigger>
+                          <AccordionContent><SqlViewer sql={String(segmentationResult.segment_sql)} /></AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                      <Button variant="outline" className="w-full" onClick={() => handleMaterialize(String(segmentationResult.segment_sql), "customer_segments")} disabled={materializing}>
+                        {materializing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Materializing...</> : <><Database className="h-4 w-4 mr-2" />Materialize: customer_segments.csv</>}
+                      </Button>
+                    </>
+                  )}
+                  {materializedResult && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                        ✅ Table "{materializedResult.sourceName}" created — {materializedResult.rowCount} rows, {materializedResult.columns.length} columns
+                      </p>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        Available in your workspace sources for Q&A analysis.
+                      </p>
+                    </div>
                   )}
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3">
                     <p className="text-sm font-medium text-green-700 dark:text-green-300">
