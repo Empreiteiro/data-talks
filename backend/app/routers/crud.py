@@ -413,7 +413,7 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db), user: Use
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Agent not found")
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids or [], "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions or [], "llm_config_id": getattr(a, "llm_config_id", None), "sql_mode": getattr(a, "sql_mode", False)}
+    return {"id": a.id, "name": a.name, "description": a.description, "workspace_type": getattr(a, "workspace_type", "analysis"), "workspace_config": getattr(a, "workspace_config", {}), "source_ids": a.source_ids or [], "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions or [], "llm_config_id": getattr(a, "llm_config_id", None), "sql_mode": getattr(a, "sql_mode", False)}
 
 
 @router.delete("/agents/{agent_id}")
