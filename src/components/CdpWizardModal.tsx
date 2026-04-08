@@ -2,7 +2,7 @@
  * CdpWizardModal — AI-assisted CDP setup wizard.
  * Steps: Identity Resolution → Enrichment → Segmentation
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +68,23 @@ export function CdpWizardModal({ open, onOpenChange, agentId }: CdpWizardModalPr
   const [segmentationResult, setSegmentationResult] = useState<Record<string, unknown> | null>(null);
   const [materializing, setMaterializing] = useState(false);
   const [materializedResult, setMaterializedResult] = useState<{ sourceName: string; rowCount: number; columns: string[] } | null>(null);
+
+  // Load saved config on open
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        const config = await cdpApi<Record<string, unknown>>(`/config/${agentId}`);
+        if (config?.identity_resolution) setIdentityResult(config.identity_resolution as Record<string, unknown>);
+        if (config?.enrichment) setEnrichmentResult(config.enrichment as Record<string, unknown>);
+        if (config?.segmentation) setSegmentationResult(config.segmentation as Record<string, unknown>);
+        // Jump to the latest incomplete step
+        if (config?.segmentation) setCurrentStep("segmentation");
+        else if (config?.enrichment) setCurrentStep("segmentation");
+        else if (config?.identity_resolution) setCurrentStep("enrichment");
+      } catch { /* silent — first time, no config */ }
+    })();
+  }, [open, agentId]);
 
   const steps: { id: Step; label: string; done: boolean }[] = [
     { id: "identity", label: "Identity Resolution", done: !!identityResult },
