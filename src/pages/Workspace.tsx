@@ -18,6 +18,8 @@ import { ReportModal } from "@/components/ReportModal";
 import { TemplateModal } from "@/components/TemplateModal";
 import { AlertModal } from "@/components/AlertModal";
 import { CdpWizardModal } from "@/components/CdpWizardModal";
+import { CdpSegmentsModal } from "@/components/CdpSegmentsModal";
+import { CdpProfilesModal } from "@/components/CdpProfilesModal";
 import { EtlPipelineModal } from "@/components/EtlPipelineModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -301,6 +303,8 @@ export default function Workspace() {
   const [medallionOpen, setMedallionOpen] = useState(false);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [cdpWizardOpen, setCdpWizardOpen] = useState(false);
+  const [cdpSegmentsOpen, setCdpSegmentsOpen] = useState(false);
+  const [cdpProfilesOpen, setCdpProfilesOpen] = useState(false);
   const [etlPipelineOpen, setEtlPipelineOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -1096,6 +1100,8 @@ export default function Workspace() {
               onOpenMedallion={() => setMedallionOpen(true)}
               onOpenAlerts={() => setAlertModalOpen(true)}
               onOpenCdpWizard={() => setCdpWizardOpen(true)}
+              onOpenSegments={() => setCdpSegmentsOpen(true)}
+              onOpenProfiles={() => setCdpProfilesOpen(true)}
               onOpenPipelines={() => setEtlPipelineOpen(true)}
               onOpenTransforms={() => setEtlPipelineOpen(true)}
               onOpenLineage={() => setEtlPipelineOpen(true)}
@@ -1196,6 +1202,18 @@ export default function Workspace() {
       <CdpWizardModal
         open={cdpWizardOpen}
         onOpenChange={setCdpWizardOpen}
+        agentId={id || ''}
+      />
+
+      <CdpSegmentsModal
+        open={cdpSegmentsOpen}
+        onOpenChange={setCdpSegmentsOpen}
+        agentId={id || ''}
+      />
+
+      <CdpProfilesModal
+        open={cdpProfilesOpen}
+        onOpenChange={setCdpProfilesOpen}
         agentId={id || ''}
       />
 
