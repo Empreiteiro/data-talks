@@ -183,7 +183,7 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                   key={source.id}
                   className={`group relative p-3 rounded-lg border transition-all cursor-pointer ${
                     ["unified_customers.csv", "enriched_customers.csv", "customer_segments.csv"].includes(source.name)
-                      ? (isActive ? 'bg-amber-500/15 border-amber-500/30 hover:bg-amber-500/20' : 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10')
+                      ? (isActive ? 'bg-yellow-400/15 border-yellow-400/30 hover:bg-yellow-400/20' : 'bg-yellow-400/5 border-yellow-400/20 hover:bg-yellow-400/10')
                       : (isActive ? 'bg-primary/15 border-primary/30 hover:bg-primary/20' : 'bg-muted/30 border-muted hover:bg-muted/50')
                   }`}
                   onClick={async () => {
