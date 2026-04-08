@@ -288,6 +288,7 @@ export default function Workspace() {
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
+  const [workspaceType, setWorkspaceType] = useState("analysis");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMessagingModalOpen, setIsMessagingModalOpen] = useState(false);
   const [isApiAccessModalOpen, setIsApiAccessModalOpen] = useState(false);
@@ -433,6 +434,7 @@ export default function Workspace() {
     try {
       const agent = await dataClient.getAgent(id);
       setWarmupQuestions(agent?.suggested_questions || []);
+      setWorkspaceType(agent?.workspace_type || "analysis");
     } catch (error) {
       console.error("Erro ao carregar perguntas de aquecimento:", error);
     }
@@ -1079,6 +1081,7 @@ export default function Workspace() {
         {/* Studio Panel - Right */}
         {!studioPanelCollapsed && <div className="w-80 flex-shrink-0 bg-card border rounded-xl overflow-hidden flex flex-col" data-walkthrough="ws-studio-panel">
             <StudioPanel
+              workspaceType={workspaceType}
               collapsed={studioPanelCollapsed}
               onToggleCollapse={() => setStudioPanelCollapsed(!studioPanelCollapsed)}
               onOpenGraph={() => setGraphModalOpen(true)}
