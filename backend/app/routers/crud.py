@@ -364,6 +364,23 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
             llm_config_id = row
     valid_types = ("analysis", "cdp", "etl")
     wtype = body.workspace_type if body.workspace_type in valid_types else "analysis"
+
+    # Default suggested questions per workspace type (when none provided)
+    suggested = body.suggested_questions
+    if not suggested:
+        if wtype == "cdp":
+            suggested = [
+                "Which customers have the highest lifetime value?",
+                "Show me customer segments by purchase frequency",
+                "Which customers are at risk of churning?",
+            ]
+        elif wtype == "etl":
+            suggested = [
+                "What data quality issues exist in this dataset?",
+                "Suggest transformations to clean this data",
+                "Show me the distribution of null values by column",
+            ]
+
     a = Agent(
         id=agent_id,
         user_id=user.id,
@@ -373,7 +390,7 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
         workspace_type=wtype,
         source_ids=body.source_ids,
         source_relationships=body.source_relationships,
-        suggested_questions=body.suggested_questions,
+        suggested_questions=suggested or [],
         llm_config_id=llm_config_id,
     )
     db.add(a)
@@ -625,18 +642,24 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
         ws_name = "CDP Demo"
         ws_desc = "Demo workspace with sample customer, orders, and website event data for CDP analysis."
         suggested = [
-            "Which customers have the highest total order value?",
-            "What is the average order amount by payment method?",
-            "Show me the most active customers by website events",
+            "Which customers have the highest lifetime value (LTV)?",
+            "Show me purchase frequency by customer segment",
+            "Which customers haven't purchased in 90+ days but were previously active?",
+            "What is the average order value by payment method?",
+            "Can you identify customers who browse a lot but rarely purchase?",
+            "Build an RFM analysis of my customer base",
         ]
     elif workspace_type == "etl":
         demo_sources = generate_etl_data(data_dir, user.id)
         ws_name = "ETL Demo"
         ws_desc = "Demo workspace with raw logs, inventory, and shipping data to practice ETL pipelines."
         suggested = [
-            "How many 500 errors occurred in the last 30 days?",
-            "Which warehouse has the lowest stock?",
-            "What is the average shipping time by carrier?",
+            "What data quality issues exist in the raw logs?",
+            "How many rows have missing or invalid timestamps?",
+            "Suggest a SQL transformation to clean the response_time column",
+            "Which warehouse needs restocking based on reorder points?",
+            "What is the average delivery time by carrier and country?",
+            "Show me the distribution of HTTP status codes over time",
         ]
     else:
         demo_sources = generate_analysis_data(data_dir, user.id)
@@ -644,7 +667,7 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
         ws_desc = "Demo workspace with sample sales, product catalog, and customer feedback data."
         suggested = [
             "What are the top 5 products by total revenue?",
-            "Show me sales by region over time",
+            "Show me sales trend by region over time",
             "What is the average customer rating by product?",
         ]
 
