@@ -8,7 +8,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useCallback, useRef, useState } from "react";
+import { dataClient } from "@/services/dataClient";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { BigQuerySourceForm, BigQuerySourceFormHandle } from "@/components/BigQuerySourceForm";
 import { ExcelOnlineSourceForm, ExcelOnlineSourceFormHandle } from "@/components/ExcelOnlineSourceForm";
 import { DbtSourceForm, DbtSourceFormHandle } from "@/components/DbtSourceForm";
@@ -42,6 +46,7 @@ interface SourceOption {
 }
 
 const SOURCE_OPTIONS: SourceOption[] = [
+  { key: "existing",    label: "Existing Sources", connectLabelKey: "",                           hasConnect: false },
   { key: "upload",      label: "CSV / XLSX",      connectLabelKey: "",                           hasConnect: false },
   { key: "bigquery",    label: "BigQuery",         connectLabelKey: "addSource.connectBigQuery",  hasConnect: true },
   { key: "sheets",      label: "Google Sheets",    connectLabelKey: "addSource.connectSheets",    hasConnect: true },
@@ -105,6 +110,52 @@ export function AddSourceModal({
     [],
   );
 
+  // Existing sources picker
+  const [existingSources, setExistingSources] = useState<Array<{ id: string; name: string; type: string; agent_id?: string }>>([]);
+  const [selectedExisting, setSelectedExisting] = useState<Set<string>>(new Set());
+  const [addingExisting, setAddingExisting] = useState(false);
+
+  useEffect(() => {
+    if (!open || selectedType !== "existing") return;
+    (async () => {
+      try {
+        const all = await dataClient.listSources();
+        // Filter: show sources NOT in this workspace
+        const currentSources = agentId ? await dataClient.listSources(agentId) : [];
+        const currentIds = new Set(currentSources.map((s: { id: string }) => s.id));
+        setExistingSources(all.filter((s: { id: string }) => !currentIds.has(s.id)));
+        setSelectedExisting(new Set());
+      } catch { /* silent */ }
+    })();
+  }, [open, selectedType, agentId]);
+
+  const handleAddExistingSources = async () => {
+    if (!agentId || selectedExisting.size === 0) return;
+    setAddingExisting(true);
+    try {
+      await Promise.all(
+        Array.from(selectedExisting).map((id) =>
+          dataClient.updateSource(id, { agent_id: agentId, is_active: true })
+        )
+      );
+      toast.success(`${selectedExisting.size} source(s) added`);
+      onSourceAdded?.(Array.from(selectedExisting)[0]);
+      onOpenChange(false);
+    } catch {
+      toast.error("Failed to add sources");
+    } finally {
+      setAddingExisting(false);
+    }
+  };
+
+  const toggleExisting = (id: string) => {
+    setSelectedExisting((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   const onClose = () => onOpenChange(false);
 
   const activeConfig = SOURCE_OPTIONS.find((o) => o.key === selectedType);
@@ -137,6 +188,40 @@ export function AddSourceModal({
               </SelectContent>
             </Select>
           </div>
+
+          {selectedType === "existing" && (
+            <div className="space-y-4">
+              {existingSources.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No other sources available. Upload a new file instead.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">Select sources to add to this workspace:</p>
+                  <ScrollArea className="max-h-[400px] border rounded-md">
+                    <div className="p-2 space-y-1">
+                      {existingSources.map((src) => (
+                        <label
+                          key={src.id}
+                          className="flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedExisting.has(src.id)}
+                            onCheckedChange={() => toggleExisting(src.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium">{src.name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">({src.type})</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  <Button onClick={handleAddExistingSources} disabled={addingExisting || selectedExisting.size === 0}>
+                    {addingExisting ? "Adding..." : `Add ${selectedExisting.size} Source(s)`}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
 
           {selectedType === "upload" && (
             <div className="space-y-4">
