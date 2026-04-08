@@ -304,7 +304,7 @@ const Index = () => {
 
                 <h3 className="font-semibold text-lg mb-1 line-clamp-2">{agent.name}</h3>
                 {agent.workspace_type && agent.workspace_type !== "analysis" && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 uppercase">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
                     {agent.workspace_type}
                   </span>
                 )}
