@@ -75,11 +75,16 @@ async def list_templates(
             "queryCount": len(tpl.get("queries", [])),
         })
 
-    # Get user-created templates from DB
+    # Get user-created templates from DB (scoped to this workspace)
+    from sqlalchemy import or_
     q = select(ReportTemplate).where(
         ReportTemplate.source_type == source.type,
         ReportTemplate.user_id == user.id,
         ReportTemplate.is_builtin == False,
+        or_(
+            ReportTemplate.agent_id == source.agent_id,
+            ReportTemplate.agent_id == None,  # legacy templates without agent_id
+        ),
     )
     r = await db.execute(q)
     user_templates = r.scalars().all()
@@ -317,6 +322,7 @@ async def generate_template(
         id=str(uuid.uuid4()),
         user_id=user.id,
         organization_id=user.organization_id,
+        agent_id=body.agentId,
         source_type=source.type,
         name=parsed.get("name", "AI-Generated Template"),
         description=parsed.get("description", ""),
