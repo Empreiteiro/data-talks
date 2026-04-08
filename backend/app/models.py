@@ -38,6 +38,8 @@ class Agent(Base):
     organization_id: Mapped[str] = mapped_column(String(36))
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workspace_type: Mapped[str] = mapped_column(String(30), default="analysis")  # analysis | cdp | etl
+    workspace_config: Mapped[dict] = mapped_column(JSON, default=dict)  # type-specific configuration
     source_ids: Mapped[list] = mapped_column(JSON, default=list)  # list of UUIDs
     source_relationships: Mapped[list] = mapped_column(JSON, default=list)
     dismissed_relationship_suggestions: Mapped[list] = mapped_column(JSON, default=list)  # keys of excluded suggestions

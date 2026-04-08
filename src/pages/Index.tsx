@@ -10,7 +10,7 @@ import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
 import { indexSteps } from "@/components/walkthrough/steps/indexSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { BarChart3, Grid3x3, Layout, List, MoreVertical, Pencil, Plus } from "lucide-react";
+import { BarChart3, Database, Grid3x3, Layout, List, MoreVertical, Pencil, Plus, RefreshCw, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Auth from "@/pages/Auth";
@@ -19,10 +19,17 @@ interface Agent {
   id: string;
   name: string;
   description?: string;
+  workspace_type?: string;
   source_ids: string[];
   created_at: string;
   source_count?: number;
 }
+
+const WORKSPACE_TYPES = [
+  { id: "analysis", label: "Data Analysis", icon: BarChart3, description: "Ask questions about your data, generate reports and charts" },
+  { id: "cdp", label: "Customer Data Platform", icon: Users, description: "Unify customer data, create segments, and activate audiences" },
+  { id: "etl", label: "ETL Pipeline", icon: RefreshCw, description: "Transform and orchestrate data pipelines between sources" },
+] as const;
 
 interface Dashboard {
   id: string;
@@ -84,9 +91,17 @@ const Index = () => {
       });
     }
   }
-  const handleCreateWorkspace = async () => {
+  const [workspaceTypeDialogOpen, setWorkspaceTypeDialogOpen] = useState(false);
+
+  const handleCreateWorkspace = () => {
+    setWorkspaceTypeDialogOpen(true);
+  };
+
+  const handleCreateWorkspaceWithType = async (workspaceType: string) => {
+    setWorkspaceTypeDialogOpen(false);
     try {
-      const newAgent = await dataClient.createAgent(t('workspace.newWorkspace'), [], "", []) as { id: string };
+      const typeLabel = WORKSPACE_TYPES.find(t => t.id === workspaceType)?.label || "Workspace";
+      const newAgent = await dataClient.createAgent(`New ${typeLabel}`, [], "", [], undefined, workspaceType) as { id: string };
       navigate(`/workspace/${newAgent.id}?openAddSource=true`);
     } catch (error) {
       toast.error(t('workspace.errorCreatingWorkspace'), {
@@ -274,8 +289,13 @@ const Index = () => {
                   </DropdownMenu>
                 </div>
 
-                <h3 className="font-semibold text-lg mb-4 line-clamp-2">{agent.name}</h3>
-                
+                <h3 className="font-semibold text-lg mb-1 line-clamp-2">{agent.name}</h3>
+                {agent.workspace_type && agent.workspace_type !== "analysis" && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 uppercase">
+                    {agent.workspace_type}
+                  </span>
+                )}
+
                 <div className="mt-auto pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
                     {new Date(agent.created_at).toLocaleDateString(t('questions.dateFormat'))} • {agent.source_count || 0} {(agent.source_count || 0) === 1 ? t('workspace.source') : t('workspace.sources')}
@@ -550,6 +570,35 @@ const Index = () => {
         </DialogContent>
       </Dialog>
       )}
+
+      {/* Workspace type selector dialog */}
+      <Dialog open={workspaceTypeDialogOpen} onOpenChange={setWorkspaceTypeDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('workspace.chooseType') || 'Choose Workspace Type'}</DialogTitle>
+            <DialogDescription>{t('workspace.chooseTypeDesc') || 'Select the type of workspace you want to create.'}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            {WORKSPACE_TYPES.map((wt) => (
+              <Card
+                key={wt.id}
+                className="p-4 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all"
+                onClick={() => handleCreateWorkspaceWithType(wt.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <wt.icon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{wt.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{wt.description}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 export default Index;

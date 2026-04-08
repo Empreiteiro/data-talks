@@ -327,6 +327,8 @@ async def list_agents(db: AsyncSession = Depends(get_db), user: User = Depends(r
             "id": a.id,
             "name": a.name,
             "description": a.description,
+            "workspace_type": getattr(a, "workspace_type", "analysis"),
+            "workspace_config": getattr(a, "workspace_config", {}),
             "source_ids": a.source_ids or [],
             "source_relationships": a.source_relationships or [],
             "suggested_questions": a.suggested_questions or [],
@@ -340,6 +342,7 @@ async def list_agents(db: AsyncSession = Depends(get_db), user: User = Depends(r
 
 class AgentCreate(BaseModel):
     name: str
+    workspace_type: str = "analysis"  # analysis | cdp | etl
     source_ids: list[str] = []
     source_relationships: list[dict] = []
     description: str = ""
@@ -359,12 +362,15 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
         row = r_def.scalar_one_or_none()
         if row:
             llm_config_id = row
+    valid_types = ("analysis", "cdp", "etl")
+    wtype = body.workspace_type if body.workspace_type in valid_types else "analysis"
     a = Agent(
         id=agent_id,
         user_id=user.id,
         organization_id=user.organization_id or str(uuid.uuid4()),
         name=body.name,
         description=body.description,
+        workspace_type=wtype,
         source_ids=body.source_ids,
         source_relationships=body.source_relationships,
         suggested_questions=body.suggested_questions,
@@ -372,7 +378,7 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
     )
     db.add(a)
     await db.commit()
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": a.llm_config_id, "sql_mode": getattr(a, "sql_mode", False), "created_at": a.created_at.isoformat(), "updated_at": a.updated_at.isoformat()}
+    return {"id": a.id, "name": a.name, "description": a.description, "workspace_type": getattr(a, "workspace_type", "analysis"), "workspace_config": getattr(a, "workspace_config", {}), "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": a.llm_config_id, "sql_mode": getattr(a, "sql_mode", False), "created_at": a.created_at.isoformat(), "updated_at": a.updated_at.isoformat()}
 
 
 @router.patch("/agents/{agent_id}")
@@ -395,8 +401,10 @@ async def update_agent(agent_id: str, body: dict, db: AsyncSession = Depends(get
         a.llm_config_id = body["llm_config_id"]
     if "sql_mode" in body:
         a.sql_mode = bool(body["sql_mode"])
+    if "workspace_config" in body:
+        a.workspace_config = body["workspace_config"]
     await db.commit()
-    return {"id": a.id, "name": a.name, "description": a.description, "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": getattr(a, "llm_config_id", None), "sql_mode": getattr(a, "sql_mode", False)}
+    return {"id": a.id, "name": a.name, "description": a.description, "workspace_type": getattr(a, "workspace_type", "analysis"), "workspace_config": getattr(a, "workspace_config", {}), "source_ids": a.source_ids, "source_relationships": a.source_relationships or [], "suggested_questions": a.suggested_questions, "llm_config_id": getattr(a, "llm_config_id", None), "sql_mode": getattr(a, "sql_mode", False)}
 
 
 @router.get("/agents/{agent_id}")
