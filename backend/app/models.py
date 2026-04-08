@@ -405,6 +405,7 @@ class ReportTemplate(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)  # null = built-in
     organization_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)  # workspace scope
     source_type: Mapped[str] = mapped_column(String(50), index=True)  # csv | sql_database | bigquery | etc.
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
