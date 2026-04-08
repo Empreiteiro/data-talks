@@ -182,9 +182,9 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
                 <div
                   key={source.id}
                   className={`group relative p-3 rounded-lg border transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-primary/15 border-primary/30 hover:bg-primary/20' 
-                      : 'bg-muted/30 border-muted hover:bg-muted/50'
+                    ["unified_customers.csv", "enriched_customers.csv", "customer_segments.csv"].includes(source.name)
+                      ? (isActive ? 'bg-amber-500/15 border-amber-500/30 hover:bg-amber-500/20' : 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10')
+                      : (isActive ? 'bg-primary/15 border-primary/30 hover:bg-primary/20' : 'bg-muted/30 border-muted hover:bg-muted/50')
                   }`}
                   onClick={async () => {
                     if (agentId) {
