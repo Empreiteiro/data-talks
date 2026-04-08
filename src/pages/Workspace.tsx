@@ -45,7 +45,7 @@ import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
 import { workspaceSteps } from "@/components/walkthrough/steps/workspaceSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { BarChart3, Bot, ChevronRight, History, Layout, Link2, RotateCcw, Send, Table, Terminal, Upload, X } from "lucide-react";
+import { BarChart3, Bot, ChevronRight, History, Layout, Link2, Loader2, RotateCcw, Send, Table, Terminal, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -940,54 +940,52 @@ export default function Workspace() {
                             {message.content}
                           </ReactMarkdown>
                         </div>
-                        {message.role === "assistant" && message.isChartLoading && (
-                          <p className="mt-3 text-xs text-muted-foreground">
-                            {t('workspace.generatingChart')}
-                          </p>
-                        )}
-                        {message.role === "assistant" && !message.isChartLoading && !message.chartSpec && !message.imageUrl && currentSessionId && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3 gap-1.5"
-                            onClick={() => handleGenerateChart(index)}
-                          >
-                            <BarChart3 className="h-3.5 w-3.5" />
-                            {t('workspace.generateChart') || 'Generate Chart'}
-                          </Button>
-                        )}
                       </div>
                     </div>
-                    {(message.chartSpec || message.imageUrl) && (
+                    {/* Chart area — below the message bubble */}
+                    {message.role === "assistant" && (
                       <div className="flex justify-start">
                         <div className="max-w-[90%] w-full">
                           {message.chartSpec && (message.chartSpec as ChartSpec).categories ? (
-                            <div className="mt-3 relative group">
+                            <div className="mt-2 relative group">
                               <ChartRenderer
                                 spec={message.chartSpec as ChartSpec}
                                 className="w-full"
                               />
-                              {message.role === "assistant" && (
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveImageFromMessage(index)}
-                                    className="h-6 w-6"
-                                    title={t('workspace.removeImage') || 'Remover gráfico'}
-                                  >
-                                    <X className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              )}
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveImageFromMessage(index)}
+                                  className="h-6 w-6"
+                                  title={t('workspace.removeImage') || 'Remover gráfico'}
+                                >
+                                  <X className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
                             </div>
                           ) : message.imageUrl ? (
                             <ChartImage
                               imageUrl={message.imageUrl}
                               qaSessionId={currentSessionId || undefined}
                               t={t}
-                              onRemoveImage={message.role === "assistant" ? () => handleRemoveImageFromMessage(index) : undefined}
+                              onRemoveImage={() => handleRemoveImageFromMessage(index)}
                             />
+                          ) : message.isChartLoading ? (
+                            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground p-3 border rounded-lg">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              {t('workspace.generatingChart')}
+                            </div>
+                          ) : currentSessionId ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 gap-1.5"
+                              onClick={() => handleGenerateChart(index)}
+                            >
+                              <BarChart3 className="h-3.5 w-3.5" />
+                              {t('workspace.generateChart') || 'Generate Chart'}
+                            </Button>
                           ) : null}
                         </div>
                       </div>
