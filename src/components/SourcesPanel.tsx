@@ -109,28 +109,9 @@ export function SourcesPanel({ onAddSource, agentId, refreshTrigger, onSourceAct
       const targetSource = existingSources.find((source) => source.id === sourceId);
       if (!targetSource) return;
 
-      if (targetSource.type === "sql_database") {
-        const nextActive = !targetSource.is_active;
-        await Promise.all(
-          existingSources.map((source) => {
-            if (source.id === sourceId) {
-              return dataClient.updateSource(source.id, { is_active: nextActive });
-            }
-            if (nextActive && source.type !== "sql_database" && source.is_active) {
-              return dataClient.updateSource(source.id, { is_active: false });
-            }
-            return Promise.resolve();
-          })
-        );
-        toast.success(nextActive ? t("sources.sqlSourceActivated") : t("sources.sqlSourceDeactivated"));
-      } else {
-        await Promise.all(
-          existingSources.map((source) =>
-            dataClient.updateSource(source.id, { is_active: source.id === sourceId })
-          )
-        );
-        toast.success(t("sources.sourceActivated"));
-      }
+      const nextActive = !targetSource.is_active;
+      await dataClient.updateSource(sourceId, { is_active: nextActive });
+      toast.success(nextActive ? t("sources.sqlSourceActivated") : t("sources.sqlSourceDeactivated"));
       loadAgentSourceIds();
       if (onSourceActivated) onSourceActivated();
     } catch (error) {
