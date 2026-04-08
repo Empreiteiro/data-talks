@@ -539,6 +539,13 @@ export const apiClient = {
     });
   },
 
+  async createDemoWorkspace(workspaceType: string) {
+    return api<{ id: string; name: string; workspace_type: string; source_count: number }>('/api/demo/create', {
+      method: 'POST',
+      body: JSON.stringify({ workspace_type: workspaceType }),
+    });
+  },
+
   async updateAgent(id: string, name: string, sourceIds: string[], description?: string, suggestedQuestions?: string[], llmConfigId?: string | null, sourceRelationships?: SqlSourceRelationship[], sqlMode?: boolean) {
     return api(`/api/agents/${id}`, {
       method: 'PATCH',
