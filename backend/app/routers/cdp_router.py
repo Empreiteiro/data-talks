@@ -234,8 +234,8 @@ async def materialize_cdp_table(
     # Extract SELECT from "CREATE TABLE ... AS SELECT ..." if present
     import re
     sql = body.sql.strip().rstrip(";")
-    # Strip CREATE TABLE wrapper
-    match = re.match(r"(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?\w+[\"']?\s+AS\s+", sql)
+    # Strip CREATE TABLE wrapper (handles quoted and unquoted table names)
+    match = re.match(r"(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?[\w]+[\"']?\s+AS\s+", sql)
     if match:
         sql = sql[match.end():]
 
@@ -243,11 +243,13 @@ async def materialize_cdp_table(
     try:
         result_df = pd.read_sql_query(sql, conn)
     except Exception as e:
-        conn.close()
         available = ", ".join(loaded_tables) if loaded_tables else "none"
         raise HTTPException(400, f"SQL error: {e}. Available tables: {available}")
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     if result_df.empty:
         raise HTTPException(400, "Query returned no results")
