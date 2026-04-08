@@ -193,6 +193,12 @@ async def dispatch_question(
         if not file_path:
             raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
         meta = source.metadata_ or {}
+        # Collect extra active CSV sources for multi-source analysis
+        extra_csv_sources = [
+            {"file_path": (s.metadata_ or {}).get("file_path", ""), "name": s.name}
+            for s in active_sources
+            if s.id != source.id and s.type in ("csv", "xlsx", "parquet", "json") and (s.metadata_ or {}).get("file_path")
+        ]
         result = await ask_csv(
             file_path=file_path,
             question=question,
@@ -206,6 +212,7 @@ async def dispatch_question(
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
+            extra_sources=extra_csv_sources if extra_csv_sources else None,
         )
     elif source.type == "sqlite":
         meta = source.metadata_ or {}
