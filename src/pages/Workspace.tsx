@@ -18,6 +18,7 @@ import { ReportModal } from "@/components/ReportModal";
 import { TemplateModal } from "@/components/TemplateModal";
 import { AlertModal } from "@/components/AlertModal";
 import { CdpWizardModal } from "@/components/CdpWizardModal";
+import { EtlPipelineModal } from "@/components/EtlPipelineModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -300,6 +301,7 @@ export default function Workspace() {
   const [medallionOpen, setMedallionOpen] = useState(false);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [cdpWizardOpen, setCdpWizardOpen] = useState(false);
+  const [etlPipelineOpen, setEtlPipelineOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
@@ -1097,6 +1099,9 @@ export default function Workspace() {
               onOpenMedallion={() => setMedallionOpen(true)}
               onOpenAlerts={() => setAlertModalOpen(true)}
               onOpenCdpWizard={() => setCdpWizardOpen(true)}
+              onOpenPipelines={() => setEtlPipelineOpen(true)}
+              onOpenTransforms={() => setEtlPipelineOpen(true)}
+              onOpenLineage={() => setEtlPipelineOpen(true)}
             />
           </div>}
 
@@ -1194,6 +1199,12 @@ export default function Workspace() {
       <CdpWizardModal
         open={cdpWizardOpen}
         onOpenChange={setCdpWizardOpen}
+        agentId={id || ''}
+      />
+
+      <EtlPipelineModal
+        open={etlPipelineOpen}
+        onOpenChange={setEtlPipelineOpen}
         agentId={id || ''}
       />
 
