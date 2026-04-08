@@ -867,20 +867,6 @@ export default function Workspace() {
               </div>
             )}
             
-            {/* Workspace type context hint */}
-            {messages.length === 0 && workspaceType !== "analysis" && (
-              <div className="mb-4 p-4 border rounded-lg bg-muted/30">
-                <p className="text-sm font-medium mb-1">
-                  {workspaceType === "cdp" ? "👥 CDP Assistant" : "🔄 ETL Assistant"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {workspaceType === "cdp"
-                    ? "Ask about customer unification, segmentation, LTV, churn risk, cohort analysis, or marketing insights. I can analyze customer data across all your connected sources."
-                    : "Ask about data quality issues, schema problems, transformation suggestions, cleaning strategies, or pipeline design. I can help you understand and fix your data."}
-                </p>
-              </div>
-            )}
-
             {/* Perguntas de Aquecimento */}
             {warmupQuestions.length > 0 && messages.length === 0 && (
               <div className="mb-6">

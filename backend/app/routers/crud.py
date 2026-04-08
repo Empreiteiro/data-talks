@@ -370,9 +370,9 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
     if not suggested:
         if wtype == "cdp":
             suggested = [
-                "Which customers have the highest lifetime value?",
-                "Show me customer segments by purchase frequency",
-                "Which customers are at risk of churning?",
+                "What fields can I use to match customers across sources?",
+                "How should I structure my unified customer table?",
+                "What customer metrics should I calculate?",
             ]
         elif wtype == "etl":
             suggested = [
@@ -642,12 +642,12 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
         ws_name = "CDP Demo"
         ws_desc = "Demo workspace with sample customer, orders, and website event data for CDP analysis."
         suggested = [
-            "Which customers have the highest lifetime value (LTV)?",
-            "Show me purchase frequency by customer segment",
-            "Which customers haven't purchased in 90+ days but were previously active?",
-            "What is the average order value by payment method?",
-            "Can you identify customers who browse a lot but rarely purchase?",
-            "Build an RFM analysis of my customer base",
+            "What columns do my sources have in common for matching customers?",
+            "How can I join these sources to create a unified customer view?",
+            "What metrics should I calculate for each customer (LTV, RFM)?",
+            "Suggest a SQL query to unify customers across these sources by email",
+            "How many unique customers exist across all sources?",
+            "What data quality issues should I fix before building the CDP?",
         ]
     elif workspace_type == "etl":
         demo_sources = generate_etl_data(data_dir, user.id)
