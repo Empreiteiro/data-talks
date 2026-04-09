@@ -643,6 +643,20 @@ async def dispatch_question(
             history=history,
             channel=channel,
         )
+    elif source.type == "aws_costs":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_aws_costs import ask_aws_costs
+        result = await ask_aws_costs(
+            access_key_id=meta.get("accessKeyId", ""),
+            secret_access_key=meta.get("secretAccessKey", ""),
+            region=meta.get("region", "us-east-1"),
+            question=question,
+            agent_description=_build_agent_description(agent),
+            source_name=source.name,
+            llm_overrides=llm_overrides,
+            history=history,
+            channel=channel,
+        )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")
 
