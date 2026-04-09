@@ -204,17 +204,17 @@ export function AddSourceModal({
 
           <div className="space-y-1">
             <label className="text-sm font-medium">{t('addSource.sourceType')}</label>
-            <Popover open={sourceComboOpen} onOpenChange={setSourceComboOpen}>
+            <Popover open={sourceComboOpen} onOpenChange={setSourceComboOpen} modal={true}>
               <PopoverTrigger asChild>
                 <Button variant="outline" role="combobox" aria-expanded={sourceComboOpen} className="w-full justify-between font-normal">
                   {selectedType ? SOURCE_OPTIONS.find((o) => o.key === selectedType)?.label : t('addSource.selectSourceType')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <Command>
                   <CommandInput placeholder="Search sources..." />
-                  <CommandList>
+                  <CommandList className="max-h-[300px]">
                     <CommandEmpty>No source found.</CommandEmpty>
                     <CommandGroup>
                       {SOURCE_OPTIONS.map((option) => (
