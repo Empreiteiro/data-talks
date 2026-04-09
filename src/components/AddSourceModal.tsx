@@ -40,6 +40,17 @@ import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/Sno
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
 import { AwsCostSourceForm, AwsCostSourceFormHandle } from "@/components/AwsCostSourceForm";
+import { GoogleAdsSourceForm, GoogleAdsSourceFormHandle } from "@/components/GoogleAdsSourceForm";
+import { MetaAdsSourceForm, MetaAdsSourceFormHandle } from "@/components/MetaAdsSourceForm";
+import { MercadoPagoSourceForm, MercadoPagoSourceFormHandle } from "@/components/MercadoPagoSourceForm";
+import { MercadoLivreSourceForm, MercadoLivreSourceFormHandle } from "@/components/MercadoLivreSourceForm";
+import { MixpanelSourceForm, MixpanelSourceFormHandle } from "@/components/MixpanelSourceForm";
+import { MailchimpSourceForm, MailchimpSourceFormHandle } from "@/components/MailchimpSourceForm";
+import { LinkedInAdsSourceForm, LinkedInAdsSourceFormHandle } from "@/components/LinkedInAdsSourceForm";
+import { ZendeskSourceForm, ZendeskSourceFormHandle } from "@/components/ZendeskSourceForm";
+import { YouTubeSourceForm, YouTubeSourceFormHandle } from "@/components/YouTubeSourceForm";
+import { InstagramSourceForm, InstagramSourceFormHandle } from "@/components/InstagramSourceForm";
+import { RdStationSourceForm, RdStationSourceFormHandle } from "@/components/RdStationSourceForm";
 
 type ConnectableHandle = { connect(): Promise<void> };
 
@@ -75,6 +86,17 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "github_analytics", label: "GitHub Analytics", connectLabelKey: "addSource.connectGithubAnalytics", hasConnect: true },
   { key: "shopify",    label: "Shopify",           connectLabelKey: "addSource.connectShopify",          hasConnect: true },
   { key: "aws_costs",  label: "AWS Cost Explorer", connectLabelKey: "addSource.connectAwsCosts",         hasConnect: true },
+  { key: "google_ads", label: "Google Ads",        connectLabelKey: "addSource.connectGoogleAds",        hasConnect: true },
+  { key: "meta_ads",   label: "Meta Ads (Facebook/Instagram)", connectLabelKey: "addSource.connectMetaAds", hasConnect: true },
+  { key: "mercado_pago", label: "Mercado Pago",    connectLabelKey: "addSource.connectMercadoPago",      hasConnect: true },
+  { key: "mercado_livre", label: "Mercado Livre",   connectLabelKey: "addSource.connectMercadoLivre",    hasConnect: true },
+  { key: "mixpanel",   label: "Mixpanel",          connectLabelKey: "addSource.connectMixpanel",          hasConnect: true },
+  { key: "mailchimp",  label: "Mailchimp",         connectLabelKey: "addSource.connectMailchimp",         hasConnect: true },
+  { key: "linkedin_ads", label: "LinkedIn Ads",    connectLabelKey: "addSource.connectLinkedInAds",      hasConnect: true },
+  { key: "zendesk",    label: "Zendesk",           connectLabelKey: "addSource.connectZendesk",           hasConnect: true },
+  { key: "youtube",    label: "YouTube Analytics",  connectLabelKey: "addSource.connectYouTube",          hasConnect: true },
+  { key: "instagram",  label: "Instagram Insights", connectLabelKey: "addSource.connectInstagram",        hasConnect: true },
+  { key: "rdstation",  label: "RD Station",         connectLabelKey: "addSource.connectRdStation",        hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -381,6 +403,72 @@ export function AddSourceModal({
           {selectedType === "aws_costs" && (
             <div className="space-y-4">
               <AwsCostSourceForm ref={setRef("aws_costs")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("aws_costs")} onConnectingChange={setConnectingFor("aws_costs")} />
+            </div>
+          )}
+
+          {selectedType === "google_ads" && (
+            <div className="space-y-4">
+              <GoogleAdsSourceForm ref={setRef("google_ads")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("google_ads")} onConnectingChange={setConnectingFor("google_ads")} />
+            </div>
+          )}
+
+          {selectedType === "meta_ads" && (
+            <div className="space-y-4">
+              <MetaAdsSourceForm ref={setRef("meta_ads")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("meta_ads")} onConnectingChange={setConnectingFor("meta_ads")} />
+            </div>
+          )}
+
+          {selectedType === "mercado_pago" && (
+            <div className="space-y-4">
+              <MercadoPagoSourceForm ref={setRef("mercado_pago")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mercado_pago")} onConnectingChange={setConnectingFor("mercado_pago")} />
+            </div>
+          )}
+
+          {selectedType === "mercado_livre" && (
+            <div className="space-y-4">
+              <MercadoLivreSourceForm ref={setRef("mercado_livre")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mercado_livre")} onConnectingChange={setConnectingFor("mercado_livre")} />
+            </div>
+          )}
+
+          {selectedType === "mixpanel" && (
+            <div className="space-y-4">
+              <MixpanelSourceForm ref={setRef("mixpanel")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mixpanel")} onConnectingChange={setConnectingFor("mixpanel")} />
+            </div>
+          )}
+
+          {selectedType === "mailchimp" && (
+            <div className="space-y-4">
+              <MailchimpSourceForm ref={setRef("mailchimp")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mailchimp")} onConnectingChange={setConnectingFor("mailchimp")} />
+            </div>
+          )}
+
+          {selectedType === "linkedin_ads" && (
+            <div className="space-y-4">
+              <LinkedInAdsSourceForm ref={setRef("linkedin_ads")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("linkedin_ads")} onConnectingChange={setConnectingFor("linkedin_ads")} />
+            </div>
+          )}
+
+          {selectedType === "zendesk" && (
+            <div className="space-y-4">
+              <ZendeskSourceForm ref={setRef("zendesk")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("zendesk")} onConnectingChange={setConnectingFor("zendesk")} />
+            </div>
+          )}
+
+          {selectedType === "youtube" && (
+            <div className="space-y-4">
+              <YouTubeSourceForm ref={setRef("youtube")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("youtube")} onConnectingChange={setConnectingFor("youtube")} />
+            </div>
+          )}
+
+          {selectedType === "instagram" && (
+            <div className="space-y-4">
+              <InstagramSourceForm ref={setRef("instagram")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("instagram")} onConnectingChange={setConnectingFor("instagram")} />
+            </div>
+          )}
+
+          {selectedType === "rdstation" && (
+            <div className="space-y-4">
+              <RdStationSourceForm ref={setRef("rdstation")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("rdstation")} onConnectingChange={setConnectingFor("rdstation")} />
             </div>
           )}
         </div>
