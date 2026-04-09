@@ -7,6 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { dataClient } from "@/services/dataClient";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -86,6 +90,7 @@ export function AddSourceModal({
 }: AddSourceModalProps) {
   const { t } = useLanguage();
   const [selectedType, setSelectedType] = useState<string>("");
+  const [sourceComboOpen, setSourceComboOpen] = useState(false);
 
   const refs = useRef<Record<string, ConnectableHandle | null>>({});
   const [canConnect, setCanConnect] = useState<Record<string, boolean>>({});
@@ -175,18 +180,34 @@ export function AddSourceModal({
 
           <div className="space-y-1">
             <label className="text-sm font-medium">{t('addSource.sourceType')}</label>
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t('addSource.selectSourceType')} />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map((option) => (
-                  <SelectItem key={option.key} value={option.key}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={sourceComboOpen} onOpenChange={setSourceComboOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={sourceComboOpen} className="w-full justify-between font-normal">
+                  {selectedType ? SOURCE_OPTIONS.find((o) => o.key === selectedType)?.label : t('addSource.selectSourceType')}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search sources..." />
+                  <CommandList>
+                    <CommandEmpty>No source found.</CommandEmpty>
+                    <CommandGroup>
+                      {SOURCE_OPTIONS.map((option) => (
+                        <CommandItem
+                          key={option.key}
+                          value={option.label}
+                          onSelect={() => { setSelectedType(option.key); setSourceComboOpen(false); }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", selectedType === option.key ? "opacity-100" : "opacity-0")} />
+                          {option.label}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {selectedType === "existing" && (
