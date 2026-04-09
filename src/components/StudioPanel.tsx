@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AudioWaveform, Bell, ChevronRight, FileBarChart, FileText, GitBranch, GitMerge, Layers, LayoutTemplate, Lock, MessageSquare, Network, Route, Terminal, UserCheck, Users } from "lucide-react";
+import { AudioWaveform, Bell, BookOpen, ChevronRight, FileBarChart, FileText, GitBranch, GitMerge, Layers, LayoutTemplate, Lock, MessageSquare, Network, Route, Terminal, UserCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudioPanelProps {
@@ -24,11 +24,13 @@ interface StudioPanelProps {
   onOpenPipelines?: () => void;
   onOpenTransforms?: () => void;
   onOpenLineage?: () => void;
+  // Shared: data engineering tools
+  onOpenDataEngineering?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function StudioPanel({ workspaceType = "analysis", onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenMessaging, onOpenApiAccess, onOpenMedallion, onOpenAlerts, onOpenCdpWizard, onOpenSegments, onOpenProfiles, onOpenPipelines, onOpenTransforms, onOpenLineage, collapsed, onToggleCollapse }: StudioPanelProps) {
+export function StudioPanel({ workspaceType = "analysis", onOpenGraph, onOpenSummary, onOpenAudio, onOpenAutoML, onOpenReport, onOpenTemplates, onOpenMessaging, onOpenApiAccess, onOpenMedallion, onOpenAlerts, onOpenCdpWizard, onOpenSegments, onOpenProfiles, onOpenPipelines, onOpenTransforms, onOpenLineage, onOpenDataEngineering, collapsed, onToggleCollapse }: StudioPanelProps) {
   const { t } = useLanguage();
   
   type Option = {
@@ -53,6 +55,7 @@ export function StudioPanel({ workspaceType = "analysis", onOpenGraph, onOpenSum
         { icon: Users, title: "Segments", description: "Customer segmentation", locked: false, onClick: onOpenSegments },
         { icon: GitBranch, title: "Profiles", description: "Unified customer profiles", locked: false, onClick: onOpenProfiles },
         { icon: Layers, title: "Medallion", description: "Bronze → Silver → Gold", locked: false, onClick: onOpenMedallion },
+        { icon: BookOpen, title: "Engineering", description: "Schema docs, ERD, quality tests", locked: false, onClick: onOpenDataEngineering },
         { icon: Network, title: "Auto ML", description: t('studio.autoML'), locked: false, onClick: onOpenAutoML },
       ];
     }
@@ -61,7 +64,7 @@ export function StudioPanel({ workspaceType = "analysis", onOpenGraph, onOpenSum
         { icon: Route, title: "Pipelines", description: "Build data pipelines", locked: false, onClick: onOpenPipelines },
         { icon: GitMerge, title: "Transforms", description: "SQL transformations", locked: false, onClick: onOpenTransforms },
         { icon: Network, title: "Lineage", description: "Data flow graph", locked: false, onClick: onOpenLineage },
-        { icon: GitBranch, title: "Graph", description: t('studio.graphDescription'), locked: false, onClick: onOpenGraph },
+        { icon: BookOpen, title: "Engineering", description: "Schema docs, ERD, quality tests", locked: false, onClick: onOpenDataEngineering },
         { icon: Layers, title: "Medallion", description: "Bronze → Silver → Gold", locked: false, onClick: onOpenMedallion },
         { icon: Network, title: "Auto ML", description: t('studio.autoML'), locked: false, onClick: onOpenAutoML },
       ];

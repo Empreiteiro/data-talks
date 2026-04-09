@@ -21,6 +21,7 @@ import { CdpWizardModal } from "@/components/CdpWizardModal";
 import { CdpSegmentsModal } from "@/components/CdpSegmentsModal";
 import { CdpProfilesModal } from "@/components/CdpProfilesModal";
 import { EtlPipelineModal } from "@/components/EtlPipelineModal";
+import { DataEngineeringToolsModal } from "@/components/DataEngineeringToolsModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -307,6 +308,7 @@ export default function Workspace() {
   const [cdpSegmentsOpen, setCdpSegmentsOpen] = useState(false);
   const [cdpProfilesOpen, setCdpProfilesOpen] = useState(false);
   const [etlPipelineOpen, setEtlPipelineOpen] = useState(false);
+  const [dataEngineeringOpen, setDataEngineeringOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
@@ -1123,6 +1125,7 @@ export default function Workspace() {
               onOpenCdpWizard={() => setCdpWizardOpen(true)}
               onOpenSegments={() => setCdpSegmentsOpen(true)}
               onOpenProfiles={() => setCdpProfilesOpen(true)}
+              onOpenDataEngineering={() => setDataEngineeringOpen(true)}
               onOpenPipelines={() => setEtlPipelineOpen(true)}
               onOpenTransforms={() => setEtlPipelineOpen(true)}
               onOpenLineage={() => setEtlPipelineOpen(true)}
@@ -1241,6 +1244,12 @@ export default function Workspace() {
       <EtlPipelineModal
         open={etlPipelineOpen}
         onOpenChange={setEtlPipelineOpen}
+        agentId={id || ''}
+      />
+
+      <DataEngineeringToolsModal
+        open={dataEngineeringOpen}
+        onOpenChange={setDataEngineeringOpen}
         agentId={id || ''}
       />
 
