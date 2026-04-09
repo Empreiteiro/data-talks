@@ -39,6 +39,7 @@ import { ShopifySourceForm, ShopifySourceFormHandle } from "@/components/Shopify
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
+import { AwsCostSourceForm, AwsCostSourceFormHandle } from "@/components/AwsCostSourceForm";
 
 type ConnectableHandle = { connect(): Promise<void> };
 
@@ -73,6 +74,7 @@ const SOURCE_OPTIONS: SourceOption[] = [
   { key: "intercom",   label: "Intercom",          connectLabelKey: "addSource.connectIntercom", hasConnect: true },
   { key: "github_analytics", label: "GitHub Analytics", connectLabelKey: "addSource.connectGithubAnalytics", hasConnect: true },
   { key: "shopify",    label: "Shopify",           connectLabelKey: "addSource.connectShopify",          hasConnect: true },
+  { key: "aws_costs",  label: "AWS Cost Explorer", connectLabelKey: "addSource.connectAwsCosts",         hasConnect: true },
 ];
 
 interface AddSourceModalProps {
@@ -373,6 +375,12 @@ export function AddSourceModal({
           {selectedType === "shopify" && (
             <div className="space-y-4">
               <ShopifySourceForm ref={setRef("shopify")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("shopify")} onConnectingChange={setConnectingFor("shopify")} />
+            </div>
+          )}
+
+          {selectedType === "aws_costs" && (
+            <div className="space-y-4">
+              <AwsCostSourceForm ref={setRef("aws_costs")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("aws_costs")} onConnectingChange={setConnectingFor("aws_costs")} />
             </div>
           )}
         </div>
