@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -47,7 +47,7 @@ export const ZendeskSourceForm = forwardRef<ZendeskSourceFormHandle, ZendeskSour
       },
     }));
 
-    if (onCanConnectChange) onCanConnectChange(canConnect);
+    useEffect(() => { onCanConnectChange?.(canConnect); }, [canConnect]);
 
     return (
       <div className="space-y-4">
