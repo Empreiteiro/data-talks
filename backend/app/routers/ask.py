@@ -650,12 +650,102 @@ async def dispatch_question(
             access_key_id=meta.get("accessKeyId", ""),
             secret_access_key=meta.get("secretAccessKey", ""),
             region=meta.get("region", "us-east-1"),
-            question=question,
-            agent_description=_build_agent_description(agent),
-            source_name=source.name,
-            llm_overrides=llm_overrides,
-            history=history,
-            channel=channel,
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "google_ads":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_google_ads import ask_google_ads
+        result = await ask_google_ads(
+            developer_token=meta.get("developerToken", ""), customer_id=meta.get("customerId", ""),
+            refresh_token=meta.get("refreshToken", ""), client_id=meta.get("clientId", ""),
+            client_secret=meta.get("clientSecret", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "meta_ads":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_meta_ads import ask_meta_ads
+        result = await ask_meta_ads(
+            access_token=meta.get("accessToken", ""), ad_account_id=meta.get("adAccountId", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "mercado_pago":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_mercado_pago import ask_mercado_pago
+        result = await ask_mercado_pago(
+            access_token=meta.get("accessToken", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "mercado_livre":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_mercado_livre import ask_mercado_livre
+        result = await ask_mercado_livre(
+            access_token=meta.get("accessToken", ""), seller_id=meta.get("sellerId", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "mixpanel":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_mixpanel import ask_mixpanel
+        result = await ask_mixpanel(
+            service_account_username=meta.get("serviceAccountUsername", ""),
+            service_account_secret=meta.get("serviceAccountSecret", ""),
+            project_id=meta.get("projectId", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "mailchimp":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_mailchimp import ask_mailchimp
+        result = await ask_mailchimp(
+            api_key=meta.get("apiKey", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "linkedin_ads":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_linkedin_ads import ask_linkedin_ads
+        result = await ask_linkedin_ads(
+            access_token=meta.get("accessToken", ""), account_id=meta.get("adAccountId", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "zendesk":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_zendesk import ask_zendesk
+        result = await ask_zendesk(
+            subdomain=meta.get("subdomain", ""), email=meta.get("email", ""),
+            api_token=meta.get("apiToken", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "youtube":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_youtube import ask_youtube
+        result = await ask_youtube(
+            api_key=meta.get("apiKey", ""), channel_id=meta.get("channelId", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "instagram":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_instagram import ask_instagram
+        result = await ask_instagram(
+            access_token=meta.get("accessToken", ""),
+            instagram_account_id=meta.get("instagramAccountId", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
+        )
+    elif source.type == "rdstation":
+        meta = source.metadata_ or {}
+        from app.scripts.ask_rdstation import ask_rdstation
+        result = await ask_rdstation(
+            api_token=meta.get("apiToken", ""),
+            question=question, agent_description=_build_agent_description(agent),
+            source_name=source.name, llm_overrides=llm_overrides, history=history, channel=channel,
         )
     else:
         raise HTTPException(400, f"Unsupported source type: {source.type}")
