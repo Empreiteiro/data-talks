@@ -487,3 +487,77 @@ class MedallionBuildLog(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+
+# ---------------------------------------------------------------------------
+# Execution lineage (real, captured from runs)
+# ---------------------------------------------------------------------------
+
+class PipelineRun(Base):
+    """One row per execution of anything instrumented: medallion builds, Q&A, pipeline runs."""
+    __tablename__ = "pipeline_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str] = mapped_column(String(36))
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    pipeline_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(30), index=True)  # medallion_bronze | medallion_silver | medallion_gold | qa | pipeline
+    status: Mapped[str] = mapped_column(String(20), default="running")  # running | success | error
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+
+
+class LineageEdge(Base):
+    """Append-only lineage edges captured per run. Refs are stringly-typed to support
+    future column-level lineage without a schema change."""
+    __tablename__ = "lineage_edges"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(36), ForeignKey("pipeline_runs.id", ondelete="CASCADE"), index=True)
+    source_kind: Mapped[str] = mapped_column(String(20))  # source | table | column | agent | file
+    source_ref: Mapped[str] = mapped_column(String(512), index=True)
+    target_kind: Mapped[str] = mapped_column(String(20))
+    target_ref: Mapped[str] = mapped_column(String(512), index=True)
+    edge_type: Mapped[str] = mapped_column(String(20))  # read | write | transform | derive
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Pipeline versioning & GitHub integration
+# ---------------------------------------------------------------------------
+
+class PipelineVersion(Base):
+    """Immutable snapshot of a pipeline definition. One row per saved version."""
+    __tablename__ = "pipeline_versions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    agent_id: Mapped[str] = mapped_column(String(36), index=True)
+    pipeline_id: Mapped[str] = mapped_column(String(64), index=True)
+    version_number: Mapped[int] = mapped_column(Integer)  # monotonic per (agent_id, pipeline_id)
+    snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    message: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    author_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    parent_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    restored_from_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    github_commit_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    github_commit_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class GithubConnection(Base):
+    """Per-user GitHub OAuth connection. Tokens stored Fernet-encrypted."""
+    __tablename__ = "github_connections"
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
+    github_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    github_login: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    access_token_enc: Mapped[str] = mapped_column(Text)
+    refresh_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    scopes: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    selected_repo_full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    selected_branch: Mapped[str] = mapped_column(String(128), default="main")
+    selected_base_path: Mapped[str] = mapped_column(String(512), default="data-talks/pipelines")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
