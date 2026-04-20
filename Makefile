@@ -1,5 +1,6 @@
 .PHONY: help install install-frontend install-backend install-cli \
-        build run dev migrate setup-env lint test
+        build run dev migrate setup-env lint test \
+        deploy-railway deploy-railway-init deploy-railway-sync-env
 
 # Default target
 help:
@@ -16,6 +17,10 @@ help:
 	@echo "  make setup-env         Copy backend/.env.example to backend/.env (if not exists)"
 	@echo "  make lint              Run frontend linter"
 	@echo "  make test              Run frontend tests"
+	@echo ""
+	@echo "  make deploy-railway          Deploy to Railway (project must be linked)"
+	@echo "  make deploy-railway-init     First-time setup: login, link/create project"
+	@echo "  make deploy-railway-sync-env Push backend/.env to Railway variables"
 
 # ------------------------------------------------------------------
 # Install
@@ -78,3 +83,16 @@ lint:
 
 test:
 	npm test
+
+# ------------------------------------------------------------------
+# Deploy (Railway)
+# ------------------------------------------------------------------
+
+deploy-railway:
+	./scripts/deploy-railway.sh
+
+deploy-railway-init:
+	./scripts/deploy-railway.sh --init
+
+deploy-railway-sync-env:
+	./scripts/deploy-railway.sh --sync-env

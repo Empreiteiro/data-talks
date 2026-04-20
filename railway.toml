@@ -1,0 +1,19 @@
+# Railway configuration for Data Talks.
+#
+# Builds a single container that serves both the FastAPI backend (on $PORT)
+# and the pre-built Vite frontend as static files. Alembic migrations run on
+# every deploy as part of the start command.
+#
+# Ref: https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# $PORT is injected by Railway; the Dockerfile CMD reads it.
+startCommand = "sh -c 'cd backend && uv run alembic upgrade head && exec uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT}'"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

@@ -1,0 +1,44 @@
+# Keep the build context small and the image reproducible.
+# (Dockerfile intentionally COPYs only what it needs; this is defense in depth.)
+
+# VCS & editor
+.git
+.github
+.vscode
+.idea
+.claude
+*.swp
+*.swo
+
+# Node / frontend
+node_modules
+dist
+dist-ssr
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.bun
+
+# Python / backend
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.venv
+backend/.venv
+backend/.backend_port
+backend/*.db
+backend/data_files
+
+# Local envs and secrets (Dockerfile never copies these; belt + suspenders)
+.env
+.env.*
+backend/.env
+backend/.env.*
+
+# OS
+.DS_Store
+
+# Tests & planning artifacts
+backend/tests
+*.md
+!backend/README.md
