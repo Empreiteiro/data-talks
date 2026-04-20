@@ -32,6 +32,8 @@ from app.routers import intercom_router
 from app.routers import github_analytics_router
 from app.routers import shopify_router
 from app.routers import pipeline_runs_router
+from app.routers import pipeline_versions_router
+from app.routers import github_integration_router
 from app.models import User
 from app.auth import hash_password, GUEST_USER_ID, ADMIN_USER_ID
 
@@ -320,6 +322,8 @@ app.include_router(etl_router.router, prefix=prefix)
 app.include_router(usage_router.router, prefix=prefix)
 app.include_router(data_engineering_router.router, prefix=prefix)
 app.include_router(pipeline_runs_router.router, prefix=prefix)
+app.include_router(pipeline_versions_router.router, prefix=prefix)
+app.include_router(github_integration_router.router, prefix=prefix)
 
 
 @app.get(prefix + "/config")

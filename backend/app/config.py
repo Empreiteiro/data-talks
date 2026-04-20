@@ -125,6 +125,19 @@ class Settings(BaseSettings):
     slack_client_id: str = ""
     slack_client_secret: str = ""
 
+    # Public app URL — used to build absolute redirect URIs for OAuth callbacks.
+    # Defaults to the local dev URL; override in production.
+    app_url: str = "http://localhost:8000"
+
+    # GitHub OAuth integration (pipeline versioning push target)
+    github_oauth_client_id: str = ""
+    github_oauth_client_secret: str = ""
+    # Optional override. When empty, computed as f"{app_url}/api/integrations/github/callback".
+    github_oauth_redirect_uri: str = ""
+    # Optional 32-byte url-safe base64 key for Fernet. When empty, the key is derived
+    # from SECRET_KEY via HKDF so no mandatory extra config is required.
+    github_token_encryption_key: str = ""
+
     class Config:
         env_file = str(_ENV_FILE) if _ENV_FILE.exists() else ".env"
         extra = "ignore"
