@@ -18,6 +18,7 @@ from app.auth import require_user
 from app.llm.charting import build_chart_plan
 from app.models import Agent, Source, QASession, LlmSettings, LlmConfig
 from app.models import User
+from app.services.lineage import start_run, finish_run, record_edge
 from app.schemas import AskQuestionRequest, AskQuestionResponse
 from app.scripts.ask_csv import ask_csv
 from app.scripts.ask_bigquery import ask_bigquery
@@ -206,6 +207,37 @@ async def dispatch_question(
     source = active_sources[0] if active_sources else sources[0]
     settings = get_settings()
     data_files_dir = settings.data_files_dir
+
+    # Start lineage run. Tracking is best-effort; instrumentation failures must
+    # never break dispatch, so start_run returns None on error and subsequent
+    # calls are no-ops.
+    lineage_run = await start_run(
+        db,
+        user_id=user.id,
+        organization_id=user.organization_id,
+        kind="qa",
+        agent_id=agent.id,
+        metadata={
+            "question": (question or "")[:512],
+            "session_id": session_id,
+            "channel": channel,
+            "sql_mode": bool(sql_mode),
+        },
+    )
+    try:
+        for s in active_sources:
+            await record_edge(
+                db,
+                lineage_run,
+                source_kind="source",
+                source_ref=s.id,
+                target_kind="agent",
+                target_ref=agent.id,
+                edge_type="read",
+                metadata={"source_type": s.type, "source_name": s.name},
+            )
+    except Exception:  # noqa: BLE001
+        pass
 
     # Route by source type
     if len(multi_sql_sources) >= 2:
@@ -805,6 +837,12 @@ async def dispatch_question(
         await db.flush()
         session_id = qa.id
 
+    await finish_run(
+        db,
+        lineage_run,
+        status="success",
+        metadata_extra={"turn_id": turn_id, "resolved_session_id": session_id},
+    )
     await db.commit()
 
     return {

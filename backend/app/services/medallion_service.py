@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import MedallionLayer, MedallionBuildLog, Source
 from app.llm.client import chat_completion
 from app.scripts.ask_csv import _load_full_dataframe, _build_sample_profile, _format_profile
+from app.services.lineage import tracked_run, record_edge
 
 log = logging.getLogger(__name__)
 
@@ -84,75 +85,94 @@ async def generate_bronze(
     db: AsyncSession,
 ) -> dict:
     """Generate Bronze DDL from raw source file. Does NOT execute SQL."""
-    meta = source.metadata_ or {}
-    file_path_str = meta.get("file_path", "")
-    if not file_path_str:
-        raise ValueError("Source has no file_path in metadata")
-
-    full_path = Path(data_files_dir) / file_path_str
-    if not full_path.exists():
-        raise FileNotFoundError(f"Source file not found: {full_path}")
-
-    df = _load_full_dataframe(full_path)
-    sid = _short_id(source.id)
-    table_name = f"bronze_{sid}"
-    row_count = len(df)
-
-    # Build DDL: all columns as TEXT + metadata columns
-    col_defs = [
-        "_loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        "_source_file TEXT",
-        "_row_hash TEXT",
-    ]
-    for col in df.columns:
-        safe_col = str(col).replace('"', '""')
-        col_defs.append(f'"{safe_col}" TEXT')
-
-    ddl = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n  ' + ",\n  ".join(col_defs) + "\n);"
-
-    schema_config = {
-        "columns": [str(c) for c in df.columns],
-        "metadata_columns": ["_loaded_at", "_source_file", "_row_hash"],
-        "row_count": row_count,
-    }
-
-    # Delete existing bronze layer if any
-    old = await db.execute(
-        select(MedallionLayer).where(
-            MedallionLayer.source_id == source.id,
-            MedallionLayer.layer == "bronze",
-        )
-    )
-    for old_layer in old.scalars().all():
-        await db.delete(old_layer)
-
-    layer = MedallionLayer(
-        id=_uid(),
+    async with tracked_run(
+        db,
         user_id=user_id,
-        source_id=source.id,
+        kind="medallion_bronze",
         agent_id=agent_id,
-        layer="bronze",
-        table_name=table_name,
-        status="ready",
-        schema_config=schema_config,
-        ddl_sql=ddl,
-        row_count=row_count,
-    )
-    db.add(layer)
+        metadata={"source_id": source.id, "source_name": source.name},
+    ) as run:
+        meta = source.metadata_ or {}
+        file_path_str = meta.get("file_path", "")
+        if not file_path_str:
+            raise ValueError("Source has no file_path in metadata")
 
-    build_log = MedallionBuildLog(
-        id=_uid(),
-        layer_id=layer.id,
-        source_id=source.id,
-        user_id=user_id,
-        action="suggest",
-        layer="bronze",
-        suggestion=schema_config,
-    )
-    db.add(build_log)
-    await db.flush()
+        full_path = Path(data_files_dir) / file_path_str
+        if not full_path.exists():
+            raise FileNotFoundError(f"Source file not found: {full_path}")
 
-    return _layer_to_dict(layer)
+        df = _load_full_dataframe(full_path)
+        sid = _short_id(source.id)
+        table_name = f"bronze_{sid}"
+        row_count = len(df)
+
+        # Build DDL: all columns as TEXT + metadata columns
+        col_defs = [
+            "_loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "_source_file TEXT",
+            "_row_hash TEXT",
+        ]
+        for col in df.columns:
+            safe_col = str(col).replace('"', '""')
+            col_defs.append(f'"{safe_col}" TEXT')
+
+        ddl = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n  ' + ",\n  ".join(col_defs) + "\n);"
+
+        schema_config = {
+            "columns": [str(c) for c in df.columns],
+            "metadata_columns": ["_loaded_at", "_source_file", "_row_hash"],
+            "row_count": row_count,
+        }
+
+        # Delete existing bronze layer if any
+        old = await db.execute(
+            select(MedallionLayer).where(
+                MedallionLayer.source_id == source.id,
+                MedallionLayer.layer == "bronze",
+            )
+        )
+        for old_layer in old.scalars().all():
+            await db.delete(old_layer)
+
+        layer = MedallionLayer(
+            id=_uid(),
+            user_id=user_id,
+            source_id=source.id,
+            agent_id=agent_id,
+            layer="bronze",
+            table_name=table_name,
+            status="ready",
+            schema_config=schema_config,
+            ddl_sql=ddl,
+            row_count=row_count,
+        )
+        db.add(layer)
+
+        build_log = MedallionBuildLog(
+            id=_uid(),
+            layer_id=layer.id,
+            source_id=source.id,
+            user_id=user_id,
+            action="suggest",
+            layer="bronze",
+            suggestion=schema_config,
+        )
+        db.add(build_log)
+        await db.flush()
+
+        # Lineage: source file -> bronze layer table
+        await record_edge(
+            db,
+            run,
+            source_kind="source",
+            source_ref=source.id,
+            target_kind="table",
+            target_ref=f"medallion_layers:{layer.id}",
+            edge_type="read",
+            metadata={"table_name": table_name, "row_count": row_count},
+        )
+
+        return _layer_to_dict(layer)
 
 
 # ---------------------------------------------------------------------------
@@ -307,60 +327,79 @@ async def apply_silver(
     config: dict,
 ) -> dict:
     """Save user-accepted silver config and generated SQL. Does NOT execute SQL."""
-    result = await db.execute(
-        select(MedallionLayer).where(
-            MedallionLayer.source_id == source.id,
-            MedallionLayer.layer == "bronze",
-            MedallionLayer.status == "ready",
-        )
-    )
-    bronze = result.scalar_one_or_none()
-    if not bronze:
-        raise ValueError("Bronze layer must be generated first")
-
-    sid = _short_id(source.id)
-    silver_table = f"silver_{sid}"
-    ddl = _build_silver_ddl(config, sid)
-    transform = _build_silver_transform(config, bronze.table_name, silver_table)
-
-    # Delete existing silver layer if any
-    old = await db.execute(
-        select(MedallionLayer).where(
-            MedallionLayer.source_id == source.id,
-            MedallionLayer.layer == "silver",
-        )
-    )
-    for old_layer in old.scalars().all():
-        await db.delete(old_layer)
-
-    layer = MedallionLayer(
-        id=_uid(),
+    async with tracked_run(
+        db,
         user_id=user_id,
-        source_id=source.id,
+        kind="medallion_silver",
         agent_id=agent_id,
-        layer="silver",
-        table_name=silver_table,
-        status="ready",
-        schema_config=config,
-        ddl_sql=ddl,
-        transform_sql=transform,
-        row_count=bronze.row_count,  # estimated from bronze
-    )
-    db.add(layer)
+        metadata={"source_id": source.id, "build_log_id": build_log_id},
+    ) as run:
+        result = await db.execute(
+            select(MedallionLayer).where(
+                MedallionLayer.source_id == source.id,
+                MedallionLayer.layer == "bronze",
+                MedallionLayer.status == "ready",
+            )
+        )
+        bronze = result.scalar_one_or_none()
+        if not bronze:
+            raise ValueError("Bronze layer must be generated first")
 
-    apply_log = MedallionBuildLog(
-        id=_uid(),
-        layer_id=layer.id,
-        source_id=source.id,
-        user_id=user_id,
-        action="save",
-        layer="silver",
-        applied_config=config,
-    )
-    db.add(apply_log)
-    await db.flush()
+        sid = _short_id(source.id)
+        silver_table = f"silver_{sid}"
+        ddl = _build_silver_ddl(config, sid)
+        transform = _build_silver_transform(config, bronze.table_name, silver_table)
 
-    return _layer_to_dict(layer)
+        # Delete existing silver layer if any
+        old = await db.execute(
+            select(MedallionLayer).where(
+                MedallionLayer.source_id == source.id,
+                MedallionLayer.layer == "silver",
+            )
+        )
+        for old_layer in old.scalars().all():
+            await db.delete(old_layer)
+
+        layer = MedallionLayer(
+            id=_uid(),
+            user_id=user_id,
+            source_id=source.id,
+            agent_id=agent_id,
+            layer="silver",
+            table_name=silver_table,
+            status="ready",
+            schema_config=config,
+            ddl_sql=ddl,
+            transform_sql=transform,
+            row_count=bronze.row_count,  # estimated from bronze
+        )
+        db.add(layer)
+
+        apply_log = MedallionBuildLog(
+            id=_uid(),
+            layer_id=layer.id,
+            source_id=source.id,
+            user_id=user_id,
+            action="save",
+            layer="silver",
+            applied_config=config,
+        )
+        db.add(apply_log)
+        await db.flush()
+
+        # Lineage: bronze layer -> silver layer (transform)
+        await record_edge(
+            db,
+            run,
+            source_kind="table",
+            source_ref=f"medallion_layers:{bronze.id}",
+            target_kind="table",
+            target_ref=f"medallion_layers:{layer.id}",
+            edge_type="transform",
+            metadata={"silver_table": silver_table, "columns": len(config.get("columns") or [])},
+        )
+
+        return _layer_to_dict(layer)
 
 
 # ---------------------------------------------------------------------------
@@ -505,43 +544,78 @@ async def apply_gold(
     selected_tables: list[dict],
 ) -> list[dict]:
     """Save selected gold aggregate configs and SQL. Does NOT execute SQL."""
-    sid = _short_id(source.id)
-    layers = []
+    async with tracked_run(
+        db,
+        user_id=user_id,
+        kind="medallion_gold",
+        agent_id=agent_id,
+        metadata={
+            "source_id": source.id,
+            "build_log_id": build_log_id,
+            "table_count": len(selected_tables),
+        },
+    ) as run:
+        sid = _short_id(source.id)
+        layers = []
 
-    for tbl in selected_tables:
-        name = tbl.get("name", "agg")
-        sql = tbl.get("sql", "")
-        gold_table = f"gold_{sid}_{name}"
-        create_sql = f'CREATE TABLE IF NOT EXISTS "{gold_table}" AS\n{sql};'
-
-        layer = MedallionLayer(
-            id=_uid(),
-            user_id=user_id,
-            source_id=source.id,
-            agent_id=agent_id,
-            layer="gold",
-            table_name=gold_table,
-            status="ready",
-            schema_config=tbl,
-            ddl_sql=create_sql,
-            transform_sql=sql,
+        # Look up silver layer once to use as lineage source for all gold tables
+        silver_result = await db.execute(
+            select(MedallionLayer).where(
+                MedallionLayer.source_id == source.id,
+                MedallionLayer.layer == "silver",
+                MedallionLayer.status == "ready",
+            )
         )
-        db.add(layer)
+        silver = silver_result.scalar_one_or_none()
+        silver_ref = f"medallion_layers:{silver.id}" if silver else f"source:{source.id}"
+        silver_kind = "table" if silver else "source"
 
-        apply_log = MedallionBuildLog(
-            id=_uid(),
-            layer_id=layer.id,
-            source_id=source.id,
-            user_id=user_id,
-            action="save",
-            layer="gold",
-            applied_config=tbl,
-        )
-        db.add(apply_log)
-        layers.append(_layer_to_dict(layer))
+        for tbl in selected_tables:
+            name = tbl.get("name", "agg")
+            sql = tbl.get("sql", "")
+            gold_table = f"gold_{sid}_{name}"
+            create_sql = f'CREATE TABLE IF NOT EXISTS "{gold_table}" AS\n{sql};'
 
-    await db.flush()
-    return layers
+            layer = MedallionLayer(
+                id=_uid(),
+                user_id=user_id,
+                source_id=source.id,
+                agent_id=agent_id,
+                layer="gold",
+                table_name=gold_table,
+                status="ready",
+                schema_config=tbl,
+                ddl_sql=create_sql,
+                transform_sql=sql,
+            )
+            db.add(layer)
+
+            apply_log = MedallionBuildLog(
+                id=_uid(),
+                layer_id=layer.id,
+                source_id=source.id,
+                user_id=user_id,
+                action="save",
+                layer="gold",
+                applied_config=tbl,
+            )
+            db.add(apply_log)
+            layers.append(_layer_to_dict(layer))
+
+            # Lineage: silver -> gold (one edge per table)
+            await record_edge(
+                db,
+                run,
+                source_kind=silver_kind,
+                source_ref=silver_ref if silver_kind == "table" else source.id,
+                target_kind="table",
+                target_ref=f"medallion_layers:{layer.id}",
+                edge_type="derive",
+                metadata={"gold_table": gold_table, "name": name},
+            )
+
+        await db.flush()
+        return layers
 
 
 # ---------------------------------------------------------------------------
