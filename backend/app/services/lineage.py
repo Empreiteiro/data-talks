@@ -52,7 +52,11 @@ async def start_run(
             metadata_=metadata or {},
         )
         db.add(run)
-        await db.flush()
+        # Deliberately no flush here. On SQLite, an eager flush opens a
+        # write transaction that blocks concurrent sessions (the LLM call
+        # log writer runs in a separate session); the row will flush
+        # naturally when the caller commits. We keep `run.id` assigned
+        # client-side so record_edge can still reference it.
         return run
     except Exception:  # noqa: BLE001 — instrumentation must not break callers
         logger.exception("Failed to start lineage run")
@@ -82,7 +86,8 @@ async def finish_run(
             merged = dict(run.metadata_ or {})
             merged.update(metadata_extra)
             run.metadata_ = merged
-        await db.flush()
+        # Same reasoning as start_run: no eager flush so we don't hold a
+        # write lock while the rest of the request is running.
     except Exception:  # noqa: BLE001
         logger.exception("Failed to finish lineage run")
 
@@ -105,6 +110,7 @@ async def record_edge(
         edge = LineageEdge(
             id=str(uuid.uuid4()),
             run_id=run.id,
+            organization_id=getattr(run, "organization_id", None) or "",
             source_kind=source_kind,
             source_ref=source_ref[:512] if source_ref else "",
             target_kind=target_kind,
@@ -113,7 +119,7 @@ async def record_edge(
             metadata_=metadata or {},
         )
         db.add(edge)
-        await db.flush()
+        # No eager flush here either — see start_run for the reason.
     except Exception:  # noqa: BLE001
         logger.exception("Failed to record lineage edge")
 
