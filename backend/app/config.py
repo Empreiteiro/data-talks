@@ -50,8 +50,24 @@ class Settings(BaseSettings):
     # DB: default SQLite; set DATABASE_URL in .env for PostgreSQL (e.g. postgresql+asyncpg://user:pass@host:5432/dbname)
     database_url: str = "sqlite+aiosqlite:///./data_talks.db"
 
-    # Local file storage
+    # Local file storage. Used as the source of truth when no S3 bucket is
+    # configured, and as the download cache when S3 is configured.
     data_files_dir: str = "./data_files"
+
+    # Optional S3-compatible object storage for uploaded source files, charts
+    # and audio. When `s3_bucket` is empty the local filesystem is used. When
+    # set, S3 is the source of truth and `data_files_dir` becomes an ephemeral
+    # read cache — safe to lose on redeploy.
+    #
+    # Compatible with AWS S3, Cloudflare R2, MinIO, Backblaze B2, etc.
+    # Leave access_key / secret_access_key empty to fall back to the boto3
+    # default credential chain (IAM role, ~/.aws/credentials, etc.).
+    s3_bucket: str = ""
+    s3_prefix: str = ""                # e.g. "data-talks/prod"
+    s3_region: str = ""                # e.g. "us-east-1"
+    s3_endpoint_url: str = ""          # non-AWS providers (R2, MinIO, ...)
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
 
     # LLM: OpenAI-compatible, Ollama, LiteLLM proxy, Google Gemini, Anthropic Claude, or Claude CLI
     llm_provider: str = "openai"  # "openai" | "ollama" | "litellm" | "google" | "anthropic" | "claude-code"

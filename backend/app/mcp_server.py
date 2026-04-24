@@ -804,17 +804,14 @@ async def upload_file_source(
         except ValueError as e:
             return f"Authentication error: {e}"
 
-        settings = get_settings()
-        data_dir = Path(settings.data_files_dir)
-        data_dir.mkdir(parents=True, exist_ok=True)
+        from app.services.storage import get_storage
+        storage = get_storage()
         rel_path = f"{user.id}/{uuid.uuid4().hex}.{ext}"
-        dest = data_dir / rel_path
-        dest.parent.mkdir(parents=True, exist_ok=True)
-
         try:
-            dest.write_bytes(src_path.read_bytes())
-        except OSError as e:
-            return f"Failed to copy file: {e}"
+            storage.write_bytes(rel_path, src_path.read_bytes())
+        except (OSError, Exception) as e:  # noqa: BLE001
+            return f"Failed to upload file: {e}"
+        dest = storage.local_path(rel_path)
 
         # Introspect using the same logic as the upload router
         from app.routers.crud import _sanitize_for_json, _build_sample_profile
@@ -1019,12 +1016,8 @@ async def delete_source(
         meta = s.metadata_ or {}
         fp = meta.get("file_path")
         if fp:
-            full = Path(get_settings().data_files_dir) / fp
-            try:
-                if full.exists():
-                    full.unlink()
-            except OSError:
-                pass
+            from app.services.storage import get_storage
+            get_storage().delete(fp)
         await db.delete(s)
         await db.commit()
         return f"Deleted source '{name}' (id: {source_id})."

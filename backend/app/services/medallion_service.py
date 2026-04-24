@@ -24,6 +24,7 @@ from app.models import MedallionLayer, MedallionBuildLog, Source
 from app.llm.client import chat_completion
 from app.scripts.ask_csv import _load_full_dataframe, _build_sample_profile, _format_profile
 from app.services.lineage import tracked_run, record_edge
+from app.services.storage import get_storage
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +98,7 @@ async def generate_bronze(
         if not file_path_str:
             raise ValueError("Source has no file_path in metadata")
 
-        full_path = Path(data_files_dir) / file_path_str
+        full_path = get_storage().local_path(file_path_str)
         if not full_path.exists():
             raise FileNotFoundError(f"Source file not found: {full_path}")
 
@@ -253,7 +254,7 @@ async def suggest_silver(
     # Load source data for profiling (from original file, NOT from any client DB)
     meta = source.metadata_ or {}
     file_path_str = meta.get("file_path", "")
-    full_path = Path(data_files_dir) / file_path_str
+    full_path = get_storage().local_path(file_path_str)
     if not full_path.exists():
         raise FileNotFoundError(f"Source file not found: {full_path}")
 
@@ -470,7 +471,7 @@ async def suggest_gold(
     file_path_str = meta.get("file_path", "")
     sample_text = ""
     if file_path_str:
-        full_path = Path(data_files_dir) / file_path_str
+        full_path = get_storage().local_path(file_path_str)
         if full_path.exists():
             df = _load_full_dataframe(full_path)
             sample_text = df.head(5).to_string(index=False)

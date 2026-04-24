@@ -90,8 +90,9 @@ def _chart_image_url(session_id: str, turn_id: str) -> str:
 
 
 def _chart_file_path(user_id: str, session_id: str, turn_id: str) -> tuple[str, Path]:
+    from app.services.storage import get_storage
     relative_path = f"charts/{user_id}/{session_id}-{turn_id}.png"
-    full_path = Path(get_settings().data_files_dir) / relative_path
+    full_path = get_storage().local_path(relative_path)
     return relative_path, full_path
 
 

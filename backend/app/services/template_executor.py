@@ -52,7 +52,8 @@ def _run_query_on_csv_sync(file_path: str, data_files_dir: str, query: str) -> l
 
     _validate_select_only(query)
 
-    full_path = Path(data_files_dir) / file_path
+    from app.services.storage import get_storage
+    full_path = get_storage().local_path(file_path)
     if not full_path.exists():
         raise FileNotFoundError(f"Source file not found: {full_path}")
 

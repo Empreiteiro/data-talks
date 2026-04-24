@@ -60,14 +60,14 @@ async def _resolve_llm_overrides(db: AsyncSession, user: User, agent: Agent) -> 
 
 def _load_source_dataframe(source: Source) -> pd.DataFrame:
     """Load a DataFrame from the source metadata."""
+    from app.services.storage import get_storage
     meta = source.metadata_ or {}
-    settings = get_settings()
 
     if source.type in ("csv", "xlsx"):
         file_path = meta.get("file_path")
         if not file_path:
             raise HTTPException(400, "CSV/XLSX source missing file_path in metadata")
-        full_path = Path(settings.data_files_dir) / file_path
+        full_path = get_storage().local_path(file_path)
         if not full_path.exists():
             raise HTTPException(400, f"Data file not found: {file_path}")
         ext = full_path.suffix.lower()
@@ -101,8 +101,8 @@ def _get_columns_from_source(source: Source) -> list[str]:
         # Fallback: load file header
         file_path = meta.get("file_path")
         if file_path:
-            settings = get_settings()
-            full_path = Path(settings.data_files_dir) / file_path
+            from app.services.storage import get_storage
+            full_path = get_storage().local_path(file_path)
             if full_path.exists():
                 ext = full_path.suffix.lower()
                 if ext == ".csv":

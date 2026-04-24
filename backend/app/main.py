@@ -221,7 +221,9 @@ async def lifespan(app: FastAPI):
     await _ensure_workspace_type_columns()
     await _ensure_template_agent_id_column()
     await _ensure_report_template_id_column()
-    Path(get_settings().data_files_dir).mkdir(parents=True, exist_ok=True)
+    # Initialize storage (local filesystem or S3-backed; see app.services.storage).
+    from app.services.storage import get_storage
+    get_storage().ensure_ready()
     await _ensure_single_user()
     settings = get_settings()
     import logging

@@ -194,8 +194,8 @@ async def materialize_cdp_table(
     if not agent:
         raise HTTPException(404, "Workspace not found")
 
-    settings = get_settings()
-    data_dir = Path(settings.data_files_dir)
+    from app.services.storage import get_storage
+    storage = get_storage()
 
     # Load ALL workspace sources into in-memory SQLite (active + materialized)
     from sqlalchemy import or_
@@ -220,7 +220,7 @@ async def materialize_cdp_table(
         file_path = meta.get("file_path", "")
         if not file_path:
             continue
-        full_path = data_dir / file_path
+        full_path = storage.local_path(file_path)
         if not full_path.exists():
             continue
         try:
@@ -254,11 +254,16 @@ async def materialize_cdp_table(
     if result_df.empty:
         raise HTTPException(400, "Query returned no results")
 
-    # Save as new CSV file
+    # Save as new CSV file via the storage abstraction so it lands on S3
+    # when configured. We first materialize to a local cache path so pandas
+    # can write directly to disk, then hand the bytes to storage to mirror
+    # the write to S3.
     output_filename = f"{user.id}/{uuid.uuid4().hex[:8]}_{body.tableName}.csv"
-    output_path = data_dir / output_filename
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    result_df.to_csv(output_path, index=False)
+    import io as _io
+    buf = _io.BytesIO()
+    result_df.to_csv(buf, index=False)
+    storage.write_bytes(output_filename, buf.getvalue())
+    output_path = storage.local_path(output_filename)
 
     # Build metadata
     profile = _build_sample_profile(result_df.head(1000))

@@ -43,9 +43,10 @@ async def generate_table_summary_csv(
     """
     from app.llm.client import chat_completion
     from app.llm.logs import record_log
+    from app.services.storage import get_storage
     import pandas as pd
 
-    full_path = Path(data_files_dir) / file_path
+    full_path = get_storage().local_path(file_path)
     if not full_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 

@@ -96,7 +96,8 @@ async def ask_sqlite(
     sql_mode: bool = False,
 ) -> dict[str, Any]:
     """Main entry point for SQLite file Q&A."""
-    full_path = str(Path(data_files_dir) / file_path)
+    from app.services.storage import get_storage
+    full_path = str(get_storage().local_path(file_path))
     if not Path(full_path).exists():
         raise FileNotFoundError(f"SQLite file not found: {file_path}")
 

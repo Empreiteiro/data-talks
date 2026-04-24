@@ -175,17 +175,16 @@ async def upload_source(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    settings = get_settings()
-    Path(settings.data_files_dir).mkdir(parents=True, exist_ok=True)
+    from app.services.storage import get_storage
+    storage = get_storage()
     ext = (file.filename or "").split(".")[-1].lower()
     allowed_extensions = ("csv", "xlsx", "xls", "db", "sqlite", "sqlite3", "parquet", "json", "jsonl")
     if ext not in allowed_extensions:
         raise HTTPException(400, f"Only {', '.join(allowed_extensions)} files are allowed")
     path = f"{user.id}/{uuid.uuid4().hex}.{ext}"
-    full = Path(settings.data_files_dir) / path
-    full.parent.mkdir(parents=True, exist_ok=True)
-    with open(full, "wb") as f:
-        f.write(await file.read())
+    storage.write_bytes(path, await file.read())
+    # Local cache path (hydrated by write_bytes for S3, or authoritative for local).
+    full = storage.local_path(path)
     meta: dict = {"file_path": path, "columns": [], "preview_rows": [], "row_count": 0, "sample_profile": {}, "sample_row_count": 0}
     source_type = "csv"
     if ext in ("db", "sqlite", "sqlite3"):
@@ -306,9 +305,8 @@ async def delete_source(source_id: str, db: AsyncSession = Depends(get_db), user
     meta = s.metadata_ or {}
     fp = meta.get("file_path")
     if fp:
-        full = Path(get_settings().data_files_dir) / fp
-        if full.exists():
-            full.unlink()
+        from app.services.storage import get_storage
+        get_storage().delete(fp)
     await db.delete(s)
     await db.commit()
     return {"ok": True}

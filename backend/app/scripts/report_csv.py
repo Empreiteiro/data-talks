@@ -20,7 +20,8 @@ async def generate_report_csv(
     """
     Returns: {"html_content": str, "chart_count": int}
     """
-    full_path = Path(data_files_dir) / file_path
+    from app.services.storage import get_storage
+    full_path = get_storage().local_path(file_path)
     if not full_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 

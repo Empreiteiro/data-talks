@@ -50,7 +50,9 @@ async def ask_csv(
     extra_sources: optional list of {"file_path": str, "name": str} for multi-CSV analysis.
     Returns: { "answer", "imageUrl" (optional), "followUpQuestions" }.
     """
-    full_path = Path(data_files_dir) / file_path
+    from app.services.storage import get_storage
+    storage = get_storage()
+    full_path = storage.local_path(file_path)
     if not full_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -66,7 +68,7 @@ async def ask_csv(
     table_descriptions = []
     if extra_sources:
         for extra in extra_sources:
-            extra_path = Path(data_files_dir) / extra["file_path"]
+            extra_path = storage.local_path(extra["file_path"])
             if not extra_path.exists():
                 continue
             df_extra = _load_full_dataframe(extra_path)

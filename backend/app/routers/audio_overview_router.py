@@ -217,12 +217,11 @@ async def generate_audio_overview(
     script = await _build_audio_script(source.name, report, llm_overrides)
     audio_bytes, mime_type, _ = await synthesize_speech(script, llm_overrides=llm_overrides)
 
+    from app.services.storage import get_storage
     audio_id = str(uuid.uuid4())
     ext = ".mp3" if mime_type == "audio/mpeg" else ".bin"
     relative_path = f"audio_overviews/{user.id}/{audio_id}{ext}"
-    full_path = Path(get_settings().data_files_dir) / relative_path
-    full_path.parent.mkdir(parents=True, exist_ok=True)
-    full_path.write_bytes(audio_bytes)
+    get_storage().write_bytes(relative_path, audio_bytes)
 
     overview = AudioOverview(
         id=audio_id,
@@ -284,7 +283,8 @@ async def get_audio_file(
     if not row:
         raise HTTPException(404, "Audio overview not found")
 
-    full_path = Path(get_settings().data_files_dir) / row.audio_file_path
+    from app.services.storage import get_storage
+    full_path = get_storage().local_path(row.audio_file_path)
     if not full_path.exists():
         raise HTTPException(404, "Audio file not found")
 
@@ -302,9 +302,8 @@ async def delete_audio_overview(
     if not row:
         raise HTTPException(404, "Audio overview not found")
 
-    full_path = Path(get_settings().data_files_dir) / row.audio_file_path
-    if full_path.exists():
-        full_path.unlink()
+    from app.services.storage import get_storage
+    get_storage().delete(row.audio_file_path)
 
     await db.delete(row)
     await db.commit()
