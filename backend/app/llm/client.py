@@ -359,22 +359,77 @@ async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg
         env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
 
     # ── Build CLI args ──
-    args = [claude_bin, "-p", prompt, "--output-format", "stream-json", "--verbose"]
+    # We pipe the prompt via stdin instead of `-p "<prompt>"` because ETL/Q&A
+    # prompts can easily exceed the OS argv limit (256 KB on macOS, ~2 MB on
+    # Linux). With `-p ""` and stdin the prompt size is bounded only by the
+    # CLI's own context window.
+    args = [
+        claude_bin,
+        "-p", "",
+        "--output-format", "stream-json",
+        "--verbose",
+    ]
     if model:
         args.extend(["--model", model])
 
     # ── Execute subprocess ──
     proc = await asyncio.create_subprocess_exec(
         *args,
+        stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         env=env,
     )
 
-    stdout_data, stderr_data = await proc.communicate()
+    stdout_data, stderr_data = await proc.communicate(input=prompt.encode("utf-8"))
 
-    if proc.returncode != 0:
+    # Helper: pull any error message embedded in the stream-json stdout
+    # (the CLI emits auth failures, rate-limit hits, and other API errors
+    # there even when the process exits non-zero with empty stderr).
+    def _extract_stream_json_error(raw: bytes) -> str:
+        text = raw.decode("utf-8", errors="replace")
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = _json.loads(line)
+            except _json.JSONDecodeError:
+                continue
+            # Result lines flag explicit failures
+            if obj.get("type") == "result" and obj.get("is_error"):
+                msg = obj.get("result") or obj.get("text") or ""
+                if msg:
+                    return str(msg).strip()
+            # Assistant lines may carry an `error` slug + message
+            if obj.get("type") == "assistant" and obj.get("error"):
+                inner = obj.get("message", {}).get("content") or []
+                for blk in inner:
+                    if blk.get("type") == "text" and blk.get("text"):
+                        return str(blk["text"]).strip()
+            # System/setup error
+            if obj.get("type") == "error":
+                return str(obj.get("message") or obj.get("error") or line).strip()
+        return ""
+
+    # Even when the CLI exits 0, a stream-json result with `is_error: true`
+    # means the call failed (auth, rate limit, etc). Surface those as
+    # explicit errors so the caller doesn't see an empty answer.
+    embedded = _extract_stream_json_error(stdout_data)
+
+    if proc.returncode != 0 or embedded:
         err_text = stderr_data.decode("utf-8", errors="replace").strip()
+        # Prefer the structured stdout message; fall back to stderr; then to
+        # a hint about authentication if both are empty (most common cause
+        # of exit 1 with no output is a missing/expired OAuth token).
+        if embedded:
+            err_text = embedded
+        elif not err_text:
+            err_text = (
+                "Claude CLI exited with no output. The most common cause is a "
+                "missing or expired OAuth token — run `claude login` from a "
+                "terminal, or set CLAUDE_CODE_OAUTH_TOKEN in backend/.env."
+            )
         raise RuntimeError(f"Claude CLI exited with code {proc.returncode}: {err_text}")
 
     # ── Parse stream-json output ──
