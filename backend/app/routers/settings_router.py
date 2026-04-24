@@ -605,15 +605,12 @@ async def test_llm_config(
         or ""
     )
 
+    # Plain ping. Earlier versions of this prompt tried to roleplay the
+    # assistant as a "connectivity probe", which the Claude CLI's guard
+    # flagged as a prompt-injection attempt and refused. A simple
+    # arithmetic question is unambiguous and works on every provider.
     messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a connectivity test probe. Respond with a single short "
-                "sentence confirming the LLM is reachable."
-            ),
-        },
-        {"role": "user", "content": "Ping. Reply with a brief confirmation."},
+        {"role": "user", "content": "Reply with the digit 4 only. What is 2+2?"}
     ]
 
     start = time.monotonic()
