@@ -165,7 +165,11 @@ class LlmConfig(Base):
     anthropic_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     anthropic_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     claude_code_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    claude_code_oauth_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Fernet-encrypted at rest via EncryptedText. Same pattern as the bot
+    # tokens. Existing plaintext rows keep working (process_result_value
+    # falls back to raw on decrypt mismatch); the data migration shipped
+    # alongside this column flip rewraps them on first deploy.
+    claude_code_oauth_token: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -190,7 +194,11 @@ class LlmSettings(Base):
     anthropic_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     anthropic_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     claude_code_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    claude_code_oauth_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Fernet-encrypted at rest via EncryptedText. Same pattern as the bot
+    # tokens. Existing plaintext rows keep working (process_result_value
+    # falls back to raw on decrypt mismatch); the data migration shipped
+    # alongside this column flip rewraps them on first deploy.
+    claude_code_oauth_token: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
