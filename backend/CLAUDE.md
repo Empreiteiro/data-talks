@@ -59,17 +59,25 @@ Summary scripts follow the pattern `summary_<type>.py`.
 
 - All IDs are UUID v4 strings (generated with `uuid.uuid4()`).
 - Async operations only: use `await session.execute(...)`, never synchronous calls.
-- Multi-tenancy: most models have `organization_id` for user isolation.
-- Fixed IDs: `GUEST_USER_ID` and `ADMIN_USER_ID` constants in `models.py`.
-- Source metadata (connection strings, file paths, credentials) stored as JSON in `Source.metadata_` column.
+- Multi-tenancy: `Organization` + `OrganizationMembership` (N-to-N). Tenant-scoped models carry `organization_id NOT NULL`. `User.organization_id` is an optional "last active" hint, not the authoritative scope.
+- Fixed IDs: `GUEST_USER_ID` and `ADMIN_USER_ID` constants in `models.py`. The guest user is auto-enrolled as `owner` of a `Guest` org on migration.
+- Tenant scope resolution (see `app/auth.py:require_membership`): `X-API-Key` → key's `organization_id`; otherwise JWT `org_id` claim; else guest fallback.
+- Role hierarchy: `viewer (0) < member (1) < admin (2) < owner (3)`. Use `Depends(require_role("admin"))` when writes should be restricted.
+- Secrets in `Source.metadata_` and bot tokens are Fernet-encrypted at rest; `app/services/crypto.py` provides `encrypt_secret_fields`, `unlock_source_metadata`, and the `EncryptedText` SQLAlchemy type.
 
 ## Adding New Features
 
-### New API endpoint
+### New API endpoint on a tenant-scoped model
 1. Create or extend a router in `app/routers/`.
 2. Add Pydantic schemas in `app/schemas.py`.
 3. Register the router in `app/main.py` if it's a new file.
-4. Protect with `Depends(require_user)` or `Depends(require_admin)`.
+4. Protect with `Depends(require_membership)` (read) or `Depends(require_role("member"/"admin"))` (write/delete).
+5. Filter every SELECT/UPDATE/DELETE with `tenant_filter(Model, scope)` from `app.services.tenant_scope`.
+6. On INSERT, set `organization_id=scope.organization_id`.
+
+### New API endpoint on a user-personal model (LlmConfig, QASession, ...)
+1. Keep `Depends(require_user)` + `Model.user_id == user.id` filters.
+2. Do not use `tenant_filter` — it raises if the model has no `organization_id` column.
 
 ### New data source type
 1. Create `app/scripts/ask_<type>.py` following the pattern of existing scripts.

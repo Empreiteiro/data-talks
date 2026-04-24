@@ -87,17 +87,21 @@ cd backend && pytest
 - React Query for server state; avoid manual fetch + useState patterns.
 
 ### Backend
-- Routers use `Depends(require_user)` for auth-protected endpoints.
+- Endpoints that touch tenant-scoped models (Source, Agent, PipelineRun, …) use `Depends(require_membership)` to resolve a `TenantScope` (user + organization_id + role), then filter every query with `tenant_filter(Model, scope)`.
+- Write/delete endpoints add `Depends(require_role("member"))` / `Depends(require_role("admin"))`.
+- User-personal endpoints (LlmConfig, QA sessions, dashboards) still use `Depends(require_user)`.
 - Database sessions injected via `Depends(get_db)`.
 - Source-specific Q&A logic lives in `app/scripts/ask_<type>.py`.
 - LLM calls go through `app/llm/client.py` (never call OpenAI SDK directly).
 - All DB operations are async (use `await` with SQLAlchemy async session).
+- Secrets in `Source.metadata_` and Telegram/WhatsApp/Slack bot tokens are Fernet-encrypted at rest; see `app/services/crypto.py`.
 - New tables/columns require an Alembic migration.
 
 ### Database
 - IDs are UUID v4 strings (not auto-increment integers).
-- Guest mode uses fixed `GUEST_USER_ID`; admin uses `ADMIN_USER_ID`.
-- Multi-tenancy via `organization_id` field on most models.
+- Guest mode uses fixed `GUEST_USER_ID`; admin uses `ADMIN_USER_ID`. The guest user is auto-enrolled as `owner` of a single `Guest` organization.
+- Multi-tenancy: `Organization` + `OrganizationMembership` drive the active-tenant scope. A User may belong to N Orgs; the active one travels in the JWT `org_id` claim or is bound to the ApiKey row.
+- Role hierarchy (ascending): `viewer < member < admin < owner`. `require_role("admin")` lets admins + owners through.
 
 ### Git & PRs
 - Keep commits focused and descriptive.
@@ -109,16 +113,31 @@ cd backend && pytest
 Backend config lives in `backend/.env`. Key variables:
 - `LLM_PROVIDER`: `openai` | `ollama` | `litellm`
 - `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`
-- `SECRET_KEY`: JWT signing key
-- `ENABLE_LOGIN`: `true` enables multi-user auth; `false` (default) is guest mode
+- `SECRET_KEY`: JWT signing key. Also seeds the Fernet key used to encrypt secrets at rest, via HKDF.
+- `ENABLE_LOGIN`: `true` enables multi-user auth; `false` (default) is guest mode.
+- `GITHUB_TOKEN_ENCRYPTION_KEY`: optional explicit Fernet key (url-safe base64, 32 bytes). Overrides the HKDF derivation from `SECRET_KEY`. Set this if you need the encryption key to be independent of your JWT key (e.g., rotate JWT without re-encrypting every secret).
 - `DATABASE_URL`: Override default SQLite (e.g., PostgreSQL connection string)
 - `SMTP_*`: Email configuration for alerts and reports
 
-## Authentication Modes
+## Authentication & Multi-Tenancy
 
-1. **Guest mode** (`ENABLE_LOGIN=false`): No login screen, single shared user.
-2. **Login mode** (`ENABLE_LOGIN=true`): JWT auth, admin + regular user roles, user isolation via organization_id.
-3. **API key auth**: `X-API-Key` header for the public `POST /api/v1/ask` endpoint.
+### Modes
+1. **Guest mode** (`ENABLE_LOGIN=false`): No login screen; one guest user is auto-enrolled as `owner` of a single `Guest` organization. Every query still runs through the tenant scope, so the same security invariants hold even in dev.
+2. **Login mode** (`ENABLE_LOGIN=true`): JWT auth. `POST /auth/login` returns `{access_token, user, organizations, active_organization_id}`. The JWT carries an `org_id` claim identifying the active tenant. Users switch orgs via `POST /auth/switch-org` which issues a new token.
+3. **API key auth**: `X-API-Key` header for programmatic access. Each key is tenant-bound (`ApiKey.organization_id NOT NULL`) so it resolves to exactly one organization. MCP tool calls always require an API key — there is no guest fallback on `/mcp`.
+
+### Roles
+- `owner` — full control including future org membership management
+- `admin` — can delete tenant-scoped resources
+- `member` — can create/edit
+- `viewer` — read-only
+
+Role is per-`OrganizationMembership`, so the same user may be `admin` in org A and `viewer` in org B.
+
+### Encryption at rest
+- `Source.metadata_` secret fields (`password`, `api_key`, `service_account_json`, `connection_string`, `bearer_token`, …) are Fernet-wrapped as `{"__enc": "<cipher>"}` envelopes before persisting. Scripts and routers call `unlock_source_metadata(source)` or `decrypt_secret_fields()` transparently; API responses use `mask_secret_fields()` to never echo plaintext.
+- Telegram/WhatsApp/Slack bot tokens + Slack client/signing secrets are wrapped via the `EncryptedText` SQLAlchemy type, so `cfg.bot_token` is always plaintext in Python but encrypted in the DB.
+- GitHub OAuth access/refresh tokens are encrypted via the same Fernet key (see `app/services/github_oauth.py`).
 
 ## Testing
 
