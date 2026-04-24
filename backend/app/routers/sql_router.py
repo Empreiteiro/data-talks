@@ -55,7 +55,7 @@ async def _get_agent_sql_sources(
     db: AsyncSession,
     user: User,
 ) -> tuple[Agent, list[Source]]:
-    result = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    result = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")

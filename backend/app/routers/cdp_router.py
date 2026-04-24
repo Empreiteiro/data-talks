@@ -12,7 +12,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.config import get_settings
 from app.database import get_db
 from app.models import User, Agent, Source, LlmConfig
@@ -45,7 +46,7 @@ class CdpSegmentRequest(BaseModel):
 
 
 async def _get_agent_and_llm(agent_id: str, user: User, db: AsyncSession):
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")
@@ -64,7 +65,7 @@ async def _get_agent_and_llm(agent_id: str, user: User, db: AsyncSession):
 @router.post("/identity-resolution")
 async def suggest_identity_resolution(
     body: CdpRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """AI suggests how to unify customer records across sources."""
@@ -72,7 +73,7 @@ async def suggest_identity_resolution(
 
     # Load all active sources for this workspace
     r = await db.execute(
-        select(Source).where(Source.agent_id == agent.id, Source.user_id == user.id)
+        select(Source).where(Source.agent_id == agent.id, tenant_filter(Source, scope))
     )
     sources = list(r.scalars().all())
     if len(sources) < 1:
@@ -97,7 +98,7 @@ async def suggest_identity_resolution(
 @router.post("/enrichment")
 async def suggest_enrichment(
     body: CdpEnrichRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """AI suggests customer metrics to calculate."""
@@ -125,7 +126,7 @@ async def suggest_enrichment(
 @router.post("/segmentation")
 async def suggest_segmentation(
     body: CdpSegmentRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """AI suggests customer segmentation rules."""
@@ -153,11 +154,11 @@ async def suggest_segmentation(
 @router.get("/config/{agent_id}")
 async def get_cdp_config(
     agent_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the CDP configuration for a workspace."""
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")
@@ -182,14 +183,14 @@ def _make_table_name_from_source(name: str) -> str:
 @router.post("/materialize")
 async def materialize_cdp_table(
     body: MaterializeRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """Execute CDP SQL against all workspace sources and save result as a new CSV source."""
     from app.scripts.ask_csv import _load_full_dataframe
     from app.routers.crud import _build_sample_profile, _sanitize_for_json
 
-    r = await db.execute(select(Agent).where(Agent.id == body.agentId, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")
@@ -202,7 +203,7 @@ async def materialize_cdp_table(
     source_ids = agent.source_ids or []
     r_src = await db.execute(
         select(Source).where(
-            Source.user_id == user.id,
+            tenant_filter(Source, scope),
             or_(
                 Source.agent_id == agent.id,
                 Source.id.in_(source_ids) if source_ids else Source.agent_id == agent.id,

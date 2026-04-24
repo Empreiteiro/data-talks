@@ -597,7 +597,7 @@ async def get_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), s
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
-    r2 = await db.execute(select(DashboardChart).where(DashboardChart.dashboard_id == d.id))
+    r2 = await db.execute(select(DashboardChart).where(DashboardChart.dashboard_id == d.id, tenant_filter(DashboardChart, scope)))
     charts = list(r2.scalars().all())
     return {
         "id": d.id,
@@ -627,7 +627,7 @@ async def delete_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db)
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
-    r2 = await db.execute(select(DashboardChart).where(DashboardChart.dashboard_id == dashboard_id))
+    r2 = await db.execute(select(DashboardChart).where(DashboardChart.dashboard_id == dashboard_id, tenant_filter(DashboardChart, scope)))
     for c in r2.scalars().all():
         await db.delete(c)
     await db.delete(d)
@@ -644,7 +644,7 @@ async def add_chart_to_dashboard(dashboard_id: str, body: dict, db: AsyncSession
     qa_session_id = body.get("qaSessionId")
     image_url = body.get("imageUrl")
     if not image_url:
-        rq = await db.execute(select(QASession).where(QASession.id == qa_session_id))
+        rq = await db.execute(select(QASession).where(QASession.id == qa_session_id, tenant_filter(QASession, scope)))
         qa = rq.scalar_one_or_none()
         image_url = (qa.table_data or {}).get("image_url") if qa else None
     if not image_url:
@@ -666,7 +666,7 @@ async def add_chart_to_dashboard(dashboard_id: str, body: dict, db: AsyncSession
 
 @router.delete("/dashboard_charts/{chart_id}")
 async def remove_chart_from_dashboard(chart_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(DashboardChart).where(DashboardChart.id == chart_id))
+    r = await db.execute(select(DashboardChart).where(DashboardChart.id == chart_id, tenant_filter(DashboardChart, scope)))
     c = r.scalar_one_or_none()
     if not c:
         raise HTTPException(404, "Chart not found")
@@ -680,7 +680,7 @@ async def remove_chart_from_dashboard(chart_id: str, db: AsyncSession = Depends(
 
 @router.patch("/dashboard_charts/{chart_id}")
 async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(DashboardChart).where(DashboardChart.id == chart_id))
+    r = await db.execute(select(DashboardChart).where(DashboardChart.id == chart_id, tenant_filter(DashboardChart, scope)))
     c = r.scalar_one_or_none()
     if not c:
         raise HTTPException(404, "Chart not found")
@@ -902,12 +902,12 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
     # Link sources to agent
     for src_id in source_ids:
         await db.execute(
-            select(Source).where(Source.id == src_id)
+            select(Source).where(Source.id == src_id, tenant_filter(Source, scope))
         )
 
     await db.flush()
     for src_id in source_ids:
-        r_src = await db.execute(select(Source).where(Source.id == src_id))
+        r_src = await db.execute(select(Source).where(Source.id == src_id, tenant_filter(Source, scope)))
         s = r_src.scalar_one_or_none()
         if s:
             s.agent_id = agent.id
@@ -1053,7 +1053,10 @@ async def list_alert_executions(alert_id: str, limit: int = 20, db: AsyncSession
 
     r = await db.execute(
         select(AlertExecution)
-        .where(AlertExecution.alert_id == alert_id)
+        .where(
+            AlertExecution.alert_id == alert_id,
+            tenant_filter(AlertExecution, scope),
+        )
         .order_by(AlertExecution.created_at.desc())
         .limit(limit)
     )

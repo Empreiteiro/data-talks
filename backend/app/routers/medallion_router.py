@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
 from app.config import get_settings
 from app.database import get_db
 from app.models import (
@@ -25,9 +25,9 @@ router = APIRouter(prefix="/medallion", tags=["medallion"])
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _get_source(source_id: str, user_id: str, db: AsyncSession) -> Source:
+async def _get_source(source_id: str, scope: TenantScope, db: AsyncSession) -> Source:
     result = await db.execute(
-        select(Source).where(Source.id == source_id, Source.user_id == user_id)
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
     )
     source = result.scalar_one_or_none()
     if not source:
@@ -35,12 +35,16 @@ async def _get_source(source_id: str, user_id: str, db: AsyncSession) -> Source:
     return source
 
 
-async def _resolve_llm_overrides(agent_id: str, user_id: str, db: AsyncSession) -> dict | None:
+async def _resolve_llm_overrides(
+    agent_id: str, scope: TenantScope, db: AsyncSession
+) -> dict | None:
     """Load LLM config for the agent's user, following the same logic as ask.py."""
     from app.routers.ask import _llm_config_to_overrides
 
     # Try agent-specific config
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    result = await db.execute(
+        select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
+    )
     agent = result.scalar_one_or_none()
     if agent and agent.llm_config_id:
         cfg_result = await db.execute(
@@ -52,7 +56,7 @@ async def _resolve_llm_overrides(agent_id: str, user_id: str, db: AsyncSession) 
 
     # Fallback to user default LlmSettings
     settings_result = await db.execute(
-        select(LlmSettings).where(LlmSettings.user_id == user_id)
+        select(LlmSettings).where(LlmSettings.user_id == scope.user.id)
     )
     settings = settings_result.scalar_one_or_none()
     return _llm_config_to_overrides(settings)
@@ -74,13 +78,13 @@ def _log_out(d: dict) -> dict:
 @router.get("/sources/{source_id}/layers")
 async def list_layers(
     source_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
-    await _get_source(source_id, user.id, db)
+    await _get_source(source_id, scope, db)
     result = await db.execute(
         select(MedallionLayer)
-        .where(MedallionLayer.source_id == source_id, MedallionLayer.user_id == user.id)
+        .where(MedallionLayer.source_id == source_id, MedallionLayer.user_id == scope.user.id)
         .order_by(MedallionLayer.created_at)
     )
     layers = result.scalars().all()
@@ -90,13 +94,13 @@ async def list_layers(
 @router.get("/sources/{source_id}/logs")
 async def list_logs(
     source_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
-    await _get_source(source_id, user.id, db)
+    await _get_source(source_id, scope, db)
     result = await db.execute(
         select(MedallionBuildLog)
-        .where(MedallionBuildLog.source_id == source_id, MedallionBuildLog.user_id == user.id)
+        .where(MedallionBuildLog.source_id == source_id, MedallionBuildLog.user_id == scope.user.id)
         .order_by(MedallionBuildLog.created_at.desc())
     )
     logs = result.scalars().all()
@@ -106,12 +110,12 @@ async def list_logs(
 @router.get("/layers/{layer_id}")
 async def get_layer(
     layer_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(MedallionLayer).where(
-            MedallionLayer.id == layer_id, MedallionLayer.user_id == user.id
+            MedallionLayer.id == layer_id, MedallionLayer.user_id == scope.user.id
         )
     )
     layer = result.scalar_one_or_none()
@@ -127,14 +131,14 @@ async def get_layer(
 @router.post("/bronze/generate")
 async def generate_bronze(
     body: BronzeGenerateRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
-    source = await _get_source(body.sourceId, user.id, db)
+    source = await _get_source(body.sourceId, scope, db)
     settings = get_settings()
     try:
         layer = await svc.generate_bronze(
-            source, user.id, body.agentId, settings.data_files_dir, db
+            source, scope.user.id, body.agentId, settings.data_files_dir, db
         )
         return layer
     except Exception as e:
@@ -148,15 +152,15 @@ async def generate_bronze(
 @router.post("/silver/suggest")
 async def suggest_silver(
     body: SilverSuggestRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
-    source = await _get_source(body.sourceId, user.id, db)
+    source = await _get_source(body.sourceId, scope, db)
     settings = get_settings()
-    llm_overrides = await _resolve_llm_overrides(body.agentId, user.id, db)
+    llm_overrides = await _resolve_llm_overrides(body.agentId, scope, db)
     try:
         result = await svc.suggest_silver(
-            source, user.id, body.agentId, settings.data_files_dir, db,
+            source, scope.user.id, body.agentId, settings.data_files_dir, db,
             llm_overrides=llm_overrides,
             feedback=body.feedback,
         )
@@ -168,14 +172,14 @@ async def suggest_silver(
 @router.post("/silver/apply")
 async def apply_silver(
     body: SilverApplyRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
-    source = await _get_source(body.sourceId, user.id, db)
+    source = await _get_source(body.sourceId, scope, db)
     settings = get_settings()
     try:
         layer = await svc.apply_silver(
-            source, user.id, body.agentId, settings.data_files_dir, db,
+            source, scope.user.id, body.agentId, settings.data_files_dir, db,
             build_log_id=body.buildLogId,
             config=body.config,
         )
@@ -191,15 +195,15 @@ async def apply_silver(
 @router.post("/gold/suggest")
 async def suggest_gold(
     body: GoldSuggestRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
-    source = await _get_source(body.sourceId, user.id, db)
+    source = await _get_source(body.sourceId, scope, db)
     settings = get_settings()
-    llm_overrides = await _resolve_llm_overrides(body.agentId, user.id, db)
+    llm_overrides = await _resolve_llm_overrides(body.agentId, scope, db)
     try:
         result = await svc.suggest_gold(
-            source, user.id, body.agentId, settings.data_files_dir, db,
+            source, scope.user.id, body.agentId, settings.data_files_dir, db,
             llm_overrides=llm_overrides,
             feedback=body.feedback,
             report_prompt=body.reportPrompt,
@@ -212,14 +216,14 @@ async def suggest_gold(
 @router.post("/gold/apply")
 async def apply_gold(
     body: GoldApplyRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
-    source = await _get_source(body.sourceId, user.id, db)
+    source = await _get_source(body.sourceId, scope, db)
     settings = get_settings()
     try:
         layers = await svc.apply_gold(
-            source, user.id, body.agentId, settings.data_files_dir, db,
+            source, scope.user.id, body.agentId, settings.data_files_dir, db,
             build_log_id=body.buildLogId,
             selected_tables=body.selectedTables,
         )
@@ -235,12 +239,12 @@ async def apply_gold(
 @router.delete("/layers/{layer_id}")
 async def delete_layer(
     layer_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(MedallionLayer).where(
-            MedallionLayer.id == layer_id, MedallionLayer.user_id == user.id
+            MedallionLayer.id == layer_id, MedallionLayer.user_id == scope.user.id
         )
     )
     layer = result.scalar_one_or_none()

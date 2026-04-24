@@ -93,7 +93,7 @@ async def get_run(
         raise HTTPException(404, "Run not found")
 
     r2 = await db.execute(
-        select(LineageEdge).where(LineageEdge.run_id == run_id).order_by(LineageEdge.created_at)
+        select(LineageEdge).where(LineageEdge.run_id == run_id, tenant_filter(LineageEdge, scope)).order_by(LineageEdge.created_at)
     )
     edges = list(r2.scalars().all())
     return {
@@ -121,7 +121,7 @@ async def agent_lineage(
     if not run_ids:
         return {"nodes": [], "edges": []}
 
-    edges_q = select(LineageEdge).where(LineageEdge.run_id.in_(run_ids))
+    edges_q = select(LineageEdge).where(LineageEdge.run_id.in_(run_ids), tenant_filter(LineageEdge, scope))
     r2 = await db.execute(edges_q)
     edges = list(r2.scalars().all())
     return build_lineage_graph(edges)

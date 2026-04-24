@@ -11,7 +11,8 @@ from typing import Optional
 
 from app.database import get_db
 from app.models import User, Agent, Source, Report, LlmSettings, LlmConfig
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.config import get_settings
 from app.scripts.report_csv import generate_report_csv
 from app.scripts.report_bigquery import generate_report_bigquery
@@ -79,25 +80,25 @@ class GenerateReportRequest(BaseModel):
 async def generate_report(
     body: GenerateReportRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Generate a rich HTML report with exploratory charts for the selected source."""
-    r = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
 
     # Resolve source
     if body.sourceId:
-        r = await db.execute(select(Source).where(Source.id == body.sourceId, Source.user_id == user.id))
+        r = await db.execute(select(Source).where(Source.id == body.sourceId, tenant_filter(Source, scope)))
         source = r.scalar_one_or_none()
     else:
         r = await db.execute(
-            select(Source).where(Source.agent_id == body.agentId, Source.user_id == user.id, Source.is_active == True)
+            select(Source).where(Source.agent_id == body.agentId, tenant_filter(Source, scope), Source.is_active == True)
         )
         source = r.scalar_one_or_none()
         if not source:
-            r = await db.execute(select(Source).where(Source.agent_id == body.agentId, Source.user_id == user.id))
+            r = await db.execute(select(Source).where(Source.agent_id == body.agentId, tenant_filter(Source, scope)))
             source = r.scalar_one_or_none()
 
     if not source:
@@ -210,7 +211,7 @@ async def generate_report(
 async def list_reports(
     agent_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List reports, optionally filtered by workspace (agent_id)."""
     q = select(Report).where(Report.user_id == user.id).order_by(Report.created_at.desc())
@@ -235,7 +236,7 @@ async def list_reports(
 async def get_report(
     report_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Get a single report by id (metadata only, no HTML content)."""
     r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == user.id))
@@ -256,7 +257,7 @@ async def get_report(
 async def get_report_html(
     report_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Serve the HTML content of a report (for iframe or download)."""
     r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == user.id))
@@ -270,7 +271,7 @@ async def get_report_html(
 async def delete_report(
     report_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Delete a report."""
     r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == user.id))

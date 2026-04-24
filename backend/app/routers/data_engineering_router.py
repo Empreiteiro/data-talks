@@ -14,7 +14,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.database import get_db
 from app.models import User, Agent, Source, LlmConfig
 from app.llm.client import chat_completion
@@ -33,13 +34,13 @@ class ToolRequest(BaseModel):
 
 
 async def _get_agent_sources_llm(agent_id: str, user: User, db: AsyncSession):
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")
 
     r_src = await db.execute(
-        select(Source).where(Source.user_id == user.id, Source.agent_id == agent.id)
+        select(Source).where(tenant_filter(Source, scope), Source.agent_id == agent.id)
     )
     sources = list(r_src.scalars().all())
 
@@ -89,7 +90,7 @@ async def _call_llm(system: str, user_msg: str, llm_overrides: dict | None, max_
 # ---------------------------------------------------------------------------
 
 @router.post("/schema-docs")
-async def generate_schema_docs(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def generate_schema_docs(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Generate a data dictionary with LLM-inferred descriptions for all columns."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
@@ -110,7 +111,7 @@ async def generate_schema_docs(body: ToolRequest, user: User = Depends(require_u
 # ---------------------------------------------------------------------------
 
 @router.post("/quality-tests")
-async def generate_quality_tests(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def generate_quality_tests(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Generate data quality tests in multiple formats (dbt, SQL, Great Expectations)."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
@@ -133,7 +134,7 @@ async def generate_quality_tests(body: ToolRequest, user: User = Depends(require
 # ---------------------------------------------------------------------------
 
 @router.post("/erd")
-async def generate_erd(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def generate_erd(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Auto-detect relationships and generate ERD in Mermaid format."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
@@ -157,7 +158,7 @@ async def generate_erd(body: ToolRequest, user: User = Depends(require_user), db
 # ---------------------------------------------------------------------------
 
 @router.post("/query-analysis")
-async def analyze_query(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def analyze_query(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Analyze SQL for performance issues and suggest optimizations."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
@@ -186,7 +187,7 @@ async def analyze_query(body: ToolRequest, user: User = Depends(require_user), d
 # ---------------------------------------------------------------------------
 
 @router.post("/transformation-mapping")
-async def suggest_transformation_mapping(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def suggest_transformation_mapping(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Suggest column-by-column mapping between source and target schemas."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
@@ -217,7 +218,7 @@ async def suggest_transformation_mapping(body: ToolRequest, user: User = Depends
 # ---------------------------------------------------------------------------
 
 @router.post("/incremental-strategy")
-async def suggest_incremental_strategy(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def suggest_incremental_strategy(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Recommend incremental loading strategy based on data profiling."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
@@ -246,7 +247,7 @@ async def suggest_incremental_strategy(body: ToolRequest, user: User = Depends(r
 # ---------------------------------------------------------------------------
 
 @router.post("/etl-docs")
-async def reverse_engineer_etl_docs(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def reverse_engineer_etl_docs(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Generate natural language documentation from SQL code."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
@@ -275,7 +276,7 @@ async def reverse_engineer_etl_docs(body: ToolRequest, user: User = Depends(requ
 # ---------------------------------------------------------------------------
 
 @router.post("/catalog")
-async def generate_catalog(body: ToolRequest, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def generate_catalog(body: ToolRequest, scope: TenantScope = Depends(require_membership), db: AsyncSession = Depends(get_db)):
     """Generate a data catalog with lineage graph."""
     agent, sources, llm = await _get_agent_sources_llm(body.agentId, user, db)
     schema = _build_schema_context(sources)
