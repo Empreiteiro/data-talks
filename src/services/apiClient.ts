@@ -874,6 +874,21 @@ export const apiClient = {
     return api(`/api/settings/llm-configs/${id}`, { method: 'DELETE' });
   },
 
+  /** Run a live ping against a saved LLM config.
+   *  Returns `{ok, latency_ms, provider, model, reply?, error?}`. Used by
+   *  the Test button in Settings → LLM so the user can verify creds
+   *  before pointing a workspace at the config. */
+  async testLlmConfig(id: string) {
+    return api<{
+      ok: boolean;
+      latency_ms: number;
+      provider: string;
+      model?: string | null;
+      reply?: string;
+      error?: string;
+    }>(`/api/settings/llm-configs/${id}/test`, { method: 'POST' });
+  },
+
   // Studio Summary (table executive reports)
   async generateTableSummary(agentId: string, sourceId?: string, language?: string) {
     return api<{
