@@ -570,3 +570,86 @@ async def delete_llm_config(
     await db.commit()
     await _auto_default_if_single(user.id, db)
     return {"ok": True}
+
+
+@router.post("/llm-configs/{config_id}/test")
+async def test_llm_config(
+    config_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    """Run a tiny live chat completion against the saved credentials and
+    return `{ok, latency_ms, provider, model, reply?, error?}`.
+
+    Used by the "Test" button in the Settings → LLM panel so the user
+    can verify a configuration before pointing a workspace at it. We do
+    NOT store the result — stateless health check.
+    """
+    import time
+
+    from app.llm.client import chat_completion
+    from app.routers.ask import _llm_config_to_overrides
+
+    r = await db.execute(
+        select(LlmConfig).where(LlmConfig.id == config_id, LlmConfig.user_id == user.id)
+    )
+    cfg = r.scalar_one_or_none()
+    if not cfg:
+        raise HTTPException(404, "LLM config not found")
+
+    overrides = _llm_config_to_overrides(cfg) or {}
+    provider = overrides.get("llm_provider") or cfg.llm_provider
+    model = (
+        overrides.get(f"{provider}_model")
+        or overrides.get("openai_model")
+        or ""
+    )
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a connectivity test probe. Respond with a single short "
+                "sentence confirming the LLM is reachable."
+            ),
+        },
+        {"role": "user", "content": "Ping. Reply with a brief confirmation."},
+    ]
+
+    start = time.monotonic()
+    try:
+        reply, _usage, _trace = await chat_completion(
+            messages=messages,
+            llm_overrides=overrides,
+            max_tokens=64,
+        )
+        latency_ms = int((time.monotonic() - start) * 1000)
+        return {
+            "ok": True,
+            "latency_ms": latency_ms,
+            "provider": provider,
+            "model": model or None,
+            "reply": (reply or "").strip()[:400],
+        }
+    except Exception as e:  # noqa: BLE001 — translate to a UI-friendly error
+        latency_ms = int((time.monotonic() - start) * 1000)
+        # Normalize the most common failure modes into short messages.
+        raw = str(e) or e.__class__.__name__
+        lowered = raw.lower()
+        if "api key" in lowered or "unauthorized" in lowered or "401" in lowered:
+            msg = "Invalid or missing API key."
+        elif "model" in lowered and ("not found" in lowered or "does not exist" in lowered):
+            msg = f"Model '{model}' is not available for this provider."
+        elif "timeout" in lowered or "timed out" in lowered:
+            msg = "Request timed out."
+        elif "connection" in lowered or "network" in lowered:
+            msg = "Network error reaching the provider."
+        else:
+            msg = raw[:400]
+        return {
+            "ok": False,
+            "latency_ms": latency_ms,
+            "provider": provider,
+            "model": model or None,
+            "error": msg,
+        }

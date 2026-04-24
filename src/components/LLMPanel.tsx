@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { dataClient } from "@/services/dataClient";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Bot, Loader2, Pencil, Plus, RefreshCw, Star, Trash2 } from "lucide-react";
+import { Bot, CheckCircle2, Loader2, Pencil, Plus, Plug, RefreshCw, Star, Trash2, XCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -307,6 +307,49 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
     }
   };
 
+  // Per-config test state: id → ok + latency/error, so each row renders its
+  // own badge without blocking the others. `running` set controls spinners.
+  const [testResults, setTestResults] = useState<
+    Record<string, { ok: boolean; latency_ms: number; model?: string | null; error?: string; reply?: string }>
+  >({});
+  const [testingIds, setTestingIds] = useState<Set<string>>(new Set());
+
+  const handleTest = async (id: string) => {
+    setTestingIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    try {
+      const result = await dataClient.testLlmConfig(id);
+      setTestResults((prev) => ({ ...prev, [id]: result }));
+      if (result.ok) {
+        toast.success(
+          t("llmConfig.testSucceeded") ?? "Connection successful",
+          { description: `${result.latency_ms} ms · ${result.model ?? result.provider}` },
+        );
+      } else {
+        toast.error(
+          t("llmConfig.testFailed") ?? "Connection failed",
+          { description: result.error ?? "Unknown error" },
+        );
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: { ok: false, latency_ms: 0, error: msg },
+      }));
+      toast.error(t("llmConfig.testFailed") ?? "Connection failed", { description: msg });
+    } finally {
+      setTestingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
   const isApiKeyMasked = (val: string) => val && val.includes("••••");
 
   const formFields = (
@@ -589,6 +632,40 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
                           )}
                         </div>
                       </div>
+                      {(() => {
+                        const result = testResults[cfg.id];
+                        const isRunning = testingIds.has(cfg.id);
+                        const titleBase = t("llmConfig.test") ?? "Test connection";
+                        const title = result
+                          ? result.ok
+                            ? `${titleBase} — ${result.latency_ms} ms`
+                            : `${titleBase} — ${result.error ?? "failed"}`
+                          : titleBase;
+                        const Icon = isRunning
+                          ? Loader2
+                          : result?.ok
+                            ? CheckCircle2
+                            : result
+                              ? XCircle
+                              : Plug;
+                        const colorClass = result?.ok
+                          ? "text-emerald-500"
+                          : result
+                            ? "text-destructive"
+                            : "";
+                        return (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-6 w-6 transition-opacity ${result ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${colorClass}`}
+                            title={title}
+                            disabled={isRunning}
+                            onClick={() => handleTest(cfg.id)}
+                          >
+                            <Icon className={`h-4 w-4 ${isRunning ? "animate-spin" : ""}`} />
+                          </Button>
+                        );
+                      })()}
                       <Button
                         variant="ghost"
                         size="icon"
