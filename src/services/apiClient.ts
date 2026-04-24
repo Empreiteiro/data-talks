@@ -88,7 +88,10 @@ function toApiAssetUrl(path?: string | null): string | undefined {
   return `${base}/${path}`;
 }
 
-async function api<T>(
+/** Generic HTTP helper. Prepends `VITE_API_URL` (or same origin), attaches
+ *  the JWT Bearer header from localStorage, handles JSON serialization, and
+ *  throws with a human-readable message on non-2xx. */
+export async function api<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {

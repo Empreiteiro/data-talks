@@ -44,37 +44,109 @@ _SERVE_FRONTEND = _FRONTEND_DIST.exists() and (_FRONTEND_DIST / "index.html").ex
 
 
 async def _ensure_single_user():
-    """Create guest user (login off) or admin user (login on) if missing."""
+    """Create guest user (login off) or admin user (login on) if missing,
+    and make sure they have an Organization + owner membership so tenant
+    scope resolution works.
+
+    The multi-tenant migration backfilled existing users, but fresh
+    installs create users here AFTER migrations run — so this function
+    is responsible for mirroring that setup on first boot. It is fully
+    idempotent: repeated calls add nothing when the rows already exist.
+    """
+    from app.models import Organization, OrganizationMembership
+
     settings = get_settings()
     async with AsyncSessionLocal() as db:
         if settings.enable_login:
             if not settings.admin_username or not settings.admin_password:
                 return
             r = await db.execute(select(User).where(User.id == ADMIN_USER_ID))
-            if r.scalar_one_or_none():
-                return
-            admin = User(
-                id=ADMIN_USER_ID,
-                email=settings.admin_username + "@admin.local",
-                hashed_password=hash_password(settings.admin_password),
-                organization_id=ADMIN_USER_ID,
-                role="admin",
-            )
-            db.add(admin)
+            admin = r.scalar_one_or_none()
+            if not admin:
+                admin = User(
+                    id=ADMIN_USER_ID,
+                    email=settings.admin_username + "@admin.local",
+                    hashed_password=hash_password(settings.admin_password),
+                    organization_id=None,
+                    role="admin",
+                )
+                db.add(admin)
+                await db.flush()
+            await _ensure_personal_org_for(db, admin, name="Admin workspace", slug="admin-workspace")
         else:
             r = await db.execute(select(User).where(User.id == GUEST_USER_ID))
-            if r.scalar_one_or_none():
-                return
-            # Use a placeholder password (guest never logs in; bcrypt rejects empty string on some platforms)
-            guest = User(
-                id=GUEST_USER_ID,
-                email="guest@local",
-                hashed_password=hash_password("guest-no-login"),
-                organization_id=GUEST_USER_ID,
-                role="user",
-            )
-            db.add(guest)
+            guest = r.scalar_one_or_none()
+            if not guest:
+                guest = User(
+                    id=GUEST_USER_ID,
+                    email="guest@local",
+                    hashed_password=hash_password("guest-no-login"),
+                    organization_id=None,
+                    role="user",
+                )
+                db.add(guest)
+                await db.flush()
+            await _ensure_personal_org_for(db, guest, name="Guest workspace", slug="guest-workspace")
         await db.commit()
+
+
+async def _ensure_personal_org_for(
+    db,
+    user,
+    *,
+    name: str,
+    slug: str,
+) -> None:
+    """Idempotently give `user` an Organization with an `owner` membership.
+
+    If the user already has at least one membership we just make sure
+    their `organization_id` hint points at the earliest one. Otherwise
+    we create the Org (with a unique slug) and an owner membership row.
+    """
+    import uuid as _uuid
+    from app.models import Organization, OrganizationMembership
+
+    r = await db.execute(
+        select(OrganizationMembership)
+        .where(OrganizationMembership.user_id == user.id)
+        .order_by(OrganizationMembership.created_at.asc())
+        .limit(1)
+    )
+    existing = r.scalar_one_or_none()
+    if existing:
+        if not user.organization_id:
+            user.organization_id = existing.organization_id
+        return
+
+    # Pick a unique slug (append a suffix if taken).
+    candidate = slug
+    suffix = 2
+    while True:
+        r = await db.execute(select(Organization.id).where(Organization.slug == candidate))
+        if not r.scalar_one_or_none():
+            break
+        candidate = f"{slug}-{suffix}"
+        suffix += 1
+
+    org = Organization(
+        id=str(_uuid.uuid4()),
+        name=name,
+        slug=candidate,
+        created_by=user.id,
+    )
+    db.add(org)
+    await db.flush()
+
+    membership = OrganizationMembership(
+        id=str(_uuid.uuid4()),
+        organization_id=org.id,
+        user_id=user.id,
+        role="owner",
+    )
+    db.add(membership)
+    if not user.organization_id:
+        user.organization_id = org.id
+    await db.flush()
 
 
 async def _ensure_platform_logs_channel_column():
