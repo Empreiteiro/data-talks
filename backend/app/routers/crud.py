@@ -17,6 +17,7 @@ from app.database import get_db
 from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert, AlertExecution, LlmConfig
 from app.auth import TenantScope, require_membership, require_role, require_user
 from app.config import get_settings
+from app.services.crypto import encrypt_secret_fields, mask_secret_fields
 from app.services.tenant_scope import tenant_filter
 
 router = APIRouter(tags=["crud"])
@@ -126,7 +127,9 @@ async def list_sources(
             "agent_id": s.agent_id,
             "is_active": s.is_active,
             "createdAt": s.created_at.isoformat() if s.created_at else None,
-            "metaJSON": _sanitize_for_json(s.metadata_) if s.metadata_ else {},
+            # Mask secret fields in list responses so credentials never
+            # leave the server in the clear after the initial POST /sources.
+            "metaJSON": _sanitize_for_json(mask_secret_fields(s.metadata_)) if s.metadata_ else {},
             "langflowPath": s.langflow_path,
             "langflowName": s.langflow_name,
         }
@@ -152,6 +155,11 @@ async def create_source(
     if body.type not in valid_types:
         raise HTTPException(400, f"type must be one of: {', '.join(valid_types)}")
     source_id = str(uuid.uuid4())
+    # Wrap secret fields (api_key, password, connection_string, ...) in
+    # Fernet envelopes before persisting. The metadata is returned to the
+    # client with secrets masked so the plaintext never leaves the server
+    # after the initial POST echo.
+    encrypted_meta = encrypt_secret_fields(body.metadata)
     source = Source(
         id=source_id,
         user_id=scope.user.id,
@@ -159,17 +167,18 @@ async def create_source(
         agent_id=body.agent_id,
         name=body.name,
         type=body.type,
-        metadata_=body.metadata,
+        metadata_=encrypted_meta,
     )
     db.add(source)
     await db.commit()
+    masked_meta = mask_secret_fields(encrypted_meta) or {}
     return {
         "id": source.id,
         "name": source.name,
         "type": source.type,
         "ownerId": source.user_id,
         "createdAt": source.created_at.isoformat(),
-        "metaJSON": _sanitize_for_json(source.metadata_) if source.metadata_ else {},
+        "metaJSON": _sanitize_for_json(masked_meta),
         "langflowPath": None,
         "langflowName": None,
     }

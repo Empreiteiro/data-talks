@@ -203,6 +203,13 @@ async def dispatch_question(
     if history is None:
         history = []
 
+    # Transparently decrypt per-source credentials (password, api_key,
+    # service_account_json, etc.) before dispatching. Downstream scripts and
+    # the multi-SQL assembly read `source.metadata_` directly.
+    from app.services.crypto import unlock_source_metadata
+    for _s in sources:
+        unlock_source_metadata(_s)
+
     multi_sql_sources, multi_sql_relationships = _build_active_multi_sql_sources(agent, sources)
     active_sources = [s for s in sources if s.is_active]
     source = active_sources[0] if active_sources else sources[0]

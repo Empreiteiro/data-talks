@@ -111,9 +111,16 @@ async def create_bot_config(
     env_config = _env_bot_option()
     if env_config and env_config["bot_token"] == token:
         raise HTTPException(status_code=400, detail="This Telegram bot token is already configured as the default .env bot")
-    existing = await db.execute(select(TelegramBotConfig).where(TelegramBotConfig.bot_token == token))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="This Telegram bot token is already registered")
+    # Deduplicate in-memory: bot_token is now encrypted at rest, so a
+    # WHERE on the ciphertext can't match a plaintext probe. Small table,
+    # one query + client-side compare is fine.
+    r_existing = await db.execute(select(TelegramBotConfig))
+    for _cfg in r_existing.scalars().all():
+        if (_cfg.bot_token or "") == token:
+            raise HTTPException(
+                status_code=400,
+                detail="This Telegram bot token is already registered",
+            )
 
     cfg = TelegramBotConfig(
         id=str(uuid.uuid4()),

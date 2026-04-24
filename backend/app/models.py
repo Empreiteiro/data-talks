@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import String, Text, Boolean, Integer, Float, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+from app.services.crypto import EncryptedText
 
 
 # ---------------------------------------------------------------------------
@@ -284,12 +285,18 @@ class AudioOverview(Base):
 
 
 class TelegramBotConfig(Base):
-    """User-managed Telegram bot credentials shown in the Connections screen."""
+    """User-managed Telegram bot credentials shown in the Connections screen.
+
+    `bot_token` is transparently Fernet-encrypted at rest via the
+    `EncryptedText` SQLAlchemy type. Existing plaintext rows keep working
+    until the next UPDATE — the data migration that ships this model
+    rewraps any plaintext token on load."""
     __tablename__ = "telegram_bot_configs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
-    bot_token: Mapped[str] = mapped_column(String(512))
+    # Encrypted at rest; Python-side attribute is always plaintext.
+    bot_token: Mapped[str] = mapped_column(EncryptedText())
     bot_username: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -324,14 +331,16 @@ class TelegramConnection(Base):
 
 
 class WhatsAppBotConfig(Base):
-    """User-managed WhatsApp Business API credentials."""
+    """User-managed WhatsApp Business API credentials.
+
+    `access_token` and `verify_token` are Fernet-encrypted at rest."""
     __tablename__ = "whatsapp_bot_configs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
     phone_number_id: Mapped[str] = mapped_column(String(64))
-    access_token: Mapped[str] = mapped_column(String(512))
-    verify_token: Mapped[str] = mapped_column(String(128))
+    access_token: Mapped[str] = mapped_column(EncryptedText())
+    verify_token: Mapped[str] = mapped_column(EncryptedText())
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -349,15 +358,18 @@ class WhatsAppConnection(Base):
 
 
 class SlackBotConfig(Base):
-    """User-managed Slack app credentials (obtained via OAuth2 or manual entry)."""
+    """User-managed Slack app credentials (obtained via OAuth2 or manual entry).
+
+    `client_secret`, `signing_secret`, and `bot_token` are Fernet-encrypted
+    at rest."""
     __tablename__ = "slack_bot_configs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
     client_id: Mapped[str] = mapped_column(String(128))
-    client_secret: Mapped[str] = mapped_column(String(256))
-    signing_secret: Mapped[str] = mapped_column(String(256))
-    bot_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    client_secret: Mapped[str] = mapped_column(EncryptedText())
+    signing_secret: Mapped[str] = mapped_column(EncryptedText())
+    bot_token: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     team_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     team_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
