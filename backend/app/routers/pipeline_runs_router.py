@@ -12,10 +12,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership
 from app.database import get_db
-from app.models import LineageEdge, PipelineRun, User
+from app.models import LineageEdge, PipelineRun
 from app.services.lineage import build_lineage_graph
+from app.services.tenant_scope import tenant_filter
 
 
 router = APIRouter(prefix="/pipeline-runs", tags=["pipeline-runs"])
@@ -58,9 +59,9 @@ async def list_runs(
     until: Optional[datetime] = Query(None),
     limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> list[dict]:
-    q = select(PipelineRun).where(PipelineRun.user_id == user.id)
+    q = select(PipelineRun).where(tenant_filter(PipelineRun, scope))
     if agent_id:
         q = q.where(PipelineRun.agent_id == agent_id)
     if kind:
@@ -80,11 +81,11 @@ async def list_runs(
 async def get_run(
     run_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
     r = await db.execute(
         select(PipelineRun).where(
-            PipelineRun.id == run_id, PipelineRun.user_id == user.id
+            PipelineRun.id == run_id, tenant_filter(PipelineRun, scope)
         )
     )
     run = r.scalar_one_or_none()
@@ -106,12 +107,12 @@ async def agent_lineage(
     agent_id: str,
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
     """Aggregate lineage graph from the most recent runs for an agent."""
     runs_q = (
         select(PipelineRun.id)
-        .where(PipelineRun.user_id == user.id, PipelineRun.agent_id == agent_id)
+        .where(tenant_filter(PipelineRun, scope), PipelineRun.agent_id == agent_id)
         .order_by(PipelineRun.started_at.desc())
         .limit(limit)
     )

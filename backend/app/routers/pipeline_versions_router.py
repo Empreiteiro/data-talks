@@ -13,9 +13,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_role, require_user
 from app.database import get_db
 from app.models import Agent, GithubConnection, PipelineVersion, User
+from app.services.tenant_scope import tenant_filter
 from app.services.crypto import decrypt_text
 from app.services.github_oauth import (
     GitHubOAuthNotConfigured,
@@ -39,10 +40,10 @@ router = APIRouter(
 
 
 async def _require_agent(
-    db: AsyncSession, user: User, agent_id: str, pipeline_id: str
+    db: AsyncSession, scope: TenantScope, agent_id: str, pipeline_id: str
 ) -> Agent:
     r = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
+        select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
     )
     agent = r.scalar_one_or_none()
     if not agent:
@@ -62,9 +63,9 @@ async def list_pipeline_versions(
     agent_id: str,
     pipeline_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> list[dict]:
-    await _require_agent(db, user, agent_id, pipeline_id)
+    await _require_agent(db, scope, agent_id, pipeline_id)
     versions = await list_versions(db, agent_id=agent_id, pipeline_id=pipeline_id)
     return [version_to_dict(v) for v in versions]
 
@@ -75,12 +76,12 @@ async def commit_pipeline_version(
     pipeline_id: str,
     body: CommitRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
-    agent = await _require_agent(db, user, agent_id, pipeline_id)
+    agent = await _require_agent(db, scope, agent_id, pipeline_id)
     version = await snapshot_pipeline(
         db,
-        user=user,
+        user=scope.user,
         agent=agent,
         pipeline_id=pipeline_id,
         message=(body.message or "").strip() or None,
@@ -95,10 +96,10 @@ async def get_pipeline_version(
     pipeline_id: str,
     version_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
-    await _require_agent(db, user, agent_id, pipeline_id)
-    version = await get_version(db, version_id=version_id, user=user)
+    await _require_agent(db, scope, agent_id, pipeline_id)
+    version = await get_version(db, version_id=version_id, user=scope.user)
     if not version or version.agent_id != agent_id or version.pipeline_id != pipeline_id:
         raise HTTPException(404, "Version not found")
     return {**version_to_dict(version), "snapshot": version.snapshot}
@@ -110,13 +111,13 @@ async def restore_pipeline_version(
     pipeline_id: str,
     version_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
-    agent = await _require_agent(db, user, agent_id, pipeline_id)
-    version = await get_version(db, version_id=version_id, user=user)
+    agent = await _require_agent(db, scope, agent_id, pipeline_id)
+    version = await get_version(db, version_id=version_id, user=scope.user)
     if not version or version.agent_id != agent_id or version.pipeline_id != pipeline_id:
         raise HTTPException(404, "Version not found")
-    new_version = await restore_version(db, user=user, agent=agent, version=version)
+    new_version = await restore_version(db, user=scope.user, agent=agent, version=version)
     await db.commit()
     return version_to_dict(new_version)
 
@@ -128,11 +129,11 @@ async def diff_pipeline_versions(
     a: str = Query(..., description="Version id A (base)"),
     b: str = Query(..., description="Version id B (compare)"),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
-    await _require_agent(db, user, agent_id, pipeline_id)
-    va = await get_version(db, version_id=a, user=user)
-    vb = await get_version(db, version_id=b, user=user)
+    await _require_agent(db, scope, agent_id, pipeline_id)
+    va = await get_version(db, version_id=a, user=scope.user)
+    vb = await get_version(db, version_id=b, user=scope.user)
     if not va or not vb or va.agent_id != agent_id or vb.agent_id != agent_id:
         raise HTTPException(404, "Version not found")
     if va.pipeline_id != pipeline_id or vb.pipeline_id != pipeline_id:
@@ -146,19 +147,22 @@ async def push_version_to_github(
     pipeline_id: str,
     version_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
-    agent = await _require_agent(db, user, agent_id, pipeline_id)
-    version = await get_version(db, version_id=version_id, user=user)
+    agent = await _require_agent(db, scope, agent_id, pipeline_id)
+    version = await get_version(db, version_id=version_id, user=scope.user)
     if not version or version.agent_id != agent_id or version.pipeline_id != pipeline_id:
         raise HTTPException(404, "Version not found")
 
     r = await db.execute(
-        select(GithubConnection).where(GithubConnection.user_id == user.id)
+        select(GithubConnection).where(
+            GithubConnection.user_id == scope.user.id,
+            GithubConnection.organization_id == scope.organization_id,
+        )
     )
     conn = r.scalar_one_or_none()
     if not conn:
-        raise HTTPException(400, "GitHub not connected")
+        raise HTTPException(400, "GitHub not connected for this organization")
     if not conn.selected_repo_full_name:
         raise HTTPException(400, "No GitHub repository selected")
 
