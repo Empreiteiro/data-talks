@@ -614,6 +614,7 @@ const translations = {
       'account.tabs.credentials': 'Credentials',
       'account.tabs.connections': 'Connections',
       'account.tabs.users': 'Users',
+      'account.tabs.organization': 'Organization',
       'account.tabs.audit': 'Audit Trail',
     // Audit Trail
     'audit.title': 'Audit Trail',
@@ -2166,6 +2167,7 @@ const translations = {
       'account.tabs.credentials': 'Credenciais',
       'account.tabs.connections': 'Connections',
       'account.tabs.users': 'Usuários',
+      'account.tabs.organization': 'Organização',
       'account.tabs.audit': 'Trilha de Auditoria',
     // Audit Trail
     'audit.title': 'Trilha de Auditoria',
@@ -3204,6 +3206,7 @@ const translations = {
     'account.tabs.credentials': 'Credenciales',
     'account.tabs.connections': 'Connections',
     'account.tabs.users': 'Usuarios',
+    'account.tabs.organization': 'Organización',
     'account.tabs.audit': 'Auditoría',
     // Audit Trail
     'audit.title': 'Registro de Auditoría',

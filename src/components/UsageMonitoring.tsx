@@ -136,10 +136,15 @@ const UsageMonitoring = () => {
       </div>
     );
   }
-  return <div className="h-full flex flex-col space-y-3">
-      
-      
-      <div className="grid gap-3 md:grid-cols-4 flex-shrink-0">
+  // Normal block flow inside the Account page's `overflow-y-auto` scroll
+  // container. The previous `h-full flex flex-col` layout combined with a
+  // `flex-1` chart card greedily consumed remaining height — fine when the
+  // chart was the only thing below the stat cards, but as soon as the AI
+  // Usage section was rendered underneath the chart card pushed up and
+  // overlapped it. Pure stacked sections solve the issue.
+  return <div className="space-y-4">
+
+      <div className="grid gap-3 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -198,13 +203,13 @@ const UsageMonitoring = () => {
         </Card>
       </div>
 
-      <Card className="flex-1 flex flex-col min-h-0">
+      <Card>
         <CardHeader>
           <CardTitle>
             {language === 'pt' ? 'Perguntas por Dia' : 'Questions per Day'}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0 pt-0 pb-4 px-2 sm:px-4">
+        <CardContent className="pt-0 pb-4 px-2 sm:px-4">
           {dailyQuestions.length > 0 ? (
             <ChartContainer
               config={{
@@ -213,7 +218,7 @@ const UsageMonitoring = () => {
                   color: "hsl(var(--primary))",
                 },
               }}
-              className="w-full h-[260px] sm:h-[320px] md:h-[400px]"
+              className="w-full h-[260px] sm:h-[320px] md:h-[360px]"
             >
               <BarChart data={dailyQuestions} margin={{ top: 10, right: 24, bottom: 28, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -235,7 +240,7 @@ const UsageMonitoring = () => {
               </BarChart>
             </ChartContainer>
           ) : (
-            <div className="h-full min-h-[400px] flex items-center justify-center text-muted-foreground">
+            <div className="h-[260px] sm:h-[320px] md:h-[360px] flex items-center justify-center text-muted-foreground">
               {language === 'pt' ? 'Nenhuma pergunta nos últimos 30 dias' : 'No questions in the last 30 days'}
             </div>
           )}
@@ -249,7 +254,7 @@ const UsageMonitoring = () => {
             {language === 'pt' ? 'Uso de IA (últimos 30 dias)' : 'AI Usage (last 30 days)'}
           </h3>
 
-          <div className="grid gap-3 md:grid-cols-4 flex-shrink-0">
+          <div className="grid gap-3 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{language === 'pt' ? 'Chamadas IA' : 'AI Calls'}</CardTitle>
