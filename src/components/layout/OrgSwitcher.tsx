@@ -90,7 +90,7 @@ export default function OrgSwitcher() {
         })}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to="/account?tab=organization" className="cursor-pointer text-sm">
+          <Link to="/account?section=organization" className="cursor-pointer text-sm">
             {t("org.switcher.manage") ?? "Manage organization"}
           </Link>
         </DropdownMenuItem>
