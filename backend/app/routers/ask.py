@@ -907,7 +907,7 @@ async def ask_question(
     # When workspace uses "Default (env/config)", llm_config_id is null -> prefer env so .env wins over stale LlmSettings
     llm_overrides = None
     if agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == scope.user.id))
         cfg = r_cfg.scalar_one_or_none()
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
@@ -944,7 +944,7 @@ async def ask_question(
         question=body.question,
         agent=agent,
         sources=sources,
-        user=user,
+        user=scope.user,
         db=db,
         llm_overrides=llm_overrides,
         history=history,
@@ -970,7 +970,7 @@ async def generate_chart_for_turn(
     db: AsyncSession = Depends(get_db),
     scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope), QASession.user_id == user.id))
+    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope), QASession.user_id == scope.user.id))
     qa = r.scalar_one_or_none()
     if not qa:
         raise HTTPException(404, "Session not found")
@@ -993,7 +993,7 @@ async def generate_chart_for_turn(
 
     llm_overrides = None
     if agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == scope.user.id))
         cfg = r_cfg.scalar_one_or_none()
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
@@ -1037,14 +1037,14 @@ async def get_chart_image(
     db: AsyncSession = Depends(get_db),
     scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope), QASession.user_id == user.id))
+    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope), QASession.user_id == scope.user.id))
     qa = r.scalar_one_or_none()
     if not qa:
         raise HTTPException(404, "Session not found")
 
     history = qa.conversation_history or []
     _find_turn(history, turn_id, None)
-    _, full_path = _chart_file_path(user.id, session_id, turn_id)
+    _, full_path = _chart_file_path(scope.user.id, session_id, turn_id)
     if not full_path.exists():
         raise HTTPException(404, "Chart image not found")
 
