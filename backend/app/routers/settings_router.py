@@ -650,3 +650,106 @@ async def test_llm_config(
             "model": model or None,
             "error": msg,
         }
+
+
+# ---------------------------------------------------------------------------
+# Claude Code OAuth (PKCE)
+#
+# Two endpoints kick off and finish a PKCE flow against the Claude Code
+# CLI's public client_id. The whole point is to let cloud deploys (no
+# terminal, no `claude login`) authenticate without asking the user to
+# paste a long-lived token by hand.
+# ---------------------------------------------------------------------------
+
+
+class ClaudeOAuthStartResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
+class ClaudeOAuthExchangeBody(BaseModel):
+    code: str
+    state: str
+    config_id: Optional[str] = None  # when set, persist the token onto this LlmConfig
+
+
+class ClaudeOAuthExchangeResponse(BaseModel):
+    access_token: str
+    config_id: Optional[str] = None
+    expires_in: Optional[int] = None
+    scope: Optional[str] = None
+
+
+@router.post(
+    "/llm-configs/claude-code/oauth/start",
+    response_model=ClaudeOAuthStartResponse,
+)
+async def claude_oauth_start(user: User = Depends(require_user)) -> dict:
+    """Generate a PKCE pair, remember the verifier under a one-time `state`,
+    and return the URL the frontend should open in a new tab."""
+    import secrets as _secrets
+
+    from app.services import claude_oauth
+
+    verifier, challenge = claude_oauth.make_pkce()
+    state = _secrets.token_urlsafe(24)
+    claude_oauth.remember(state, verifier)
+    return {
+        "auth_url": claude_oauth.build_auth_url(challenge, state),
+        "state": state,
+    }
+
+
+@router.post(
+    "/llm-configs/claude-code/oauth/exchange",
+    response_model=ClaudeOAuthExchangeResponse,
+)
+async def claude_oauth_exchange(
+    body: ClaudeOAuthExchangeBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_user),
+) -> dict:
+    """Exchange the OOB code for an access token. When `config_id` is
+    provided, write the token into that LlmConfig (must belong to the
+    caller). Otherwise return the token to the caller verbatim so a draft
+    form on the frontend can drop it into a new config."""
+    from app.services import claude_oauth
+
+    verifier = claude_oauth.consume(body.state)
+    if not verifier:
+        raise HTTPException(400, "OAuth state expired or unknown — restart the flow")
+
+    try:
+        token_payload = await claude_oauth.exchange_code(
+            body.code, body.state, verifier
+        )
+    except claude_oauth.ClaudeOAuthError as e:
+        raise HTTPException(502, str(e))
+
+    access_token = token_payload.get("access_token")
+    if not access_token:
+        raise HTTPException(502, "Anthropic response did not include an access token")
+
+    saved_to: str | None = None
+    if body.config_id:
+        r = await db.execute(
+            select(LlmConfig).where(
+                LlmConfig.id == body.config_id, LlmConfig.user_id == user.id
+            )
+        )
+        cfg = r.scalar_one_or_none()
+        if not cfg:
+            raise HTTPException(404, "LLM config not found")
+        cfg.claude_code_oauth_token = access_token
+        # Force the provider so a partially-typed form behaves correctly.
+        if cfg.llm_provider != "claude-code":
+            cfg.llm_provider = "claude-code"
+        await db.commit()
+        saved_to = cfg.id
+
+    return {
+        "access_token": access_token,
+        "config_id": saved_to,
+        "expires_in": token_payload.get("expires_in"),
+        "scope": token_payload.get("scope"),
+    }
