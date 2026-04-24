@@ -1,4 +1,3 @@
-import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,9 +21,16 @@ const LanguageSelector = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <Globe className="h-4 w-4" />
-          <span className="hidden sm:inline">{currentLanguage?.flag}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={currentLanguage?.name ?? "Language"}
+          className="px-2"
+        >
+          {/* Flag-only trigger. The globe icon was redundant — the flag
+              already conveys "language" and reduced visual noise in the
+              top bar. */}
+          <span className="text-base leading-none">{currentLanguage?.flag}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
