@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.auth import require_user, _hash_api_key
+from app.auth import TenantScope, require_membership, require_user, _hash_api_key
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Agent, ApiKey
 from app.schemas import ApiKeyCreate, ApiKeyOut, ApiKeyCreated
 
@@ -39,9 +40,9 @@ def _row_to_out(k: ApiKey) -> ApiKeyOut:
 async def list_api_keys(
     agent_id: str | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    q = select(ApiKey).where(ApiKey.user_id == user.id).order_by(ApiKey.created_at.desc())
+    q = select(ApiKey).where(tenant_filter(ApiKey, scope)).order_by(ApiKey.created_at.desc())
     if agent_id:
         q = q.where(ApiKey.agent_id == agent_id)
     result = await db.execute(q)
@@ -53,10 +54,10 @@ async def list_api_keys(
 async def create_api_key(
     body: ApiKeyCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     # Verify agent exists and belongs to user
-    r = await db.execute(select(Agent).where(Agent.id == body.agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == body.agent_id, tenant_filter(Agent, scope)))
     if not r.scalar_one_or_none():
         raise HTTPException(404, "Agent not found")
 
@@ -92,9 +93,9 @@ async def create_api_key(
 async def delete_api_key(
     key_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
+    r = await db.execute(select(ApiKey).where(ApiKey.id == key_id, tenant_filter(ApiKey, scope)))
     key = r.scalar_one_or_none()
     if not key:
         raise HTTPException(404, "API key not found")
@@ -108,9 +109,9 @@ async def update_api_key(
     key_id: str,
     body: dict,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
+    r = await db.execute(select(ApiKey).where(ApiKey.id == key_id, tenant_filter(ApiKey, scope)))
     key = r.scalar_one_or_none()
     if not key:
         raise HTTPException(404, "API key not found")

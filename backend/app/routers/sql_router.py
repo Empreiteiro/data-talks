@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.database import get_db
 from app.models import Agent, Source, User
 from app.scripts.sql_utils import (
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/sql", tags=["sql"])
 @router.post("/tables")
 async def list_tables(
     body: dict,
-    _user: User = Depends(require_user),
+    _scope: TenantScope = Depends(require_membership),
 ):
     """List tables available for a SQL connection string."""
     connection_string = (body.get("connectionString") or body.get("connection_string") or "").strip()
@@ -54,7 +55,7 @@ async def _get_agent_sql_sources(
     db: AsyncSession,
     user: User,
 ) -> tuple[Agent, list[Source]]:
-    result = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    result = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -62,7 +63,7 @@ async def _get_agent_sql_sources(
     if agent.source_ids:
         source_result = await db.execute(
             select(Source).where(
-                Source.user_id == user.id,
+                tenant_filter(Source, scope),
                 Source.id.in_(agent.source_ids),
                 Source.type == "sql_database",
             )
@@ -70,7 +71,7 @@ async def _get_agent_sql_sources(
     else:
         source_result = await db.execute(
             select(Source).where(
-                Source.user_id == user.id,
+                tenant_filter(Source, scope),
                 Source.agent_id == agent.id,
                 Source.type == "sql_database",
             )
@@ -91,7 +92,7 @@ class DismissSuggestionBody(BaseModel):
 async def list_agent_sql_sources(
     agent_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     agent, sources = await _get_agent_sql_sources(agent_id, db, user)
     source_rows = [_source_sql_payload(source) for source in sources]
@@ -113,7 +114,7 @@ async def list_agent_sql_sources(
 async def list_relationship_suggestions(
     agent_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     agent, sources = await _get_agent_sql_sources(agent_id, db, user)
     source_rows = [_source_sql_payload(source) for source in sources]
@@ -140,7 +141,7 @@ async def dismiss_relationship_suggestion(
     agent_id: str,
     body: DismissSuggestionBody,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     agent, _ = await _get_agent_sql_sources(agent_id, db, user)
     dismissed = list(getattr(agent, "dismissed_relationship_suggestions", None) or [])
@@ -157,7 +158,7 @@ async def save_agent_relationships(
     agent_id: str,
     body: RelationshipSaveBody,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     agent, sources = await _get_agent_sql_sources(agent_id, db, user)
     source_rows = [_source_sql_payload(source) for source in sources]

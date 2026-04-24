@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import String, Text, Boolean, Integer, Float, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+from app.services.crypto import EncryptedText
 
 
 # ---------------------------------------------------------------------------
@@ -100,6 +101,7 @@ class QASession(Base):
     __tablename__ = "qa_sessions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     agent_id: Mapped[str] = mapped_column(String(36))
     source_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     question: Mapped[str] = mapped_column(Text)
@@ -117,6 +119,7 @@ class Dashboard(Base):
     __tablename__ = "dashboards"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -126,6 +129,7 @@ class Dashboard(Base):
 class DashboardChart(Base):
     __tablename__ = "dashboard_charts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     dashboard_id: Mapped[str] = mapped_column(String(36), ForeignKey("dashboards.id"))
     qa_session_id: Mapped[str] = mapped_column(String(36))
     image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
@@ -194,6 +198,7 @@ class Alert(Base):
     __tablename__ = "alerts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     agent_id: Mapped[str] = mapped_column(String(36))
     name: Mapped[str] = mapped_column(String(255))
     type: Mapped[str] = mapped_column(String(50), default="alert")  # alert | report
@@ -214,6 +219,7 @@ class AlertExecution(Base):
     """Tracks each execution of an alert."""
     __tablename__ = "alert_executions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     alert_id: Mapped[str] = mapped_column(String(36), ForeignKey("alerts.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(50))  # success | error
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -284,12 +290,18 @@ class AudioOverview(Base):
 
 
 class TelegramBotConfig(Base):
-    """User-managed Telegram bot credentials shown in the Connections screen."""
+    """User-managed Telegram bot credentials shown in the Connections screen.
+
+    `bot_token` is transparently Fernet-encrypted at rest via the
+    `EncryptedText` SQLAlchemy type. Existing plaintext rows keep working
+    until the next UPDATE — the data migration that ships this model
+    rewraps any plaintext token on load."""
     __tablename__ = "telegram_bot_configs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
-    bot_token: Mapped[str] = mapped_column(String(512))
+    # Encrypted at rest; Python-side attribute is always plaintext.
+    bot_token: Mapped[str] = mapped_column(EncryptedText())
     bot_username: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -324,14 +336,16 @@ class TelegramConnection(Base):
 
 
 class WhatsAppBotConfig(Base):
-    """User-managed WhatsApp Business API credentials."""
+    """User-managed WhatsApp Business API credentials.
+
+    `access_token` and `verify_token` are Fernet-encrypted at rest."""
     __tablename__ = "whatsapp_bot_configs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
     phone_number_id: Mapped[str] = mapped_column(String(64))
-    access_token: Mapped[str] = mapped_column(String(512))
-    verify_token: Mapped[str] = mapped_column(String(128))
+    access_token: Mapped[str] = mapped_column(EncryptedText())
+    verify_token: Mapped[str] = mapped_column(EncryptedText())
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -349,15 +363,18 @@ class WhatsAppConnection(Base):
 
 
 class SlackBotConfig(Base):
-    """User-managed Slack app credentials (obtained via OAuth2 or manual entry)."""
+    """User-managed Slack app credentials (obtained via OAuth2 or manual entry).
+
+    `client_secret`, `signing_secret`, and `bot_token` are Fernet-encrypted
+    at rest."""
     __tablename__ = "slack_bot_configs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
     client_id: Mapped[str] = mapped_column(String(128))
-    client_secret: Mapped[str] = mapped_column(String(256))
-    signing_secret: Mapped[str] = mapped_column(String(256))
-    bot_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    client_secret: Mapped[str] = mapped_column(EncryptedText())
+    signing_secret: Mapped[str] = mapped_column(EncryptedText())
+    bot_token: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     team_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     team_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

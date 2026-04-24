@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database import get_db
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.llm.charting import build_chart_plan
 from app.models import Agent, Source, QASession, LlmSettings, LlmConfig
 from app.models import User
@@ -202,6 +203,13 @@ async def dispatch_question(
     """
     if history is None:
         history = []
+
+    # Transparently decrypt per-source credentials (password, api_key,
+    # service_account_json, etc.) before dispatching. Downstream scripts and
+    # the multi-SQL assembly read `source.metadata_` directly.
+    from app.services.crypto import unlock_source_metadata
+    for _s in sources:
+        unlock_source_metadata(_s)
 
     multi_sql_sources, multi_sql_relationships = _build_active_multi_sql_sources(agent, sources)
     active_sources = [s for s in sources if s.is_active]
@@ -798,7 +806,12 @@ async def dispatch_question(
     }
 
     if session_id:
-        r = await db.execute(select(QASession).where(QASession.id == session_id))
+        r = await db.execute(
+            select(QASession).where(
+                QASession.id == session_id,
+                QASession.organization_id == agent.organization_id,
+            )
+        )
         qa = r.scalar_one_or_none()
         if qa:
             updated_history = [*(qa.conversation_history or []), conversation_entry]
@@ -819,6 +832,7 @@ async def dispatch_question(
         qa = QASession(
             id=str(uuid.uuid4()),
             user_id=user.id,
+            organization_id=agent.organization_id,
             agent_id=agent.id,
             source_id=source.id,
             question=question,
@@ -860,24 +874,24 @@ async def dispatch_question(
 async def ask_question(
     body: AskQuestionRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     channel = body.channel or "workspace"
     if not body.agentId:
         raise HTTPException(400, "agentId is required")
 
     # Load agent
-    r = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
 
     # Agent sources: by source_ids on agent or by agent_id on source
     if agent.source_ids:
-        r = await db.execute(select(Source).where(Source.id.in_(agent.source_ids)))
+        r = await db.execute(select(Source).where(Source.id.in_(agent.source_ids), tenant_filter(Source, scope)))
         sources = list(r.scalars().all())
     else:
-        r = await db.execute(select(Source).where(Source.agent_id == body.agentId))
+        r = await db.execute(select(Source).where(Source.agent_id == body.agentId, tenant_filter(Source, scope)))
         sources = list(r.scalars().all())
 
     if not sources:
@@ -914,7 +928,12 @@ async def ask_question(
     history = []
     session_id = body.sessionId
     if session_id:
-        r_qa = await db.execute(select(QASession).where(QASession.id == session_id))
+        r_qa = await db.execute(
+            select(QASession).where(
+                QASession.id == session_id,
+                QASession.organization_id == agent.organization_id,
+            )
+        )
         qa_session = r_qa.scalar_one_or_none()
         if qa_session and qa_session.conversation_history:
             history = qa_session.conversation_history
@@ -949,9 +968,9 @@ async def generate_chart_for_turn(
     session_id: str,
     body: GenerateChartRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == user.id))
+    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope), QASession.user_id == user.id))
     qa = r.scalar_one_or_none()
     if not qa:
         raise HTTPException(404, "Session not found")
@@ -967,7 +986,7 @@ async def generate_chart_for_turn(
             "turnId": turn_id,
         }
 
-    agent_row = await db.execute(select(Agent).where(Agent.id == qa.agent_id))
+    agent_row = await db.execute(select(Agent).where(Agent.id == qa.agent_id, tenant_filter(Agent, scope)))
     agent = agent_row.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -1016,9 +1035,9 @@ async def get_chart_image(
     session_id: str,
     turn_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == user.id))
+    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope), QASession.user_id == user.id))
     qa = r.scalar_one_or_none()
     if not qa:
         raise HTTPException(404, "Session not found")

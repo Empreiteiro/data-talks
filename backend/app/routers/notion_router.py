@@ -6,7 +6,8 @@ Notion Database discovery and source metadata refresh.
 """
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db
 from sqlalchemy import select
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/notion", tags=["notion"])
 @router.post("/test-connection")
 async def test_connection(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Test a Notion integration token. Body: { "integrationToken": "..." }."""
     token = body.get("integrationToken")
@@ -40,7 +41,7 @@ async def test_connection(
 @router.post("/databases")
 async def list_databases(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List accessible Notion databases. Body: { "integrationToken": "..." }."""
     token = body.get("integrationToken")
@@ -64,11 +65,11 @@ async def list_databases(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Fetch Notion database properties and preview rows, update source metadata."""
     r = await db.execute(
-        select(Source).where(Source.id == source_id, Source.user_id == user.id)
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
     )
     source = r.scalar_one_or_none()
     if not source:

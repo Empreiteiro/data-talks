@@ -5,13 +5,14 @@ import { useAuth } from "@/hooks/useAuth";
 import UsageMonitoring from "@/components/UsageMonitoring";
 import { CredentialsView } from "@/components/CredentialsView";
 import UsersManagement from "@/components/UsersManagement";
-import { Activity, Bot, Database, FolderOpen, PlugZap, Users, ShieldCheck } from "lucide-react";
+import { Activity, Bot, Building2, Database, FolderOpen, PlugZap, Users, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SourcesPanel } from "@/components/SourcesPanel";
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { LLMPanel } from "@/components/LLMPanel";
 import { ConnectionsPanel } from "@/components/ConnectionsPanel";
 import AuditTrail from "@/components/AuditTrail";
+import OrganizationPanel from "@/components/OrganizationPanel";
 import { useSearchParams } from "react-router-dom";
 import { dataClient } from "@/services/dataClient";
 import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
@@ -37,6 +38,7 @@ const Account = () => {
       { id: "llm", label: t('account.tabs.llm'), icon: Bot },
       { id: "connections", label: t('account.tabs.connections'), icon: PlugZap },
       ...(loginRequired ? [{ id: "users", label: t('account.tabs.users'), icon: Users }] : []),
+      { id: "organization", label: t('account.tabs.organization') ?? "Organization", icon: Building2 },
       { id: "sources", label: t('account.tabs.sources'), icon: FolderOpen },
       { id: "credentials", label: t('account.tabs.credentials'), icon: Database },
       { id: "audit", label: t('account.tabs.audit'), icon: ShieldCheck },
@@ -106,6 +108,7 @@ const Account = () => {
               {activeSection === "llm" && <LLMPanel hasEnvLlm={hasEnvLlm ?? false} />}
               {activeSection === "connections" && <ConnectionsPanel />}
               {activeSection === "users" && <UsersManagement />}
+              {activeSection === "organization" && <OrganizationPanel />}
               {activeSection === "sources" && (
                 <SourcesPanel
                   onAddSource={() => setShowAddSourceModal(true)}

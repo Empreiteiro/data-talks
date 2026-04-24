@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.database import get_db
 from app.models import Source, User
 from app.routers.crud import _sanitize_for_json
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/dbt", tags=["dbt"])
 @router.post("/validate-manifest")
 async def validate_manifest(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """
     Validate dbt credentials and return list of models from manifest.json.
@@ -81,7 +82,7 @@ async def validate_manifest(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Re-fetch manifest and update table_infos for the source."""
     from app.scripts.ask_dbt import (
@@ -90,7 +91,7 @@ async def refresh_source_metadata(
         _extract_table_infos_from_manifest,
     )
 
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")

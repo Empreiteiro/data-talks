@@ -10,7 +10,8 @@ from typing import Optional
 
 from app.database import get_db
 from app.models import User, Agent, Source, TableSummary, LlmSettings, LlmConfig
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.config import get_settings
 from app.scripts.summary_bigquery import generate_table_summary_bigquery
 from app.scripts.summary_csv import generate_table_summary_csv
@@ -58,25 +59,25 @@ class GenerateSummaryRequest(BaseModel):
 async def generate_summary(
     body: GenerateSummaryRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Generate a table summary (executive report) for the selected source. BigQuery only for now."""
-    r = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
 
     # Resolve source: by sourceId or active source for agent
     if body.sourceId:
-        r = await db.execute(select(Source).where(Source.id == body.sourceId, Source.user_id == user.id))
+        r = await db.execute(select(Source).where(Source.id == body.sourceId, tenant_filter(Source, scope)))
         source = r.scalar_one_or_none()
     else:
         r = await db.execute(
-            select(Source).where(Source.agent_id == body.agentId, Source.user_id == user.id, Source.is_active == True)
+            select(Source).where(Source.agent_id == body.agentId, tenant_filter(Source, scope), Source.is_active == True)
         )
         source = r.scalar_one_or_none()
         if not source:
-            r = await db.execute(select(Source).where(Source.agent_id == body.agentId, Source.user_id == user.id))
+            r = await db.execute(select(Source).where(Source.agent_id == body.agentId, tenant_filter(Source, scope)))
             source = r.scalar_one_or_none()
 
     if not source:
@@ -197,7 +198,7 @@ async def generate_summary(
 async def list_summaries(
     agent_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List table summaries, optionally filtered by workspace (agent_id)."""
     q = select(TableSummary).where(TableSummary.user_id == user.id).order_by(TableSummary.created_at.desc())
@@ -223,7 +224,7 @@ async def list_summaries(
 async def get_summary(
     summary_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Get a single table summary by id."""
     r = await db.execute(select(TableSummary).where(TableSummary.id == summary_id, TableSummary.user_id == user.id))
@@ -245,7 +246,7 @@ async def get_summary(
 async def delete_summary(
     summary_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Delete a table summary."""
     r = await db.execute(select(TableSummary).where(TableSummary.id == summary_id, TableSummary.user_id == user.id))

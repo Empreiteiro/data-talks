@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.database import get_db
 from app.models import User, Agent, Source, LlmConfig
 from app.services import etl_service
@@ -28,7 +29,7 @@ class TransformRequest(BaseModel):
 
 
 async def _get_agent_and_llm(agent_id: str, user: User, db: AsyncSession):
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")
@@ -47,14 +48,14 @@ async def _get_agent_and_llm(agent_id: str, user: User, db: AsyncSession):
 @router.post("/pipeline/suggest")
 async def suggest_pipeline(
     body: PipelineRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """AI suggests a full ETL pipeline based on sources and description."""
     agent, llm_overrides = await _get_agent_and_llm(body.agentId, user, db)
 
     r = await db.execute(
-        select(Source).where(Source.agent_id == agent.id, Source.user_id == user.id)
+        select(Source).where(Source.agent_id == agent.id, tenant_filter(Source, scope))
     )
     sources = list(r.scalars().all())
     if not sources:
@@ -83,14 +84,14 @@ async def suggest_pipeline(
 @router.post("/transform/suggest")
 async def suggest_transform(
     body: TransformRequest,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """AI generates a single SQL transform."""
     agent, llm_overrides = await _get_agent_and_llm(body.agentId, user, db)
 
     r = await db.execute(
-        select(Source).where(Source.agent_id == agent.id, Source.user_id == user.id)
+        select(Source).where(Source.agent_id == agent.id, tenant_filter(Source, scope))
     )
     sources = list(r.scalars().all())
 
@@ -108,11 +109,11 @@ async def suggest_transform(
 @router.get("/pipelines/{agent_id}")
 async def list_pipelines(
     agent_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """List all pipelines for a workspace."""
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")
@@ -123,11 +124,11 @@ async def list_pipelines(
 @router.get("/lineage/{agent_id}")
 async def get_lineage(
     agent_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the lineage graph for all pipelines in a workspace."""
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")
@@ -157,11 +158,11 @@ async def get_lineage(
 async def delete_pipeline(
     agent_id: str,
     pipeline_id: str,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a pipeline from workspace config."""
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Workspace not found")

@@ -8,7 +8,8 @@ BigQuery discovery and source metadata refresh.
 import asyncio
 import json
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User
 from app.database import get_db, AsyncSessionLocal
 from sqlalchemy import select
@@ -23,14 +24,14 @@ router = APIRouter(prefix="/bigquery", tags=["bigquery"])
 @router.post("/projects")
 async def list_projects(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List projects. Body: { "credentialsContent": "..." } or { "sourceId": "..." }."""
     credentials_content = body.get("credentialsContent") or body.get("credentials_content")
     source_id = body.get("sourceId")
     if source_id:
         async with AsyncSessionLocal() as db:
-            r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+            r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
             source = r.scalar_one_or_none()
             if not source or source.type != "bigquery":
                 raise HTTPException(404, "BigQuery source not found")
@@ -53,7 +54,7 @@ async def list_projects(
 @router.post("/datasets")
 async def list_datasets(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List datasets in a project. Body: { credentialsContent or sourceId, projectId }."""
     credentials_content = body.get("credentialsContent") or body.get("credentials_content")
@@ -64,7 +65,7 @@ async def list_datasets(
     if source_id and not credentials_content:
         from app.database import async_session_maker
         async with async_session_maker() as db:
-            r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+            r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
             source = r.scalar_one_or_none()
             if not source or source.type != "bigquery":
                 raise HTTPException(404, "BigQuery source not found")
@@ -89,7 +90,7 @@ async def list_datasets(
 @router.post("/tables")
 async def list_tables(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List tables in a dataset. Body: { credentialsContent or sourceId, projectId, datasetId }."""
     credentials_content = body.get("credentialsContent") or body.get("credentials_content")
@@ -100,7 +101,7 @@ async def list_tables(
         raise HTTPException(400, "projectId and datasetId are required")
     if source_id and not credentials_content:
         async with AsyncSessionLocal() as db:
-            r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+            r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
             source = r.scalar_one_or_none()
             if not source or source.type != "bigquery":
                 raise HTTPException(404, "BigQuery source not found")
@@ -125,10 +126,10 @@ async def list_tables(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Fetch BigQuery schema (table_infos) for the source and update metadata. Returns updated metaJSON."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
@@ -185,10 +186,10 @@ async def fetch_full_table(
     source_id: str,
     body: dict | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Fetch full BigQuery table data (up to limit rows). For graphs and full preview. Body: { limit?: number } default 50000."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")

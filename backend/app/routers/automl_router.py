@@ -11,7 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.config import get_settings
 from app.database import get_db
 from app.models import Agent, AutoMLRun, LlmConfig, LlmSettings, Source, User
@@ -148,16 +149,16 @@ class ColumnsRequest(BaseModel):
 async def train_automl(
     body: TrainRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Train an Auto ML model on the selected source and target column."""
-    r = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
 
     r = await db.execute(
-        select(Source).where(Source.id == body.sourceId, Source.user_id == user.id)
+        select(Source).where(Source.id == body.sourceId, tenant_filter(Source, scope))
     )
     source = r.scalar_one_or_none()
     if not source:
@@ -198,11 +199,11 @@ async def get_columns(
     agent_id: str,
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Return column names for the given source."""
     r = await db.execute(
-        select(Source).where(Source.id == source_id, Source.user_id == user.id)
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
     )
     source = r.scalar_one_or_none()
     if not source:
@@ -215,7 +216,7 @@ async def get_columns(
 async def list_runs(
     agent_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List Auto ML runs, optionally filtered by workspace."""
     q = (
@@ -233,7 +234,7 @@ async def list_runs(
 async def get_run(
     run_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Get a single Auto ML run."""
     r = await db.execute(
@@ -249,7 +250,7 @@ async def get_run(
 async def delete_run(
     run_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Delete an Auto ML run."""
     r = await db.execute(

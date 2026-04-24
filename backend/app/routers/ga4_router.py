@@ -4,7 +4,8 @@ Google Analytics 4 (GA4) router: test connection, discover tables, refresh metad
 import asyncio
 import json
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db, AsyncSessionLocal
 from sqlalchemy import select
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/ga4", tags=["ga4"])
 @router.post("/test-connection")
 async def test_connection(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Test GA4 connection by running a minimal report.
     Body: { "credentialsContent": "...", "propertyId": "..." }
@@ -57,7 +58,7 @@ async def test_connection(
 @router.post("/discover")
 async def discover_tables(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Discover GA4 tables (fetch sample data for each).
     Body: { "credentialsContent": "...", "propertyId": "...", "tables": [...] (optional) }
@@ -85,10 +86,10 @@ async def discover_tables(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Refresh GA4 source metadata (re-fetch table schemas and preview data)."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")

@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.database import get_db
 from app.models import Source, User
 from app.routers.crud import _sanitize_for_json
@@ -22,7 +23,7 @@ _SUPPORTED_EXTENSIONS = {".csv", ".tsv", ".json", ".jsonl", ".ndjson"}
 @router.post("/validate")
 async def validate_github_file(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """
     Validate access to a GitHub repo file and return columns + preview rows.
@@ -64,7 +65,7 @@ async def validate_github_file(
 @router.post("/list-files")
 async def list_github_files(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """
     List data files (CSV/TSV/JSON) in a repository directory.
@@ -114,12 +115,12 @@ async def list_github_files(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Re-download the file and update columns + preview_rows for the source."""
     from app.scripts.ask_github_file import _download_github_file, _parse_file_content
 
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")

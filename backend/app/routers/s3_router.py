@@ -3,7 +3,8 @@ Amazon S3 / MinIO discovery and source metadata refresh.
 """
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db
 from sqlalchemy import select
@@ -25,7 +26,7 @@ def _extract_creds(body: dict) -> tuple[str, str, str, str | None]:
 
 
 @router.post("/test-connection")
-async def test_connection(body: dict, user: User = Depends(require_user)):
+async def test_connection(body: dict, scope: TenantScope = Depends(require_membership)):
     ak, sk, region, endpoint = _extract_creds(body)
     from app.scripts.ask_s3 import _test_connection_sync
     loop = asyncio.get_event_loop()
@@ -37,7 +38,7 @@ async def test_connection(body: dict, user: User = Depends(require_user)):
 
 
 @router.post("/buckets")
-async def list_buckets(body: dict, user: User = Depends(require_user)):
+async def list_buckets(body: dict, scope: TenantScope = Depends(require_membership)):
     ak, sk, region, endpoint = _extract_creds(body)
     from app.scripts.ask_s3 import _list_buckets_sync
     loop = asyncio.get_event_loop()
@@ -49,7 +50,7 @@ async def list_buckets(body: dict, user: User = Depends(require_user)):
 
 
 @router.post("/objects")
-async def list_objects(body: dict, user: User = Depends(require_user)):
+async def list_objects(body: dict, scope: TenantScope = Depends(require_membership)):
     ak, sk, region, endpoint = _extract_creds(body)
     bucket = body.get("bucket", "")
     prefix = body.get("prefix", "")
@@ -68,9 +69,9 @@ async def list_objects(body: dict, user: User = Depends(require_user)):
 
 @router.post("/sources/{source_id}/refresh-metadata")
 async def refresh_source_metadata(
-    source_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user),
+    source_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")

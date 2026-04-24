@@ -1,6 +1,15 @@
 """
 MCP (Model Context Protocol) server for Data Talks.
 Exposes data analysis tools via SSE transport, mounted on the FastAPI app at /mcp.
+
+Authentication: **every tool call requires an `api_key` parameter** that
+maps to a Data Talks API key (`Settings → API keys` in the UI, or
+`POST /api/api-keys`). There is no guest fallback — an unauthenticated
+HTTP client that reaches /mcp can only receive an authentication error.
+
+The API key carries the organization binding; all tool calls are scoped
+to that organization. A user in multiple orgs must generate one API key
+per org (or switch via JWT-backed HTTP routes and not use MCP).
 """
 from __future__ import annotations
 
@@ -77,7 +86,9 @@ mcp = FastMCP(
     instructions=(
         "Data Talks is an AI-powered data analysis platform. "
         "Use these tools to ask natural language questions about connected data sources, "
-        "list available agents and sources, and browse conversation history."
+        "list available agents and sources, and browse conversation history. "
+        "Every tool call requires an `api_key` parameter — get one at "
+        "Settings → API keys in the Data Talks UI."
     ),
 )
 
@@ -100,73 +111,59 @@ class _McpScope:
 async def _resolve_scope(
     db: AsyncSession, api_key: str | None = None
 ) -> _McpScope:
-    """Resolve an MCP caller's tenant scope.
+    """Resolve an MCP caller's tenant scope from an API key.
 
-    API key is the normal path: the key is tenant-bound, so we look up the
-    caller's membership in the key's organization.
+    An API key is **required** for every MCP call, regardless of the
+    HTTP-side `ENABLE_LOGIN` flag. Before this change the MCP server fell
+    through to the guest user whenever login was disabled, which exposed
+    the full control plane (create_agent, delete_source, create_alert,
+    ask_question, …) to anyone who could reach `/mcp`.
 
-    In guest mode (ENABLE_LOGIN=false) we fall back to the single Guest-org
-    membership so local dev keeps working without an API key.
+    Operators running single-tenant deploys should create one API key via
+    `Settings → API keys` in the UI or `POST /api/api-keys`, and pass it
+    as the `api_key` parameter on every MCP call.
 
-    Raises ValueError if authentication fails. The next commit removes the
-    guest fallback entirely.
+    Raises ValueError on any authentication failure; each MCP tool
+    surfaces that message as its return value so the MCP client sees a
+    helpful error instead of a stack trace.
     """
-    settings = get_settings()
-
-    if api_key:
-        key_hash = _hash_api_key(api_key)
-        r = await db.execute(
-            select(ApiKey).where(ApiKey.key_hash == key_hash, ApiKey.is_active == True)  # noqa: E712
-        )
-        api_key_row = r.scalar_one_or_none()
-        if not api_key_row:
-            raise ValueError("Invalid or inactive API key")
-        r = await db.execute(select(User).where(User.id == api_key_row.user_id))
-        user = r.scalar_one_or_none()
-        if not user:
-            raise ValueError("API key owner not found")
-        api_key_row.last_used_at = datetime.utcnow()
-        await db.flush()
-
-        r = await db.execute(
-            select(OrganizationMembership).where(
-                OrganizationMembership.user_id == user.id,
-                OrganizationMembership.organization_id == api_key_row.organization_id,
-            )
-        )
-        membership = r.scalar_one_or_none()
-        if not membership:
-            raise ValueError(
-                "API key owner has no membership in the key's organization"
-            )
-        return _McpScope(
-            user=user,
-            organization_id=api_key_row.organization_id,
-            role=membership.role,
-            default_agent_id=api_key_row.agent_id,
+    if not api_key:
+        raise ValueError(
+            "Authentication required. MCP always requires an api_key "
+            "parameter — create one at Settings → API keys, or via "
+            "POST /api/api-keys."
         )
 
-    if not settings.enable_login:
-        r = await db.execute(select(User).where(User.id == GUEST_USER_ID))
-        user = r.scalar_one_or_none()
-        if user:
-            r = await db.execute(
-                select(OrganizationMembership)
-                .where(OrganizationMembership.user_id == user.id)
-                .order_by(OrganizationMembership.created_at.asc())
-                .limit(1)
-            )
-            membership = r.scalar_one_or_none()
-            if membership:
-                return _McpScope(
-                    user=user,
-                    organization_id=membership.organization_id,
-                    role=membership.role,
-                    default_agent_id=None,
-                )
+    key_hash = _hash_api_key(api_key)
+    r = await db.execute(
+        select(ApiKey).where(ApiKey.key_hash == key_hash, ApiKey.is_active == True)  # noqa: E712
+    )
+    api_key_row = r.scalar_one_or_none()
+    if not api_key_row:
+        raise ValueError("Invalid or inactive API key")
+    r = await db.execute(select(User).where(User.id == api_key_row.user_id))
+    user = r.scalar_one_or_none()
+    if not user:
+        raise ValueError("API key owner not found")
+    api_key_row.last_used_at = datetime.utcnow()
+    await db.flush()
 
-    raise ValueError(
-        "Authentication required. Provide the api_key parameter with a valid Data Talks API key."
+    r = await db.execute(
+        select(OrganizationMembership).where(
+            OrganizationMembership.user_id == user.id,
+            OrganizationMembership.organization_id == api_key_row.organization_id,
+        )
+    )
+    membership = r.scalar_one_or_none()
+    if not membership:
+        raise ValueError(
+            "API key owner has no membership in the key's organization"
+        )
+    return _McpScope(
+        user=user,
+        organization_id=api_key_row.organization_id,
+        role=membership.role,
+        default_agent_id=api_key_row.agent_id,
     )
 
 

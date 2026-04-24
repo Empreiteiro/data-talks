@@ -12,7 +12,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.config import get_settings
 from app.database import get_db
 from app.llm.client import chat_completion, get_audio_model, synthesize_speech
@@ -80,17 +81,22 @@ async def _effective_llm_overrides(db: AsyncSession, user: User, agent: Agent) -
     return _llm_config_to_overrides(llm_row)
 
 
-async def _resolve_source(db: AsyncSession, user: User, agent_id: str, source_id: str | None) -> Source:
+async def _resolve_source(
+    db: AsyncSession,
+    scope: TenantScope,
+    agent_id: str,
+    source_id: str | None,
+) -> Source:
     if source_id:
-        r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+        r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
         source = r.scalar_one_or_none()
     else:
         r = await db.execute(
-            select(Source).where(Source.agent_id == agent_id, Source.user_id == user.id, Source.is_active == True)
+            select(Source).where(Source.agent_id == agent_id, tenant_filter(Source, scope), Source.is_active == True)
         )
         source = r.scalar_one_or_none()
         if not source:
-            r = await db.execute(select(Source).where(Source.agent_id == agent_id, Source.user_id == user.id))
+            r = await db.execute(select(Source).where(Source.agent_id == agent_id, tenant_filter(Source, scope)))
             source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(400, "No source found for this workspace")
@@ -194,17 +200,17 @@ async def _build_audio_script(source_name: str, report: str, llm_overrides: dict
 async def generate_audio_overview(
     body: GenerateAudioOverviewRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     if not body.agentId:
         raise HTTPException(400, "agentId is required")
 
-    r = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
 
-    llm_overrides = await _effective_llm_overrides(db, user, agent)
+    llm_overrides = await _effective_llm_overrides(db, scope.user, agent)
     provider, audio_model = get_audio_model(llm_overrides)
     if provider not in ("openai", "litellm") or not audio_model:
         raise HTTPException(
@@ -212,7 +218,7 @@ async def generate_audio_overview(
             "Configure an audio model in Account > LLM / AI settings for the current workspace model before generating audio.",
         )
 
-    source = await _resolve_source(db, user, body.agentId, body.sourceId)
+    source = await _resolve_source(db, scope, body.agentId, body.sourceId)
     report = await _generate_source_summary_report(source, llm_overrides)
     script = await _build_audio_script(source.name, report, llm_overrides)
     audio_bytes, mime_type, _ = await synthesize_speech(script, llm_overrides=llm_overrides)
@@ -220,12 +226,12 @@ async def generate_audio_overview(
     from app.services.storage import get_storage
     audio_id = str(uuid.uuid4())
     ext = ".mp3" if mime_type == "audio/mpeg" else ".bin"
-    relative_path = f"audio_overviews/{user.id}/{audio_id}{ext}"
+    relative_path = f"audio_overviews/{scope.user.id}/{audio_id}{ext}"
     get_storage().write_bytes(relative_path, audio_bytes)
 
     overview = AudioOverview(
         id=audio_id,
-        user_id=user.id,
+        user_id=scope.user.id,
         agent_id=body.agentId,
         source_id=source.id,
         source_name=source.name,
@@ -251,9 +257,9 @@ async def generate_audio_overview(
 async def list_audio_overviews(
     agent_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    q = select(AudioOverview).where(AudioOverview.user_id == user.id).order_by(AudioOverview.created_at.desc())
+    q = select(AudioOverview).where(AudioOverview.user_id == scope.user.id).order_by(AudioOverview.created_at.desc())
     if agent_id:
         q = q.where(AudioOverview.agent_id == agent_id)
     r = await db.execute(q)
@@ -276,9 +282,9 @@ async def list_audio_overviews(
 async def get_audio_file(
     audio_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(AudioOverview).where(AudioOverview.id == audio_id, AudioOverview.user_id == user.id))
+    r = await db.execute(select(AudioOverview).where(AudioOverview.id == audio_id, AudioOverview.user_id == scope.user.id))
     row = r.scalar_one_or_none()
     if not row:
         raise HTTPException(404, "Audio overview not found")
@@ -295,9 +301,9 @@ async def get_audio_file(
 async def delete_audio_overview(
     audio_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(AudioOverview).where(AudioOverview.id == audio_id, AudioOverview.user_id == user.id))
+    r = await db.execute(select(AudioOverview).where(AudioOverview.id == audio_id, AudioOverview.user_id == scope.user.id))
     row = r.scalar_one_or_none()
     if not row:
         raise HTTPException(404, "Audio overview not found")

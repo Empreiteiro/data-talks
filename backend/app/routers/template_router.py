@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, Source, Agent, Report, ReportTemplate, ReportTemplateRun, LlmConfig, LlmSettings
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.config import get_settings
 from app.schemas import TemplateRunRequest
 from app.services import template_registry, template_executor
@@ -51,10 +52,10 @@ class GenerateTemplateRequest(BaseModel):
 async def list_templates(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List available report templates for a source (built-in + user-created)."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
@@ -111,10 +112,10 @@ async def run_template(
     template_id: str,
     body: Optional[TemplateRunRequest] = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Execute all queries in a report template against the source."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
@@ -167,7 +168,7 @@ async def list_template_runs(
     template_id: str,
     limit: int = 20,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List execution history for a template on a specific source."""
     q = (
@@ -199,17 +200,17 @@ async def generate_template(
     source_id: str,
     body: GenerateTemplateRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Use AI to generate a report template with SQL queries for a source."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
 
     # Resolve LLM config
     llm_overrides = None
-    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
     if agent and agent.llm_config_id:
         r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
@@ -353,7 +354,7 @@ async def delete_template(
     source_id: str,
     template_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Delete a user-created template."""
     r = await db.execute(
@@ -449,7 +450,7 @@ async def run_template_as_report(
     template_id: str,
     body: RunReportRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Execute template queries and generate a styled HTML report with charts and LLM commentary."""
     import pandas as pd
@@ -459,7 +460,7 @@ async def run_template_as_report(
     import io
     import base64
 
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
@@ -481,7 +482,7 @@ async def run_template_as_report(
 
     # Resolve LLM config
     llm_overrides = None
-    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
     if agent and agent.llm_config_id:
         r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
@@ -660,7 +661,7 @@ async def list_template_reports(
     source_id: str,
     template_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List reports generated from a specific template."""
     r = await db.execute(
@@ -691,7 +692,7 @@ async def update_template_queries(
     template_id: str,
     body: UpdateQueriesRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Update the queries array of a user-created template."""
     r = await db.execute(
@@ -726,10 +727,10 @@ async def add_query_to_template(
     template_id: str,
     body: AddQueryRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Use AI to generate a new query and add it to the template."""
-    r_src = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r_src = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r_src.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
@@ -747,7 +748,7 @@ async def add_query_to_template(
 
     # Resolve LLM
     llm_overrides = None
-    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
     if agent and agent.llm_config_id:
         r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
@@ -822,10 +823,10 @@ async def run_template_with_commentary(
     template_id: str,
     body: RunWithCommentaryRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Execute template queries then generate AI commentary per result."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
@@ -845,7 +846,7 @@ async def run_template_with_commentary(
 
     # Resolve LLM
     llm_overrides = None
-    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId))
+    r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
     if agent and agent.llm_config_id:
         r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
@@ -894,11 +895,11 @@ async def customize_template(
     template_id: str,
     body: TemplateRunRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Save user customizations for a built-in template (creates a user copy in DB)."""
     # Verify source ownership
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
@@ -950,10 +951,10 @@ async def reset_template_customization(
     source_id: str,
     template_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Reset user customizations for a template (delete the user copy)."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")
