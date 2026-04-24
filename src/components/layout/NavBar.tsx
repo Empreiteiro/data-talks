@@ -12,6 +12,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import LanguageSelector from "@/components/ui/language-selector";
+import OrgSwitcher from "@/components/layout/OrgSwitcher";
 
 const NavBar = () => {
   const { user, logout, loginRequired } = useAuth();
@@ -37,6 +38,7 @@ const NavBar = () => {
             <BookOpen className="h-4 w-4" />
             <span className="hidden sm:inline">{t('nav.documentation')}</span>
           </Link>
+          <OrgSwitcher />
           <LanguageSelector />
           {user ? (
             <DropdownMenu>
