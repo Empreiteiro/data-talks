@@ -3,7 +3,8 @@ Jira integration: test connection, discover projects/boards, refresh source meta
 """
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db
 from sqlalchemy import select
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/jira", tags=["jira"])
 @router.post("/test-connection")
 async def test_connection(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Test Jira credentials. Body: { "domain": "...", "email": "...", "apiToken": "..." }."""
     domain = body.get("domain")
@@ -41,7 +42,7 @@ async def test_connection(
 @router.post("/discover")
 async def discover(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Discover Jira projects and boards. Body: { "domain": "...", "email": "...", "apiToken": "..." }."""
     domain = body.get("domain")
@@ -66,11 +67,11 @@ async def discover(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Refresh Jira source metadata: re-discover projects and boards."""
     r = await db.execute(
-        select(Source).where(Source.id == source_id, Source.user_id == user.id)
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
     )
     source = r.scalar_one_or_none()
     if not source:

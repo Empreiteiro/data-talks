@@ -3,7 +3,8 @@ REST API discovery and source metadata refresh.
 """
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db
 from sqlalchemy import select
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/rest-api", tags=["rest-api"])
 
 
 @router.post("/test")
-async def test_request(body: dict, user: User = Depends(require_user)):
+async def test_request(body: dict, scope: TenantScope = Depends(require_membership)):
     """Execute a test API request and return preview. Body: { url, method, headers, queryParams, body, dataPath }."""
     url = body.get("url", "")
     if not url:
@@ -41,9 +42,9 @@ async def test_request(body: dict, user: User = Depends(require_user)):
 
 @router.post("/sources/{source_id}/refresh-metadata")
 async def refresh_source_metadata(
-    source_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user),
+    source_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership),
 ):
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")

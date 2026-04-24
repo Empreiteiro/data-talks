@@ -6,7 +6,8 @@ Firebase/Firestore discovery and source metadata refresh.
 import asyncio
 import json
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db, AsyncSessionLocal
 from sqlalchemy import select
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/firebase", tags=["firebase"])
 @router.post("/collections")
 async def list_collections(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List top-level Firestore collections. Body: { "credentialsContent": "..." } or { "sourceId": "..." }."""
     credentials_content = body.get("credentialsContent") or body.get("credentials_content")
@@ -28,7 +29,7 @@ async def list_collections(
 
     if source_id and not credentials_content:
         async with AsyncSessionLocal() as db:
-            r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+            r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
             source = r.scalar_one_or_none()
             if not source or source.type != "firebase":
                 raise HTTPException(404, "Firebase source not found")
@@ -55,10 +56,10 @@ async def list_collections(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Fetch Firestore collection schema (field names + preview docs) and update source metadata."""
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+    r = await db.execute(select(Source).where(Source.id == source_id, tenant_filter(Source, scope)))
     source = r.scalar_one_or_none()
     if not source:
         raise HTTPException(404, "Source not found")

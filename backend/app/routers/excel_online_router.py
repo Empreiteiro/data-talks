@@ -8,7 +8,8 @@ The frontend sends the access_token after completing the flow.
 """
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db
 from sqlalchemy import select
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/excel-online", tags=["excel-online"])
 @router.post("/files")
 async def list_files(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List Excel files from OneDrive. Body: { "accessToken": "..." }."""
     access_token = body.get("accessToken")
@@ -45,7 +46,7 @@ async def list_files(
 @router.post("/sheets")
 async def list_sheets(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List worksheets in an Excel file. Body: { "accessToken", "driveId", "itemId" }."""
     access_token = body.get("accessToken")
@@ -71,11 +72,11 @@ async def list_sheets(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Fetch sheet data and update source metadata."""
     r = await db.execute(
-        select(Source).where(Source.id == source_id, Source.user_id == user.id)
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
     )
     source = r.scalar_one_or_none()
     if not source:

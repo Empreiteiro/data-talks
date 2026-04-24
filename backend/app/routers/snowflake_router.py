@@ -6,7 +6,8 @@ Snowflake discovery and source metadata refresh.
 """
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_user
+from app.services.tenant_scope import tenant_filter
 from app.models import User, Source
 from app.database import get_db
 from sqlalchemy import select
@@ -29,7 +30,7 @@ def _extract_creds(body: dict) -> tuple[str, str, str]:
 @router.post("/test-connection")
 async def test_connection(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Test Snowflake credentials."""
     account, sf_user, password = _extract_creds(body)
@@ -49,7 +50,7 @@ async def test_connection(
 @router.post("/warehouses")
 async def list_warehouses(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List available Snowflake warehouses."""
     account, sf_user, password = _extract_creds(body)
@@ -70,7 +71,7 @@ async def list_warehouses(
 @router.post("/databases")
 async def list_databases(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List available Snowflake databases."""
     account, sf_user, password = _extract_creds(body)
@@ -91,7 +92,7 @@ async def list_databases(
 @router.post("/schemas")
 async def list_schemas(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List schemas in a Snowflake database."""
     account, sf_user, password = _extract_creds(body)
@@ -115,7 +116,7 @@ async def list_schemas(
 @router.post("/tables")
 async def list_tables(
     body: dict,
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """List tables in a Snowflake schema."""
     account, sf_user, password = _extract_creds(body)
@@ -141,11 +142,11 @@ async def list_tables(
 async def refresh_source_metadata(
     source_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ):
     """Fetch Snowflake table schema and preview rows and update source metadata."""
     r = await db.execute(
-        select(Source).where(Source.id == source_id, Source.user_id == user.id)
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
     )
     source = r.scalar_one_or_none()
     if not source:
