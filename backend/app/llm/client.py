@@ -287,6 +287,71 @@ async def _anthropic_chat(messages: list[dict[str, str]], max_tokens: int, cfg: 
     return content, _usage("anthropic", model, input_t, output_t), trace
 
 
+async def _claude_code_via_api(
+    messages: list[dict[str, str]],
+    max_tokens: int,
+    cfg: dict[str, Any],
+    oauth_token: str,
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    """Call the Anthropic Messages API directly using a Claude Code OAuth
+    bearer token. Used as the cloud-deploy fallback when the `claude`
+    CLI binary isn't installed (Railway, Docker, etc).
+
+    Anthropic's Messages API rejects user-scoped (OAuth) tokens unless two
+    things hold:
+
+      1. Header `anthropic-beta: oauth-2025-04-20` is present on every
+         request.
+      2. The first system message starts with the exact identification
+         string the CLI uses: "You are Claude Code, Anthropic's official
+         CLI for Claude.". This helper auto-injects that prefix so call
+         sites don't need to know about it.
+
+    Returns the same `(content, usage, trace)` shape as `_anthropic_chat`
+    so the dispatch layer is provider-agnostic.
+    """
+    from anthropic import AsyncAnthropic
+
+    model = (cfg.get("claude_code_model") or "claude-sonnet-4-20250514").strip()
+
+    system_text = ""
+    user_messages = []
+    for m in messages:
+        if m.get("role") == "system":
+            system_text = (system_text + "\n" + m.get("content", "")).strip()
+        else:
+            user_messages.append({"role": m["role"], "content": m.get("content", "")})
+
+    # Anthropic refuses OAuth requests whose first system block doesn't
+    # claim the Claude Code CLI identity. Prepend it once; preserve
+    # whatever the caller wanted underneath.
+    REQUIRED_PREFIX = "You are Claude Code, Anthropic's official CLI for Claude."
+    if not system_text.startswith(REQUIRED_PREFIX):
+        system_text = REQUIRED_PREFIX + ("\n\n" + system_text if system_text else "")
+
+    client = AsyncAnthropic(
+        auth_token=oauth_token,
+        default_headers={"anthropic-beta": "oauth-2025-04-20"},
+    )
+    resp = await client.messages.create(
+        model=model,
+        messages=user_messages,
+        max_tokens=max_tokens,
+        system=system_text,
+    )
+    content = ""
+    for block in resp.content:
+        if getattr(block, "text", None):
+            content += block.text
+    content = content.strip()
+
+    input_t = getattr(resp.usage, "input_tokens", 0) if resp.usage else 0
+    output_t = getattr(resp.usage, "output_tokens", 0) if resp.usage else 0
+    finish = getattr(resp, "stop_reason", None)
+    trace = _build_trace(messages, None, content=content, finish_reason=finish)
+    return content, _usage("claude-code", model, input_t, output_t), trace
+
+
 async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """
     Use the Claude CLI binary as an LLM provider via async subprocess.
@@ -296,6 +361,11 @@ async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg
 
     Authentication: OAuth token passed via CLAUDE_CODE_OAUTH_TOKEN env var
     (loaded from config or ~/.claude/oauth_token).
+
+    Cloud deploys (Railway, Docker, …) usually don't have the `claude`
+    binary on the host. When the binary is missing AND the LlmConfig
+    carries an OAuth token, we transparently route through
+    `_claude_code_via_api` instead of failing — same result, no CLI.
     """
     import asyncio
     import json as _json
@@ -316,9 +386,38 @@ async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg
                 if candidate.exists():
                     claude_bin = str(candidate)
                     break
+
+    # ── If no binary, try the direct-API fallback ──
+    # OAuth token resolution mirrors the env-var lookup later in this
+    # function (config > env var > known on-disk locations) so the
+    # fallback works for every code path that the CLI path supports.
+    def _resolve_oauth_token() -> str | None:
+        from pathlib import Path as _P
+
+        t = (cfg.get("claude_code_oauth_token") or "").strip()
+        if t:
+            return t
+        t = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+        if t:
+            return t
+        for tp in (
+            _P.home() / ".claude" / "oauth_token",
+            _P.home() / ".last-intelligence" / "claude_oauth_token",
+        ):
+            if tp.exists():
+                t = tp.read_text().strip()
+                if t:
+                    return t
+        return None
+
     if not claude_bin:
+        oauth_token = _resolve_oauth_token()
+        if oauth_token:
+            return await _claude_code_via_api(messages, max_tokens, cfg, oauth_token)
         raise ValueError(
-            "Claude CLI binary not found. Install it with: npm install -g @anthropic-ai/claude-code"
+            "Claude CLI binary not found and no OAuth token is configured. "
+            "Either install the CLI (`npm install -g @anthropic-ai/claude-code`) "
+            "or log in via Settings → LLM → 'Login with Claude'."
         )
 
     # ── Build the prompt from messages ──
