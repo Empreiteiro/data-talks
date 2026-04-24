@@ -101,6 +101,7 @@ class QASession(Base):
     __tablename__ = "qa_sessions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     agent_id: Mapped[str] = mapped_column(String(36))
     source_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     question: Mapped[str] = mapped_column(Text)
@@ -118,6 +119,7 @@ class Dashboard(Base):
     __tablename__ = "dashboards"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -127,6 +129,7 @@ class Dashboard(Base):
 class DashboardChart(Base):
     __tablename__ = "dashboard_charts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     dashboard_id: Mapped[str] = mapped_column(String(36), ForeignKey("dashboards.id"))
     qa_session_id: Mapped[str] = mapped_column(String(36))
     image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
@@ -195,6 +198,7 @@ class Alert(Base):
     __tablename__ = "alerts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     agent_id: Mapped[str] = mapped_column(String(36))
     name: Mapped[str] = mapped_column(String(255))
     type: Mapped[str] = mapped_column(String(50), default="alert")  # alert | report
@@ -215,6 +219,7 @@ class AlertExecution(Base):
     """Tracks each execution of an alert."""
     __tablename__ = "alert_executions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     alert_id: Mapped[str] = mapped_column(String(36), ForeignKey("alerts.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(50))  # success | error
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
