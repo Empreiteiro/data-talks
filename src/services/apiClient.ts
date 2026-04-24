@@ -889,6 +889,32 @@ export const apiClient = {
     }>(`/api/settings/llm-configs/${id}/test`, { method: 'POST' });
   },
 
+  /** Kick off a Claude Code OAuth (PKCE) flow. Backend returns the URL
+   *  the user should open at claude.ai plus a one-time `state` token.
+   *  See `app/services/claude_oauth.py` for the full flow. */
+  async startClaudeOAuth() {
+    return api<{ auth_url: string; state: string }>(
+      '/api/settings/llm-configs/claude-code/oauth/start',
+      { method: 'POST' },
+    );
+  },
+
+  /** Exchange the OOB code shown by claude.ai for an access token. When
+   *  `config_id` is provided the backend persists the token onto that
+   *  LlmConfig row directly; otherwise it's returned verbatim so a draft
+   *  form can pick it up. */
+  async exchangeClaudeOAuth(code: string, state: string, config_id?: string) {
+    return api<{
+      access_token: string;
+      config_id?: string | null;
+      expires_in?: number | null;
+      scope?: string | null;
+    }>('/api/settings/llm-configs/claude-code/oauth/exchange', {
+      method: 'POST',
+      body: JSON.stringify({ code, state, config_id }),
+    });
+  },
+
   // Studio Summary (table executive reports)
   async generateTableSummary(agentId: string, sourceId?: string, language?: string) {
     return api<{

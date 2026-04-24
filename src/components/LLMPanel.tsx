@@ -70,6 +70,8 @@ interface EffectiveLlmSettings {
   litellm_audio_model?: string;
   google_model?: string;
   anthropic_model?: string;
+  claude_code_model?: string;
+  claude_code_oauth_token?: string;
 }
 
 interface LLMPanelProps {
@@ -87,7 +89,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
   const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm" | "google" | "anthropic">("openai");
+  const [llmProvider, setLlmProvider] = useState<"openai" | "ollama" | "litellm" | "google" | "anthropic" | "claude-code">("openai");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiBaseUrl, setOpenaiBaseUrl] = useState("https://api.openai.com/v1");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
@@ -104,6 +106,12 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
   const [googleModel, setGoogleModel] = useState("gemini-2.0-flash");
   const [anthropicApiKey, setAnthropicApiKey] = useState("");
   const [anthropicModel, setAnthropicModel] = useState("claude-sonnet-4-20250514");
+  const [claudeCodeModel, setClaudeCodeModel] = useState("claude-sonnet-4-20250514");
+  const [claudeCodeOauthToken, setClaudeCodeOauthToken] = useState("");
+  // OAuth flow state — popup window + waiting state for the paste-code modal.
+  const [claudeOauthState, setClaudeOauthState] = useState<string | null>(null);
+  const [claudeOauthCode, setClaudeOauthCode] = useState("");
+  const [claudeOauthRunning, setClaudeOauthRunning] = useState(false);
   const [fetchingOllama, setFetchingOllama] = useState(false);
   const [fetchingLitellm, setFetchingLitellm] = useState(false);
 
@@ -175,6 +183,11 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
     setGoogleModel("gemini-2.0-flash");
     setAnthropicApiKey("");
     setAnthropicModel("claude-sonnet-4-20250514");
+    setClaudeCodeModel("claude-sonnet-4-20250514");
+    setClaudeCodeOauthToken("");
+    setClaudeOauthState(null);
+    setClaudeOauthCode("");
+    setClaudeOauthRunning(false);
     setEditingConfigId(null);
   };
 
@@ -195,6 +208,8 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
     setGoogleModel(cfg.google_model || "gemini-2.0-flash");
     setAnthropicApiKey(cfg.anthropic_api_key || "");
     setAnthropicModel(cfg.anthropic_model || "claude-sonnet-4-20250514");
+    setClaudeCodeModel(cfg.claude_code_model || "claude-sonnet-4-20250514");
+    setClaudeCodeOauthToken(cfg.claude_code_oauth_token || "");
   };
 
   const openEdit = (cfg: LlmConfig) => {
@@ -227,6 +242,14 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
         google_model: llmProvider === "google" ? googleModel : undefined,
         anthropic_api_key: llmProvider === "anthropic" ? (anthropicApiKey || undefined) : undefined,
         anthropic_model: llmProvider === "anthropic" ? anthropicModel : undefined,
+        claude_code_model: llmProvider === "claude-code" ? claudeCodeModel : undefined,
+        // Send the token unless it's the masked placeholder coming back from
+        // the API (••••). When unchanged, omit it to avoid wiping the saved
+        // ciphertext on edit.
+        claude_code_oauth_token:
+          llmProvider === "claude-code" && claudeCodeOauthToken && !claudeCodeOauthToken.includes("•")
+            ? claudeCodeOauthToken
+            : undefined,
       });
       toast.success(t("llmSettings.saveSuccess"));
       resetForm();
@@ -266,6 +289,11 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
         google_model: llmProvider === "google" ? googleModel : undefined,
         anthropic_api_key: llmProvider === "anthropic" ? (anthropicApiKey || undefined) : undefined,
         anthropic_model: llmProvider === "anthropic" ? anthropicModel : undefined,
+        claude_code_model: llmProvider === "claude-code" ? claudeCodeModel : undefined,
+        claude_code_oauth_token:
+          llmProvider === "claude-code" && claudeCodeOauthToken
+            ? claudeCodeOauthToken
+            : undefined,
       });
       toast.success(t("llmSettings.saveSuccess"));
       resetForm();
@@ -348,6 +376,65 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
         return next;
       });
     }
+  };
+
+  // ── Claude Code OAuth flow ──────────────────────────────────────────────
+  // Two-step UX: click "Login with Claude" → backend returns auth_url +
+  // state, we open the URL in a new tab. User authorizes on claude.ai,
+  // sees the OOB code page, copies the code, pastes it into a small
+  // input that becomes visible while the flow is running, clicks
+  // "Connect" → backend exchanges the code and returns the access token,
+  // which we drop into the form's claude_code_oauth_token input.
+  const handleClaudeOAuthStart = async () => {
+    setClaudeOauthRunning(true);
+    setClaudeOauthCode("");
+    try {
+      const { auth_url, state } = await dataClient.startClaudeOAuth();
+      setClaudeOauthState(state);
+      window.open(auth_url, "_blank", "noopener,noreferrer");
+    } catch (error: unknown) {
+      setClaudeOauthRunning(false);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        t("llmConfig.claudeOauthStartFailed") ?? "Failed to start Claude login",
+        { description: msg },
+      );
+    }
+  };
+
+  const handleClaudeOAuthExchange = async () => {
+    if (!claudeOauthState || !claudeOauthCode.trim()) return;
+    try {
+      const { access_token } = await dataClient.exchangeClaudeOAuth(
+        claudeOauthCode.trim(),
+        claudeOauthState,
+        // We don't pass config_id: the form may be a draft (Add dialog)
+        // or an edit of an existing row whose `id` lives in
+        // editingConfigId. Either way, we drop the token into the
+        // controlled input below and let the regular Save handler
+        // persist it. This way the same code path serves both create
+        // and update.
+      );
+      setClaudeCodeOauthToken(access_token);
+      setClaudeOauthState(null);
+      setClaudeOauthCode("");
+      setClaudeOauthRunning(false);
+      toast.success(
+        t("llmConfig.claudeOauthSuccess") ?? "Connected to Claude. Click Save to persist.",
+      );
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        t("llmConfig.claudeOauthExchangeFailed") ?? "Failed to exchange Claude code",
+        { description: msg },
+      );
+    }
+  };
+
+  const handleClaudeOAuthCancel = () => {
+    setClaudeOauthState(null);
+    setClaudeOauthCode("");
+    setClaudeOauthRunning(false);
   };
 
   const isApiKeyMasked = (val: string) => val && val.includes("••••");
@@ -527,6 +614,80 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
               disabled={saving}
             />
           </div>
+        </>
+      )}
+      {llmProvider === "claude-code" && (
+        <>
+          <div className="space-y-2">
+            <Label>Model</Label>
+            <Input
+              placeholder="claude-sonnet-4-20250514"
+              value={claudeCodeModel}
+              onChange={(e) => setClaudeCodeModel(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>OAuth token</Label>
+            <Input
+              type={isApiKeyMasked(claudeCodeOauthToken) ? "text" : "password"}
+              placeholder="sk-ant-oat01-..."
+              value={claudeCodeOauthToken}
+              onChange={(e) => setClaudeCodeOauthToken(e.target.value)}
+              disabled={saving}
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste a token from <code>claude login</code>, or use the
+              button below to generate one in-browser via the standard
+              Claude OAuth flow. Stored Fernet-encrypted at rest.
+            </p>
+          </div>
+
+          {/* OAuth login flow */}
+          {!claudeOauthRunning ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleClaudeOAuthStart}
+              disabled={saving}
+            >
+              <Bot className="h-4 w-4 mr-2" />
+              Login with Claude
+            </Button>
+          ) : (
+            <div className="rounded-md border border-border p-3 space-y-2">
+              <p className="text-sm">
+                A new tab opened at <code>claude.ai</code>. Approve the
+                request, then paste the code shown on the callback page
+                here:
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Paste the code (with or without #state)…"
+                  value={claudeOauthCode}
+                  onChange={(e) => setClaudeOauthCode(e.target.value)}
+                  autoFocus
+                  disabled={saving}
+                />
+                <Button
+                  type="button"
+                  onClick={handleClaudeOAuthExchange}
+                  disabled={saving || !claudeOauthCode.trim()}
+                >
+                  Connect
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleClaudeOAuthCancel}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
