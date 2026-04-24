@@ -365,3 +365,104 @@ def test_known_source_secret_keys_include_critical_ones():
     }
     missing = must_cover - SOURCE_SECRET_KEYS
     assert not missing, f"SOURCE_SECRET_KEYS lost coverage for: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# Organization member management
+# ---------------------------------------------------------------------------
+
+
+async def test_owner_can_list_and_add_members(client, two_tenants):
+    """user_a is owner of org_a. They can list members and add user_both as admin."""
+    t = two_tenants
+    token = _token_for(t["user_a"].id, t["org_a"].id)
+
+    r = await client.get(f"/api/organizations/{t['org_a'].id}/members", headers=_headers(token))
+    assert r.status_code == 200
+    members = r.json()
+    # Seeded with user_a (owner) + user_both (member).
+    emails = {m["email"] for m in members}
+    assert t["user_a"].email in emails
+    assert t["user_both"].email in emails
+
+
+async def test_admin_cannot_grant_owner(client, two_tenants):
+    """member user_both gets promoted to admin in org_a; then tries to
+    promote someone to owner — must 403."""
+    t = two_tenants
+    owner_token = _token_for(t["user_a"].id, t["org_a"].id)
+    # First owner promotes user_both to admin
+    r = await client.patch(
+        f"/api/organizations/{t['org_a'].id}/members/{t['user_both'].id}",
+        json={"role": "admin"},
+        headers=_headers(owner_token),
+    )
+    assert r.status_code == 200
+
+    # Now admin user_both tries to grant owner — rejected
+    admin_token = _token_for(t["user_both"].id, t["org_a"].id)
+    r = await client.post(
+        f"/api/organizations/{t['org_a'].id}/members",
+        json={"email": t["user_b"].email, "role": "owner"},
+        headers=_headers(admin_token),
+    )
+    assert r.status_code == 403
+
+
+async def test_last_owner_cannot_be_demoted(client, two_tenants):
+    """org_a has exactly one owner (user_a). Trying to demote them should 400."""
+    t = two_tenants
+    token = _token_for(t["user_a"].id, t["org_a"].id)
+    r = await client.patch(
+        f"/api/organizations/{t['org_a'].id}/members/{t['user_a'].id}",
+        json={"role": "admin"},
+        headers=_headers(token),
+    )
+    assert r.status_code == 400
+
+
+async def test_viewer_cannot_manage_members(client, two_tenants):
+    """user_both is viewer in org_b — GET members must 403."""
+    t = two_tenants
+    token = _token_for(t["user_both"].id, t["org_b"].id)
+    r = await client.get(
+        f"/api/organizations/{t['org_b'].id}/members", headers=_headers(token)
+    )
+    assert r.status_code == 403
+
+
+async def test_cannot_manage_members_of_other_org(client, two_tenants):
+    """user_a is owner in org_a. Tries to manage org_b — must 403 even though
+    their role is 'owner' (of the wrong org)."""
+    t = two_tenants
+    token = _token_for(t["user_a"].id, t["org_a"].id)
+    r = await client.get(
+        f"/api/organizations/{t['org_b'].id}/members", headers=_headers(token)
+    )
+    # Caller's scope is org_a, path is org_b — _ensure_caller_can_manage blocks with 403.
+    assert r.status_code == 403
+
+
+async def test_create_org_makes_caller_owner(client, two_tenants):
+    t = two_tenants
+    token = _token_for(t["user_a"].id, t["org_a"].id)
+    r = await client.post(
+        "/api/organizations",
+        json={"name": "New Org"},
+        headers=_headers(token),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["name"] == "New Org"
+    assert body["role"] == "owner"
+
+
+async def test_add_member_requires_registered_user(client, two_tenants):
+    t = two_tenants
+    token = _token_for(t["user_a"].id, t["org_a"].id)
+    r = await client.post(
+        f"/api/organizations/{t['org_a'].id}/members",
+        json={"email": "nobody-not-registered@example.com", "role": "member"},
+        headers=_headers(token),
+    )
+    assert r.status_code == 404
