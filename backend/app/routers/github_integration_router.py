@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_user
+from app.auth import TenantScope, require_membership
 from app.config import get_settings
 from app.database import get_db
 from app.models import GithubConnection, User
@@ -41,33 +41,35 @@ router = APIRouter(prefix="/integrations/github", tags=["github-integration"])
 # single-worker dev/small-deployment setup. Scaling to multiple workers would
 # move this to Redis or a dedicated table.
 _OAUTH_STATE_TTL_SECONDS = 600
-_pending_states: dict[str, tuple[str, datetime]] = {}
+# state → (user_id, organization_id, expires_at)
+_pending_states: dict[str, tuple[str, str, datetime]] = {}
 
 
-def _remember_state(user_id: str) -> str:
+def _remember_state(user_id: str, organization_id: str) -> str:
     _prune_expired_states()
     state = secrets.token_urlsafe(32)
     _pending_states[state] = (
         user_id,
+        organization_id,
         datetime.utcnow() + timedelta(seconds=_OAUTH_STATE_TTL_SECONDS),
     )
     return state
 
 
-def _consume_state(state: str) -> str | None:
+def _consume_state(state: str) -> tuple[str, str] | None:
     _prune_expired_states()
-    pair = _pending_states.pop(state, None)
-    if not pair:
+    entry = _pending_states.pop(state, None)
+    if not entry:
         return None
-    user_id, expires_at = pair
+    user_id, organization_id, expires_at = entry
     if datetime.utcnow() > expires_at:
         return None
-    return user_id
+    return user_id, organization_id
 
 
 def _prune_expired_states() -> None:
     now = datetime.utcnow()
-    expired = [k for k, (_u, exp) in _pending_states.items() if now > exp]
+    expired = [k for k, (_u, _o, exp) in _pending_states.items() if now > exp]
     for k in expired:
         _pending_states.pop(k, None)
 
@@ -89,20 +91,20 @@ def _connection_to_dict(conn: GithubConnection | None) -> dict:
 @router.get("/status")
 async def status(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
     r = await db.execute(
-        select(GithubConnection).where(GithubConnection.user_id == user.id)
+        select(GithubConnection).where(GithubConnection.user_id == scope.user.id, GithubConnection.organization_id == scope.organization_id)
     )
     return _connection_to_dict(r.scalar_one_or_none())
 
 
 @router.get("/authorize")
 async def authorize(
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
     try:
-        state = _remember_state(user.id)
+        state = _remember_state(scope.user.id, scope.organization_id)
         url = build_authorize_url(state)
     except GitHubOAuthNotConfigured as e:
         raise HTTPException(500, str(e))
@@ -116,9 +118,10 @@ async def callback(
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    user_id = _consume_state(state)
-    if not user_id:
+    state_pair = _consume_state(state)
+    if not state_pair:
         raise HTTPException(400, "Invalid or expired OAuth state")
+    user_id, organization_id = state_pair
 
     try:
         token_payload = await exchange_code(code)
@@ -137,12 +140,16 @@ async def callback(
         raise HTTPException(502, f"Failed to fetch GitHub profile: {e}")
 
     r = await db.execute(
-        select(GithubConnection).where(GithubConnection.user_id == user_id)
+        select(GithubConnection).where(
+            GithubConnection.user_id == user_id,
+            GithubConnection.organization_id == organization_id,
+        )
     )
     conn = r.scalar_one_or_none()
     if conn is None:
         conn = GithubConnection(
             user_id=user_id,
+            organization_id=organization_id,
             access_token_enc=encrypt_text(access_token),
         )
         db.add(conn)
@@ -168,10 +175,10 @@ async def callback(
 @router.post("/disconnect")
 async def disconnect(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
     r = await db.execute(
-        select(GithubConnection).where(GithubConnection.user_id == user.id)
+        select(GithubConnection).where(GithubConnection.user_id == scope.user.id, GithubConnection.organization_id == scope.organization_id)
     )
     conn = r.scalar_one_or_none()
     if conn:
@@ -184,10 +191,10 @@ async def disconnect(
 async def repos(
     limit: int = Query(100, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> list[dict]:
     r = await db.execute(
-        select(GithubConnection).where(GithubConnection.user_id == user.id)
+        select(GithubConnection).where(GithubConnection.user_id == scope.user.id, GithubConnection.organization_id == scope.organization_id)
     )
     conn = r.scalar_one_or_none()
     if not conn:
@@ -212,10 +219,10 @@ class SelectRepoRequest(BaseModel):
 async def select_repo(
     body: SelectRepoRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_membership),
 ) -> dict:
     r = await db.execute(
-        select(GithubConnection).where(GithubConnection.user_id == user.id)
+        select(GithubConnection).where(GithubConnection.user_id == scope.user.id, GithubConnection.organization_id == scope.organization_id)
     )
     conn = r.scalar_one_or_none()
     if not conn:

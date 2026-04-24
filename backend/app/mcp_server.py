@@ -12,6 +12,8 @@ from mcp.server.fastmcp import FastMCP
 from sqlalchemy import select, update, delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from dataclasses import dataclass
+
 from app.database import AsyncSessionLocal
 from app.auth import _hash_api_key, GUEST_USER_ID
 from app.config import get_settings
@@ -24,6 +26,7 @@ from app.models import (
     ApiKey,
     Alert,
     AlertExecution,
+    OrganizationMembership,
 )
 
 VALID_SOURCE_TYPES = (
@@ -79,13 +82,34 @@ mcp = FastMCP(
 )
 
 
-async def _resolve_user(
-    db: AsyncSession, api_key: str | None = None
-) -> tuple[User, str | None]:
-    """Resolve user from API key or guest mode.
+@dataclass
+class _McpScope:
+    """Local counterpart of `auth.TenantScope` for the MCP server.
 
-    Returns (user, agent_id_from_key).
-    Raises ValueError if authentication fails.
+    Holds the authenticated user, the organization they are operating in
+    (derived from the API key's `organization_id`, or from the guest user's
+    single membership), and the agent_id hint carried by the API key (if any).
+    """
+
+    user: User
+    organization_id: str
+    role: str
+    default_agent_id: str | None
+
+
+async def _resolve_scope(
+    db: AsyncSession, api_key: str | None = None
+) -> _McpScope:
+    """Resolve an MCP caller's tenant scope.
+
+    API key is the normal path: the key is tenant-bound, so we look up the
+    caller's membership in the key's organization.
+
+    In guest mode (ENABLE_LOGIN=false) we fall back to the single Guest-org
+    membership so local dev keeps working without an API key.
+
+    Raises ValueError if authentication fails. The next commit removes the
+    guest fallback entirely.
     """
     settings = get_settings()
 
@@ -103,17 +127,56 @@ async def _resolve_user(
             raise ValueError("API key owner not found")
         api_key_row.last_used_at = datetime.utcnow()
         await db.flush()
-        return user, api_key_row.agent_id
+
+        r = await db.execute(
+            select(OrganizationMembership).where(
+                OrganizationMembership.user_id == user.id,
+                OrganizationMembership.organization_id == api_key_row.organization_id,
+            )
+        )
+        membership = r.scalar_one_or_none()
+        if not membership:
+            raise ValueError(
+                "API key owner has no membership in the key's organization"
+            )
+        return _McpScope(
+            user=user,
+            organization_id=api_key_row.organization_id,
+            role=membership.role,
+            default_agent_id=api_key_row.agent_id,
+        )
 
     if not settings.enable_login:
         r = await db.execute(select(User).where(User.id == GUEST_USER_ID))
         user = r.scalar_one_or_none()
         if user:
-            return user, None
+            r = await db.execute(
+                select(OrganizationMembership)
+                .where(OrganizationMembership.user_id == user.id)
+                .order_by(OrganizationMembership.created_at.asc())
+                .limit(1)
+            )
+            membership = r.scalar_one_or_none()
+            if membership:
+                return _McpScope(
+                    user=user,
+                    organization_id=membership.organization_id,
+                    role=membership.role,
+                    default_agent_id=None,
+                )
 
     raise ValueError(
         "Authentication required. Provide the api_key parameter with a valid Data Talks API key."
     )
+
+
+async def _resolve_user(
+    db: AsyncSession, api_key: str | None = None
+) -> tuple[User, str | None]:
+    """Backward-compatible wrapper — existing tools still call this name.
+    Prefer `_resolve_scope` for new code so the organization is explicit."""
+    scope = await _resolve_scope(db, api_key)
+    return scope.user, scope.default_agent_id
 
 
 async def _resolve_llm_overrides(
@@ -235,7 +298,7 @@ async def list_agents(api_key: str | None = None) -> str:
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -269,7 +332,7 @@ async def list_sources(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -316,7 +379,7 @@ async def list_sessions(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -357,7 +420,7 @@ async def get_session(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -446,7 +509,7 @@ async def create_agent(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -485,7 +548,7 @@ async def create_agent(
         a = Agent(
             id=agent_id,
             user_id=user.id,
-            organization_id=user.organization_id or str(uuid.uuid4()),
+            organization_id=scope.organization_id,
             name=name,
             description=description or "",
             workspace_type=wtype,
@@ -532,7 +595,7 @@ async def update_agent(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -607,7 +670,7 @@ async def delete_agent(
         )
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -637,7 +700,7 @@ async def add_sources_to_agent(
         return "No source_ids provided."
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -687,7 +750,7 @@ async def remove_sources_from_agent(
         return "No source_ids provided."
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -740,7 +803,7 @@ async def create_source(
         )
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -753,7 +816,7 @@ async def create_source(
         s = Source(
             id=source_id,
             user_id=user.id,
-            organization_id=user.organization_id or str(uuid.uuid4()),
+            organization_id=scope.organization_id,
             agent_id=agent_id,
             name=name,
             type=type,
@@ -800,7 +863,7 @@ async def upload_file_source(
 
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -924,7 +987,7 @@ async def upload_file_source(
         s = Source(
             id=source_id,
             user_id=user.id,
-            organization_id=user.organization_id or str(uuid.uuid4()),
+            organization_id=scope.organization_id,
             agent_id=None,
             name=name or src_path.name,
             type=source_type,
@@ -956,7 +1019,7 @@ async def update_source(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1004,7 +1067,7 @@ async def delete_source(
         )
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1039,7 +1102,7 @@ async def list_llm_configs(api_key: str | None = None) -> str:
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1124,7 +1187,7 @@ async def create_llm_config(
 
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1217,7 +1280,7 @@ async def update_llm_config(
         )
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1300,7 +1363,7 @@ async def set_default_llm_config(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1340,7 +1403,7 @@ async def delete_llm_config(
         return "Deletion aborted. Re-run with confirm=True to actually delete this LLM config."
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1377,7 +1440,7 @@ async def list_alerts(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1448,7 +1511,7 @@ async def create_alert(
 
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1518,7 +1581,7 @@ async def update_alert(
 
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1592,7 +1655,7 @@ async def delete_alert(
         return "Deletion aborted. Re-run with confirm=True to actually delete this alert."
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 
@@ -1625,7 +1688,7 @@ async def test_alert(
     """
     async with AsyncSessionLocal() as db:
         try:
-            user, _ = await _resolve_user(db, api_key)
+            scope = await _resolve_scope(db, api_key); user = scope.user
         except ValueError as e:
             return f"Authentication error: {e}"
 

@@ -15,8 +15,9 @@ from typing import Optional, Any
 
 from app.database import get_db
 from app.models import User, Source, Agent, QASession, Dashboard, DashboardChart, Alert, AlertExecution, LlmConfig
-from app.auth import require_user
+from app.auth import TenantScope, require_membership, require_role, require_user
 from app.config import get_settings
+from app.services.tenant_scope import tenant_filter
 
 router = APIRouter(tags=["crud"])
 
@@ -103,8 +104,13 @@ def _build_sample_profile(df) -> dict:
 
 # --- Sources ---
 @router.get("/sources")
-async def list_sources(agent_id: Optional[str] = None, is_active: Optional[bool] = None, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    q = select(Source).where(Source.user_id == user.id).order_by(Source.created_at.desc())
+async def list_sources(
+    agent_id: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    q = select(Source).where(tenant_filter(Source, scope)).order_by(Source.created_at.desc())
     if agent_id:
         q = q.where(Source.agent_id == agent_id)
     if is_active is not None:
@@ -139,7 +145,7 @@ class SourceCreate(BaseModel):
 async def create_source(
     body: SourceCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_role("member")),
 ):
     """Create a non-file source (BigQuery, Google Sheets, SQL). Credentials stored locally in metadata."""
     valid_types = ("bigquery", "google_sheets", "sql_database", "firebase", "mongodb", "snowflake", "notion", "excel_online", "s3", "rest_api", "jira", "hubspot", "stripe", "pipedrive", "salesforce", "ga4", "intercom", "github_analytics", "shopify")
@@ -148,8 +154,8 @@ async def create_source(
     source_id = str(uuid.uuid4())
     source = Source(
         id=source_id,
-        user_id=user.id,
-        organization_id=user.organization_id or str(uuid.uuid4()),
+        user_id=scope.user.id,
+        organization_id=scope.organization_id,
         agent_id=body.agent_id,
         name=body.name,
         type=body.type,
@@ -173,7 +179,7 @@ async def create_source(
 async def upload_source(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_user),
+    scope: TenantScope = Depends(require_role("member")),
 ):
     from app.services.storage import get_storage
     storage = get_storage()
@@ -181,7 +187,7 @@ async def upload_source(
     allowed_extensions = ("csv", "xlsx", "xls", "db", "sqlite", "sqlite3", "parquet", "json", "jsonl")
     if ext not in allowed_extensions:
         raise HTTPException(400, f"Only {', '.join(allowed_extensions)} files are allowed")
-    path = f"{user.id}/{uuid.uuid4().hex}.{ext}"
+    path = f"{scope.user.id}/{uuid.uuid4().hex}.{ext}"
     storage.write_bytes(path, await file.read())
     # Local cache path (hydrated by write_bytes for S3, or authoritative for local).
     full = storage.local_path(path)
@@ -261,8 +267,8 @@ async def upload_source(
     source_id = str(uuid.uuid4())
     source = Source(
         id=source_id,
-        user_id=user.id,
-        organization_id=user.organization_id or str(uuid.uuid4()),
+        user_id=scope.user.id,
+        organization_id=scope.organization_id,
         agent_id=None,
         name=file.filename or "file",
         type=source_type,
@@ -283,8 +289,15 @@ async def upload_source(
 
 
 @router.patch("/sources/{source_id}")
-async def update_source(source_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+async def update_source(
+    source_id: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_role("member")),
+):
+    r = await db.execute(
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
+    )
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Source not found")
@@ -297,8 +310,14 @@ async def update_source(source_id: str, body: dict, db: AsyncSession = Depends(g
 
 
 @router.delete("/sources/{source_id}")
-async def delete_source(source_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Source).where(Source.id == source_id, Source.user_id == user.id))
+async def delete_source(
+    source_id: str,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_role("admin")),
+):
+    r = await db.execute(
+        select(Source).where(Source.id == source_id, tenant_filter(Source, scope))
+    )
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Source not found")
@@ -314,18 +333,23 @@ async def delete_source(source_id: str, db: AsyncSession = Depends(get_db), user
 
 # --- Agents ---
 @router.get("/agents")
-async def list_agents(db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Agent).where(Agent.user_id == user.id).order_by(Agent.updated_at.desc()))
+async def list_agents(
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    r = await db.execute(
+        select(Agent).where(tenant_filter(Agent, scope)).order_by(Agent.updated_at.desc())
+    )
     agents = list(r.scalars().all())
     out = []
     for a in agents:
         if a.source_ids:
             q = select(Source.id).where(
-                Source.user_id == user.id,
+                tenant_filter(Source, scope),
                 or_(Source.id.in_(a.source_ids), Source.agent_id == a.id),
             )
         else:
-            q = select(Source.id).where(Source.user_id == user.id, Source.agent_id == a.id)
+            q = select(Source.id).where(tenant_filter(Source, scope), Source.agent_id == a.id)
         r2 = await db.execute(q)
         count = len(list(r2.scalars().all()))
         out.append({
@@ -356,13 +380,19 @@ class AgentCreate(BaseModel):
 
 
 @router.post("/agents")
-async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def create_agent(
+    body: AgentCreate,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_role("member")),
+):
     agent_id = str(uuid.uuid4())
     llm_config_id = body.llm_config_id
     if not llm_config_id:
-        # Use default LLM config for new workspaces
+        # LlmConfig is user-personal (not org-scoped) — filter by user_id only.
         r_def = await db.execute(
-            select(LlmConfig.id).where(LlmConfig.user_id == user.id, LlmConfig.is_default == True).limit(1)
+            select(LlmConfig.id).where(
+                LlmConfig.user_id == scope.user.id, LlmConfig.is_default == True  # noqa: E712
+            ).limit(1)
         )
         row = r_def.scalar_one_or_none()
         if row:
@@ -388,8 +418,8 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
 
     a = Agent(
         id=agent_id,
-        user_id=user.id,
-        organization_id=user.organization_id or str(uuid.uuid4()),
+        user_id=scope.user.id,
+        organization_id=scope.organization_id,
         name=body.name,
         description=body.description,
         workspace_type=wtype,
@@ -404,8 +434,15 @@ async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db), us
 
 
 @router.patch("/agents/{agent_id}")
-async def update_agent(agent_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+async def update_agent(
+    agent_id: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_role("member")),
+):
+    r = await db.execute(
+        select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
+    )
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Agent not found")
@@ -430,8 +467,14 @@ async def update_agent(agent_id: str, body: dict, db: AsyncSession = Depends(get
 
 
 @router.get("/agents/{agent_id}")
-async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+async def get_agent(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    r = await db.execute(
+        select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
+    )
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Agent not found")
@@ -439,8 +482,8 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db), user: Use
 
 
 @router.delete("/agents/{agent_id}")
-async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Agent not found")
@@ -451,8 +494,8 @@ async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db), user: 
 
 # --- QA Sessions ---
 @router.get("/qa_sessions")
-async def list_qa_sessions(agent_id: Optional[str] = None, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    q = select(QASession).where(QASession.user_id == user.id, QASession.deleted_at.is_(None)).order_by(QASession.created_at.desc())
+async def list_qa_sessions(agent_id: Optional[str] = None, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    q = select(QASession).where(QASession.user_id == scope.user.id, QASession.deleted_at.is_(None)).order_by(QASession.created_at.desc())
     if agent_id:
         q = q.where(QASession.agent_id == agent_id)
     r = await db.execute(q)
@@ -477,8 +520,8 @@ async def list_qa_sessions(agent_id: Optional[str] = None, db: AsyncSession = De
 
 
 @router.delete("/qa_sessions/{session_id}")
-async def soft_delete_qa_session(session_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == user.id))
+async def soft_delete_qa_session(session_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == scope.user.id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Session not found")
@@ -488,8 +531,8 @@ async def soft_delete_qa_session(session_id: str, db: AsyncSession = Depends(get
 
 
 @router.patch("/qa_sessions/{session_id}")
-async def update_qa_session(session_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == user.id))
+async def update_qa_session(session_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == scope.user.id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Session not found")
@@ -500,8 +543,8 @@ async def update_qa_session(session_id: str, body: dict, db: AsyncSession = Depe
 
 
 @router.patch("/qa_sessions/{session_id}/feedback")
-async def update_qa_feedback(session_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == user.id))
+async def update_qa_feedback(session_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == scope.user.id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Session not found")
@@ -512,9 +555,9 @@ async def update_qa_feedback(session_id: str, body: dict, db: AsyncSession = Dep
 
 # --- Dashboards ---
 @router.get("/dashboards")
-async def list_dashboards(db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def list_dashboards(db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     from sqlalchemy import func
-    r = await db.execute(select(Dashboard).where(Dashboard.user_id == user.id).order_by(Dashboard.updated_at.desc()))
+    r = await db.execute(select(Dashboard).where(Dashboard.user_id == scope.user.id).order_by(Dashboard.updated_at.desc()))
     dashboards = list(r.scalars().all())
     out = []
     for d in dashboards:
@@ -525,17 +568,17 @@ async def list_dashboards(db: AsyncSession = Depends(get_db), user: User = Depen
 
 
 @router.post("/dashboards")
-async def create_dashboard(body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def create_dashboard(body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     dash_id = str(uuid.uuid4())
-    d = Dashboard(id=dash_id, user_id=user.id, name=body.get("name", ""), description=body.get("description"))
+    d = Dashboard(id=dash_id, user_id=scope.user.id, name=body.get("name", ""), description=body.get("description"))
     db.add(d)
     await db.commit()
     return {"id": d.id, "name": d.name, "description": d.description, "created_at": d.created_at.isoformat(), "updated_at": d.updated_at.isoformat()}
 
 
 @router.get("/dashboards/{dashboard_id}")
-async def get_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == user.id))
+async def get_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -550,8 +593,8 @@ async def get_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), u
 
 
 @router.patch("/dashboards/{dashboard_id}")
-async def update_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == user.id))
+async def update_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -564,8 +607,8 @@ async def update_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Dep
 
 
 @router.delete("/dashboards/{dashboard_id}")
-async def delete_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == user.id))
+async def delete_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -578,8 +621,8 @@ async def delete_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/dashboards/{dashboard_id}/charts")
-async def add_chart_to_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == user.id))
+async def add_chart_to_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -599,12 +642,12 @@ async def add_chart_to_dashboard(dashboard_id: str, body: dict, db: AsyncSession
 
 
 @router.delete("/dashboard_charts/{chart_id}")
-async def remove_chart_from_dashboard(chart_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def remove_chart_from_dashboard(chart_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     r = await db.execute(select(DashboardChart).where(DashboardChart.id == chart_id))
     c = r.scalar_one_or_none()
     if not c:
         raise HTTPException(404, "Chart not found")
-    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, Dashboard.user_id == user.id))
+    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, Dashboard.user_id == scope.user.id))
     if not rd.scalar_one_or_none():
         raise HTTPException(403, "Not authorized")
     await db.delete(c)
@@ -613,12 +656,12 @@ async def remove_chart_from_dashboard(chart_id: str, db: AsyncSession = Depends(
 
 
 @router.patch("/dashboard_charts/{chart_id}")
-async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     r = await db.execute(select(DashboardChart).where(DashboardChart.id == chart_id))
     c = r.scalar_one_or_none()
     if not c:
         raise HTTPException(404, "Chart not found")
-    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, Dashboard.user_id == user.id))
+    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, Dashboard.user_id == scope.user.id))
     if not rd.scalar_one_or_none():
         raise HTTPException(403, "Not authorized")
     if "title" in body:
@@ -633,12 +676,12 @@ async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = D
 
 
 @router.post("/agents/{agent_id}/suggest-questions")
-async def suggest_questions(agent_id: str, body: dict = {}, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def suggest_questions(agent_id: str, body: dict = {}, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     """Use AI to generate suggested questions based on the workspace sources."""
     from app.llm.client import chat_completion
     from app.routers.ask import _build_agent_description
 
-    r = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
+    r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -646,7 +689,7 @@ async def suggest_questions(agent_id: str, body: dict = {}, db: AsyncSession = D
     # Load active sources for schema context
     r_src = await db.execute(
         select(Source).where(
-            Source.user_id == user.id,
+            tenant_filter(Source, scope),
             (Source.agent_id == agent.id) | (Source.id.in_(agent.source_ids or [])),
             Source.is_active == True,
         )
@@ -751,7 +794,7 @@ async def suggest_questions(agent_id: str, body: dict = {}, db: AsyncSession = D
 
 
 @router.post("/demo/create")
-async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     """Create a demo workspace with sample data sources."""
     from app.services.demo_data import generate_analysis_data, generate_cdp_data, generate_etl_data, _build_metadata
 
@@ -761,7 +804,7 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
 
     # Generate demo data based on type
     if workspace_type == "cdp":
-        demo_sources = generate_cdp_data(data_dir, user.id)
+        demo_sources = generate_cdp_data(data_dir, scope.user.id)
         ws_name = "CDP Demo"
         ws_desc = "Demo workspace with sample customer, orders, and website event data for CDP analysis."
         suggested = [
@@ -773,7 +816,7 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
             "What data quality issues should I fix before building the CDP?",
         ]
     elif workspace_type == "etl":
-        demo_sources = generate_etl_data(data_dir, user.id)
+        demo_sources = generate_etl_data(data_dir, scope.user.id)
         ws_name = "ETL Demo"
         ws_desc = "Demo workspace with raw logs, inventory, and shipping data to practice ETL pipelines."
         suggested = [
@@ -785,7 +828,7 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
             "Show me the distribution of HTTP status codes over time",
         ]
     else:
-        demo_sources = generate_analysis_data(data_dir, user.id)
+        demo_sources = generate_analysis_data(data_dir, scope.user.id)
         ws_name = "Analysis Demo"
         ws_desc = "Demo workspace with sample sales, product catalog, and customer feedback data."
         suggested = [
@@ -800,8 +843,8 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
         meta = _build_metadata(src_info["file_path_rel"], src_info["df"])
         src = Source(
             id=str(uuid.uuid4()),
-            user_id=user.id,
-            organization_id=user.organization_id or user.id,
+            user_id=scope.user.id,
+            organization_id=scope.organization_id,
             name=src_info["name"],
             type=src_info["type"],
             metadata_=meta,
@@ -813,7 +856,7 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
     # Auto-assign default LLM config
     llm_config_id = None
     r_def = await db.execute(
-        select(LlmConfig.id).where(LlmConfig.user_id == user.id, LlmConfig.is_default == True).limit(1)
+        select(LlmConfig.id).where(LlmConfig.user_id == scope.user.id, LlmConfig.is_default == True).limit(1)
     )
     row = r_def.scalar_one_or_none()
     if row:
@@ -822,8 +865,8 @@ async def create_demo_workspace(body: dict, db: AsyncSession = Depends(get_db), 
     # Create workspace
     agent = Agent(
         id=str(uuid.uuid4()),
-        user_id=user.id,
-        organization_id=user.organization_id or user.id,
+        user_id=scope.user.id,
+        organization_id=scope.organization_id,
         name=ws_name,
         description=ws_desc,
         workspace_type=workspace_type,
@@ -878,8 +921,8 @@ def _serialize_alert(a: Alert) -> dict:
 
 
 @router.get("/alerts")
-async def list_alerts(agent_id: Optional[str] = None, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    q = select(Alert).where(Alert.user_id == user.id)
+async def list_alerts(agent_id: Optional[str] = None, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    q = select(Alert).where(Alert.user_id == scope.user.id)
     if agent_id:
         q = q.where(Alert.agent_id == agent_id)
     q = q.order_by(Alert.created_at.desc())
@@ -888,13 +931,13 @@ async def list_alerts(agent_id: Optional[str] = None, db: AsyncSession = Depends
 
 
 @router.post("/alerts")
-async def create_alert(body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def create_alert(body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     from app.services.alert_scheduler import _compute_next_run
 
     alert_id = str(uuid.uuid4())
     a = Alert(
         id=alert_id,
-        user_id=user.id,
+        user_id=scope.user.id,
         agent_id=body["agentId"],
         name=body.get("name", ""),
         type=body.get("type", "alert"),
@@ -913,10 +956,10 @@ async def create_alert(body: dict, db: AsyncSession = Depends(get_db), user: Use
 
 
 @router.patch("/alerts/{alert_id}")
-async def update_alert(alert_id: str, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def update_alert(alert_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     from app.services.alert_scheduler import _compute_next_run
 
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user.id))
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Alert not found")
@@ -950,8 +993,8 @@ async def update_alert(alert_id: str, body: dict, db: AsyncSession = Depends(get
 
 
 @router.delete("/alerts/{alert_id}")
-async def delete_alert(alert_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user.id))
+async def delete_alert(alert_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Alert not found")
@@ -964,9 +1007,9 @@ async def delete_alert(alert_id: str, db: AsyncSession = Depends(get_db), user: 
 
 
 @router.post("/alerts/{alert_id}/test")
-async def test_alert(alert_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def test_alert(alert_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     """Execute an alert immediately for testing purposes."""
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user.id))
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Alert not found")
@@ -977,10 +1020,10 @@ async def test_alert(alert_id: str, db: AsyncSession = Depends(get_db), user: Us
 
 
 @router.get("/alerts/{alert_id}/executions")
-async def list_alert_executions(alert_id: str, limit: int = 20, db: AsyncSession = Depends(get_db), user: User = Depends(require_user)):
+async def list_alert_executions(alert_id: str, limit: int = 20, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     """List recent executions for an alert."""
     # Verify ownership
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user.id))
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
     if not r.scalar_one_or_none():
         raise HTTPException(404, "Alert not found")
 

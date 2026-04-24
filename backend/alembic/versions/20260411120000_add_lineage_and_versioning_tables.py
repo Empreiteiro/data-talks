@@ -63,6 +63,8 @@ def upgrade() -> None:
         )
 
     if "pipeline_versions" not in tables:
+        # Unique constraint is declared inline so SQLite can create it
+        # (SQLite cannot ALTER TABLE ADD CONSTRAINT after the fact).
         op.create_table(
             "pipeline_versions",
             sa.Column("id", sa.String(36), primary_key=True),
@@ -78,11 +80,12 @@ def upgrade() -> None:
             sa.Column("github_commit_sha", sa.String(64), nullable=True),
             sa.Column("github_commit_url", sa.String(1024), nullable=True),
             sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
-        )
-        op.create_unique_constraint(
-            "uq_pipeline_versions_agent_pipeline_number",
-            "pipeline_versions",
-            ["agent_id", "pipeline_id", "version_number"],
+            sa.UniqueConstraint(
+                "agent_id",
+                "pipeline_id",
+                "version_number",
+                name="uq_pipeline_versions_agent_pipeline_number",
+            ),
         )
 
     if "github_connections" not in tables:

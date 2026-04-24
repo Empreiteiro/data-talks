@@ -1,8 +1,52 @@
 """SQLAlchemy models aligned with frontend expectations."""
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, Integer, Float, DateTime, ForeignKey, JSON
+from sqlalchemy import String, Text, Boolean, Integer, Float, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+
+# ---------------------------------------------------------------------------
+# Multi-tenancy: organizations, memberships, roles
+#
+# A User may belong to N Organizations via OrganizationMembership rows. The
+# "active" organization for a request is resolved from the JWT `org_id` claim,
+# from the ApiKey's bound organization, or (in guest mode) from the guest
+# user's single Guest-org membership. `User.organization_id` is an optional
+# "last active" hint only — never trust it as an authoritative scope.
+# ---------------------------------------------------------------------------
+
+# Role hierarchy. Higher number = more permissions. Unknown roles get -1.
+ROLE_HIERARCHY: dict[str, int] = {
+    "viewer": 0,
+    "member": 1,
+    "admin": 2,
+    "owner": 3,
+}
+VALID_ROLES = tuple(ROLE_HIERARCHY.keys())
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class OrganizationMembership(Base):
+    __tablename__ = "organization_memberships"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", name="uq_org_member_org_user"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(20), default="member")  # viewer | member | admin | owner
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class User(Base):
@@ -10,8 +54,10 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
+    # "Last active" org hint. NOT the authoritative tenant scope — see
+    # app.auth.require_membership for the real resolution.
     organization_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    role: Mapped[str] = mapped_column(String(50), default="user")  # admin | user
+    role: Mapped[str] = mapped_column(String(50), default="user")  # legacy: admin | user (retained for existing checks)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -432,10 +478,12 @@ class ReportTemplateRun(Base):
 
 
 class ApiKey(Base):
-    """External API key for programmatic access to an agent."""
+    """External API key for programmatic access to an agent. Tenant-bound:
+    every call authenticated via X-API-Key is scoped to this key's organization."""
     __tablename__ = "api_keys"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     agent_id: Mapped[str] = mapped_column(String(36))
     name: Mapped[str] = mapped_column(String(128))
     key_hash: Mapped[str] = mapped_column(String(512))  # SHA-256 of raw key
@@ -514,6 +562,7 @@ class LineageEdge(Base):
     future column-level lineage without a schema change."""
     __tablename__ = "lineage_edges"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("pipeline_runs.id", ondelete="CASCADE"), index=True)
     source_kind: Mapped[str] = mapped_column(String(20))  # source | table | column | agent | file
     source_ref: Mapped[str] = mapped_column(String(512), index=True)
@@ -533,6 +582,7 @@ class PipelineVersion(Base):
     __tablename__ = "pipeline_versions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
     agent_id: Mapped[str] = mapped_column(String(36), index=True)
     pipeline_id: Mapped[str] = mapped_column(String(64), index=True)
     version_number: Mapped[int] = mapped_column(Integer)  # monotonic per (agent_id, pipeline_id)
@@ -547,9 +597,17 @@ class PipelineVersion(Base):
 
 
 class GithubConnection(Base):
-    """Per-user GitHub OAuth connection. Tokens stored Fernet-encrypted."""
+    """Per-(user, organization) GitHub OAuth connection. Tokens stored Fernet-encrypted.
+
+    A user may connect different GitHub accounts in different organizations,
+    so the primary key is the (user_id, organization_id) tuple rather than user_id alone.
+    """
     __tablename__ = "github_connections"
+    __table_args__ = (
+        UniqueConstraint("user_id", "organization_id", name="uq_github_conn_user_org"),
+    )
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True)
     github_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     github_login: Mapped[str | None] = mapped_column(String(128), nullable=True)
     access_token_enc: Mapped[str] = mapped_column(Text)
