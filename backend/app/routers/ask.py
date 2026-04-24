@@ -826,6 +826,7 @@ async def dispatch_question(
         qa = QASession(
             id=str(uuid.uuid4()),
             user_id=user.id,
+            organization_id=agent.organization_id,
             agent_id=agent.id,
             source_id=source.id,
             question=question,

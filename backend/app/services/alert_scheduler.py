@@ -208,9 +208,10 @@ async def _execute_single_alert(alert: Alert) -> None:
 
         duration_ms = int((time.monotonic() - start) * 1000)
 
-        # Save execution record
+        # Save execution record (inherits the parent alert's organization_id).
         execution = AlertExecution(
             id=exec_id,
+            organization_id=alert.organization_id,
             alert_id=alert.id,
             status=status,
             answer=answer[:10000] if answer else None,

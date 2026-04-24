@@ -504,7 +504,7 @@ async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db), scope:
 # --- QA Sessions ---
 @router.get("/qa_sessions")
 async def list_qa_sessions(agent_id: Optional[str] = None, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    q = select(QASession).where(QASession.user_id == scope.user.id, QASession.deleted_at.is_(None)).order_by(QASession.created_at.desc())
+    q = select(QASession).where(tenant_filter(QASession, scope), QASession.deleted_at.is_(None)).order_by(QASession.created_at.desc())
     if agent_id:
         q = q.where(QASession.agent_id == agent_id)
     r = await db.execute(q)
@@ -530,7 +530,7 @@ async def list_qa_sessions(agent_id: Optional[str] = None, db: AsyncSession = De
 
 @router.delete("/qa_sessions/{session_id}")
 async def soft_delete_qa_session(session_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == scope.user.id))
+    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope)))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Session not found")
@@ -541,7 +541,7 @@ async def soft_delete_qa_session(session_id: str, db: AsyncSession = Depends(get
 
 @router.patch("/qa_sessions/{session_id}")
 async def update_qa_session(session_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == scope.user.id))
+    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope)))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Session not found")
@@ -553,7 +553,7 @@ async def update_qa_session(session_id: str, body: dict, db: AsyncSession = Depe
 
 @router.patch("/qa_sessions/{session_id}/feedback")
 async def update_qa_feedback(session_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(QASession).where(QASession.id == session_id, QASession.user_id == scope.user.id))
+    r = await db.execute(select(QASession).where(QASession.id == session_id, tenant_filter(QASession, scope)))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Session not found")
@@ -566,7 +566,7 @@ async def update_qa_feedback(session_id: str, body: dict, db: AsyncSession = Dep
 @router.get("/dashboards")
 async def list_dashboards(db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     from sqlalchemy import func
-    r = await db.execute(select(Dashboard).where(Dashboard.user_id == scope.user.id).order_by(Dashboard.updated_at.desc()))
+    r = await db.execute(select(Dashboard).where(tenant_filter(Dashboard, scope)).order_by(Dashboard.updated_at.desc()))
     dashboards = list(r.scalars().all())
     out = []
     for d in dashboards:
@@ -579,7 +579,13 @@ async def list_dashboards(db: AsyncSession = Depends(get_db), scope: TenantScope
 @router.post("/dashboards")
 async def create_dashboard(body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     dash_id = str(uuid.uuid4())
-    d = Dashboard(id=dash_id, user_id=scope.user.id, name=body.get("name", ""), description=body.get("description"))
+    d = Dashboard(
+        id=dash_id,
+        user_id=scope.user.id,
+        organization_id=scope.organization_id,
+        name=body.get("name", ""),
+        description=body.get("description"),
+    )
     db.add(d)
     await db.commit()
     return {"id": d.id, "name": d.name, "description": d.description, "created_at": d.created_at.isoformat(), "updated_at": d.updated_at.isoformat()}
@@ -587,7 +593,7 @@ async def create_dashboard(body: dict, db: AsyncSession = Depends(get_db), scope
 
 @router.get("/dashboards/{dashboard_id}")
 async def get_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, tenant_filter(Dashboard, scope)))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -603,7 +609,7 @@ async def get_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), s
 
 @router.patch("/dashboards/{dashboard_id}")
 async def update_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, tenant_filter(Dashboard, scope)))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -617,7 +623,7 @@ async def update_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Dep
 
 @router.delete("/dashboards/{dashboard_id}")
 async def delete_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, tenant_filter(Dashboard, scope)))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -631,7 +637,7 @@ async def delete_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db)
 
 @router.post("/dashboards/{dashboard_id}/charts")
 async def add_chart_to_dashboard(dashboard_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.user_id == scope.user.id))
+    r = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, tenant_filter(Dashboard, scope)))
     d = r.scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Dashboard not found")
@@ -644,7 +650,15 @@ async def add_chart_to_dashboard(dashboard_id: str, body: dict, db: AsyncSession
     if not image_url:
         raise HTTPException(400, "Session has no image to add to dashboard")
     chart_id = str(uuid.uuid4())
-    c = DashboardChart(id=chart_id, dashboard_id=dashboard_id, qa_session_id=qa_session_id or "", image_url=image_url, title=body.get("title"), description=body.get("description"))
+    c = DashboardChart(
+        id=chart_id,
+        organization_id=scope.organization_id,
+        dashboard_id=dashboard_id,
+        qa_session_id=qa_session_id or "",
+        image_url=image_url,
+        title=body.get("title"),
+        description=body.get("description"),
+    )
     db.add(c)
     await db.commit()
     return {"id": c.id, "dashboard_id": c.dashboard_id, "qa_session_id": c.qa_session_id, "image_url": c.image_url, "title": c.title, "description": c.description}
@@ -656,7 +670,7 @@ async def remove_chart_from_dashboard(chart_id: str, db: AsyncSession = Depends(
     c = r.scalar_one_or_none()
     if not c:
         raise HTTPException(404, "Chart not found")
-    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, Dashboard.user_id == scope.user.id))
+    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, tenant_filter(Dashboard, scope)))
     if not rd.scalar_one_or_none():
         raise HTTPException(403, "Not authorized")
     await db.delete(c)
@@ -670,7 +684,7 @@ async def update_dashboard_chart(chart_id: str, body: dict, db: AsyncSession = D
     c = r.scalar_one_or_none()
     if not c:
         raise HTTPException(404, "Chart not found")
-    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, Dashboard.user_id == scope.user.id))
+    rd = await db.execute(select(Dashboard).where(Dashboard.id == c.dashboard_id, tenant_filter(Dashboard, scope)))
     if not rd.scalar_one_or_none():
         raise HTTPException(403, "Not authorized")
     if "title" in body:
@@ -931,7 +945,7 @@ def _serialize_alert(a: Alert) -> dict:
 
 @router.get("/alerts")
 async def list_alerts(agent_id: Optional[str] = None, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    q = select(Alert).where(Alert.user_id == scope.user.id)
+    q = select(Alert).where(tenant_filter(Alert, scope))
     if agent_id:
         q = q.where(Alert.agent_id == agent_id)
     q = q.order_by(Alert.created_at.desc())
@@ -947,6 +961,7 @@ async def create_alert(body: dict, db: AsyncSession = Depends(get_db), scope: Te
     a = Alert(
         id=alert_id,
         user_id=scope.user.id,
+        organization_id=scope.organization_id,
         agent_id=body["agentId"],
         name=body.get("name", ""),
         type=body.get("type", "alert"),
@@ -968,7 +983,7 @@ async def create_alert(body: dict, db: AsyncSession = Depends(get_db), scope: Te
 async def update_alert(alert_id: str, body: dict, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     from app.services.alert_scheduler import _compute_next_run
 
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, tenant_filter(Alert, scope)))
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Alert not found")
@@ -1003,7 +1018,7 @@ async def update_alert(alert_id: str, body: dict, db: AsyncSession = Depends(get
 
 @router.delete("/alerts/{alert_id}")
 async def delete_alert(alert_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, tenant_filter(Alert, scope)))
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Alert not found")
@@ -1018,7 +1033,7 @@ async def delete_alert(alert_id: str, db: AsyncSession = Depends(get_db), scope:
 @router.post("/alerts/{alert_id}/test")
 async def test_alert(alert_id: str, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     """Execute an alert immediately for testing purposes."""
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, tenant_filter(Alert, scope)))
     a = r.scalar_one_or_none()
     if not a:
         raise HTTPException(404, "Alert not found")
@@ -1032,7 +1047,7 @@ async def test_alert(alert_id: str, db: AsyncSession = Depends(get_db), scope: T
 async def list_alert_executions(alert_id: str, limit: int = 20, db: AsyncSession = Depends(get_db), scope: TenantScope = Depends(require_membership)):
     """List recent executions for an alert."""
     # Verify ownership
-    r = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == scope.user.id))
+    r = await db.execute(select(Alert).where(Alert.id == alert_id, tenant_filter(Alert, scope)))
     if not r.scalar_one_or_none():
         raise HTTPException(404, "Alert not found")
 
