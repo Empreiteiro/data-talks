@@ -1200,16 +1200,23 @@ export default function Workspace() {
 
       <AddSourceModal open={addSourceOpen} onOpenChange={setAddSourceOpen} agentId={id} onSourceAdded={async (sourceId: string) => {
         if (!id) return;
-        
+
         console.log('Source adicionada:', sourceId, 'para agent:', id);
-        
+
         // A fonte já foi vinculada ao agent no bigquery-connect
-        // Recarregar os dados
+        // Recarregar os dados.
+        // `loadWarmupQuestions` matters here too: when the user
+        // finishes the onboarding wizard (which now persists warm-ups
+        // into SourceWarmup, scoped to the new source), we want the
+        // chips to reflect them immediately. Without this call, the
+        // chips only update on a page refresh — that was the
+        // "warm-ups only show after refresh" bug.
         setAddSourceOpen(false);
         setSourcesRefreshTrigger(prev => prev + 1);
         checkSources();
         loadAvailableColumns();
         loadSqlSourcesCount();
+        loadWarmupQuestions();
       }} />
 
       {id && (
