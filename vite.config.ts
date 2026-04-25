@@ -22,8 +22,12 @@ function resolveBackendPort(): number {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {
-  const backendPort = resolveBackendPort();
-  const backendUrl = `http://localhost:${backendPort}`;
+  // Backend URL is resolved DYNAMICALLY per request via the `router`
+  // hook below. We deliberately don't snapshot the port at config-load
+  // time anymore — if the backend restarts on a different port the
+  // proxy automatically follows without a Vite reload.
+  const dynamicBackendUrl = (): string =>
+    `http://localhost:${resolveBackendPort()}`;
 
   return {
     server: {
@@ -38,23 +42,39 @@ export default defineConfig(({ command }) => {
       strictPort: true,
       proxy: {
         "/api": {
-          target: backendUrl,
+          // Placeholder; real target comes from `router` below.
+          target: "http://localhost:8000",
           changeOrigin: true,
+          router: dynamicBackendUrl,
         },
         "/health": {
-          target: backendUrl,
+          target: "http://localhost:8000",
           changeOrigin: true,
+          router: dynamicBackendUrl,
         },
       },
     },
     plugins: [react()],
     define: {
-      // Make the backend URL available at build time for dev mode.
-      // In production (make run), the frontend is served from the backend
-      // itself so same-origin works automatically.
-      ...(command === "serve" && !process.env.VITE_API_URL
-        ? { "import.meta.env.VITE_API_URL": JSON.stringify(backendUrl) }
-        : {}),
+      // We deliberately do NOT bake `VITE_API_URL` in dev mode. The previous
+      // version snapshotted the backend port at Vite-server startup and
+      // baked `http://localhost:<port>` into every fetch URL — when the
+      // backend later moved to a different port (CLI fallback when 8000 was
+      // busy, or a stale `.backend_port` written by a side process) the
+      // frontend kept hitting the dead port and broke with CORS / network
+      // errors that were really stale-bake errors.
+      //
+      // In dev, the proxy at `server.proxy["/api"]` (above) forwards every
+      // `/api/*` request to whatever port the backend is on right now.
+      // `getApiUrl()` falls back to `window.location.origin` when
+      // `VITE_API_URL` is undefined, so relative URLs work transparently.
+      //
+      // In production (`make run`) the static `dist/` is served by FastAPI
+      // itself, so same-origin works without any env var.
+      //
+      // The escape hatch is still respected: if a developer exports
+      // `VITE_API_URL=...` themselves before running `npm run dev`, Vite
+      // will pick it up from `process.env` automatically.
     },
     resolve: {
       alias: {
