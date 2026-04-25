@@ -28,7 +28,7 @@ make run
 make migrate
 
 # Frontend only
-npm run dev          # Dev server on :8080
+npm run dev          # Dev server on :5173
 npm run build        # Production build
 npm run lint         # ESLint
 npm test             # Vitest
@@ -147,7 +147,7 @@ Role is per-`OrganizationMembership`, so the same user may be `admin` in org A a
 
 ## Common Pitfalls
 
-- The frontend dev server runs on port **8080**, backend on **8000**. Vite proxies API calls via `VITE_API_URL`.
+- The frontend dev server runs on port **5173** (Vite default), backend on **8000**. Vite proxies API calls via `VITE_API_URL`. Port 8080 was the previous default but conflicts with common local services (Firestore emulator, Tomcat, Jenkins).
 - SQLAlchemy models are all in a single `models.py` file — keep it that way.
 - Charts are generated server-side (matplotlib) and served as images, not rendered in the frontend.
 - The `dist/` folder is served by FastAPI as static files in production mode.

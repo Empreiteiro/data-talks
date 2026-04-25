@@ -191,7 +191,7 @@ To develop the frontend with hot reload:
 
 1. Backend running (as above).
 2. From the project root: create `.env.local` with `VITE_API_URL=http://localhost:8000`, then `npm install` and `npm run dev`.
-3. Open [http://localhost:8080](http://localhost:8080).
+3. Open [http://localhost:5173](http://localhost:5173).
 
 ## How to use
 
