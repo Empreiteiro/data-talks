@@ -686,6 +686,31 @@ class SourceClarification(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class SourceWarmup(Base):
+    """Warm-up question pinned to a source (or set of sources).
+
+    Originally onboarding wrote warm-ups into `Agent.suggested_questions`,
+    which is workspace-wide. The user wanted these tied to the source(s)
+    they were generated for, so a warm-up like "Top 10 customers by
+    revenue" only surfaces when the source it was generated from is
+    active in the workspace. `source_ids` is a JSON list (mirrors the
+    OrganizationKpi pattern); the onboarding flow always writes a
+    single-element list today, but the schema is forward-compatible
+    with multi-source onboarding sessions.
+
+    `Agent.suggested_questions` is NOT removed: it continues to hold
+    questions the user types manually in the agent-settings modal.
+    The workspace UI shows the union of both.
+    """
+    __tablename__ = "source_warmup_questions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
+    source_ids: Mapped[list] = mapped_column(JSON, default=list)
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class OrganizationKpi(Base):
     """A KPI definition scoped to an organization, optionally pinned to one
     or more sources.

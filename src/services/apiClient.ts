@@ -867,6 +867,10 @@ export const apiClient = {
       // agent-settings modal. Omit (undefined) to leave the current
       // value untouched; send `""` to explicitly clear it.
       agent_instructions?: string;
+      // Source-scoped instructions, layered on top of agent
+      // instructions. Same None/""/value semantics as
+      // agent_instructions. Persisted on Source.metadata_.
+      source_instructions?: string;
     },
   ) {
     return api<{
@@ -875,6 +879,7 @@ export const apiClient = {
       kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
       onboarding_completed_at: string | null;
       agent_instructions: string;
+      source_instructions: string;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding/save`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -887,7 +892,15 @@ export const apiClient = {
       kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
       onboarding_completed_at: string | null;
       agent_instructions: string;
+      source_instructions: string;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding`, { method: 'GET' });
+  },
+  /** Merged warm-ups: agent.suggested_questions ∪ active sources' SourceWarmup. */
+  async listAgentWarmupQuestions(agentId: string) {
+    return api<{ questions: string[] }>(
+      `/api/agents/${encodeURIComponent(agentId)}/warmup-questions`,
+      { method: 'GET' },
+    );
   },
 
   async listOllamaModels(baseUrl?: string) {

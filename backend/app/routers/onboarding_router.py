@@ -40,6 +40,7 @@ from app.models import (
     OrganizationKpi,
     Source,
     SourceClarification,
+    SourceWarmup,
 )
 from app.routers.ask import _llm_config_to_overrides
 from app.schemas import (
@@ -167,10 +168,25 @@ async def _load_saved(
                     "source_ids": sids,
                 }
             )
-    # Warm-up questions live on the agent — pull from there. We also
-    # surface `agent.description` here so the onboarding UI can
-    # pre-fill the "Specific Instructions for the Agent" textarea.
+    # Warm-ups: pull from SourceWarmup rows scoped to this source.
+    # We match on `source.id IN sw.source_ids` (the JSON list). KPIs
+    # and warm-ups share this same shape; the inclusion rule is
+    # "show row when its source_ids contains this source", which is
+    # the most permissive and matches the user's intent that warm-ups
+    # generated for source X surface whenever X is in the workspace.
     warmups: list[dict] = []
+    sw_rows = await db.execute(
+        select(SourceWarmup).where(
+            SourceWarmup.organization_id == scope.organization_id
+        )
+    )
+    for sw in sw_rows.scalars().all():
+        sids = sw.source_ids or []
+        if source.id in sids:
+            warmups.append({"text": sw.text})
+
+    # Agent.description = workspace-wide "Specific Instructions for
+    # the Agent". Surfaced so the UI can pre-fill the textarea.
     agent_instructions = ""
     if source.agent_id:
         r = await db.execute(
@@ -180,9 +196,12 @@ async def _load_saved(
         )
         agent = r.scalar_one_or_none()
         if agent:
-            if agent.suggested_questions:
-                warmups = [{"text": q} for q in agent.suggested_questions if q]
             agent_instructions = agent.description or ""
+
+    # Source-scoped instructions live on the source's metadata.
+    source_instructions = (source.metadata_ or {}).get(
+        "onboarding_instructions", ""
+    ) or ""
     completed_raw = (source.metadata_ or {}).get("onboarding_completed_at")
     return OnboardingSavedResponse(
         clarifications=clarifications,
@@ -190,6 +209,7 @@ async def _load_saved(
         kpis=kpi_rows,
         onboarding_completed_at=completed_raw,
         agent_instructions=agent_instructions,
+        source_instructions=source_instructions,
     )
 
 
@@ -285,14 +305,39 @@ async def onboarding_save(
             )
         )
 
-    # ---- Warm-up questions + agent instructions: write to Agent ----
-    # We only run this branch if there's an actual agent attached to
-    # the source AND we have something agent-scoped to update. The
-    # `agent_instructions` field is `None` when omitted (caller didn't
-    # touch the textarea) and `""` when the user explicitly cleared
-    # it; both empty and non-empty strings are honored — only `None`
-    # leaves the existing description untouched.
-    if source.agent_id and (body.warmup_questions or body.agent_instructions is not None):
+    # ---- Warm-up questions: scoped to this source ----
+    # Replace-all semantics, like clarifications. Onboarding always
+    # operates on a single source, so warm-ups for THIS source's
+    # source_ids set are wiped and re-inserted from the body. We do
+    # NOT touch warm-ups belonging to other sources or to other
+    # source-sets in the same workspace.
+    sw_rows = await db.execute(
+        select(SourceWarmup).where(
+            SourceWarmup.organization_id == scope.organization_id
+        )
+    )
+    for sw in sw_rows.scalars().all():
+        # Match the same set we'd write below — currently always
+        # `[source.id]` (single-source onboarding).
+        if (sw.source_ids or []) == [source.id]:
+            await db.delete(sw)
+    for w in body.warmup_questions:
+        t = (w.text or "").strip()
+        if t:
+            db.add(
+                SourceWarmup(
+                    id=str(uuid.uuid4()),
+                    organization_id=scope.organization_id,
+                    source_ids=[source.id],
+                    text=t,
+                )
+            )
+
+    # ---- Agent-scoped instructions ----
+    # `agent_instructions` is None when the caller didn't touch the
+    # textarea (leave existing untouched), "" to explicitly clear,
+    # or a non-empty string to set.
+    if source.agent_id and body.agent_instructions is not None:
         r = await db.execute(
             select(Agent).where(
                 Agent.id == source.agent_id, tenant_filter(Agent, scope)
@@ -300,17 +345,7 @@ async def onboarding_save(
         )
         agent = r.scalar_one_or_none()
         if agent:
-            if body.warmup_questions:
-                existing = list(agent.suggested_questions or [])
-                seen = {q.strip().lower() for q in existing if isinstance(q, str)}
-                for w in body.warmup_questions:
-                    t = (w.text or "").strip()
-                    if t and t.lower() not in seen:
-                        existing.append(t)
-                        seen.add(t.lower())
-                agent.suggested_questions = existing
-            if body.agent_instructions is not None:
-                agent.description = body.agent_instructions.strip()
+            agent.description = body.agent_instructions.strip()
 
     # ---- KPIs: upsert by id, scoped to this organization ----
     incoming_ids: set[str] = set()
@@ -354,14 +389,87 @@ async def onboarding_save(
         )
         incoming_ids.add(new_id)
 
-    # ---- Mark the source as onboarded ----
+    # ---- Source-scoped instructions + onboarded stamp ----
+    # Both live on Source.metadata_ (a JSON column), so we mutate a
+    # shallow copy and reassign — SQLAlchemy doesn't pick up in-place
+    # mutations on JSON columns. Only write `onboarding_instructions`
+    # when the field was actually sent (not None), same semantics as
+    # `agent_instructions` to avoid clobbering values set elsewhere.
     meta = dict(source.metadata_ or {})
+    if body.source_instructions is not None:
+        meta["onboarding_instructions"] = body.source_instructions.strip()
     meta["onboarding_completed_at"] = datetime.utcnow().isoformat()
     source.metadata_ = meta
 
     await db.commit()
     await db.refresh(source)
     return await _load_saved(db, scope, source)
+
+
+@router.get("/agents/{agent_id}/warmup-questions")
+async def list_agent_warmup_questions(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    """Merged warm-up questions for the workspace's chat suggestions.
+
+    Returns the union of:
+      - `agent.suggested_questions` (manually-typed, workspace-wide;
+        managed via the agent-settings modal)
+      - `SourceWarmup` rows whose `source_ids` overlap with the
+        active sources of this workspace (i.e. anything that's
+        relevant to at least one currently-active source)
+
+    Deduped case-insensitively. Order: agent-level first (older,
+    user-curated), then source-level. Both share the same chip UI,
+    so the user doesn't see the distinction — they're just relevant
+    questions to start the conversation with.
+    """
+    r = await db.execute(
+        select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
+    )
+    agent = r.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    # Active sources in this workspace.
+    r = await db.execute(
+        select(Source).where(
+            Source.agent_id == agent_id,
+            tenant_filter(Source, scope),
+            Source.is_active == True,  # noqa: E712
+        )
+    )
+    active_source_ids = {s.id for s in r.scalars().all()}
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for q in agent.suggested_questions or []:
+        if not isinstance(q, str):
+            continue
+        t = q.strip()
+        key = t.lower()
+        if t and key not in seen:
+            out.append(t)
+            seen.add(key)
+    if active_source_ids:
+        sw_rows = await db.execute(
+            select(SourceWarmup).where(
+                SourceWarmup.organization_id == scope.organization_id
+            )
+        )
+        for sw in sw_rows.scalars().all():
+            sids = sw.source_ids or []
+            # Include if any of the warm-up's source_ids is active.
+            # Same "either" rule as KPIs in dispatch_question.
+            if any(sid in active_source_ids for sid in sids):
+                t = (sw.text or "").strip()
+                key = t.lower()
+                if t and key not in seen:
+                    out.append(t)
+                    seen.add(key)
+    return {"questions": out}
 
 
 @router.get(

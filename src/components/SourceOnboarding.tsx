@@ -85,6 +85,13 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
   // field (= leave existing value untouched) when they didn't.
   const [agentInstructions, setAgentInstructions] = useState("");
   const [agentInstructionsTouched, setAgentInstructionsTouched] = useState(false);
+  // Source-scoped instructions: an additional prompt that ONLY
+  // applies when this source is in the active workspace. Layered on
+  // top of `agent_instructions` (which is workspace-wide). Same
+  // touched-tracking pattern: only sent on save when the user
+  // actually edited the field.
+  const [sourceInstructions, setSourceInstructions] = useState("");
+  const [sourceInstructionsTouched, setSourceInstructionsTouched] = useState(false);
 
   // Step 1: load profile + suggestions. We try the saved-state endpoint
   // first; if anything is already there, treat it as "edit existing"
@@ -111,6 +118,7 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
         // the existing agent description, so users don't lose what
         // they previously typed in agent settings.
         setAgentInstructions(saved.agent_instructions || "");
+        setSourceInstructions(saved.source_instructions || "");
         // `forceFresh` is the explicit "re-run setup" entry point —
         // user clicked the refresh icon to ask for new LLM
         // suggestions, so we skip the edit-existing branch even when
@@ -191,6 +199,12 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
             // through onboarding without editing this field.
             ...(agentInstructionsTouched
               ? { agent_instructions: agentInstructions }
+              : {}),
+            // Source-scoped instructions follow the same touched
+            // semantics. Persisted to Source.metadata_; layered on
+            // top of agent_instructions in dispatch_question.
+            ...(sourceInstructionsTouched
+              ? { source_instructions: sourceInstructions }
               : {}),
           };
       await dataClient.saveSourceOnboarding(sourceId, payload);
@@ -440,6 +454,40 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
             />
             <p className="text-xs text-muted-foreground">
               {t("agentSettings.instructionsHelp") || ""}
+            </p>
+          </div>
+
+          {/*
+            Source-scoped instructions. Mirrors the agent-level
+            textarea above but applies ONLY when this source is in
+            the active workspace. Use case: a workspace shared
+            between two sources where each has its own quirks
+            (different timezones, different "active" definitions,
+            different naming conventions). The agent-level prompt
+            stays small and generic; the source-level prompt carries
+            source-specific context.
+          */}
+          <div className="space-y-2">
+            <Label htmlFor="source-instructions" className="text-sm font-medium">
+              {t("onboarding.sourceInstructions") ||
+                "Source-specific instructions"}
+            </Label>
+            <Textarea
+              id="source-instructions"
+              value={sourceInstructions}
+              onChange={(e) => {
+                setSourceInstructions(e.target.value);
+                if (!sourceInstructionsTouched) setSourceInstructionsTouched(true);
+              }}
+              placeholder={
+                t("onboarding.sourceInstructionsPlaceholder") ||
+                "Notes that only apply when this source is in the workspace…"
+              }
+              className="min-h-[80px]"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("onboarding.sourceInstructionsHelp") ||
+                "Layered on top of the agent-level instructions, only when this source is active."}
             </p>
           </div>
 

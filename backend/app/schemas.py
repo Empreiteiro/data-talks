@@ -281,6 +281,13 @@ class OnboardingSaveRequest(BaseModel):
     warmup_questions: list[OnboardingWarmupQuestion] = []
     kpis: list[OnboardingKpiSaved] = []
     agent_instructions: Optional[str] = None
+    # Source-scoped instructions — additional prompt that ONLY applies
+    # when this source is active in a workspace, layered on top of
+    # `agent_instructions` (the workspace-wide prompt). Persisted to
+    # `Source.metadata_["onboarding_instructions"]`. Same None/""
+    # semantics as `agent_instructions`: None = leave untouched,
+    # "" = explicitly clear.
+    source_instructions: Optional[str] = None
 
 
 class OnboardingSavedResponse(BaseModel):
@@ -295,3 +302,6 @@ class OnboardingSavedResponse(BaseModel):
     # pre-fill the "Specific Instructions for the Agent" textarea on
     # the final onboarding step so re-opens show the saved value.
     agent_instructions: str = ""
+    # Mirror of `Source.metadata_["onboarding_instructions"]`. Empty
+    # string when unset.
+    source_instructions: str = ""

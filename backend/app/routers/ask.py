@@ -237,11 +237,12 @@ async def dispatch_question(
     data_files_dir = settings.data_files_dir
 
     # Onboarding-derived workspace context: clarifications stored against
-    # the active source(s) plus KPIs defined in this organization. We
-    # build this once and fold it into the `agent_description` arg every
+    # the active source(s), KPIs defined in this organization, and any
+    # source-scoped instructions captured during onboarding. We build
+    # this once and fold it into the `agent_description` arg every
     # `ask_*.py` script already accepts — that way no script signature
-    # has to change. KPIs that were pinned to any active source are
-    # included; KPIs pinned to zero sources also count (cross-source).
+    # has to change. KPIs pinned to any active source are included;
+    # KPIs pinned to zero sources also count (cross-source).
     workspace_context_block = ""
     try:
         from app.llm.onboarding import build_workspace_context_block
@@ -270,7 +271,24 @@ async def dispatch_question(
             sids = k.source_ids or []
             if not sids or any(sid in active_source_ids for sid in sids):
                 kpis.append({"name": k.name, "definition": k.definition})
-        workspace_context_block = build_workspace_context_block(clarifs, kpis)
+        # Source-scoped instructions: each active source may have
+        # additional prompt text saved to its metadata during
+        # onboarding. Collect them in source order with the source
+        # name as a header so the LLM knows which source each block
+        # is about — matters when multiple sources have their own
+        # instructions in the same workspace.
+        source_instructions_blocks: list[str] = []
+        for s in active_sources:
+            text = ((s.metadata_ or {}).get("onboarding_instructions") or "").strip()
+            if text:
+                source_instructions_blocks.append(
+                    f"Instructions for source `{s.name}`:\n{text}"
+                )
+        ctx = build_workspace_context_block(clarifs, kpis)
+        if source_instructions_blocks:
+            joined = "\n\n".join(source_instructions_blocks)
+            ctx = (joined + ("\n\n" + ctx if ctx else "")).strip()
+        workspace_context_block = ctx
     except Exception:  # noqa: BLE001 - context is best-effort; never block Q&A
         workspace_context_block = ""
 
