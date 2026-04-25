@@ -80,12 +80,17 @@ export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardin
         setError(null);
         const saved = await dataClient.getSourceOnboarding(sourceId);
         if (cancelled) return;
-        const hasAny =
-          (saved.clarifications?.length || 0) +
-            (saved.warmup_questions?.length || 0) +
-            (saved.kpis?.length || 0) >
-          0;
-        if (hasAny) {
+        // The right signal for "this source has been onboarded before"
+        // is the per-source `onboarding_completed_at` timestamp on the
+        // source's metadata — NOT the count of items in the saved
+        // payload. Warm-up questions are stored on `Agent.suggested_
+        // questions` (agent-wide), and `_load_saved` returns them as
+        // part of the response. If we used .length to gate, the second
+        // source added to a workspace would inherit warm-ups from the
+        // first and we'd skip the fresh LLM call — which is exactly
+        // the bug "warm-ups are about the previous source, no
+        // clarifications/KPIs generated, returned too fast".
+        if (saved.onboarding_completed_at) {
           setClarifications(saved.clarifications.map((c) => ({ ...c })));
           setWarmups(
             (saved.warmup_questions || []).map((w) => ({ text: w.text, selected: true })),
