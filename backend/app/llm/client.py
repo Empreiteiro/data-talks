@@ -410,26 +410,31 @@ async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg
                     return t
         return None
 
-    # Path B: when the LlmConfig carries an OAuth token (i.e. the user
-    # finished the "Login with Claude" flow on Settings → LLM), prefer
-    # calling the Anthropic Messages API directly with that bearer token.
+    # Path B: ANY OAuth token we know about → direct Messages API.
     #
-    # The CLI binary uses its OWN internal auth (managed by `claude login`
-    # writing to ~/.claude/credentials and checked at CLI startup), and it
-    # does NOT accept the user-scoped OAuth tokens we exchange via
-    # `claude_oauth.py`. Passing one via CLAUDE_CODE_OAUTH_TOKEN makes the
-    # CLI exit 1 with "API Error: 401 Invalid authentication credentials".
-    # Routing those tokens through `_claude_code_via_api` (which sets the
-    # `anthropic-beta: oauth-2025-04-20` header and the required system
-    # prefix) is the only path that works.
-    config_oauth_token = (cfg.get("claude_code_oauth_token") or "").strip()
-    if config_oauth_token:
-        return await _claude_code_via_api(messages, max_tokens, cfg, config_oauth_token)
+    # The CLI binary maintains its OWN credentials (populated by
+    # `claude login` into ~/.claude/credentials and checked at CLI start).
+    # It does NOT accept the user-scoped OAuth tokens we exchange via
+    # `claude_oauth.py` (or any token written to ~/.last-intelligence/...
+    # by other Anthropic tooling) — passing one via CLAUDE_CODE_OAUTH_TOKEN
+    # makes the CLI exit 1 with "API Error: 401 Invalid authentication
+    # credentials".
+    #
+    # So whenever we have an OAuth token from ANY source — the LlmConfig
+    # (user finished the "Login with Claude" flow), the env var (operator
+    # set it for a Docker/Railway deploy), or a known on-disk path — we
+    # route through `_claude_code_via_api`, which sends the token as a
+    # bearer with the required `anthropic-beta: oauth-2025-04-20` header
+    # and the "You are Claude Code…" system prefix.
+    #
+    # The CLI subprocess path is reserved for the case where we have no
+    # OAuth token at all — then the CLI uses its own internal credentials
+    # and we don't touch CLAUDE_CODE_OAUTH_TOKEN in the spawned env.
+    discovered_oauth_token = _resolve_oauth_token()
+    if discovered_oauth_token:
+        return await _claude_code_via_api(messages, max_tokens, cfg, discovered_oauth_token)
 
     if not claude_bin:
-        oauth_token = _resolve_oauth_token()
-        if oauth_token:
-            return await _claude_code_via_api(messages, max_tokens, cfg, oauth_token)
         raise ValueError(
             "Claude CLI binary not found and no OAuth token is configured. "
             "Either install the CLI (`npm install -g @anthropic-ai/claude-code`) "
@@ -454,24 +459,15 @@ async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg
     prompt += "\n".join(user_parts)
 
     # ── Build subprocess environment ──
+    # We deliberately do NOT inject CLAUDE_CODE_OAUTH_TOKEN here. By the
+    # time we reach this code path, `_resolve_oauth_token()` returned
+    # `None` (no OAuth token anywhere), so the CLI is expected to use its
+    # own internal credentials from `claude login`. Inheriting whatever
+    # CLAUDE_CODE_OAUTH_TOKEN happened to be in the parent process env
+    # would override those credentials with potentially-incompatible
+    # OAuth tokens (the very bug that motivated this branch).
     env = {**os.environ, "CLAUDE_CODE_ENTRYPOINT": "cli"}
-
-    # OAuth token: config > env var > file on disk
-    oauth_token = (cfg.get("claude_code_oauth_token") or "").strip()
-    if not oauth_token:
-        oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if not oauth_token:
-        token_paths = [
-            _Path.home() / ".claude" / "oauth_token",
-            _Path.home() / ".last-intelligence" / "claude_oauth_token",
-        ]
-        for tp in token_paths:
-            if tp.exists():
-                oauth_token = tp.read_text().strip()
-                if oauth_token:
-                    break
-    if oauth_token:
-        env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
 
     # ── Build CLI args ──
     # We pipe the prompt via stdin instead of `-p "<prompt>"` because ETL/Q&A
