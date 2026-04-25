@@ -4,7 +4,7 @@
 
 ```bash
 npm install              # Install dependencies
-npm run dev              # Dev server on http://localhost:8080
+npm run dev              # Dev server on http://localhost:5173
 npm run build            # Production build to dist/
 npm run lint             # ESLint
 npm test                 # Vitest (run once)
@@ -109,7 +109,7 @@ import { Button } from "../../components/ui/button";
 
 ## Common Pitfalls
 
-- Dev server is on port **8080** (not 3000 or 5173). Configured in `vite.config.ts`.
+- Dev server is on port **5173** (Vite default). Configured in `vite.config.ts` with `strictPort: true`, so a port collision fails loudly instead of silently falling back to a different port. The previous default (8080) clashed with Firestore emulator / Tomcat / Jenkins.
 - `VITE_API_URL` must point to the backend (default: `http://localhost:8000`).
 - Charts are server-rendered images — the frontend just displays `<img>` tags, not chart libraries.
 - The `dist/` folder is what FastAPI serves in production; do not rely on Vite in prod.

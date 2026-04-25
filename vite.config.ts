@@ -28,8 +28,14 @@ export default defineConfig(({ command }) => {
   return {
     server: {
       host: "::",
-      port: 8080,
-      strictPort: false,
+      // Default to 5173 (Vite's own default) instead of 8080. Port 8080 is
+      // notoriously contested — Firebase Firestore emulator, Tomcat, Jenkins,
+      // most local Java apps default there — and Vite's silent fallback to
+      // a free port left users hitting whatever service was actually on 8080
+      // and seeing a stale "Ok" response or worse. `strictPort: true` makes
+      // a port collision fail loudly so the developer notices.
+      port: 5173,
+      strictPort: true,
       proxy: {
         "/api": {
           target: backendUrl,
