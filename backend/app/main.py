@@ -319,9 +319,23 @@ app = FastAPI(
     title=get_settings().api_title,
     lifespan=lifespan,
 )
+# CORS: `allow_origins=["*"]` is incompatible with `allow_credentials=True`
+# per the CORS spec (browsers ignore the response when both are set), so we
+# build a concrete allowlist that covers:
+#   1. The deployment's public URL from `APP_URL` (production behind a domain).
+#   2. Any localhost port — covers Vite on 5173, the legacy 8080, the backend
+#      itself on 8000/8001, and the static FastAPI server when `dist/` is
+#      present. `127.0.0.1` is included on the same regex.
+#
+# The regex is intentionally narrow: localhost / 127.0.0.1 / 0.0.0.0 only,
+# any port, http or https. External origins must be added explicitly to
+# `APP_URL` (or extended here once we have a tenant-aware allowlist).
+_app_url = (get_settings().app_url or "").strip().rstrip("/")
+_explicit_origins = [_app_url] if _app_url else []
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_explicit_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
