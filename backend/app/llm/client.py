@@ -410,6 +410,22 @@ async def _claude_code_chat(messages: list[dict[str, str]], max_tokens: int, cfg
                     return t
         return None
 
+    # Path B: when the LlmConfig carries an OAuth token (i.e. the user
+    # finished the "Login with Claude" flow on Settings → LLM), prefer
+    # calling the Anthropic Messages API directly with that bearer token.
+    #
+    # The CLI binary uses its OWN internal auth (managed by `claude login`
+    # writing to ~/.claude/credentials and checked at CLI startup), and it
+    # does NOT accept the user-scoped OAuth tokens we exchange via
+    # `claude_oauth.py`. Passing one via CLAUDE_CODE_OAUTH_TOKEN makes the
+    # CLI exit 1 with "API Error: 401 Invalid authentication credentials".
+    # Routing those tokens through `_claude_code_via_api` (which sets the
+    # `anthropic-beta: oauth-2025-04-20` header and the required system
+    # prefix) is the only path that works.
+    config_oauth_token = (cfg.get("claude_code_oauth_token") or "").strip()
+    if config_oauth_token:
+        return await _claude_code_via_api(messages, max_tokens, cfg, config_oauth_token)
+
     if not claude_bin:
         oauth_token = _resolve_oauth_token()
         if oauth_token:
