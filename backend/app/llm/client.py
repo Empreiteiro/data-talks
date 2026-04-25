@@ -294,23 +294,31 @@ async def _claude_code_via_api(
     oauth_token: str,
 ) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """Call the Anthropic Messages API directly using a Claude Code OAuth
-    bearer token. Used as the cloud-deploy fallback when the `claude`
-    CLI binary isn't installed (Railway, Docker, etc).
+    bearer token.
 
-    Anthropic's Messages API rejects user-scoped (OAuth) tokens unless two
-    things hold:
+    Anthropic's Messages API rejects user-scoped (OAuth) tokens unless
+    THREE things hold:
 
-      1. Header `anthropic-beta: oauth-2025-04-20` is present on every
-         request.
-      2. The first system message starts with the exact identification
-         string the CLI uses: "You are Claude Code, Anthropic's official
-         CLI for Claude.". This helper auto-injects that prefix so call
-         sites don't need to know about it.
+      1. Header `anthropic-beta: oauth-2025-04-20`.
+      2. The system block starts with the exact identification string
+         the CLI uses: "You are Claude Code, Anthropic's official CLI
+         for Claude.". We auto-prepend it.
+      3. The request DOES NOT carry an `x-api-key` header, even empty.
+         The official `anthropic` Python SDK with `auth_token=...` adds
+         BOTH `Authorization: Bearer <token>` AND `x-api-key:` (empty
+         string). Anthropic validates `x-api-key` first and returns 401
+         on the empty value before the Bearer token is even considered.
+         The smaller-prompt /test endpoint sometimes squeezes through
+         (probably due to caching / a less-strict path), but anything
+         non-trivial 401s.
+
+    To get around #3 we bypass the SDK and use httpx directly so we can
+    send only the headers we want.
 
     Returns the same `(content, usage, trace)` shape as `_anthropic_chat`
     so the dispatch layer is provider-agnostic.
     """
-    from anthropic import AsyncAnthropic
+    import httpx
 
     model = (cfg.get("claude_code_model") or "claude-sonnet-4-20250514").strip()
 
@@ -329,25 +337,50 @@ async def _claude_code_via_api(
     if not system_text.startswith(REQUIRED_PREFIX):
         system_text = REQUIRED_PREFIX + ("\n\n" + system_text if system_text else "")
 
-    client = AsyncAnthropic(
-        auth_token=oauth_token,
-        default_headers={"anthropic-beta": "oauth-2025-04-20"},
-    )
-    resp = await client.messages.create(
-        model=model,
-        messages=user_messages,
-        max_tokens=max_tokens,
-        system=system_text,
-    )
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": user_messages,
+        "max_tokens": max_tokens,
+        "system": system_text,
+    }
+
+    # Build headers explicitly. The Authorization Bearer is the OAuth
+    # token; we deliberately do NOT include x-api-key (see docstring
+    # for why). `anthropic-version` and the OAuth beta are required.
+    headers = {
+        "Authorization": f"Bearer {oauth_token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "oauth-2025-04-20",
+    }
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        r = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            json=payload,
+            headers=headers,
+        )
+    if r.status_code >= 400:
+        # Surface Anthropic's actual response body — strip noisy HTML
+        # to keep the error log short.
+        snippet = (r.text or "").strip()[:600]
+        raise RuntimeError(
+            f"Anthropic Messages API rejected the OAuth token "
+            f"(HTTP {r.status_code}): {snippet}"
+        )
+    data = r.json()
+
     content = ""
-    for block in resp.content:
-        if getattr(block, "text", None):
-            content += block.text
+    for block in data.get("content") or []:
+        if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
+            content += block["text"]
     content = content.strip()
 
-    input_t = getattr(resp.usage, "input_tokens", 0) if resp.usage else 0
-    output_t = getattr(resp.usage, "output_tokens", 0) if resp.usage else 0
-    finish = getattr(resp, "stop_reason", None)
+    usage_block = data.get("usage") or {}
+    input_t = usage_block.get("input_tokens", 0)
+    output_t = usage_block.get("output_tokens", 0)
+    finish = data.get("stop_reason")
     trace = _build_trace(messages, None, content=content, finish_reason=finish)
     return content, _usage("claude-code", model, input_t, output_t), trace
 
