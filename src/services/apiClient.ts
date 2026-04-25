@@ -809,6 +809,27 @@ export const apiClient = {
     return api<{ models: string[]; error?: string }>(`/api/settings/litellm/models${params}`);
   },
 
+  /**
+   * Fetch the catalog from any OpenAI-compatible endpoint
+   * (`GET {base}/models`). POST so we can pass the API key in the
+   * body — putting it in the URL would leak it into access logs.
+   * Backend treats both fields as optional and falls back to the
+   * env-level config when omitted.
+   */
+  async listOpenAiCompatibleModels(baseUrl?: string, apiKey?: string) {
+    return api<{ models: string[]; error?: string }>(
+      '/api/settings/openai/models',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          base_url: baseUrl || undefined,
+          api_key: apiKey || undefined,
+        }),
+      },
+    );
+  },
+
+
   async listOllamaModels(baseUrl?: string) {
     const params = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : '';
     return api<{ models: string[]; error?: string }>(`/api/settings/ollama/models${params}`);

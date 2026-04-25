@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { dataClient } from "@/services/dataClient";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Bot, CheckCircle2, Loader2, Pencil, Plus, Plug, RefreshCw, Star, Trash2, XCircle } from "lucide-react";
+import { ModelCombobox } from "@/components/ModelCombobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,23 @@ import {
 } from "@/components/ui/dialog";
 
 const OPENAI_AUDIO_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"];
+
+/** Curated suggestions for the OpenAI-compatible model field.
+ *  These are starting points — the combobox accepts any free-text
+ *  value, and a refresh button can fetch the live catalog from
+ *  whatever base URL the user has configured (works for OpenAI
+ *  itself, OpenRouter, DeepSeek, Together, Groq, custom proxies). */
+const OPENAI_COMPATIBLE_MODELS: string[] = [
+  "gpt-4o-mini",
+  "gpt-4o",
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "o4-mini",
+  "o3",
+  "o3-mini",
+  "gpt-3.5-turbo",
+];
 const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI-compatible", ollama: "Ollama", litellm: "LiteLLM", google: "Google Gemini", anthropic: "Anthropic Claude" };
 
 /** Models the Claude Code OAuth flow's `user:inference` scope is allowed
@@ -129,6 +147,11 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
   const [claudeOauthRunning, setClaudeOauthRunning] = useState(false);
   const [fetchingOllama, setFetchingOllama] = useState(false);
   const [fetchingLitellm, setFetchingLitellm] = useState(false);
+  // Live-fetched suggestions for the OpenAI-compatible combobox. Empty
+  // until the user clicks the refresh button next to the model field;
+  // until then the curated `OPENAI_COMPATIBLE_MODELS` list is shown.
+  const [openaiModels, setOpenaiModels] = useState<string[]>([]);
+  const [fetchingOpenai, setFetchingOpenai] = useState(false);
 
   const fetchConfigs = async () => {
     try {
@@ -179,12 +202,38 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
     }
   };
 
+  // Live-fetch the model catalog from the user's OpenAI-compatible
+  // endpoint. We pass both the base URL and the API key the user just
+  // typed (or has saved) so the request authenticates against their
+  // own account — backend never logs either, and this is a POST so
+  // the key doesn't end up in URL access logs either. If the masked
+  // placeholder ("sk-***...") is still in the field we send no key
+  // and let the backend fall back to env.
+  const fetchOpenaiModels = async () => {
+    setFetchingOpenai(true);
+    try {
+      const apiKey = isApiKeyMasked(openaiApiKey) ? undefined : openaiApiKey;
+      const data = await dataClient.listOpenAiCompatibleModels(
+        openaiBaseUrl || undefined,
+        apiKey,
+      );
+      setOpenaiModels(data.models || []);
+      if (data.models?.length) toast.success(t("llmSettings.modelsFetched"));
+      else if (data.error) toast.error(t("llmSettings.modelsFetchError"), { description: data.error });
+    } catch (e: unknown) {
+      toast.error(t("llmSettings.modelsFetchError"), { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setFetchingOpenai(false);
+    }
+  };
+
   const resetForm = () => {
     setName("");
     setLlmProvider("openai");
     setOpenaiApiKey("");
     setOpenaiBaseUrl("https://api.openai.com/v1");
     setOpenaiModel("gpt-4o-mini");
+    setOpenaiModels([]);
     setOpenaiAudioModel("gpt-4o-mini-tts");
     setOllamaBaseUrl("http://localhost:11434");
     setOllamaModel("llama3.2");
@@ -502,10 +551,24 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
           </div>
           <div className="space-y-2">
             <Label>{t("llmSettings.openaiModel")}</Label>
-            <Input
-              placeholder="gpt-4o-mini ou gemini-2.0-flash"
+            {/*
+              Combobox over a curated suggestion list (`OPENAI_COMPATIBLE_MODELS`),
+              merged with whatever was live-fetched from the user's endpoint.
+              Always falls back to free-text — users on proxies routinely need
+              model ids we can't enumerate (fine-tunes, OpenRouter slugs, …).
+              The refresh button hits POST /api/settings/openai/models, which
+              calls `<base>/models` on the user's configured endpoint with
+              their Bearer key.
+            */}
+            <ModelCombobox
               value={openaiModel}
-              onChange={(e) => setOpenaiModel(e.target.value)}
+              onChange={setOpenaiModel}
+              suggestions={
+                openaiModels.length > 0 ? openaiModels : OPENAI_COMPATIBLE_MODELS
+              }
+              placeholder="gpt-4o-mini"
+              onRefreshSuggestions={fetchOpenaiModels}
+              refreshing={fetchingOpenai}
               disabled={saving}
             />
           </div>

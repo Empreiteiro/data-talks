@@ -287,6 +287,61 @@ async def list_litellm_models(
         return {"models": [], "error": str(e)}
 
 
+class ListOpenAiModelsBody(BaseModel):
+    """Inputs to list models from a user-owned OpenAI-compatible endpoint.
+
+    Both fields are optional: if `base_url` is omitted we fall back to
+    the env-level setting; if `api_key` is omitted we try the env-level
+    one. POST (not GET) is used because the API key is the user's
+    secret and we don't want it ending up in URL access logs.
+    """
+
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+
+
+@router.post("/openai/models")
+async def list_openai_compatible_models(
+    body: ListOpenAiModelsBody,
+    user: User = Depends(require_user),
+):
+    """Fetch the model catalog from an OpenAI-compatible endpoint.
+
+    OpenAI's spec (`GET {base}/models`, Bearer-authenticated) is the
+    same shape every compatible proxy implements (Azure OpenAI shims,
+    DeepSeek, Together, Groq, OpenRouter, …) — so this single endpoint
+    serves as the "live suggestions" backend for the Model combobox.
+
+    Differences from `/litellm/models`:
+      - LiteLLM proxies usually allow anonymous /v1/models; the user's
+        OpenAI base URL almost always requires a Bearer token.
+      - The user's saved `openaiBaseUrl` already ends in `/v1` (the
+        LLMPanel pre-fills it that way), so we do NOT append `/v1` here
+        — that would produce `/v1/v1/models`. We trim a trailing slash
+        and just append `/models`.
+
+    Returns `{"models": [...]}` on success, or `{"models": [], "error":
+    "..."}` on failure so the frontend can show an inline error without
+    raising.
+    """
+    env = get_settings()
+    base = (body.base_url or env.openai_base_url or "https://api.openai.com/v1").rstrip("/")
+    api_url = f"{base}/models"
+    api_key = (body.api_key or env.openai_api_key or "").strip()
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(api_url, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+        models = [m.get("id", "") for m in (data.get("data") or []) if m.get("id")]
+        # Stable sort so the UI doesn't reshuffle on every refresh.
+        models.sort()
+        return {"models": models}
+    except Exception as e:
+        return {"models": [], "error": str(e)}
+
+
 @router.get("/google-sheets-service-email")
 async def get_google_sheets_service_email(
     user: User = Depends(require_user),
