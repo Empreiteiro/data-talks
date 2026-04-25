@@ -111,7 +111,7 @@ async def generate_report(
     # Same resolution logic as the ask router
     llm_overrides = None
     if agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == scope.user.id))
         cfg = r_cfg.scalar_one_or_none()
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
@@ -187,7 +187,7 @@ async def generate_report(
     report_id = str(uuid.uuid4())
     report = Report(
         id=report_id,
-        user_id=user.id,
+        user_id=scope.user.id,
         agent_id=body.agentId,
         source_id=source.id,
         source_name=source.name,
@@ -214,7 +214,7 @@ async def list_reports(
     scope: TenantScope = Depends(require_membership),
 ):
     """List reports, optionally filtered by workspace (agent_id)."""
-    q = select(Report).where(Report.user_id == user.id).order_by(Report.created_at.desc())
+    q = select(Report).where(Report.user_id == scope.user.id).order_by(Report.created_at.desc())
     if agent_id:
         q = q.where(Report.agent_id == agent_id)
     r = await db.execute(q)
@@ -239,7 +239,7 @@ async def get_report(
     scope: TenantScope = Depends(require_membership),
 ):
     """Get a single report by id (metadata only, no HTML content)."""
-    r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == user.id))
+    r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == scope.user.id))
     rpt = r.scalar_one_or_none()
     if not rpt:
         raise HTTPException(404, "Report not found")
@@ -260,7 +260,7 @@ async def get_report_html(
     scope: TenantScope = Depends(require_membership),
 ):
     """Serve the HTML content of a report (for iframe or download)."""
-    r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == user.id))
+    r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == scope.user.id))
     rpt = r.scalar_one_or_none()
     if not rpt:
         raise HTTPException(404, "Report not found")
@@ -274,7 +274,7 @@ async def delete_report(
     scope: TenantScope = Depends(require_membership),
 ):
     """Delete a report."""
-    r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == user.id))
+    r = await db.execute(select(Report).where(Report.id == report_id, Report.user_id == scope.user.id))
     rpt = r.scalar_one_or_none()
     if not rpt:
         raise HTTPException(404, "Report not found")

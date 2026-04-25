@@ -145,7 +145,7 @@ async def add_member(
     r = await db.execute(
         select(OrganizationMembership).where(
             OrganizationMembership.organization_id == organization_id,
-            OrganizationMembership.user_id == user.id,
+            OrganizationMembership.user_id == scope.user.id,
         )
     )
     if r.scalar_one_or_none():
@@ -154,14 +154,14 @@ async def add_member(
     m = OrganizationMembership(
         id=str(uuid.uuid4()),
         organization_id=organization_id,
-        user_id=user.id,
+        user_id=scope.user.id,
         role=body.role,
     )
     db.add(m)
     await db.commit()
     return {
-        "user_id": user.id,
-        "email": user.email,
+        "user_id": scope.user.id,
+        "email": scope.user.email,
         "role": body.role,
     }
 
