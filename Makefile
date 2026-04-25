@@ -13,6 +13,7 @@ help:
 	@echo "  make build             Build frontend for production"
 	@echo "  make run               Build frontend and start backend (http://localhost:8000)"
 	@echo "  make dev               Start backend + frontend dev server with hot reload"
+	@echo "                          (auto-frees :5173 + :8000-8005 from our own zombies first)"
 	@echo "  make migrate           Run database migrations"
 	@echo "  make setup-env         Copy backend/.env.example to backend/.env (if not exists)"
 	@echo "  make lint              Run frontend linter"
@@ -49,7 +50,8 @@ run: build setup-env
 
 dev: setup-env
 	@echo "Starting backend and frontend dev server..."
-	@rm -f backend/.backend_port
+	@echo "Freeing dev ports (only kills our own uvicorn/data-talks/vite processes)..."
+	@./scripts/free-dev-ports.sh
 	@uv run data-talks run &
 	@echo "Waiting for backend to start..."
 	@for i in 1 2 3 4 5 6 7 8 9 10; do \
