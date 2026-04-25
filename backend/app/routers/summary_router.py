@@ -19,31 +19,14 @@ from app.scripts.summary_firebase import generate_table_summary_firebase
 from app.scripts.summary_sql import generate_table_summary_sql
 from app.scripts.summary_google_sheets import generate_table_summary_google_sheets
 
-
-def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None:
-    """Build overrides dict from LlmConfig or LlmSettings for chat_completion."""
-    if not cfg:
-        return None
-    overrides = {}
-    if cfg.llm_provider:
-        overrides["llm_provider"] = cfg.llm_provider
-    if getattr(cfg, "openai_api_key", None):
-        overrides["openai_api_key"] = cfg.openai_api_key
-    if getattr(cfg, "openai_base_url", None):
-        overrides["openai_base_url"] = cfg.openai_base_url
-    if getattr(cfg, "openai_model", None):
-        overrides["openai_model"] = cfg.openai_model
-    if getattr(cfg, "ollama_base_url", None):
-        overrides["ollama_base_url"] = cfg.ollama_base_url
-    if getattr(cfg, "ollama_model", None):
-        overrides["ollama_model"] = cfg.ollama_model
-    if getattr(cfg, "litellm_base_url", None):
-        overrides["litellm_base_url"] = cfg.litellm_base_url
-    if getattr(cfg, "litellm_model", None):
-        overrides["litellm_model"] = cfg.litellm_model
-    if getattr(cfg, "litellm_api_key", None):
-        overrides["litellm_api_key"] = cfg.litellm_api_key
-    return overrides if overrides else None
+# Single source of truth for translating an LlmConfig/LlmSettings row into
+# the dict shape `chat_completion` expects. Re-exporting here keeps
+# existing imports of `summary_router._llm_config_to_overrides` working
+# (e.g. tests, future callers) while ensuring the helper only lives in
+# one place. We previously had a divergent copy here that omitted
+# claude_code_*/anthropic_*/google_* fields — that caused Claude OAuth
+# summaries to fall through to a stale on-disk token and 401.
+from app.routers.ask import _llm_config_to_overrides  # noqa: F401  (re-export)
 
 
 router = APIRouter(prefix="/table_summaries", tags=["summary"])

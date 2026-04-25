@@ -300,25 +300,31 @@ async def _claude_code_via_api(
     THREE things hold:
 
       1. Header `anthropic-beta: oauth-2025-04-20`.
-      2. The system block starts with the exact identification string
-         the CLI uses: "You are Claude Code, Anthropic's official CLI
-         for Claude.". We auto-prepend it.
-      3. The request DOES NOT carry an `x-api-key` header, even empty.
-         The official `anthropic` Python SDK with `auth_token=...` adds
-         BOTH `Authorization: Bearer <token>` AND `x-api-key:` (empty
-         string). Anthropic validates `x-api-key` first and returns 401
-         on the empty value before the Bearer token is even considered.
-         The smaller-prompt /test endpoint sometimes squeezes through
-         (probably due to caching / a less-strict path), but anything
-         non-trivial 401s.
+      2. The first system content block starts with the exact CLI
+         identification string ("You are Claude Code, Anthropic's
+         official CLI for Claude."). We send it as a structured block
+         so it can't be coalesced with caller-provided system text.
+      3. The request must NOT carry an `x-api-key` header. The official
+         `anthropic` SDK only emits `X-Api-Key` when `api_key` is a
+         truthy string — passing `api_key=None` (the default) skips it
+         and only the `Authorization: Bearer <token>` header is sent,
+         which is what Anthropic accepts for OAuth.
 
-    To get around #3 we bypass the SDK and use httpx directly so we can
-    send only the headers we want.
+    We use `anthropic.AsyncAnthropic` here rather than raw httpx so we
+    inherit the SDK's retry/timeout/typing infrastructure and so any
+    future `anthropic-version` bump is picked up automatically. An
+    earlier revision used httpx because we believed the SDK forced an
+    empty `X-Api-Key`; reading the SDK source (`_api_key_auth` returns
+    `{}` when `api_key is None`) showed that was a misdiagnosis.
+
+    Rate-limit handling: on HTTP 429 we extract the `retry-after`
+    header (in seconds) and surface it in the error so the UI can show
+    a useful "try again in N seconds" message.
 
     Returns the same `(content, usage, trace)` shape as `_anthropic_chat`
     so the dispatch layer is provider-agnostic.
     """
-    import httpx
+    from anthropic import APIStatusError, AsyncAnthropic, RateLimitError
 
     model = (cfg.get("claude_code_model") or "claude-sonnet-4-20250514").strip()
 
@@ -330,57 +336,77 @@ async def _claude_code_via_api(
         else:
             user_messages.append({"role": m["role"], "content": m.get("content", "")})
 
-    # Anthropic refuses OAuth requests whose first system block doesn't
-    # claim the Claude Code CLI identity. Prepend it once; preserve
-    # whatever the caller wanted underneath.
+    # Send the system prompt as structured blocks. Block 0 carries the
+    # required Claude Code identity string; block 1 (if non-empty)
+    # carries whatever the caller wanted. Keeping them in separate
+    # blocks (rather than concatenating into one string) matches what
+    # the Claude CLI itself sends and is the form Anthropic's OAuth
+    # validator is friendliest to.
     REQUIRED_PREFIX = "You are Claude Code, Anthropic's official CLI for Claude."
-    if not system_text.startswith(REQUIRED_PREFIX):
-        system_text = REQUIRED_PREFIX + ("\n\n" + system_text if system_text else "")
+    system_blocks: list[dict[str, str]] = [{"type": "text", "text": REQUIRED_PREFIX}]
+    if system_text:
+        system_blocks.append({"type": "text", "text": system_text})
 
-    payload: dict[str, Any] = {
-        "model": model,
-        "messages": user_messages,
-        "max_tokens": max_tokens,
-        "system": system_text,
-    }
+    # api_key=None is critical: it tells the SDK not to emit X-Api-Key,
+    # so only the Authorization Bearer header is sent. The OAuth beta
+    # header is required for user-scoped tokens.
+    client = AsyncAnthropic(
+        api_key=None,
+        auth_token=oauth_token,
+        default_headers={"anthropic-beta": "oauth-2025-04-20"},
+        timeout=120.0,
+    )
 
-    # Build headers explicitly. The Authorization Bearer is the OAuth
-    # token; we deliberately do NOT include x-api-key (see docstring
-    # for why). `anthropic-version` and the OAuth beta are required.
-    headers = {
-        "Authorization": f"Bearer {oauth_token}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "oauth-2025-04-20",
-    }
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        r = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            json=payload,
-            headers=headers,
+    try:
+        resp = await client.messages.create(
+            model=model,
+            messages=user_messages,
+            max_tokens=max_tokens,
+            system=system_blocks,
         )
-    if r.status_code >= 400:
-        # Surface Anthropic's actual response body — strip noisy HTML
-        # to keep the error log short.
-        snippet = (r.text or "").strip()[:600]
+    except RateLimitError as e:
+        # Anthropic returns `retry-after` in seconds (sometimes as an
+        # HTTP-date, but seconds is the common case for their API). We
+        # parse defensively so a malformed header doesn't blow up the
+        # error path.
+        retry_after_raw = ""
+        try:
+            retry_after_raw = (e.response.headers.get("retry-after") or "").strip()
+        except Exception:  # noqa: BLE001 - defensive on any header access
+            retry_after_raw = ""
+        retry_after_secs: int | None = None
+        if retry_after_raw.isdigit():
+            retry_after_secs = int(retry_after_raw)
+        suffix = (
+            f" Try again in ~{retry_after_secs}s."
+            if retry_after_secs
+            else " Try again in a moment."
+        )
+        raise RuntimeError(
+            "Anthropic rate limit hit on your Claude account (HTTP 429)." + suffix
+        ) from e
+    except APIStatusError as e:
+        # Surface Anthropic's actual response body — capped — so the
+        # operator sees what the API complained about (auth / model /
+        # quota / etc.) without dragging the full HTML page into logs.
+        try:
+            body_snippet = (e.response.text or "").strip()[:600]
+        except Exception:  # noqa: BLE001
+            body_snippet = str(e)[:600]
         raise RuntimeError(
             f"Anthropic Messages API rejected the OAuth token "
-            f"(HTTP {r.status_code}): {snippet}"
-        )
-    data = r.json()
+            f"(HTTP {e.status_code}): {body_snippet}"
+        ) from e
 
     content = ""
-    for block in data.get("content") or []:
-        if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
-            content += block["text"]
+    for block in resp.content or []:
+        if getattr(block, "type", None) == "text" and getattr(block, "text", None):
+            content += block.text
     content = content.strip()
 
-    usage_block = data.get("usage") or {}
-    input_t = usage_block.get("input_tokens", 0)
-    output_t = usage_block.get("output_tokens", 0)
-    finish = data.get("stop_reason")
+    input_t = getattr(resp.usage, "input_tokens", 0) if resp.usage else 0
+    output_t = getattr(resp.usage, "output_tokens", 0) if resp.usage else 0
+    finish = getattr(resp, "stop_reason", None)
     trace = _build_trace(messages, None, content=content, finish_reason=finish)
     return content, _usage("claude-code", model, input_t, output_t), trace
 

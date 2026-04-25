@@ -33,33 +33,10 @@ class GenerateAudioOverviewRequest(BaseModel):
     sourceId: Optional[str] = None
 
 
-def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None:
-    if not cfg:
-        return None
-    overrides = {}
-    if cfg.llm_provider:
-        overrides["llm_provider"] = cfg.llm_provider
-    if getattr(cfg, "openai_api_key", None):
-        overrides["openai_api_key"] = cfg.openai_api_key
-    if getattr(cfg, "openai_base_url", None):
-        overrides["openai_base_url"] = cfg.openai_base_url
-    if getattr(cfg, "openai_model", None):
-        overrides["openai_model"] = cfg.openai_model
-    if getattr(cfg, "openai_audio_model", None):
-        overrides["openai_audio_model"] = cfg.openai_audio_model
-    if getattr(cfg, "ollama_base_url", None):
-        overrides["ollama_base_url"] = cfg.ollama_base_url
-    if getattr(cfg, "ollama_model", None):
-        overrides["ollama_model"] = cfg.ollama_model
-    if getattr(cfg, "litellm_base_url", None):
-        overrides["litellm_base_url"] = cfg.litellm_base_url
-    if getattr(cfg, "litellm_model", None):
-        overrides["litellm_model"] = cfg.litellm_model
-    if getattr(cfg, "litellm_audio_model", None):
-        overrides["litellm_audio_model"] = cfg.litellm_audio_model
-    if getattr(cfg, "litellm_api_key", None):
-        overrides["litellm_api_key"] = cfg.litellm_api_key
-    return overrides if overrides else None
+# Re-export the canonical helper from ask.py so all callers (ask /
+# summary / report / audio_overview) translate LlmConfig the same way.
+# Divergent copies caused Claude OAuth flows to drop the token field.
+from app.routers.ask import _llm_config_to_overrides  # noqa: F401  (re-export)
 
 
 async def _effective_llm_overrides(db: AsyncSession, user: User, agent: Agent) -> dict | None:

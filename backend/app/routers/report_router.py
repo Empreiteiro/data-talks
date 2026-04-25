@@ -20,30 +20,10 @@ from app.scripts.report_sql import generate_report_sql
 from app.scripts.report_google_sheets import generate_report_google_sheets
 
 
-def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None:
-    """Build overrides dict from LlmConfig or LlmSettings for chat_completion."""
-    if not cfg:
-        return None
-    overrides = {}
-    if cfg.llm_provider:
-        overrides["llm_provider"] = cfg.llm_provider
-    if getattr(cfg, "openai_api_key", None):
-        overrides["openai_api_key"] = cfg.openai_api_key
-    if getattr(cfg, "openai_base_url", None):
-        overrides["openai_base_url"] = cfg.openai_base_url
-    if getattr(cfg, "openai_model", None):
-        overrides["openai_model"] = cfg.openai_model
-    if getattr(cfg, "ollama_base_url", None):
-        overrides["ollama_base_url"] = cfg.ollama_base_url
-    if getattr(cfg, "ollama_model", None):
-        overrides["ollama_model"] = cfg.ollama_model
-    if getattr(cfg, "litellm_base_url", None):
-        overrides["litellm_base_url"] = cfg.litellm_base_url
-    if getattr(cfg, "litellm_model", None):
-        overrides["litellm_model"] = cfg.litellm_model
-    if getattr(cfg, "litellm_api_key", None):
-        overrides["litellm_api_key"] = cfg.litellm_api_key
-    return overrides if overrides else None
+# Re-export the canonical helper so this router doesn't drift from the
+# one in ask.py — divergent copies caused Claude OAuth report calls to
+# strip the token and 401 against Anthropic.
+from app.routers.ask import _llm_config_to_overrides  # noqa: F401  (re-export)
 
 
 def _validate_llm_config(llm_overrides: dict | None, settings) -> None:

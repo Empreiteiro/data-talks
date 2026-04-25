@@ -63,6 +63,8 @@ def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None
         overrides["openai_base_url"] = cfg.openai_base_url
     if getattr(cfg, "openai_model", None):
         overrides["openai_model"] = cfg.openai_model
+    if getattr(cfg, "openai_audio_model", None):
+        overrides["openai_audio_model"] = cfg.openai_audio_model
     if getattr(cfg, "ollama_base_url", None):
         overrides["ollama_base_url"] = cfg.ollama_base_url
     if getattr(cfg, "ollama_model", None):
@@ -71,12 +73,29 @@ def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None
         overrides["litellm_base_url"] = cfg.litellm_base_url
     if getattr(cfg, "litellm_model", None):
         overrides["litellm_model"] = cfg.litellm_model
+    if getattr(cfg, "litellm_audio_model", None):
+        overrides["litellm_audio_model"] = cfg.litellm_audio_model
     if getattr(cfg, "litellm_api_key", None):
         overrides["litellm_api_key"] = cfg.litellm_api_key
     if getattr(cfg, "claude_code_model", None):
         overrides["claude_code_model"] = cfg.claude_code_model
     if getattr(cfg, "claude_code_oauth_token", None):
         overrides["claude_code_oauth_token"] = cfg.claude_code_oauth_token
+    # Anthropic and Google API providers — same pattern. Without these,
+    # `chat_completion` would fall back to env-level credentials which
+    # are usually empty in production. The bug we hit before this was
+    # added: a Claude Code summary call dropped the OAuth token because
+    # the helper only enumerated openai/ollama/litellm, then
+    # `_resolve_oauth_token` fell through to a stale on-disk token from
+    # ~/.last-intelligence and produced HTTP 401.
+    if getattr(cfg, "anthropic_api_key", None):
+        overrides["anthropic_api_key"] = cfg.anthropic_api_key
+    if getattr(cfg, "anthropic_model", None):
+        overrides["anthropic_model"] = cfg.anthropic_model
+    if getattr(cfg, "google_api_key", None):
+        overrides["google_api_key"] = cfg.google_api_key
+    if getattr(cfg, "google_model", None):
+        overrides["google_model"] = cfg.google_model
     return overrides if overrides else None
 
 
