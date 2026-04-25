@@ -26,9 +26,9 @@ interface Agent {
 }
 
 const WORKSPACE_TYPES = [
-  { id: "analysis", label: "Data Analysis", icon: BarChart3, description: "Ask questions about your data, generate reports and charts" },
-  { id: "cdp", label: "Customer Data Platform", icon: Users, description: "Unify customer data, create segments, and activate audiences" },
-  { id: "etl", label: "ETL Pipeline", icon: RefreshCw, description: "Transform and orchestrate data pipelines between sources" },
+  { id: "analysis", label: "Data Analysis", icon: BarChart3, description: "Ask questions about your data, generate reports and charts", beta: false },
+  { id: "cdp", label: "Customer Data Platform", icon: Users, description: "Unify customer data, create segments, and activate audiences", beta: true },
+  { id: "etl", label: "ETL Pipeline", icon: RefreshCw, description: "Transform and orchestrate data pipelines between sources", beta: true },
 ] as const;
 
 interface Dashboard {
@@ -602,7 +602,14 @@ const Index = () => {
                     <wt.icon className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold">{wt.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold">{wt.label}</p>
+                      {wt.beta && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                          Beta
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{wt.description}</p>
                   </div>
                 </div>
