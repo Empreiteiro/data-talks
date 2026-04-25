@@ -130,12 +130,24 @@ export function AddSourceModal({
   // at a time. Empty after the active one is processed.
   const [onboardingQueue, setOnboardingQueue] = useState<string[]>([]);
 
+  // Mirror of `onboardingSourceId` for synchronous reads. Child
+  // forms call `onSourceAdded(id)` and `onClose()` back-to-back in
+  // the same microtask; the React state update from the first call
+  // hasn't applied by the time the second runs, so a closure-only
+  // check would see null and let the modal close prematurely. The
+  // ref is updated synchronously inside our `enqueueOnboarding`
+  // setter callback, so `handleChildClose` sees the truth right
+  // away. This was the cause of "I added a source but the
+  // onboarding modal never appeared".
+  const onboardingSourceIdRef = useRef<string | null>(null);
+
   const enqueueOnboarding = useCallback((sourceId: string) => {
     setOnboardingSourceId((current) => {
       if (current) {
         setOnboardingQueue((q) => [...q, sourceId]);
         return current;
       }
+      onboardingSourceIdRef.current = sourceId;
       return sourceId;
     });
   }, []);
@@ -143,8 +155,12 @@ export function AddSourceModal({
   // Wraps the `onSourceAdded` we hand to child forms: instead of
   // bubbling the id straight up to the parent (which would close the
   // modal), we capture it locally and start the onboarding flow.
+  // Child forms sometimes call this with an empty id when something
+  // went wrong on their side — guard against that so we don't open
+  // an onboarding flow against a non-existent source.
   const handleChildSourceAdded = useCallback(
     (sourceId: string) => {
+      if (!sourceId) return;
       enqueueOnboarding(sourceId);
     },
     [enqueueOnboarding],
@@ -152,13 +168,13 @@ export function AddSourceModal({
 
   // Wraps `onClose` we hand to child forms. Children call onClose
   // immediately after onSourceAdded; if we let them, the modal would
-  // disappear before the user sees the onboarding step. While
-  // `onboardingSourceId` is set, swallow the close call.
+  // disappear before the user sees the onboarding step. Reads the
+  // ref (synchronous truth) rather than the state (lags one render).
   const handleChildClose = useCallback(() => {
-    if (!onboardingSourceId) {
+    if (!onboardingSourceIdRef.current) {
       onOpenChange(false);
     }
-  }, [onboardingSourceId, onOpenChange]);
+  }, [onOpenChange]);
 
   // Called when the SourceOnboarding component finishes (saved or skipped).
   // Bubbles the id to the parent and either advances to the next queued
@@ -168,11 +184,13 @@ export function AddSourceModal({
       onSourceAdded?.(finishedId);
       setOnboardingQueue((q) => {
         if (q.length === 0) {
+          onboardingSourceIdRef.current = null;
           setOnboardingSourceId(null);
           onOpenChange(false);
           return q;
         }
         const [next, ...rest] = q;
+        onboardingSourceIdRef.current = next;
         setOnboardingSourceId(next);
         return rest;
       });
@@ -185,6 +203,7 @@ export function AddSourceModal({
     // want onboarding right now" and just dismiss everything. The
     // source itself was already created by the child form.
     setOnboardingQueue([]);
+    onboardingSourceIdRef.current = null;
     setOnboardingSourceId(null);
     onOpenChange(false);
   }, [onOpenChange]);
