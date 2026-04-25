@@ -45,7 +45,7 @@ class CdpSegmentRequest(BaseModel):
     enrichedSchema: Optional[dict] = None
 
 
-async def _get_agent_and_llm(agent_id: str, user: User, db: AsyncSession):
+async def _get_agent_and_llm(agent_id: str, scope: "TenantScope", db: AsyncSession):
     r = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = r.scalar_one_or_none()
     if not agent:
@@ -69,7 +69,7 @@ async def suggest_identity_resolution(
     db: AsyncSession = Depends(get_db),
 ):
     """AI suggests how to unify customer records across sources."""
-    agent, llm_overrides = await _get_agent_and_llm(body.agentId, user, db)
+    agent, llm_overrides = await _get_agent_and_llm(body.agentId, scope, db)
 
     # Load all active sources for this workspace
     r = await db.execute(
@@ -102,7 +102,7 @@ async def suggest_enrichment(
     db: AsyncSession = Depends(get_db),
 ):
     """AI suggests customer metrics to calculate."""
-    agent, llm_overrides = await _get_agent_and_llm(body.agentId, user, db)
+    agent, llm_overrides = await _get_agent_and_llm(body.agentId, scope, db)
 
     config = agent.workspace_config or {}
     unified_schema = body.unifiedSchema or config.get("identity_resolution", {})
@@ -130,7 +130,7 @@ async def suggest_segmentation(
     db: AsyncSession = Depends(get_db),
 ):
     """AI suggests customer segmentation rules."""
-    agent, llm_overrides = await _get_agent_and_llm(body.agentId, user, db)
+    agent, llm_overrides = await _get_agent_and_llm(body.agentId, scope, db)
 
     config = agent.workspace_config or {}
     enriched_schema = body.enrichedSchema or config.get("enrichment", {})
@@ -259,7 +259,7 @@ async def materialize_cdp_table(
     # when configured. We first materialize to a local cache path so pandas
     # can write directly to disk, then hand the bytes to storage to mirror
     # the write to S3.
-    output_filename = f"{user.id}/{uuid.uuid4().hex[:8]}_{body.tableName}.csv"
+    output_filename = f"{scope.user.id}/{uuid.uuid4().hex[:8]}_{body.tableName}.csv"
     import io as _io
     buf = _io.BytesIO()
     result_df.to_csv(buf, index=False)
@@ -280,8 +280,8 @@ async def materialize_cdp_table(
     # Create new Source in DB
     source = Source(
         id=str(uuid.uuid4()),
-        user_id=user.id,
-        organization_id=user.organization_id or user.id,
+        user_id=scope.user.id,
+        organization_id=scope.organization_id or scope.user.id,
         agent_id=agent.id,
         name=f"{body.tableName}.csv",
         type="csv",

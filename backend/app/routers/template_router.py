@@ -80,7 +80,7 @@ async def list_templates(
     from sqlalchemy import or_
     q = select(ReportTemplate).where(
         ReportTemplate.source_type == source.type,
-        ReportTemplate.user_id == user.id,
+        ReportTemplate.user_id == scope.user.id,
         ReportTemplate.is_builtin == False,
         or_(
             ReportTemplate.agent_id == source.agent_id,
@@ -147,8 +147,8 @@ async def run_template(
             template=template,
             source=source,
             db=db,
-            user_id=user.id,
-            organization_id=user.organization_id,
+            user_id=scope.user.id,
+            organization_id=scope.organization_id,
             filters=filters,
             date_range=date_range,
             disabled_queries=disabled_queries,
@@ -176,7 +176,7 @@ async def list_template_runs(
         .where(
             ReportTemplateRun.source_id == source_id,
             ReportTemplateRun.template_id == template_id,
-            ReportTemplateRun.user_id == user.id,
+            ReportTemplateRun.user_id == scope.user.id,
         )
         .order_by(ReportTemplateRun.created_at.desc())
         .limit(limit)
@@ -321,8 +321,8 @@ async def generate_template(
 
     tpl = ReportTemplate(
         id=str(uuid.uuid4()),
-        user_id=user.id,
-        organization_id=user.organization_id,
+        user_id=scope.user.id,
+        organization_id=scope.organization_id,
         agent_id=body.agentId,
         source_type=source.type,
         name=parsed.get("name", "AI-Generated Template"),
@@ -360,7 +360,7 @@ async def delete_template(
     r = await db.execute(
         select(ReportTemplate).where(
             ReportTemplate.id == template_id,
-            ReportTemplate.user_id == user.id,
+            ReportTemplate.user_id == scope.user.id,
             ReportTemplate.is_builtin == False,
         )
     )
@@ -495,7 +495,7 @@ async def run_template_as_report(
     # Step 1: Execute template queries
     run_result = await template_executor.execute_template(
         template=template, source=source, db=db,
-        user_id=user.id, organization_id=user.organization_id,
+        user_id=scope.user.id, organization_id=scope.organization_id,
         data_files_dir=settings.data_files_dir,
     )
 
@@ -635,7 +635,7 @@ async def run_template_as_report(
     report_id = str(uuid.uuid4())
     report = Report(
         id=report_id,
-        user_id=user.id,
+        user_id=scope.user.id,
         agent_id=body.agentId,
         source_id=source.id,
         source_name=f"{source.name} — {template.get('name', 'Template')}",
@@ -666,7 +666,7 @@ async def list_template_reports(
     """List reports generated from a specific template."""
     r = await db.execute(
         select(Report)
-        .where(Report.template_id == template_id, Report.user_id == user.id)
+        .where(Report.template_id == template_id, Report.user_id == scope.user.id)
         .order_by(Report.created_at.desc())
         .limit(20)
     )
@@ -698,7 +698,7 @@ async def update_template_queries(
     r = await db.execute(
         select(ReportTemplate).where(
             ReportTemplate.id == template_id,
-            ReportTemplate.user_id == user.id,
+            ReportTemplate.user_id == scope.user.id,
             ReportTemplate.is_builtin == False,
         )
     )
@@ -738,7 +738,7 @@ async def add_query_to_template(
     r_tpl = await db.execute(
         select(ReportTemplate).where(
             ReportTemplate.id == template_id,
-            ReportTemplate.user_id == user.id,
+            ReportTemplate.user_id == scope.user.id,
             ReportTemplate.is_builtin == False,
         )
     )
@@ -859,7 +859,7 @@ async def run_template_with_commentary(
     # Execute queries
     run_result = await template_executor.execute_template(
         template=template, source=source, db=db,
-        user_id=user.id, organization_id=user.organization_id,
+        user_id=scope.user.id, organization_id=scope.organization_id,
         filters=body.filters, date_range=body.dateRange,
         disabled_queries=body.disabledQueries,
         data_files_dir=settings.data_files_dir,
@@ -911,7 +911,7 @@ async def customize_template(
 
     # Check if user already has a customization
     q = select(ReportTemplate).where(
-        ReportTemplate.user_id == user.id,
+        ReportTemplate.user_id == scope.user.id,
         ReportTemplate.source_type == source.type,
         ReportTemplate.name == original.get("name", ""),
         ReportTemplate.is_builtin == False,
@@ -930,8 +930,8 @@ async def customize_template(
     else:
         new_tpl = ReportTemplate(
             id=str(uuid.uuid4()),
-            user_id=user.id,
-            organization_id=user.organization_id,
+            user_id=scope.user.id,
+            organization_id=scope.organization_id,
             source_type=source.type,
             name=original.get("name", ""),
             description=original.get("description", ""),
@@ -964,7 +964,7 @@ async def reset_template_customization(
         raise HTTPException(404, "Template not found")
 
     q = select(ReportTemplate).where(
-        ReportTemplate.user_id == user.id,
+        ReportTemplate.user_id == scope.user.id,
         ReportTemplate.source_type == source.type,
         ReportTemplate.name == original.get("name", ""),
         ReportTemplate.is_builtin == False,

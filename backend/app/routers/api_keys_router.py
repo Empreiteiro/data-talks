@@ -64,7 +64,7 @@ async def create_api_key(
     raw_key = _generate_raw_key()
     api_key = ApiKey(
         id=str(uuid.uuid4()),
-        user_id=user.id,
+        user_id=scope.user.id,
         agent_id=body.agent_id,
         name=body.name,
         key_hash=_hash_api_key(raw_key),

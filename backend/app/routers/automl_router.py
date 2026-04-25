@@ -48,14 +48,14 @@ def _user_llm_overrides(llm_row: LlmSettings | LlmConfig | None) -> dict | None:
     return overrides if overrides else None
 
 
-async def _resolve_llm_overrides(db: AsyncSession, user: User, agent: Agent) -> dict | None:
+async def _resolve_llm_overrides(db: AsyncSession, scope: "TenantScope", agent: Agent) -> dict | None:
     """Resolve LLM config: agent-level config > user settings > env."""
     if agent.llm_config_id:
         r = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
         config = r.scalar_one_or_none()
         if config:
             return _user_llm_overrides(config)
-    r = await db.execute(select(LlmSettings).where(LlmSettings.user_id == user.id))
+    r = await db.execute(select(LlmSettings).where(LlmSettings.user_id == scope.user.id))
     return _user_llm_overrides(r.scalar_one_or_none())
 
 
@@ -164,7 +164,7 @@ async def train_automl(
     if not source:
         raise HTTPException(404, "Source not found")
 
-    llm_overrides = await _resolve_llm_overrides(db, user, agent)
+    llm_overrides = await _resolve_llm_overrides(db, scope, agent)
 
     df = _load_source_dataframe(source)
     result = await run_automl(
@@ -177,7 +177,7 @@ async def train_automl(
     run_id = str(uuid.uuid4())
     run = AutoMLRun(
         id=run_id,
-        user_id=user.id,
+        user_id=scope.user.id,
         agent_id=body.agentId,
         source_id=source.id,
         source_name=source.name,
@@ -221,7 +221,7 @@ async def list_runs(
     """List Auto ML runs, optionally filtered by workspace."""
     q = (
         select(AutoMLRun)
-        .where(AutoMLRun.user_id == user.id)
+        .where(AutoMLRun.user_id == scope.user.id)
         .order_by(AutoMLRun.created_at.desc())
     )
     if agent_id:
@@ -238,7 +238,7 @@ async def get_run(
 ):
     """Get a single Auto ML run."""
     r = await db.execute(
-        select(AutoMLRun).where(AutoMLRun.id == run_id, AutoMLRun.user_id == user.id)
+        select(AutoMLRun).where(AutoMLRun.id == run_id, AutoMLRun.user_id == scope.user.id)
     )
     run = r.scalar_one_or_none()
     if not run:
@@ -254,7 +254,7 @@ async def delete_run(
 ):
     """Delete an Auto ML run."""
     r = await db.execute(
-        select(AutoMLRun).where(AutoMLRun.id == run_id, AutoMLRun.user_id == user.id)
+        select(AutoMLRun).where(AutoMLRun.id == run_id, AutoMLRun.user_id == scope.user.id)
     )
     run = r.scalar_one_or_none()
     if not run:

@@ -90,7 +90,7 @@ async def generate_summary(
     # Same resolution logic as the ask router
     llm_overrides = None
     if agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id))
+        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == scope.user.id))
         cfg = r_cfg.scalar_one_or_none()
         if cfg:
             llm_overrides = _llm_config_to_overrides(cfg)
@@ -173,7 +173,7 @@ async def generate_summary(
     summary_id = str(uuid.uuid4())
     summary = TableSummary(
         id=summary_id,
-        user_id=user.id,
+        user_id=scope.user.id,
         agent_id=body.agentId,
         source_id=source.id,
         source_name=source.name,
@@ -201,7 +201,7 @@ async def list_summaries(
     scope: TenantScope = Depends(require_membership),
 ):
     """List table summaries, optionally filtered by workspace (agent_id)."""
-    q = select(TableSummary).where(TableSummary.user_id == user.id).order_by(TableSummary.created_at.desc())
+    q = select(TableSummary).where(TableSummary.user_id == scope.user.id).order_by(TableSummary.created_at.desc())
     if agent_id:
         q = q.where(TableSummary.agent_id == agent_id)
     r = await db.execute(q)
@@ -227,7 +227,7 @@ async def get_summary(
     scope: TenantScope = Depends(require_membership),
 ):
     """Get a single table summary by id."""
-    r = await db.execute(select(TableSummary).where(TableSummary.id == summary_id, TableSummary.user_id == user.id))
+    r = await db.execute(select(TableSummary).where(TableSummary.id == summary_id, TableSummary.user_id == scope.user.id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Summary not found")
@@ -249,7 +249,7 @@ async def delete_summary(
     scope: TenantScope = Depends(require_membership),
 ):
     """Delete a table summary."""
-    r = await db.execute(select(TableSummary).where(TableSummary.id == summary_id, TableSummary.user_id == user.id))
+    r = await db.execute(select(TableSummary).where(TableSummary.id == summary_id, TableSummary.user_id == scope.user.id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Summary not found")
