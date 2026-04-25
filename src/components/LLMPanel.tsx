@@ -37,6 +37,21 @@ import {
 const OPENAI_AUDIO_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"];
 const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI-compatible", ollama: "Ollama", litellm: "LiteLLM", google: "Google Gemini", anthropic: "Anthropic Claude" };
 
+/** Models the Claude Code OAuth flow's `user:inference` scope is allowed
+ *  to drive, mirrored from the official `claude --model` choices. Order
+ *  is "tier first, recency next" so the most useful options surface near
+ *  the top of the dropdown. The escape-hatch "Other" option in the UI
+ *  preserves free-text entry for anything we forget to list here. */
+const CLAUDE_CODE_MODELS: Array<{ id: string; label: string }> = [
+  { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
+  { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4 (May 2025)" },
+  { id: "claude-opus-4-5", label: "Claude Opus 4.5" },
+  { id: "claude-opus-4-20250514", label: "Claude Opus 4 (May 2025)" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+  { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
+];
+
 interface LlmConfig {
   id: string;
   name: string;
@@ -620,12 +635,47 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
         <>
           <div className="space-y-2">
             <Label>Model</Label>
-            <Input
-              placeholder="claude-sonnet-4-20250514"
-              value={claudeCodeModel}
-              onChange={(e) => setClaudeCodeModel(e.target.value)}
+            {/* Valid Claude models the OAuth flow's `user:inference` scope
+                can drive. The list mirrors what the official Claude CLI
+                exposes via `--model`. We keep an "other" escape hatch for
+                forward compatibility — Anthropic ships new model IDs
+                periodically and we don't want users blocked by a stale
+                dropdown. The custom-input branch behaves like the legacy
+                free-text field. */}
+            <Select
+              value={CLAUDE_CODE_MODELS.some((m) => m.id === claudeCodeModel) ? claudeCodeModel : "__custom__"}
+              onValueChange={(v) => {
+                if (v === "__custom__") {
+                  // keep whatever the user already typed
+                  setClaudeCodeModel(claudeCodeModel || "");
+                } else {
+                  setClaudeCodeModel(v);
+                }
+              }}
               disabled={saving}
-            />
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CLAUDE_CODE_MODELS.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    <span className="font-medium">{m.label}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{m.id}</span>
+                  </SelectItem>
+                ))}
+                <SelectItem value="__custom__">Other (type model ID below)</SelectItem>
+              </SelectContent>
+            </Select>
+            {!CLAUDE_CODE_MODELS.some((m) => m.id === claudeCodeModel) && (
+              <Input
+                className="mt-2"
+                placeholder="claude-sonnet-4-20250514"
+                value={claudeCodeModel}
+                onChange={(e) => setClaudeCodeModel(e.target.value)}
+                disabled={saving}
+              />
+            )}
           </div>
           <div className="space-y-2">
             <Label>OAuth token</Label>
