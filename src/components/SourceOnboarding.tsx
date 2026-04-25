@@ -39,6 +39,16 @@ export interface SourceOnboardingProps {
   onDone: (sourceId: string) => void;
   /** Called when the user explicitly cancels — modal should close. */
   onCancel: () => void;
+  /**
+   * If true, skip the "this source has been onboarded before → load
+   * saved" gate and always call POST /onboarding/profile to re-run
+   * the LLM. Used by the "re-run setup" entry point next to the
+   * Available Columns header — the user explicitly asked for fresh
+   * suggestions, so even a previously-completed source goes back
+   * through the wizard. Default: false (auto-detect via
+   * `onboarding_completed_at`).
+   */
+  forceFresh?: boolean;
 }
 
 interface Clarification {
@@ -61,7 +71,7 @@ interface Kpi {
 
 type Step = "loading" | "clarifications" | "warmups" | "kpis" | "saving";
 
-export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardingProps) {
+export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = false }: SourceOnboardingProps) {
   const { language, t } = useLanguage();
   const [step, setStep] = useState<Step>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +111,11 @@ export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardin
         // the existing agent description, so users don't lose what
         // they previously typed in agent settings.
         setAgentInstructions(saved.agent_instructions || "");
-        if (saved.onboarding_completed_at) {
+        // `forceFresh` is the explicit "re-run setup" entry point —
+        // user clicked the refresh icon to ask for new LLM
+        // suggestions, so we skip the edit-existing branch even when
+        // `onboarding_completed_at` is set.
+        if (!forceFresh && saved.onboarding_completed_at) {
           setClarifications(saved.clarifications.map((c) => ({ ...c })));
           setWarmups(
             (saved.warmup_questions || []).map((w) => ({ text: w.text, selected: true })),
@@ -143,7 +157,7 @@ export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardin
     return () => {
       cancelled = true;
     };
-  }, [sourceId, language]);
+  }, [sourceId, language, forceFresh]);
 
   const persist = async (markSkipped: boolean) => {
     setStep("saving");

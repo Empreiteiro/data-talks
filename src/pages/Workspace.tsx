@@ -1,5 +1,6 @@
 import { AddSourceModal } from "@/components/AddSourceModal";
 import { AgentSettingsModal } from "@/components/AgentSettingsModal";
+import { SourceSettingsModal } from "@/components/SourceSettingsModal";
 import { AudioOverviewModal } from "@/components/AudioOverviewModal";
 import { ChartRenderer, ChartSpec } from "@/components/ChartRenderer";
 import { GraphViewModal } from "@/components/GraphViewModal";
@@ -48,7 +49,7 @@ import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
 import { workspaceSteps } from "@/components/walkthrough/steps/workspaceSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { BarChart3, Bot, ChevronRight, History, Layout, Link2, Loader2, RotateCcw, Send, Sparkles, Table, Terminal, Upload, X } from "lucide-react";
+import { BarChart3, Bot, ChevronRight, History, Layout, Link2, Loader2, RefreshCw, RotateCcw, Send, Settings2, Sparkles, Table, Terminal, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -296,6 +297,13 @@ export default function Workspace() {
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false);
   const [workspaceType, setWorkspaceType] = useState("analysis");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Source-scoped settings modal (different from the agent settings
+  // modal above): captures clarifications/warm-ups/KPIs/agent
+  // instructions that the source-onboarding flow stores. The mode
+  // tells the modal whether to load saved values for editing or
+  // re-run the LLM suggestion call.
+  const [sourceSettingsOpen, setSourceSettingsOpen] = useState(false);
+  const [sourceSettingsMode, setSourceSettingsMode] = useState<"fresh" | "edit">("edit");
   const [isMessagingModalOpen, setIsMessagingModalOpen] = useState(false);
   const [isApiAccessModalOpen, setIsApiAccessModalOpen] = useState(false);
   const [graphModalOpen, setGraphModalOpen] = useState(false);
@@ -785,6 +793,28 @@ export default function Workspace() {
               >
                 <Bot className="h-4 w-4" />
               </Button>
+
+              {/*
+                Source settings — separate from agent settings because
+                the data is per-source (clarifications, KPIs pinned to
+                the source) and lives in a different table. We
+                deliberately don't fold this into the agent-settings
+                modal: the user pointed out that some fields overlap
+                (e.g. agent.description / specific instructions), and
+                conflating the two screens would make it ambiguous
+                where to edit which.
+              */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  setSourceSettingsMode("edit");
+                  setSourceSettingsOpen(true);
+                }}
+                title={t('sourceSettings.title') || 'Source settings'}
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
               <SheetContent className="w-[400px] sm:w-[540px]">
                 <SheetHeader>
                   <SheetTitle>{t('workspace.previousConversations')}</SheetTitle>
@@ -850,6 +880,26 @@ export default function Workspace() {
                 <div className="flex items-center gap-2 mb-3">
                   <Table className="h-4 w-4 text-primary" />
                   <h3 className="text-sm font-medium">{t('questions.availableColumns')}</h3>
+                  {/*
+                    Re-run the source-onboarding wizard with fresh LLM
+                    suggestions. Lives next to "Available Columns"
+                    because that header is where users notice "wait,
+                    the AI doesn't actually know what these columns
+                    mean for my business" — and that's the exact gap
+                    the wizard fills (clarifications + warm-ups + KPIs).
+                  */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 ml-1"
+                    title={t("sourceSettings.rerun") || "Re-run source setup"}
+                    onClick={() => {
+                      setSourceSettingsMode("fresh");
+                      setSourceSettingsOpen(true);
+                    }}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {availableColumns.map((column, idx) => (
@@ -1171,6 +1221,18 @@ export default function Workspace() {
           loadWarmupQuestions();
           checkLlmStatus();
           toast.success("Configurações atualizadas");
+        }}
+      />
+
+      <SourceSettingsModal
+        open={sourceSettingsOpen}
+        onOpenChange={setSourceSettingsOpen}
+        agentId={id}
+        mode={sourceSettingsMode}
+        onSaved={() => {
+          // Mirror what AgentSettings does — pick up any warm-ups
+          // that landed on agent.suggested_questions during save.
+          loadWarmupQuestions();
         }}
       />
 
