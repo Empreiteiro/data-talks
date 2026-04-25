@@ -204,3 +204,81 @@ class GoldSuggestResponse(BaseModel):
     suggestions: list[dict]
     ddlPreviews: list[str] = []
     buildLogId: str
+
+
+# ---------------------------------------------------------------------------
+# Source onboarding (Task 3): payloads exchanged between the
+# `SourceOnboarding` UI and the onboarding router.
+#
+# Shape rationale: "suggested" and "saved" are kept as separate types
+# because the LLM call returns more than what the user actually
+# confirms. The `Saved` payloads mirror what gets persisted to
+# SourceClarification / Agent.suggested_questions / OrganizationKpi —
+# free-text edits are allowed before save.
+# ---------------------------------------------------------------------------
+
+
+class OnboardingClarificationSuggestion(BaseModel):
+    """LLM-generated clarifying question with no user answer yet."""
+    question: str
+
+
+class OnboardingClarificationSaved(BaseModel):
+    """A clarification the user confirmed (with their answer). `id` lets
+    the UI re-edit existing rows on a second pass through the flow."""
+    id: Optional[str] = None
+    question: str
+    answer: str
+
+
+class OnboardingWarmupQuestion(BaseModel):
+    """Suggested or saved warm-up question. Plain string in JSON, but
+    we wrap it so the API stays extensible (e.g. add `category` later)."""
+    text: str
+
+
+class OnboardingKpiSuggestion(BaseModel):
+    """LLM-generated KPI candidate. `dependencies` is a free-form dict
+    (typically `{"tables": [...], "columns": [...]}`) — see the
+    OrganizationKpi model for why."""
+    name: str
+    definition: str
+    dependencies: dict = {}
+
+
+class OnboardingKpiSaved(BaseModel):
+    """KPI the user confirmed/edited. `source_ids` is filled by the
+    server (it's always at least the source the flow was opened from);
+    the client may add more if it wants the KPI to span sources."""
+    id: Optional[str] = None
+    name: str
+    definition: str
+    dependencies: dict = {}
+    source_ids: list[str] = []
+
+
+class OnboardingProfileResponse(BaseModel):
+    """Returned by `POST /sources/{id}/onboarding/profile` — the source
+    profile the LLM saw, plus its initial suggestions."""
+    profile: dict
+    clarifications: list[OnboardingClarificationSuggestion] = []
+    warmup_questions: list[OnboardingWarmupQuestion] = []
+    kpis: list[OnboardingKpiSuggestion] = []
+
+
+class OnboardingSaveRequest(BaseModel):
+    """User-confirmed onboarding output. All three lists are optional —
+    skipping the flow saves nothing but still marks the source as
+    onboarded so we don't keep prompting."""
+    clarifications: list[OnboardingClarificationSaved] = []
+    warmup_questions: list[OnboardingWarmupQuestion] = []
+    kpis: list[OnboardingKpiSaved] = []
+
+
+class OnboardingSavedResponse(BaseModel):
+    """Returned by `POST /sources/{id}/onboarding/save` and
+    `GET /sources/{id}/onboarding`."""
+    clarifications: list[OnboardingClarificationSaved] = []
+    warmup_questions: list[OnboardingWarmupQuestion] = []
+    kpis: list[OnboardingKpiSaved] = []
+    onboarding_completed_at: Optional[str] = None

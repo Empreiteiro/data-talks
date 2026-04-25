@@ -829,6 +829,59 @@ export const apiClient = {
     );
   },
 
+  // -----------------------------------------------------------------
+  // Source onboarding (Task 3)
+  //
+  // Three endpoints power the guided post-connect flow:
+  // - profile + initial LLM suggestions
+  // - persist user-confirmed clarifications/warm-ups/KPIs
+  // - re-read saved learnings later
+  // Types are kept loose (`unknown` / `string`) on purpose — the UI
+  // builds proper types from these primitives.
+  // -----------------------------------------------------------------
+  async getSourceOnboardingProfile(sourceId: string, language?: string) {
+    return api<{
+      profile: Record<string, unknown>;
+      clarifications: Array<{ question: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{ name: string; definition: string; dependencies: Record<string, unknown> }>;
+    }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding/profile`, {
+      method: 'POST',
+      body: JSON.stringify({ language: language || undefined }),
+    });
+  },
+  async saveSourceOnboarding(
+    sourceId: string,
+    payload: {
+      clarifications: Array<{ id?: string; question: string; answer: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{
+        id?: string;
+        name: string;
+        definition: string;
+        dependencies?: Record<string, unknown>;
+        source_ids?: string[];
+      }>;
+    },
+  ) {
+    return api<{
+      clarifications: Array<{ id?: string; question: string; answer: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
+      onboarding_completed_at: string | null;
+    }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding/save`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async getSourceOnboarding(sourceId: string) {
+    return api<{
+      clarifications: Array<{ id?: string; question: string; answer: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
+      onboarding_completed_at: string | null;
+    }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding`, { method: 'GET' });
+  },
 
   async listOllamaModels(baseUrl?: string) {
     const params = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : '';

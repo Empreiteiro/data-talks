@@ -644,3 +644,66 @@ class GithubConnection(Base):
     selected_base_path: Mapped[str] = mapped_column(String(512), default="data-talks/pipelines")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Source onboarding: clarifications and KPIs captured the first time a user
+# connects a data source. Lives at the Organization level so KPIs can be
+# reused across sources / dashboards / agents (the user's intent was
+# specifically that a KPI defined on Source A should remain useful for a
+# panel mixing Sources A+B).
+#
+# Why two tables instead of a single JSON blob on Organization:
+#   - SourceClarification is per-source (questions about specific columns
+#     or tables in one source). Lookup pattern is "give me everything I
+#     learned about this source", which is one indexed FK.
+#   - OrganizationKpi is workspace-wide. A KPI references zero, one, or
+#     several sources via `source_ids` (JSON list); we don't model that as
+#     a join table because KPIs are a small user-facing list and the join
+#     would dwarf the data.
+#
+# Warm-up questions from onboarding land on Agent.suggested_questions
+# (the existing list) — we don't introduce a third place where starter
+# questions live.
+# ---------------------------------------------------------------------------
+
+
+class SourceClarification(Base):
+    """One Q/A pair the user supplied during the source onboarding flow.
+
+    Multiple rows per source: each clarification is a single LLM-generated
+    question (e.g. "What does column `mrr_usd` represent?") plus the user's
+    free-text answer. The Q&A pipeline reads these rows and prepends them
+    to the system prompt as additional source context.
+    """
+    __tablename__ = "source_clarifications"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
+    source_id: Mapped[str] = mapped_column(String(36), ForeignKey("sources.id"), index=True)
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class OrganizationKpi(Base):
+    """A KPI definition scoped to an organization, optionally pinned to one
+    or more sources.
+
+    `source_ids` is a JSON list of UUIDs (zero or more). Empty list = the
+    KPI is conceptual / cross-source. `dependencies` is a free-form JSON
+    blob describing which tables and columns the KPI reads from
+    (`{"tables": [...], "columns": [...]}`); kept loose on purpose because
+    the shape varies across SQL / BigQuery / sheets.
+    """
+    __tablename__ = "organization_kpis"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    definition: Mapped[str] = mapped_column(Text)
+    source_ids: Mapped[list] = mapped_column(JSON, default=list)
+    dependencies: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+

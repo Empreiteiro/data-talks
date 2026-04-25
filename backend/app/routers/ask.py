@@ -236,6 +236,55 @@ async def dispatch_question(
     settings = get_settings()
     data_files_dir = settings.data_files_dir
 
+    # Onboarding-derived workspace context: clarifications stored against
+    # the active source(s) plus KPIs defined in this organization. We
+    # build this once and fold it into the `agent_description` arg every
+    # `ask_*.py` script already accepts — that way no script signature
+    # has to change. KPIs that were pinned to any active source are
+    # included; KPIs pinned to zero sources also count (cross-source).
+    workspace_context_block = ""
+    try:
+        from app.llm.onboarding import build_workspace_context_block
+        from app.models import OrganizationKpi, SourceClarification
+        active_source_ids = {s.id for s in active_sources}
+        if active_source_ids:
+            clarifs_rows = await db.execute(
+                select(SourceClarification).where(
+                    SourceClarification.source_id.in_(active_source_ids),
+                    SourceClarification.organization_id == agent.organization_id,
+                )
+            )
+            clarifs = [
+                {"question": c.question, "answer": c.answer}
+                for c in clarifs_rows.scalars().all()
+            ]
+        else:
+            clarifs = []
+        kpi_rows = await db.execute(
+            select(OrganizationKpi).where(
+                OrganizationKpi.organization_id == agent.organization_id
+            )
+        )
+        kpis: list[dict] = []
+        for k in kpi_rows.scalars().all():
+            sids = k.source_ids or []
+            if not sids or any(sid in active_source_ids for sid in sids):
+                kpis.append({"name": k.name, "definition": k.definition})
+        workspace_context_block = build_workspace_context_block(clarifs, kpis)
+    except Exception:  # noqa: BLE001 - context is best-effort; never block Q&A
+        workspace_context_block = ""
+
+    def _description_for(a: Agent) -> str:
+        """Glue the workspace-context block onto the agent description.
+
+        Empty block (no clarifications/KPIs saved) → original
+        description passes through unchanged.
+        """
+        base = _build_agent_description(a)
+        if workspace_context_block:
+            return (workspace_context_block + ("\n\n" + base if base else "")).strip()
+        return base
+
     # Start lineage run. Tracking is best-effort; instrumentation failures must
     # never break dispatch, so start_run returns None on error and subsequent
     # calls are no-ops.
@@ -273,7 +322,7 @@ async def dispatch_question(
             sources=multi_sql_sources,
             relationships=multi_sql_relationships,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             llm_overrides=llm_overrides,
             history=history,
             channel=channel,
@@ -293,7 +342,7 @@ async def dispatch_question(
         result = await ask_csv(
             file_path=file_path,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             columns=meta.get("columns"),
             preview_rows=meta.get("preview_rows"),
@@ -313,7 +362,7 @@ async def dispatch_question(
         result = await ask_sqlite(
             file_path=file_path,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             table_infos=meta.get("table_infos"),
             data_files_dir=data_files_dir,
@@ -329,7 +378,7 @@ async def dispatch_question(
             sheet_name=meta.get("sheetName", "Sheet1"),
             available_columns=meta.get("availableColumns") or meta.get("available_columns"),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
@@ -340,7 +389,7 @@ async def dispatch_question(
         result = await ask_sql(
             connection_string=meta.get("connectionString", ""),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
@@ -359,7 +408,7 @@ async def dispatch_question(
             dataset_id=meta.get("datasetId", ""),
             tables=meta.get("tables", []),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
@@ -373,7 +422,7 @@ async def dispatch_question(
             project_source=meta.get("projectSource", "github"),
             connection_string=meta.get("connectionString", ""),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             github_token=meta.get("githubToken"),
             github_repo=meta.get("githubRepo", ""),
@@ -399,7 +448,7 @@ async def dispatch_question(
             github_repo=github_repo,
             file_path=file_path,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             github_token=meta.get("githubToken"),
             github_branch=meta.get("githubBranch", "main"),
@@ -419,7 +468,7 @@ async def dispatch_question(
             project_id=meta.get("projectId", ""),
             collections=meta.get("collections", []),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             collection_infos=meta.get("collection_infos"),
             llm_overrides=llm_overrides,
@@ -436,7 +485,7 @@ async def dispatch_question(
             database=meta.get("database", ""),
             collection=meta.get("collection", ""),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             schema=meta.get("schema"),
             preview=meta.get("preview"),
@@ -458,7 +507,7 @@ async def dispatch_question(
             columns=meta.get("columns"),
             preview=meta.get("preview"),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
@@ -475,7 +524,7 @@ async def dispatch_question(
             database_title=meta.get("databaseTitle", ""),
             properties=meta.get("properties"),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             preview=meta.get("preview"),
             llm_overrides=llm_overrides,
@@ -498,7 +547,7 @@ async def dispatch_question(
             schema=meta.get("schema", ""),
             tables=meta.get("tables", []),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
@@ -520,7 +569,7 @@ async def dispatch_question(
             data_path=meta.get("dataPath"),
             pagination=meta.get("pagination"),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             columns=meta.get("columns"),
             preview=meta.get("preview"),
@@ -543,7 +592,7 @@ async def dispatch_question(
             key=meta.get("key", ""),
             file_type=meta.get("fileType"),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             columns=meta.get("columns"),
             preview=meta.get("preview"),
@@ -559,7 +608,7 @@ async def dispatch_question(
         result = await ask_hubspot(
             api_key=hb_key,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
@@ -577,7 +626,7 @@ async def dispatch_question(
             email=jira_email,
             api_token=jira_token,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
@@ -592,7 +641,7 @@ async def dispatch_question(
             api_key=stripe_api_key,
             tables=meta.get("tables", []),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             table_infos=meta.get("table_infos"),
             llm_overrides=llm_overrides,
@@ -607,7 +656,7 @@ async def dispatch_question(
         result = await ask_pipedrive(
             api_token=pd_token,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
@@ -623,7 +672,7 @@ async def dispatch_question(
             access_token=sf_token,
             instance_url=sf_url,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,
@@ -642,7 +691,7 @@ async def dispatch_question(
             property_id=ga4_prop,
             tables=ga4_tables,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             table_infos=ga4_table_infos,
             llm_overrides=llm_overrides,
@@ -658,7 +707,7 @@ async def dispatch_question(
             access_token=ic_token,
             selected_resources=meta.get("selectedResources"),
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             schema_text=meta.get("schemaText"),
             preview=meta.get("preview"),
@@ -678,7 +727,7 @@ async def dispatch_question(
             owner=gh_owner,
             repo=gh_repo,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             tables_data=meta.get("tablesData"),
             schema_text=meta.get("schemaText"),
@@ -697,7 +746,7 @@ async def dispatch_question(
             store=sh_store,
             access_token=sh_token,
             question=question,
-            agent_description=_build_agent_description(agent),
+            agent_description=_description_for(agent),
             source_name=source.name,
             llm_overrides=llm_overrides,
             history=history,

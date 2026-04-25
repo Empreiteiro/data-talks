@@ -39,6 +39,7 @@ import { ShopifySourceForm, ShopifySourceFormHandle } from "@/components/Shopify
 import { SnowflakeSourceForm, SnowflakeSourceFormHandle } from "@/components/SnowflakeSourceForm";
 import { SqlSourceForm, SqlSourceFormHandle } from "@/components/SqlSourceForm";
 import { UploadSourceForm } from "@/components/UploadSourceForm";
+import { SourceOnboarding } from "@/components/SourceOnboarding";
 import { AwsCostSourceForm, AwsCostSourceFormHandle } from "@/components/AwsCostSourceForm";
 import { GoogleAdsSourceForm, GoogleAdsSourceFormHandle } from "@/components/GoogleAdsSourceForm";
 import { MetaAdsSourceForm, MetaAdsSourceFormHandle } from "@/components/MetaAdsSourceForm";
@@ -115,6 +116,78 @@ export function AddSourceModal({
   const { t } = useLanguage();
   const [selectedType, setSelectedType] = useState<string>("");
   const [sourceComboOpen, setSourceComboOpen] = useState(false);
+
+  // After a child form successfully creates a source, we keep the
+  // modal open and switch its body to the guided-onboarding flow
+  // (Task 3). The id of the freshly-added source goes here; while
+  // it's set, we suppress `onClose` calls from child forms and
+  // delay bubbling `onSourceAdded` upstream until onboarding is
+  // saved or skipped — that way the parent's "source added" handler
+  // (e.g. refresh source list) only fires once at the end.
+  const [onboardingSourceId, setOnboardingSourceId] = useState<string | null>(null);
+  // Queue: child forms can in principle add multiple sources in one
+  // session (the existing-source picker does). We onboard them one
+  // at a time. Empty after the active one is processed.
+  const [onboardingQueue, setOnboardingQueue] = useState<string[]>([]);
+
+  const enqueueOnboarding = useCallback((sourceId: string) => {
+    setOnboardingSourceId((current) => {
+      if (current) {
+        setOnboardingQueue((q) => [...q, sourceId]);
+        return current;
+      }
+      return sourceId;
+    });
+  }, []);
+
+  // Wraps the `onSourceAdded` we hand to child forms: instead of
+  // bubbling the id straight up to the parent (which would close the
+  // modal), we capture it locally and start the onboarding flow.
+  const handleChildSourceAdded = useCallback(
+    (sourceId: string) => {
+      enqueueOnboarding(sourceId);
+    },
+    [enqueueOnboarding],
+  );
+
+  // Wraps `onClose` we hand to child forms. Children call onClose
+  // immediately after onSourceAdded; if we let them, the modal would
+  // disappear before the user sees the onboarding step. While
+  // `onboardingSourceId` is set, swallow the close call.
+  const handleChildClose = useCallback(() => {
+    if (!onboardingSourceId) {
+      onOpenChange(false);
+    }
+  }, [onboardingSourceId, onOpenChange]);
+
+  // Called when the SourceOnboarding component finishes (saved or skipped).
+  // Bubbles the id to the parent and either advances to the next queued
+  // source or closes the modal.
+  const handleOnboardingDone = useCallback(
+    (finishedId: string) => {
+      onSourceAdded?.(finishedId);
+      setOnboardingQueue((q) => {
+        if (q.length === 0) {
+          setOnboardingSourceId(null);
+          onOpenChange(false);
+          return q;
+        }
+        const [next, ...rest] = q;
+        setOnboardingSourceId(next);
+        return rest;
+      });
+    },
+    [onOpenChange, onSourceAdded],
+  );
+
+  const handleOnboardingCancel = useCallback(() => {
+    // User clicked Close without skipping. We treat this as "I don't
+    // want onboarding right now" and just dismiss everything. The
+    // source itself was already created by the child form.
+    setOnboardingQueue([]);
+    setOnboardingSourceId(null);
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   const refs = useRef<Record<string, ConnectableHandle | null>>({});
   const [canConnect, setCanConnect] = useState<Record<string, boolean>>({});
@@ -194,9 +267,29 @@ export function AddSourceModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] h-[780px] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>{t('addSource.title')}</DialogTitle>
+          <DialogTitle>
+            {onboardingSourceId
+              ? t("onboarding.title") || "Set up this data source"
+              : t("addSource.title")}
+          </DialogTitle>
         </DialogHeader>
 
+        {/*
+          When `onboardingSourceId` is set, the modal body becomes the
+          guided onboarding flow for that freshly-created source. The
+          form-picker UI is hidden (not unmounted from the tree below
+          — it's just behind a conditional). On finish/skip the modal
+          closes via `handleOnboardingDone` / `handleOnboardingCancel`.
+        */}
+        {onboardingSourceId ? (
+          <div className="flex-1 min-h-0 overflow-y-auto px-1">
+            <SourceOnboarding
+              sourceId={onboardingSourceId}
+              onDone={handleOnboardingDone}
+              onCancel={handleOnboardingCancel}
+            />
+          </div>
+        ) : (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-1">
           <p className="text-sm text-muted-foreground">
             {t('addSource.description')}
@@ -270,210 +363,213 @@ export function AddSourceModal({
 
           {selectedType === "upload" && (
             <div className="space-y-4">
-              <UploadSourceForm agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} />
+              <UploadSourceForm agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} />
             </div>
           )}
 
           {selectedType === "bigquery" && (
             <div className="space-y-4">
-              <BigQuerySourceForm ref={setRef("bigquery")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("bigquery")} onConnectingChange={setConnectingFor("bigquery")} />
+              <BigQuerySourceForm ref={setRef("bigquery")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("bigquery")} onConnectingChange={setConnectingFor("bigquery")} />
             </div>
           )}
 
           {selectedType === "sheets" && (
             <div className="space-y-4">
-              <GoogleSheetsSourceForm ref={setRef("sheets")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("sheets")} onConnectingChange={setConnectingFor("sheets")} />
+              <GoogleSheetsSourceForm ref={setRef("sheets")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("sheets")} onConnectingChange={setConnectingFor("sheets")} />
             </div>
           )}
 
           {selectedType === "sql" && (
             <div className="space-y-4">
-              <SqlSourceForm ref={setRef("sql")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("sql")} onConnectingChange={setConnectingFor("sql")} />
+              <SqlSourceForm ref={setRef("sql")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("sql")} onConnectingChange={setConnectingFor("sql")} />
             </div>
           )}
 
           {selectedType === "firebase" && (
             <div className="space-y-4">
-              <FirebaseSourceForm ref={setRef("firebase")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("firebase")} onConnectingChange={setConnectingFor("firebase")} />
+              <FirebaseSourceForm ref={setRef("firebase")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("firebase")} onConnectingChange={setConnectingFor("firebase")} />
             </div>
           )}
 
           {selectedType === "dbt" && (
             <div className="space-y-4">
-              <DbtSourceForm ref={setRef("dbt")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("dbt")} onConnectingChange={setConnectingFor("dbt")} />
+              <DbtSourceForm ref={setRef("dbt")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("dbt")} onConnectingChange={setConnectingFor("dbt")} />
             </div>
           )}
 
           {selectedType === "github_file" && (
             <div className="space-y-4">
-              <GithubFileSourceForm ref={setRef("github_file")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("github_file")} onConnectingChange={setConnectingFor("github_file")} />
+              <GithubFileSourceForm ref={setRef("github_file")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("github_file")} onConnectingChange={setConnectingFor("github_file")} />
             </div>
           )}
 
           {selectedType === "mongodb" && (
             <div className="space-y-4">
-              <MongoDbSourceForm ref={setRef("mongodb")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mongodb")} onConnectingChange={setConnectingFor("mongodb")} />
+              <MongoDbSourceForm ref={setRef("mongodb")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("mongodb")} onConnectingChange={setConnectingFor("mongodb")} />
             </div>
           )}
 
           {selectedType === "snowflake" && (
             <div className="space-y-4">
-              <SnowflakeSourceForm ref={setRef("snowflake")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("snowflake")} onConnectingChange={setConnectingFor("snowflake")} />
+              <SnowflakeSourceForm ref={setRef("snowflake")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("snowflake")} onConnectingChange={setConnectingFor("snowflake")} />
             </div>
           )}
 
           {selectedType === "notion" && (
             <div className="space-y-4">
-              <NotionSourceForm ref={setRef("notion")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("notion")} onConnectingChange={setConnectingFor("notion")} />
+              <NotionSourceForm ref={setRef("notion")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("notion")} onConnectingChange={setConnectingFor("notion")} />
             </div>
           )}
 
           {selectedType === "excel_online" && (
             <div className="space-y-4">
-              <ExcelOnlineSourceForm ref={setRef("excel_online")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("excel_online")} onConnectingChange={setConnectingFor("excel_online")} />
+              <ExcelOnlineSourceForm ref={setRef("excel_online")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("excel_online")} onConnectingChange={setConnectingFor("excel_online")} />
             </div>
           )}
 
           {selectedType === "s3" && (
             <div className="space-y-4">
-              <S3SourceForm ref={setRef("s3")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("s3")} onConnectingChange={setConnectingFor("s3")} />
+              <S3SourceForm ref={setRef("s3")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("s3")} onConnectingChange={setConnectingFor("s3")} />
             </div>
           )}
 
           {selectedType === "rest_api" && (
             <div className="space-y-4">
-              <RestApiSourceForm ref={setRef("rest_api")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("rest_api")} onConnectingChange={setConnectingFor("rest_api")} />
+              <RestApiSourceForm ref={setRef("rest_api")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("rest_api")} onConnectingChange={setConnectingFor("rest_api")} />
             </div>
           )}
 
           {selectedType === "jira" && (
             <div className="space-y-4">
-              <JiraSourceForm ref={setRef("jira")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("jira")} onConnectingChange={setConnectingFor("jira")} />
+              <JiraSourceForm ref={setRef("jira")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("jira")} onConnectingChange={setConnectingFor("jira")} />
             </div>
           )}
 
           {selectedType === "hubspot" && (
             <div className="space-y-4">
-              <HubspotSourceForm ref={setRef("hubspot")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("hubspot")} onConnectingChange={setConnectingFor("hubspot")} />
+              <HubspotSourceForm ref={setRef("hubspot")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("hubspot")} onConnectingChange={setConnectingFor("hubspot")} />
             </div>
           )}
 
           {selectedType === "stripe" && (
             <div className="space-y-4">
-              <StripeSourceForm ref={setRef("stripe")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("stripe")} onConnectingChange={setConnectingFor("stripe")} />
+              <StripeSourceForm ref={setRef("stripe")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("stripe")} onConnectingChange={setConnectingFor("stripe")} />
             </div>
           )}
 
           {selectedType === "pipedrive" && (
             <div className="space-y-4">
-              <PipedriveSourceForm ref={setRef("pipedrive")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("pipedrive")} onConnectingChange={setConnectingFor("pipedrive")} />
+              <PipedriveSourceForm ref={setRef("pipedrive")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("pipedrive")} onConnectingChange={setConnectingFor("pipedrive")} />
             </div>
           )}
 
           {selectedType === "salesforce" && (
             <div className="space-y-4">
-              <SalesforceSourceForm ref={setRef("salesforce")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("salesforce")} onConnectingChange={setConnectingFor("salesforce")} />
+              <SalesforceSourceForm ref={setRef("salesforce")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("salesforce")} onConnectingChange={setConnectingFor("salesforce")} />
             </div>
           )}
 
           {selectedType === "ga4" && (
             <div className="space-y-4">
-              <GA4SourceForm ref={setRef("ga4")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("ga4")} onConnectingChange={setConnectingFor("ga4")} />
+              <GA4SourceForm ref={setRef("ga4")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("ga4")} onConnectingChange={setConnectingFor("ga4")} />
             </div>
           )}
 
           {selectedType === "intercom" && (
             <div className="space-y-4">
-              <IntercomSourceForm ref={setRef("intercom")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("intercom")} onConnectingChange={setConnectingFor("intercom")} />
+              <IntercomSourceForm ref={setRef("intercom")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("intercom")} onConnectingChange={setConnectingFor("intercom")} />
             </div>
           )}
 
           {selectedType === "github_analytics" && (
             <div className="space-y-4">
-              <GithubAnalyticsSourceForm ref={setRef("github_analytics")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("github_analytics")} onConnectingChange={setConnectingFor("github_analytics")} />
+              <GithubAnalyticsSourceForm ref={setRef("github_analytics")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("github_analytics")} onConnectingChange={setConnectingFor("github_analytics")} />
             </div>
           )}
 
           {selectedType === "shopify" && (
             <div className="space-y-4">
-              <ShopifySourceForm ref={setRef("shopify")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("shopify")} onConnectingChange={setConnectingFor("shopify")} />
+              <ShopifySourceForm ref={setRef("shopify")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("shopify")} onConnectingChange={setConnectingFor("shopify")} />
             </div>
           )}
 
           {selectedType === "aws_costs" && (
             <div className="space-y-4">
-              <AwsCostSourceForm ref={setRef("aws_costs")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("aws_costs")} onConnectingChange={setConnectingFor("aws_costs")} />
+              <AwsCostSourceForm ref={setRef("aws_costs")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("aws_costs")} onConnectingChange={setConnectingFor("aws_costs")} />
             </div>
           )}
 
           {selectedType === "google_ads" && (
             <div className="space-y-4">
-              <GoogleAdsSourceForm ref={setRef("google_ads")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("google_ads")} onConnectingChange={setConnectingFor("google_ads")} />
+              <GoogleAdsSourceForm ref={setRef("google_ads")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("google_ads")} onConnectingChange={setConnectingFor("google_ads")} />
             </div>
           )}
 
           {selectedType === "meta_ads" && (
             <div className="space-y-4">
-              <MetaAdsSourceForm ref={setRef("meta_ads")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("meta_ads")} onConnectingChange={setConnectingFor("meta_ads")} />
+              <MetaAdsSourceForm ref={setRef("meta_ads")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("meta_ads")} onConnectingChange={setConnectingFor("meta_ads")} />
             </div>
           )}
 
           {selectedType === "mercado_pago" && (
             <div className="space-y-4">
-              <MercadoPagoSourceForm ref={setRef("mercado_pago")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mercado_pago")} onConnectingChange={setConnectingFor("mercado_pago")} />
+              <MercadoPagoSourceForm ref={setRef("mercado_pago")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("mercado_pago")} onConnectingChange={setConnectingFor("mercado_pago")} />
             </div>
           )}
 
           {selectedType === "mercado_livre" && (
             <div className="space-y-4">
-              <MercadoLivreSourceForm ref={setRef("mercado_livre")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mercado_livre")} onConnectingChange={setConnectingFor("mercado_livre")} />
+              <MercadoLivreSourceForm ref={setRef("mercado_livre")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("mercado_livre")} onConnectingChange={setConnectingFor("mercado_livre")} />
             </div>
           )}
 
           {selectedType === "mixpanel" && (
             <div className="space-y-4">
-              <MixpanelSourceForm ref={setRef("mixpanel")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mixpanel")} onConnectingChange={setConnectingFor("mixpanel")} />
+              <MixpanelSourceForm ref={setRef("mixpanel")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("mixpanel")} onConnectingChange={setConnectingFor("mixpanel")} />
             </div>
           )}
 
           {selectedType === "mailchimp" && (
             <div className="space-y-4">
-              <MailchimpSourceForm ref={setRef("mailchimp")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("mailchimp")} onConnectingChange={setConnectingFor("mailchimp")} />
+              <MailchimpSourceForm ref={setRef("mailchimp")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("mailchimp")} onConnectingChange={setConnectingFor("mailchimp")} />
             </div>
           )}
 
           {selectedType === "linkedin_ads" && (
             <div className="space-y-4">
-              <LinkedInAdsSourceForm ref={setRef("linkedin_ads")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("linkedin_ads")} onConnectingChange={setConnectingFor("linkedin_ads")} />
+              <LinkedInAdsSourceForm ref={setRef("linkedin_ads")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("linkedin_ads")} onConnectingChange={setConnectingFor("linkedin_ads")} />
             </div>
           )}
 
           {selectedType === "zendesk" && (
             <div className="space-y-4">
-              <ZendeskSourceForm ref={setRef("zendesk")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("zendesk")} onConnectingChange={setConnectingFor("zendesk")} />
+              <ZendeskSourceForm ref={setRef("zendesk")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("zendesk")} onConnectingChange={setConnectingFor("zendesk")} />
             </div>
           )}
 
           {selectedType === "youtube" && (
             <div className="space-y-4">
-              <YouTubeSourceForm ref={setRef("youtube")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("youtube")} onConnectingChange={setConnectingFor("youtube")} />
+              <YouTubeSourceForm ref={setRef("youtube")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("youtube")} onConnectingChange={setConnectingFor("youtube")} />
             </div>
           )}
 
           {selectedType === "instagram" && (
             <div className="space-y-4">
-              <InstagramSourceForm ref={setRef("instagram")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("instagram")} onConnectingChange={setConnectingFor("instagram")} />
+              <InstagramSourceForm ref={setRef("instagram")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("instagram")} onConnectingChange={setConnectingFor("instagram")} />
             </div>
           )}
 
           {selectedType === "rdstation" && (
             <div className="space-y-4">
-              <RdStationSourceForm ref={setRef("rdstation")} agentId={agentId} onSourceAdded={onSourceAdded} onClose={onClose} onCanConnectChange={setCanConnectFor("rdstation")} onConnectingChange={setConnectingFor("rdstation")} />
+              <RdStationSourceForm ref={setRef("rdstation")} agentId={agentId} onSourceAdded={handleChildSourceAdded} onClose={handleChildClose} onCanConnectChange={setCanConnectFor("rdstation")} onConnectingChange={setConnectingFor("rdstation")} />
             </div>
           )}
         </div>
+        )}
 
-        {showFooter && activeConfig && (
+        {/* Footer: connect button only relevant while we're showing the
+            form picker. The onboarding flow has its own controls. */}
+        {!onboardingSourceId && showFooter && activeConfig && (
           <div className="flex-shrink-0 pt-6 px-1 border-t">
             <Button
               className="w-full"
