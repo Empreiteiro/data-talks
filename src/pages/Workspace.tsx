@@ -274,7 +274,15 @@ export default function Workspace() {
       setAddSourceOpen(true);
     }
   }, [searchParams]);
-  type QuestionSegment = { type: "text"; value: string } | { type: "column"; name: string };
+  // Question segments power the chip-style chat input. "column" is
+  // a column name from the source schema; "kpi" is a saved KPI from
+  // the source-onboarding flow. Both render as Badges in the input
+  // bar and serialize to plain text in the outgoing question; only
+  // their visual treatment differs.
+  type QuestionSegment =
+    | { type: "text"; value: string }
+    | { type: "column"; name: string }
+    | { type: "kpi"; name: string; definition?: string };
   const [questionSegments, setQuestionSegments] = useState<QuestionSegment[]>([]);
   const [questionInput, setQuestionInput] = useState("");
   const getQuestionFullText = () =>
@@ -293,6 +301,13 @@ export default function Workspace() {
   const [history, setHistory] = useState<QASessionRecord[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  // KPIs visible as chips between the columns row and the warm-up
+  // questions row. Loaded from the new
+  // `/api/agents/{id}/kpis` endpoint, which applies the same
+  // active-source filter the Q&A pipeline does.
+  const [availableKpis, setAvailableKpis] = useState<
+    Array<{ id: string; name: string; definition: string }>
+  >([]);
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false);
   const [workspaceType, setWorkspaceType] = useState("analysis");
@@ -328,6 +343,7 @@ export default function Workspace() {
     checkSources();
     loadHistory();
     loadAvailableColumns();
+    loadAvailableKpis();
     loadWarmupQuestions();
     loadSqlSourcesCount();
     checkLlmStatus();
@@ -445,6 +461,19 @@ export default function Workspace() {
       }
     } catch (error) {
       console.error("Erro ao carregar colunas:", error);
+    }
+  }
+
+  async function loadAvailableKpis() {
+    if (!id) return;
+    try {
+      const data = await dataClient.listAgentKpis(id);
+      setAvailableKpis(data?.kpis || []);
+    } catch (error) {
+      // Non-fatal: workspace works without KPI chips. Log and move
+      // on so a transient backend hiccup doesn't break the page.
+      console.error("Erro ao carregar KPIs:", error);
+      setAvailableKpis([]);
     }
   }
 
@@ -931,7 +960,58 @@ export default function Workspace() {
                 </div>
               </div>
             )}
-            
+
+            {/*
+              KPIs row — sits between Available Columns and Warm-up
+              Questions. Clicking a KPI chip inserts its name into the
+              chat input as a `kpi` segment (rendered as a Badge with
+              a different colour from columns). The KPI definition is
+              attached to the segment as a tooltip via the title attr
+              so the user can hover to remember what the KPI means
+              before sending. Only shown when there's at least one
+              KPI relevant to the active sources — empty section is
+              hidden so it doesn't add visual noise to workspaces
+              that haven't done onboarding yet.
+            */}
+            {availableKpis.length > 0 && messages.length === 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-medium">
+                    {t("questions.kpis") || "KPIs"}
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {availableKpis.map((kpi) => (
+                    <Button
+                      key={kpi.id}
+                      variant="outline"
+                      size="sm"
+                      title={kpi.definition}
+                      className="text-xs h-auto py-1.5 px-3 border-primary/30 bg-primary/5 hover:bg-primary/10"
+                      onClick={() => {
+                        setQuestionSegments((prev) => [
+                          ...prev,
+                          {
+                            type: "text",
+                            value: questionInput + (questionInput ? " " : ""),
+                          },
+                          {
+                            type: "kpi",
+                            name: kpi.name,
+                            definition: kpi.definition,
+                          },
+                        ]);
+                        setQuestionInput("");
+                      }}
+                    >
+                      {kpi.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Perguntas de Aquecimento */}
             {messages.length === 0 && hasSources && (
               <div className="mb-6">
@@ -1119,6 +1199,19 @@ export default function Workspace() {
                           {seg.value}
                         </span>
                       ) : null
+                    ) : seg.type === "kpi" ? (
+                      // KPI badge: distinct purple/primary tint and
+                      // not monospace (KPI names are prose, not
+                      // identifiers like column names). Hover shows
+                      // the saved definition for a quick refresher.
+                      <Badge
+                        key={i}
+                        variant="secondary"
+                        title={seg.definition || ""}
+                        className="text-xs h-6 px-2 bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30"
+                      >
+                        {seg.name}
+                      </Badge>
                     ) : (
                       <Badge
                         key={i}
@@ -1217,6 +1310,7 @@ export default function Workspace() {
         loadAvailableColumns();
         loadSqlSourcesCount();
         loadWarmupQuestions();
+        loadAvailableKpis();
       }} />
 
       {id && (
@@ -1246,8 +1340,10 @@ export default function Workspace() {
         mode={sourceSettingsMode}
         onSaved={() => {
           // Mirror what AgentSettings does — pick up any warm-ups
-          // that landed on agent.suggested_questions during save.
+          // that landed on agent.suggested_questions during save,
+          // plus any new KPIs the user just confirmed.
           loadWarmupQuestions();
+          loadAvailableKpis();
         }}
       />
 

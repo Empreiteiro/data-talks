@@ -406,6 +406,56 @@ async def onboarding_save(
     return await _load_saved(db, scope, source)
 
 
+@router.get("/agents/{agent_id}/kpis")
+async def list_agent_kpis(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    """KPIs relevant to a workspace's currently-active sources.
+
+    Returns the workspace-org KPI rows whose `source_ids` overlap
+    with at least one active source on this agent, plus KPIs pinned
+    to no source (cross-source / conceptual). Same inclusion rule
+    `dispatch_question` uses when building the LLM context, so the
+    UI chips show the same KPI set the model sees.
+    """
+    r = await db.execute(
+        select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
+    )
+    agent = r.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    r = await db.execute(
+        select(Source).where(
+            Source.agent_id == agent_id,
+            tenant_filter(Source, scope),
+            Source.is_active == True,  # noqa: E712
+        )
+    )
+    active_source_ids = {s.id for s in r.scalars().all()}
+    out: list[dict] = []
+    rows = await db.execute(
+        select(OrganizationKpi).where(
+            OrganizationKpi.organization_id == scope.organization_id
+        )
+    )
+    for k in rows.scalars().all():
+        sids = k.source_ids or []
+        if not sids or any(sid in active_source_ids for sid in sids):
+            out.append(
+                {
+                    "id": k.id,
+                    "name": k.name,
+                    "definition": k.definition,
+                }
+            )
+    # Stable order: by name, so the chip row doesn't shuffle on
+    # every reload of the workspace.
+    out.sort(key=lambda x: x["name"].lower())
+    return {"kpis": out}
+
+
 @router.get("/agents/{agent_id}/warmup-questions")
 async def list_agent_warmup_questions(
     agent_id: str,

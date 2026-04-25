@@ -902,6 +902,17 @@ export const apiClient = {
       { method: 'GET' },
     );
   },
+  /**
+   * KPIs relevant to a workspace: organization KPIs whose
+   * `source_ids` overlap with at least one active source on this
+   * agent, plus cross-source KPIs (empty source_ids list). Same
+   * filter the Q&A pipeline applies when building the LLM context.
+   */
+  async listAgentKpis(agentId: string) {
+    return api<{
+      kpis: Array<{ id: string; name: string; definition: string }>;
+    }>(`/api/agents/${encodeURIComponent(agentId)}/kpis`, { method: 'GET' });
+  },
 
   async listOllamaModels(baseUrl?: string) {
     const params = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : '';
