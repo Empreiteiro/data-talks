@@ -37,8 +37,29 @@ if not exist "backend\.env" (
 if /i "%MODE%"=="dev" (
     echo Starting Data Talks in development mode...
 
-    :: Clean up stale port file
+    :: Free the ports we use, but only when the listener is one of our own
+    :: processes (python/uvicorn/data-talks for the backend ports, node for
+    :: Vite). We resolve PIDs via netstat and verify the image name with
+    :: tasklist before issuing taskkill, so a Firestore emulator or any
+    :: other tool the user happens to be running on the same port is left
+    :: alone.
+    echo Freeing dev ports (only kills our own backend/frontend processes)...
+    for %%P in (8000 8001 8002 8003 8004 8005 5173) do (
+        for /f "tokens=5" %%I in ('netstat -ano ^| findstr ":%%P " ^| findstr LISTENING') do (
+            for /f "tokens=1" %%N in ('tasklist /FI "PID eq %%I" /NH 2^>nul') do (
+                if /i "%%N"=="python.exe"     ( taskkill /F /PID %%I >nul 2>&1 && echo   killed PID %%I on :%%P ^(python^) )
+                if /i "%%N"=="uvicorn.exe"    ( taskkill /F /PID %%I >nul 2>&1 && echo   killed PID %%I on :%%P ^(uvicorn^) )
+                if /i "%%N"=="data-talks.exe" ( taskkill /F /PID %%I >nul 2>&1 && echo   killed PID %%I on :%%P ^(data-talks^) )
+                if /i "%%N"=="node.exe"       ( taskkill /F /PID %%I >nul 2>&1 && echo   killed PID %%I on :%%P ^(node/vite^) )
+            )
+        )
+    )
+
+    :: Clean up stale port file (CLI rewrites it on next start)
     if exist "backend\.backend_port" del "backend\.backend_port"
+
+    :: Brief pause so Windows actually releases the listening sockets
+    timeout /t 1 /nobreak >nul
 
     :: Start backend in background
     start "DataTalks-Backend" /min cmd /c "uv run data-talks run"
