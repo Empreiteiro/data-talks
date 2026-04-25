@@ -68,6 +68,13 @@ export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardin
   const [clarifications, setClarifications] = useState<Clarification[]>([]);
   const [warmups, setWarmups] = useState<Warmup[]>([]);
   const [kpis, setKpis] = useState<Kpi[]>([]);
+  // "Specific Instructions for the Agent" — mirrors the textarea on
+  // the agent settings modal. Pre-filled from `agent_instructions`
+  // returned by GET /onboarding (which reads `Agent.description`).
+  // We also track whether the user touched it so save can omit the
+  // field (= leave existing value untouched) when they didn't.
+  const [agentInstructions, setAgentInstructions] = useState("");
+  const [agentInstructionsTouched, setAgentInstructionsTouched] = useState(false);
 
   // Step 1: load profile + suggestions. We try the saved-state endpoint
   // first; if anything is already there, treat it as "edit existing"
@@ -90,6 +97,10 @@ export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardin
         // first and we'd skip the fresh LLM call — which is exactly
         // the bug "warm-ups are about the previous source, no
         // clarifications/KPIs generated, returned too fast".
+        // Even on the fresh path we pre-fill `agentInstructions` from
+        // the existing agent description, so users don't lose what
+        // they previously typed in agent settings.
+        setAgentInstructions(saved.agent_instructions || "");
         if (saved.onboarding_completed_at) {
           setClarifications(saved.clarifications.map((c) => ({ ...c })));
           setWarmups(
@@ -158,6 +169,15 @@ export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardin
                 dependencies: k.dependencies,
                 source_ids: k.source_ids,
               })),
+            // Only send `agent_instructions` when the user actually
+            // touched the textarea — otherwise omitting the field
+            // tells the backend to leave Agent.description untouched.
+            // This avoids inadvertently nuking instructions the user
+            // set elsewhere (agent settings) when they just clicked
+            // through onboarding without editing this field.
+            ...(agentInstructionsTouched
+              ? { agent_instructions: agentInstructions }
+              : {}),
           };
       await dataClient.saveSourceOnboarding(sourceId, payload);
       onDone(sourceId);
@@ -380,6 +400,35 @@ export function SourceOnboarding({ sourceId, onDone, onCancel }: SourceOnboardin
               </li>
             ))}
           </ul>
+
+          {/*
+            Final-step extra: "Specific Instructions for the Agent".
+            Same content as the agent-settings textarea (mirrors
+            Agent.description). Pre-filled from the current value so
+            re-opening doesn't clear it. Reuses the agentSettings.*
+            i18n keys instead of inventing new ones — same field, same
+            copy across the app.
+          */}
+          <div className="space-y-2 pt-2 border-t">
+            <Label htmlFor="agent-instructions" className="text-sm font-medium">
+              {t("agentSettings.instructions") ||
+                "Specific Instructions for the Agent"}
+            </Label>
+            <Textarea
+              id="agent-instructions"
+              value={agentInstructions}
+              onChange={(e) => {
+                setAgentInstructions(e.target.value);
+                if (!agentInstructionsTouched) setAgentInstructionsTouched(true);
+              }}
+              placeholder={t("agentSettings.instructionsPlaceholder") || ""}
+              className="min-h-[100px]"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("agentSettings.instructionsHelp") || ""}
+            </p>
+          </div>
+
           <div className="flex items-center justify-between">
             <Button variant="ghost" onClick={() => setStep("warmups")}>
               {t("common.back") || "Back"}

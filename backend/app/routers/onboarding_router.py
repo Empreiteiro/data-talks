@@ -167,8 +167,11 @@ async def _load_saved(
                     "source_ids": sids,
                 }
             )
-    # Warm-up questions live on the agent — pull from there.
+    # Warm-up questions live on the agent — pull from there. We also
+    # surface `agent.description` here so the onboarding UI can
+    # pre-fill the "Specific Instructions for the Agent" textarea.
     warmups: list[dict] = []
+    agent_instructions = ""
     if source.agent_id:
         r = await db.execute(
             select(Agent).where(
@@ -176,14 +179,17 @@ async def _load_saved(
             )
         )
         agent = r.scalar_one_or_none()
-        if agent and agent.suggested_questions:
-            warmups = [{"text": q} for q in agent.suggested_questions if q]
+        if agent:
+            if agent.suggested_questions:
+                warmups = [{"text": q} for q in agent.suggested_questions if q]
+            agent_instructions = agent.description or ""
     completed_raw = (source.metadata_ or {}).get("onboarding_completed_at")
     return OnboardingSavedResponse(
         clarifications=clarifications,
         warmup_questions=warmups,
         kpis=kpi_rows,
         onboarding_completed_at=completed_raw,
+        agent_instructions=agent_instructions,
     )
 
 
@@ -279,8 +285,14 @@ async def onboarding_save(
             )
         )
 
-    # ---- Warm-up questions: merge into agent.suggested_questions ----
-    if source.agent_id and body.warmup_questions:
+    # ---- Warm-up questions + agent instructions: write to Agent ----
+    # We only run this branch if there's an actual agent attached to
+    # the source AND we have something agent-scoped to update. The
+    # `agent_instructions` field is `None` when omitted (caller didn't
+    # touch the textarea) and `""` when the user explicitly cleared
+    # it; both empty and non-empty strings are honored — only `None`
+    # leaves the existing description untouched.
+    if source.agent_id and (body.warmup_questions or body.agent_instructions is not None):
         r = await db.execute(
             select(Agent).where(
                 Agent.id == source.agent_id, tenant_filter(Agent, scope)
@@ -288,14 +300,17 @@ async def onboarding_save(
         )
         agent = r.scalar_one_or_none()
         if agent:
-            existing = list(agent.suggested_questions or [])
-            seen = {q.strip().lower() for q in existing if isinstance(q, str)}
-            for w in body.warmup_questions:
-                t = (w.text or "").strip()
-                if t and t.lower() not in seen:
-                    existing.append(t)
-                    seen.add(t.lower())
-            agent.suggested_questions = existing
+            if body.warmup_questions:
+                existing = list(agent.suggested_questions or [])
+                seen = {q.strip().lower() for q in existing if isinstance(q, str)}
+                for w in body.warmup_questions:
+                    t = (w.text or "").strip()
+                    if t and t.lower() not in seen:
+                        existing.append(t)
+                        seen.add(t.lower())
+                agent.suggested_questions = existing
+            if body.agent_instructions is not None:
+                agent.description = body.agent_instructions.strip()
 
     # ---- KPIs: upsert by id, scoped to this organization ----
     incoming_ids: set[str] = set()

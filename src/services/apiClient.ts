@@ -862,6 +862,11 @@ export const apiClient = {
         dependencies?: Record<string, unknown>;
         source_ids?: string[];
       }>;
+      // Mirror of the agent's `description` field — same content as
+      // the "Specific Instructions for the Agent" textarea in the
+      // agent-settings modal. Omit (undefined) to leave the current
+      // value untouched; send `""` to explicitly clear it.
+      agent_instructions?: string;
     },
   ) {
     return api<{
@@ -869,6 +874,7 @@ export const apiClient = {
       warmup_questions: Array<{ text: string }>;
       kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
       onboarding_completed_at: string | null;
+      agent_instructions: string;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding/save`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -880,6 +886,7 @@ export const apiClient = {
       warmup_questions: Array<{ text: string }>;
       kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
       onboarding_completed_at: string | null;
+      agent_instructions: string;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding`, { method: 'GET' });
   },
 

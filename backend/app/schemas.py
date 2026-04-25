@@ -267,12 +267,20 @@ class OnboardingProfileResponse(BaseModel):
 
 
 class OnboardingSaveRequest(BaseModel):
-    """User-confirmed onboarding output. All three lists are optional —
+    """User-confirmed onboarding output. All fields are optional —
     skipping the flow saves nothing but still marks the source as
-    onboarded so we don't keep prompting."""
+    onboarded so we don't keep prompting.
+
+    `agent_instructions` mirrors the "Specific Instructions for the
+    Agent" textarea in the agent-settings modal — it's a free-form
+    prompt the user wants every Q&A on this agent to start from.
+    Persisted to `Agent.description`. None = leave the existing
+    value untouched; empty string = explicitly clear it.
+    """
     clarifications: list[OnboardingClarificationSaved] = []
     warmup_questions: list[OnboardingWarmupQuestion] = []
     kpis: list[OnboardingKpiSaved] = []
+    agent_instructions: Optional[str] = None
 
 
 class OnboardingSavedResponse(BaseModel):
@@ -282,3 +290,8 @@ class OnboardingSavedResponse(BaseModel):
     warmup_questions: list[OnboardingWarmupQuestion] = []
     kpis: list[OnboardingKpiSaved] = []
     onboarding_completed_at: Optional[str] = None
+    # Mirror of `Agent.description` for the active agent of this
+    # source. Empty string when unset / no agent. The UI uses this to
+    # pre-fill the "Specific Instructions for the Agent" textarea on
+    # the final onboarding step so re-opens show the saved value.
+    agent_instructions: str = ""
