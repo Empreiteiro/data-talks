@@ -928,10 +928,21 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
                             ? "text-destructive"
                             : "";
                         return (
+                          // Action icons used to be hover-only via
+                          // `opacity-0 group-hover:opacity-100`, which
+                          // hid them on touch devices and made the row
+                          // feel inert until the user discovered them.
+                          // Switched to always-visible — the row is
+                          // already a constrained width and four small
+                          // ghost icons don't add meaningful clutter.
+                          // The Test icon keeps its colour-coded state
+                          // (green/red after a test runs) so the
+                          // result is immediately visible without the
+                          // user re-hovering.
                           <Button
                             variant="ghost"
                             size="icon"
-                            className={`h-6 w-6 transition-opacity ${result ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${colorClass}`}
+                            className={`h-6 w-6 ${colorClass}`}
                             title={title}
                             disabled={isRunning}
                             onClick={() => handleTest(cfg.id)}
@@ -943,7 +954,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6"
                         title={t("llmConfig.edit")}
                         onClick={() => openEdit(cfg)}
                       >
@@ -952,7 +963,11 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${cfg.is_default ? "opacity-100 text-amber-500" : ""}`}
+                        // The default-marker star keeps its amber tint
+                        // when this config is the default; otherwise
+                        // it's a neutral ghost icon the user can click
+                        // to promote.
+                        className={`h-6 w-6 ${cfg.is_default ? "text-amber-500" : ""}`}
                         title={cfg.is_default ? t("llmConfig.default") : t("llmConfig.setAsDefault")}
                         onClick={() => !cfg.is_default && handleSetDefault(cfg.id)}
                       >
@@ -960,7 +975,7 @@ export function LLMPanel({ hasEnvLlm, onConfigAdded }: LLMPanelProps = {}) {
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" title={t("llmConfig.delete")}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" title={t("llmConfig.delete")}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </AlertDialogTrigger>
