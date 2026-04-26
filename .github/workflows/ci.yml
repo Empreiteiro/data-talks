@@ -27,13 +27,20 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: |
-            backend/requirements.txt
+            backend/pyproject.toml
             backend/requirements-test.txt
 
       - name: Install dependencies
+        # Install via pyproject.toml (the canonical dependency source —
+        # `requirements.txt` had been drifting and was missing
+        # scikit-learn, anthropic, pymongo, etc, causing the suite to
+        # fail with `ModuleNotFoundError: No module named 'sklearn'`
+        # during `app.main` import). Editable so test code can also
+        # import the package by name. requirements-test.txt is kept
+        # for pytest/coverage tooling that doesn't belong in runtime.
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .
           pip install -r requirements-test.txt
 
       - name: Run pytest
