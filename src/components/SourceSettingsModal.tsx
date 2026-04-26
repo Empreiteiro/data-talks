@@ -65,7 +65,14 @@ export function SourceSettingsModal({
 }: SourceSettingsModalProps) {
   const { t } = useLanguage();
   const [sources, setSources] = useState<SourceLite[]>([]);
-  const [selectedSourceId, setSelectedSourceId] = useState<string>("");
+  // Selection format:
+  //   "src:<sourceId>"  → onboard a single source
+  //   "group:all"       → onboard the GROUP of all active sources;
+  //                       resolves to a SourceGroup id at render time
+  //                       (created lazily via apiClient.upsertSourceGroup).
+  const [selection, setSelection] = useState<string>("");
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Load active sources for this agent on every open. We refresh on
@@ -81,11 +88,17 @@ export function SourceSettingsModal({
         if (cancelled) return;
         const filtered = (list || []).filter((s) => s && s.id);
         setSources(filtered);
-        // Auto-select the only/first source so the user doesn't have
-        // to click the picker for the common single-source case.
-        setSelectedSourceId((prev) =>
-          prev && filtered.some((s) => s.id === prev) ? prev : filtered[0]?.id || "",
-        );
+        // Auto-select sensibly: multi-source workspaces default to
+        // the GROUP option (the user's primary intent here is "show
+        // me what's saved for this combination"); single-source
+        // workspaces auto-pick the lone source.
+        if (filtered.length > 1) {
+          setSelection("group:all");
+        } else if (filtered[0]) {
+          setSelection(`src:${filtered[0].id}`);
+        } else {
+          setSelection("");
+        }
       } catch {
         if (!cancelled) setSources([]);
       } finally {
@@ -96,6 +109,36 @@ export function SourceSettingsModal({
       cancelled = true;
     };
   }, [open, agentId]);
+
+  // When the user picks "All active sources", upsert (or fetch) the
+  // SourceGroup for that exact set so SourceOnboarding can mount in
+  // group mode. Runs whenever the selection changes to "group:all"
+  // or the active-sources list changes (e.g. user added a source
+  // via another tab).
+  useEffect(() => {
+    if (!open || selection !== "group:all" || !agentId) {
+      setGroupId(null);
+      return;
+    }
+    const ids = sources.map((s) => s.id);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setCreatingGroup(true);
+      try {
+        const g = await dataClient.upsertSourceGroup(agentId, ids);
+        if (!cancelled) setGroupId(g.id);
+      } catch (e) {
+        console.error("Failed to upsert source group:", e);
+        if (!cancelled) setGroupId(null);
+      } finally {
+        if (!cancelled) setCreatingGroup(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, selection, agentId, sources]);
 
   const handleDone = () => {
     // SourceOnboarding's own "Finish"/"Skip" buttons trigger this.
@@ -129,16 +172,23 @@ export function SourceSettingsModal({
               <Label className="text-sm">
                 {t("sourceSettings.pickSource") || "Source"}
               </Label>
-              <Select
-                value={selectedSourceId}
-                onValueChange={setSelectedSourceId}
-              >
+              <Select value={selection} onValueChange={setSelection}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {/*
+                    "Group" option first — that's the primary path
+                    in multi-source workspaces. Picking it onboards
+                    the SET of sources together, which is where
+                    cross-source clarifications and KPIs live.
+                  */}
+                  <SelectItem value="group:all">
+                    {(t("sourceSettings.allSources") || "All active sources")}
+                    {" "}({sources.length})
+                  </SelectItem>
                   {sources.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
+                    <SelectItem key={s.id} value={`src:${s.id}`}>
                       {s.name}{" "}
                       <span className="text-muted-foreground">({s.type})</span>
                     </SelectItem>
@@ -148,26 +198,51 @@ export function SourceSettingsModal({
             </div>
           )}
 
-          {selectedSourceId ? (
-            // `key` forces SourceOnboarding to remount on source
-            // change — its load effect runs on mount, and we want
-            // a clean reload (with the right `forceFresh`) every
-            // time the user picks a different source.
-            <SourceOnboarding
-              key={`${selectedSourceId}:${mode}`}
-              sourceId={selectedSourceId}
-              onDone={handleDone}
-              onCancel={handleCancel}
-              forceFresh={mode === "fresh"}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground py-12 text-center">
-              {loading
-                ? t("sourceSettings.loading") || "Loading sources…"
-                : t("sourceSettings.noSources") ||
-                  "No active sources in this workspace."}
-            </p>
-          )}
+          {(() => {
+            // Decide what to render based on selection. Group mode
+            // waits for `groupId` to resolve (lazy upsert). Source
+            // mode runs immediately. Empty state covers both
+            // "no sources at all" and "still loading".
+            if (selection === "group:all") {
+              if (creatingGroup || !groupId) {
+                return (
+                  <p className="text-sm text-muted-foreground py-12 text-center">
+                    {t("sourceSettings.loading") || "Loading sources…"}
+                  </p>
+                );
+              }
+              return (
+                <SourceOnboarding
+                  key={`group:${groupId}:${mode}`}
+                  groupId={groupId}
+                  onDone={handleDone}
+                  onCancel={handleCancel}
+                  forceFresh={mode === "fresh"}
+                />
+              );
+            }
+            if (selection.startsWith("src:")) {
+              const sid = selection.slice("src:".length);
+              if (!sid) return null;
+              return (
+                <SourceOnboarding
+                  key={`src:${sid}:${mode}`}
+                  sourceId={sid}
+                  onDone={handleDone}
+                  onCancel={handleCancel}
+                  forceFresh={mode === "fresh"}
+                />
+              );
+            }
+            return (
+              <p className="text-sm text-muted-foreground py-12 text-center">
+                {loading
+                  ? t("sourceSettings.loading") || "Loading sources…"
+                  : t("sourceSettings.noSources") ||
+                    "No active sources in this workspace."}
+              </p>
+            );
+          })()}
         </div>
       </DialogContent>
     </Dialog>

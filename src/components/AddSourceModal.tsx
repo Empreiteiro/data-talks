@@ -125,9 +125,17 @@ export function AddSourceModal({
   // saved or skipped — that way the parent's "source added" handler
   // (e.g. refresh source list) only fires once at the end.
   const [onboardingSourceId, setOnboardingSourceId] = useState<string | null>(null);
-  // Queue: child forms can in principle add multiple sources in one
-  // session (the existing-source picker does). We onboard them one
-  // at a time. Empty after the active one is processed.
+  // Group-mode onboarding: when multiple sources come in together
+  // (existing-source picker, batch upload), we create a SourceGroup
+  // up front and onboard the SET — the LLM sees both sources at
+  // once, captures cross-source clarifications, and pins the
+  // resulting assets to the group's source_ids set. This is mutually
+  // exclusive with `onboardingSourceId`; only one of the two is
+  // non-null at a time.
+  const [onboardingGroupId, setOnboardingGroupId] = useState<string | null>(null);
+  // Queue: legacy single-source path. When several single-source
+  // creations land back-to-back without going through the group
+  // path, we still onboard them one at a time.
   const [onboardingQueue, setOnboardingQueue] = useState<string[]>([]);
 
   // Mirror of `onboardingSourceId` for synchronous reads. Child
@@ -151,6 +159,29 @@ export function AddSourceModal({
       return sourceId;
     });
   }, []);
+
+  // Group-mode entry point. Creates (or finds existing) SourceGroup
+  // for these source ids on this agent, then opens the wizard
+  // bound to the group. Errors fall back to single-source mode on
+  // the first id so the user always lands somewhere useful.
+  const startGroupOnboarding = useCallback(
+    async (sourceIds: string[]) => {
+      const ids = sourceIds.filter(Boolean);
+      if (ids.length === 0) return;
+      try {
+        const g = await dataClient.upsertSourceGroup(agentId, ids);
+        onboardingSourceIdRef.current = `group:${g.id}`;
+        setOnboardingGroupId(g.id);
+      } catch (e) {
+        // Don't trap the user — fall back to single-source onboarding
+        // on the first id. They can always re-run setup later for
+        // the multi-source view from the workspace toolbar.
+        console.error("Failed to create source group, falling back to single", e);
+        enqueueOnboarding(ids[0]);
+      }
+    },
+    [agentId, enqueueOnboarding],
+  );
 
   // Wraps the `onSourceAdded` we hand to child forms: instead of
   // bubbling the id straight up to the parent (which would close the
@@ -181,7 +212,23 @@ export function AddSourceModal({
   // source or closes the modal.
   const handleOnboardingDone = useCallback(
     (finishedId: string) => {
+      // In group mode the inner component returns a group id; the
+      // parent's `onSourceAdded` expects a source id. We don't have
+      // a single source to bubble back, so we just bubble whatever
+      // makes the parent re-fetch (the parent treats this as a
+      // "something landed" signal and re-runs its loaders). The
+      // group id is fine for that purpose — it's never confused
+      // with a real source id because it's the group route id.
       onSourceAdded?.(finishedId);
+      // Group mode short-circuits the single-source queue: a group
+      // onboarding represents the entire batch in one wizard pass.
+      if (onboardingGroupId) {
+        onboardingSourceIdRef.current = null;
+        setOnboardingGroupId(null);
+        setOnboardingQueue([]);
+        onOpenChange(false);
+        return;
+      }
       setOnboardingQueue((q) => {
         if (q.length === 0) {
           onboardingSourceIdRef.current = null;
@@ -195,7 +242,7 @@ export function AddSourceModal({
         return rest;
       });
     },
-    [onOpenChange, onSourceAdded],
+    [onOpenChange, onSourceAdded, onboardingGroupId],
   );
 
   const handleOnboardingCancel = useCallback(() => {
@@ -203,6 +250,7 @@ export function AddSourceModal({
     // want onboarding right now" and just dismiss everything. The
     // source itself was already created by the child form.
     setOnboardingQueue([]);
+    setOnboardingGroupId(null);
     onboardingSourceIdRef.current = null;
     setOnboardingSourceId(null);
     onOpenChange(false);
@@ -259,9 +307,20 @@ export function AddSourceModal({
           dataClient.updateSource(id, { agent_id: agentId, is_active: true })
         )
       );
-      toast.success(`${selectedExisting.size} source(s) added`);
-      onSourceAdded?.(Array.from(selectedExisting)[0]);
-      onOpenChange(false);
+      const ids = Array.from(selectedExisting);
+      toast.success(`${ids.length} source(s) added`);
+      // Multi-select onboarding: open the wizard against the GROUP
+      // of all selected sources so the LLM gets a combined profile
+      // and the resulting assets pin to the set. Single-select still
+      // goes through the per-source path so the existing flow shape
+      // (and edit-existing detection) is preserved.
+      if (ids.length > 1) {
+        await startGroupOnboarding(ids);
+      } else if (ids.length === 1) {
+        enqueueOnboarding(ids[0]);
+      } else {
+        onOpenChange(false);
+      }
     } catch {
       toast.error("Failed to add sources");
     } finally {
@@ -287,9 +346,11 @@ export function AddSourceModal({
       <DialogContent className="max-w-4xl max-h-[90vh] h-[780px] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>
-            {onboardingSourceId
-              ? t("onboarding.title") || "Set up this data source"
-              : t("addSource.title")}
+            {onboardingGroupId
+              ? t("onboarding.titleGroup") || "Set up these data sources"
+              : onboardingSourceId
+                ? t("onboarding.title") || "Set up this data source"
+                : t("addSource.title")}
           </DialogTitle>
         </DialogHeader>
 
@@ -300,7 +361,15 @@ export function AddSourceModal({
           — it's just behind a conditional). On finish/skip the modal
           closes via `handleOnboardingDone` / `handleOnboardingCancel`.
         */}
-        {onboardingSourceId ? (
+        {onboardingGroupId ? (
+          <div className="flex-1 min-h-0 overflow-y-auto px-1">
+            <SourceOnboarding
+              groupId={onboardingGroupId}
+              onDone={handleOnboardingDone}
+              onCancel={handleOnboardingCancel}
+            />
+          </div>
+        ) : onboardingSourceId ? (
           <div className="flex-1 min-h-0 overflow-y-auto px-1">
             <SourceOnboarding
               sourceId={onboardingSourceId}

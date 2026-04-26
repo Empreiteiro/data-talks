@@ -686,6 +686,51 @@ class SourceClarification(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class SourceGroup(Base):
+    """A named set of sources that share a single onboarding pass.
+
+    Why a real table instead of just relying on `source_ids` lists on
+    each asset (warm-ups / filters / KPIs / clarifications): the user
+    wanted the *combination* to have its own identity. When two
+    sources are added together, the LLM should reason about both at
+    once (cross-source confusions are exactly where the most useful
+    clarifications and constraints live), and the resulting assets
+    should be pinned to that pair — not to either source alone.
+
+    Concretely, this row holds:
+      - `source_ids` (sorted, JSON list): the canonical membership.
+        Sorted on write so {a,b,c} and {c,a,b} round-trip to the same
+        list, which lets `get_or_create_by_source_ids` lookup by
+        exact match.
+      - `instructions`: free-form prompt that applies whenever ALL
+        members of this group are active in the workspace. Replaces
+        the per-source `Source.metadata_["onboarding_instructions"]`
+        for groups of size ≥ 2; single-source groups can also live
+        here.
+      - `onboarding_completed_at`: stamp set when the user saves /
+        skips the wizard. The UI uses this to decide between fresh
+        and edit-existing modes.
+
+    Assets (SourceWarmup, SourceFilter, OrganizationKpi,
+    SourceClarification) continue to carry their own `source_ids`
+    list / `source_id` FK; the group is the entry point for the
+    onboarding flow, not a foreign key those tables need to migrate
+    to. New code paths write assets with `source_ids = group.source_ids`,
+    which makes them appear naturally in workspaces where any of
+    those members is active (existing inclusion logic doesn't need
+    to know about groups at all).
+    """
+    __tablename__ = "source_groups"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    source_ids: Mapped[list] = mapped_column(JSON, default=list)
+    instructions: Mapped[str] = mapped_column(Text, default="")
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class SourceWarmup(Base):
     """Warm-up question pinned to a source (or set of sources).
 

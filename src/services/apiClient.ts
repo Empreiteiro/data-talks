@@ -911,6 +911,89 @@ export const apiClient = {
       source_instructions: string;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding`, { method: 'GET' });
   },
+  // ----- Source groups: onboarding for a SET of sources at once. -----
+  // The single-source endpoints below are still supported (back-
+  // compat); new flows should prefer these so multi-source workspaces
+  // can capture the cross-source clarifications/filters/KPIs the LLM
+  // is best at when it sees both sources together.
+
+  /** Idempotent — same (agentId, sourceIds) returns the same group. */
+  async upsertSourceGroup(agentId: string | undefined, sourceIds: string[]) {
+    return api<{
+      id: string;
+      agent_id: string | null;
+      source_ids: string[];
+      instructions: string;
+      onboarding_completed_at: string | null;
+    }>('/api/source-groups', {
+      method: 'POST',
+      body: JSON.stringify({
+        agent_id: agentId || null,
+        source_ids: sourceIds,
+      }),
+    });
+  },
+  async getSourceGroupOnboardingProfile(groupId: string, language?: string) {
+    return api<{
+      profile: Record<string, unknown>;
+      clarifications: Array<{ question: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{ name: string; definition: string; dependencies: Record<string, unknown> }>;
+      filters: Array<{ name: string; column: string; kind: 'date' | 'category'; config: Record<string, unknown> }>;
+    }>(`/api/source-groups/${encodeURIComponent(groupId)}/onboarding/profile`, {
+      method: 'POST',
+      body: JSON.stringify({ language: language || undefined }),
+    });
+  },
+  async saveSourceGroupOnboarding(
+    groupId: string,
+    payload: {
+      clarifications: Array<{ id?: string; question: string; answer: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{
+        id?: string;
+        name: string;
+        definition: string;
+        dependencies?: Record<string, unknown>;
+        source_ids?: string[];
+      }>;
+      filters?: Array<{
+        id?: string;
+        name: string;
+        column: string;
+        kind: 'date' | 'category';
+        config?: Record<string, unknown>;
+        source_ids?: string[];
+      }>;
+      agent_instructions?: string;
+      source_instructions?: string;
+    },
+  ) {
+    return api<{
+      clarifications: Array<{ id?: string; question: string; answer: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
+      filters: Array<{ id?: string; name: string; column: string; kind: 'date' | 'category'; config?: Record<string, unknown>; source_ids?: string[] }>;
+      onboarding_completed_at: string | null;
+      agent_instructions: string;
+      source_instructions: string;
+    }>(`/api/source-groups/${encodeURIComponent(groupId)}/onboarding/save`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async getSourceGroupOnboarding(groupId: string) {
+    return api<{
+      clarifications: Array<{ id?: string; question: string; answer: string }>;
+      warmup_questions: Array<{ text: string }>;
+      kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
+      filters: Array<{ id?: string; name: string; column: string; kind: 'date' | 'category'; config?: Record<string, unknown>; source_ids?: string[] }>;
+      onboarding_completed_at: string | null;
+      agent_instructions: string;
+      source_instructions: string;
+    }>(`/api/source-groups/${encodeURIComponent(groupId)}/onboarding`, { method: 'GET' });
+  },
+
   async listAgentFilters(agentId: string) {
     return api<{
       filters: Array<{

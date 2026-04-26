@@ -34,13 +34,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import TenantScope, require_membership, require_role
 from app.database import get_db
-from app.llm.onboarding import generate_onboarding_suggestions
+from app.llm.onboarding import (
+    build_multi_source_profile,
+    generate_onboarding_suggestions,
+)
 from app.models import (
     Agent,
     OrganizationKpi,
     Source,
     SourceClarification,
     SourceFilter,
+    SourceGroup,
     SourceWarmup,
 )
 from app.routers.ask import _llm_config_to_overrides
@@ -48,6 +52,8 @@ from app.schemas import (
     OnboardingProfileResponse,
     OnboardingSavedResponse,
     OnboardingSaveRequest,
+    SourceGroupCreate,
+    SourceGroupResponse,
 )
 from app.services.tenant_scope import tenant_filter
 from app.models import LlmConfig
@@ -131,6 +137,192 @@ async def _resolve_llm_overrides(
     if default_cfg:
         return _llm_config_to_overrides(default_cfg)
     return None
+
+
+async def _resolve_llm_overrides_for_agent(
+    db: AsyncSession, scope: TenantScope, agent_id: Optional[str]
+) -> Optional[dict]:
+    """Same resolution logic as _resolve_llm_overrides but takes an
+    agent id directly — used by the group endpoints, which don't
+    bind to a single source."""
+    if agent_id:
+        r = await db.execute(
+            select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
+        )
+        agent = r.scalar_one_or_none()
+        if agent and agent.llm_config_id:
+            r_cfg = await db.execute(
+                select(LlmConfig).where(
+                    LlmConfig.id == agent.llm_config_id,
+                    LlmConfig.user_id == scope.user.id,
+                )
+            )
+            cfg = r_cfg.scalar_one_or_none()
+            if cfg:
+                return _llm_config_to_overrides(cfg)
+    r_default = await db.execute(
+        select(LlmConfig).where(
+            LlmConfig.user_id == scope.user.id,
+            LlmConfig.is_default == True,  # noqa: E712
+        )
+    )
+    default_cfg = r_default.scalar_one_or_none()
+    if default_cfg:
+        return _llm_config_to_overrides(default_cfg)
+    return None
+
+
+def _canonical_source_ids(ids: list[str]) -> list[str]:
+    """Sort + dedupe the source_ids list. We sort so that {a,b,c} and
+    {c,a,b} canonicalize to the same JSON list — that lets `find or
+    create group` lookup by exact equality on the JSON column."""
+    return sorted({sid for sid in ids if isinstance(sid, str) and sid})
+
+
+async def _get_or_create_group(
+    db: AsyncSession,
+    scope: TenantScope,
+    agent_id: Optional[str],
+    source_ids: list[str],
+) -> SourceGroup:
+    """Idempotent upsert: find an existing group with the same
+    (agent_id, canonical source_ids) within the org, or create one."""
+    canonical = _canonical_source_ids(source_ids)
+    if not canonical:
+        raise HTTPException(400, "source_ids cannot be empty")
+    # Validate every id resolves to a source we can see in this tenant.
+    sr = await db.execute(
+        select(Source).where(
+            Source.id.in_(canonical),
+            tenant_filter(Source, scope),
+        )
+    )
+    visible = {s.id for s in sr.scalars().all()}
+    if visible != set(canonical):
+        raise HTTPException(404, "One or more sources not found in this organization")
+    # Look for an existing group with matching agent + ids. We can't
+    # filter on the JSON column equality across all dialects, so we
+    # pull candidates by agent and compare in Python — the candidate
+    # set is small (groups per workspace) so this is fine.
+    rows = await db.execute(
+        select(SourceGroup).where(
+            SourceGroup.organization_id == scope.organization_id,
+            (SourceGroup.agent_id == agent_id) if agent_id else (SourceGroup.agent_id.is_(None)),
+        )
+    )
+    for g in rows.scalars().all():
+        if _canonical_source_ids(g.source_ids or []) == canonical:
+            return g
+    g = SourceGroup(
+        id=str(uuid.uuid4()),
+        organization_id=scope.organization_id,
+        agent_id=agent_id,
+        source_ids=canonical,
+    )
+    db.add(g)
+    await db.flush()
+    return g
+
+
+async def _load_saved_for_group(
+    db: AsyncSession, scope: TenantScope, group: SourceGroup
+) -> OnboardingSavedResponse:
+    """Like `_load_saved` but for a SourceGroup. Filters assets by the
+    group's canonical source_ids set rather than a single source id.
+    """
+    canonical = _canonical_source_ids(group.source_ids or [])
+    canonical_set = set(canonical)
+
+    # Clarifications: include any whose source_id is in the group.
+    # (Clarifications still hang off individual sources; the group's
+    # set is the union of their member-clarifications.)
+    cr = await db.execute(
+        select(SourceClarification).where(
+            SourceClarification.source_id.in_(canonical),
+            SourceClarification.organization_id == scope.organization_id,
+        )
+    )
+    clarifications = [
+        {"id": c.id, "question": c.question, "answer": c.answer}
+        for c in cr.scalars().all()
+    ]
+
+    def _matches(sids: list[str] | None) -> bool:
+        sids = sids or []
+        return _canonical_source_ids(sids) == canonical
+
+    # KPIs / warm-ups / filters: include rows whose source_ids match
+    # this group exactly. Cross-source KPIs (empty source_ids) also
+    # show up since they apply everywhere.
+    kr = await db.execute(
+        select(OrganizationKpi).where(
+            OrganizationKpi.organization_id == scope.organization_id
+        )
+    )
+    kpis = []
+    for k in kr.scalars().all():
+        sids = k.source_ids or []
+        if not sids or _matches(sids) or any(s in canonical_set for s in sids):
+            kpis.append(
+                {
+                    "id": k.id,
+                    "name": k.name,
+                    "definition": k.definition,
+                    "dependencies": k.dependencies or {},
+                    "source_ids": sids,
+                }
+            )
+    wr = await db.execute(
+        select(SourceWarmup).where(
+            SourceWarmup.organization_id == scope.organization_id
+        )
+    )
+    warmups = [
+        {"text": w.text}
+        for w in wr.scalars().all()
+        if _matches(w.source_ids)
+    ]
+    fr = await db.execute(
+        select(SourceFilter).where(
+            SourceFilter.organization_id == scope.organization_id
+        )
+    )
+    filters = [
+        {
+            "id": f.id,
+            "name": f.name,
+            "column": f.column,
+            "kind": f.kind,
+            "config": f.config or {},
+            "source_ids": f.source_ids or [],
+        }
+        for f in fr.scalars().all()
+        if _matches(f.source_ids)
+    ]
+    # Agent.description (workspace-wide) plus group-level instructions.
+    agent_instructions = ""
+    if group.agent_id:
+        ar = await db.execute(
+            select(Agent).where(
+                Agent.id == group.agent_id, tenant_filter(Agent, scope)
+            )
+        )
+        agent = ar.scalar_one_or_none()
+        if agent:
+            agent_instructions = agent.description or ""
+    return OnboardingSavedResponse(
+        clarifications=clarifications,
+        warmup_questions=warmups,
+        kpis=kpis,
+        filters=filters,
+        onboarding_completed_at=(
+            group.onboarding_completed_at.isoformat()
+            if group.onboarding_completed_at
+            else None
+        ),
+        agent_instructions=agent_instructions,
+        source_instructions=group.instructions or "",
+    )
 
 
 async def _load_saved(
@@ -666,3 +858,309 @@ async def onboarding_get(
     if not source:
         raise HTTPException(404, "Source not found")
     return await _load_saved(db, scope, source)
+
+
+# --------------------------------------------------------------------- groups
+#
+# Endpoints below operate on a SourceGroup — a set of sources that go
+# through onboarding together. The single-source path above is kept
+# for backward compat (existing UI paths and integrations that opened
+# the wizard from one source). New code should prefer the group
+# endpoints; a single-source group is a valid degenerate case.
+
+
+@router.post("/source-groups", response_model=SourceGroupResponse)
+async def upsert_source_group(
+    body: SourceGroupCreate,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_role("member")),
+):
+    """Find or create a group with this exact (agent_id, source_ids).
+
+    Idempotent — adding the same set twice returns the same row, so
+    the AddSourceModal can call this every time it finishes a batch
+    without worrying about duplicates.
+    """
+    g = await _get_or_create_group(db, scope, body.agent_id, body.source_ids)
+    await db.commit()
+    return SourceGroupResponse(
+        id=g.id,
+        agent_id=g.agent_id,
+        source_ids=g.source_ids or [],
+        instructions=g.instructions or "",
+        onboarding_completed_at=(
+            g.onboarding_completed_at.isoformat()
+            if g.onboarding_completed_at
+            else None
+        ),
+    )
+
+
+@router.post(
+    "/source-groups/{group_id}/onboarding/profile",
+    response_model=OnboardingProfileResponse,
+)
+async def group_onboarding_profile(
+    group_id: str,
+    body: dict | None = None,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_role("member")),
+):
+    """Build a combined profile across all members of the group and
+    ask the LLM to produce suggestions that explicitly account for
+    cross-source relationships.
+
+    `body.language` mirrors the per-source endpoint.
+    """
+    body = body or {}
+    language = body.get("language") if isinstance(body, dict) else None
+
+    r = await db.execute(
+        select(SourceGroup).where(
+            SourceGroup.id == group_id,
+            SourceGroup.organization_id == scope.organization_id,
+        )
+    )
+    group = r.scalar_one_or_none()
+    if not group:
+        raise HTTPException(404, "Group not found")
+
+    sources_q = await db.execute(
+        select(Source).where(
+            Source.id.in_(group.source_ids or []),
+            tenant_filter(Source, scope),
+        )
+    )
+    sources = list(sources_q.scalars().all())
+    if not sources:
+        raise HTTPException(404, "Group has no visible sources")
+
+    profiles = [_build_source_profile(s) for s in sources]
+    combined = (
+        profiles[0]
+        if len(profiles) == 1
+        else build_multi_source_profile(profiles)
+    )
+    overrides = await _resolve_llm_overrides_for_agent(db, scope, group.agent_id)
+    try:
+        suggestions = await generate_onboarding_suggestions(
+            profile=combined,
+            language=language,
+            llm_overrides=overrides,
+        )
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(
+            502,
+            f"LLM failed to produce onboarding suggestions: {type(e).__name__}: {str(e)[:300]}",
+        )
+    return OnboardingProfileResponse(
+        profile=combined,
+        clarifications=suggestions["clarifications"],
+        warmup_questions=suggestions["warmup_questions"],
+        kpis=suggestions["kpis"],
+        filters=suggestions.get("filters", []),
+    )
+
+
+@router.post(
+    "/source-groups/{group_id}/onboarding/save",
+    response_model=OnboardingSavedResponse,
+)
+async def group_onboarding_save(
+    group_id: str,
+    body: OnboardingSaveRequest,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_role("member")),
+):
+    """Persist onboarding output for a group.
+
+    The shape mirrors the per-source endpoint, with two semantic
+    differences:
+
+      - Warm-ups and filters are pinned to the group's canonical
+        source_ids set (so a workspace where all members are active
+        sees them, but other source-sets don't).
+      - `source_instructions` writes to `SourceGroup.instructions`
+        rather than `Source.metadata_["onboarding_instructions"]`.
+        Single-source groups still flow here.
+    """
+    r = await db.execute(
+        select(SourceGroup).where(
+            SourceGroup.id == group_id,
+            SourceGroup.organization_id == scope.organization_id,
+        )
+    )
+    group = r.scalar_one_or_none()
+    if not group:
+        raise HTTPException(404, "Group not found")
+    canonical = _canonical_source_ids(group.source_ids or [])
+    if not canonical:
+        raise HTTPException(400, "Group has no source members")
+
+    # ---- Clarifications: replace-all per source.
+    # Each clarification is bound to ONE source (questions about a
+    # specific column live with that source). Wipe + reinsert, but
+    # only for sources in this group.
+    await db.execute(
+        delete(SourceClarification).where(
+            SourceClarification.source_id.in_(canonical),
+            SourceClarification.organization_id == scope.organization_id,
+        )
+    )
+    # Distribute clarifications across sources in round-robin order
+    # if the caller didn't specify a target source. The per-source
+    # save endpoint takes single source clarifications; the group
+    # endpoint accepts the same shape and pins each clarification
+    # to the FIRST source in the group's set (clarifications are
+    # broad enough that this is fine for v1; users can re-target via
+    # the per-source flow later if needed).
+    primary_source = canonical[0]
+    for c in body.clarifications:
+        q = (c.question or "").strip()
+        a = (c.answer or "").strip()
+        if not (q and a):
+            continue
+        db.add(
+            SourceClarification(
+                id=str(uuid.uuid4()),
+                organization_id=scope.organization_id,
+                source_id=primary_source,
+                question=q,
+                answer=a,
+            )
+        )
+
+    # ---- Warm-ups: replace-all for THIS group's source_ids set.
+    sw_existing = await db.execute(
+        select(SourceWarmup).where(
+            SourceWarmup.organization_id == scope.organization_id
+        )
+    )
+    for sw in sw_existing.scalars().all():
+        if _canonical_source_ids(sw.source_ids or []) == canonical:
+            await db.delete(sw)
+    for w in body.warmup_questions:
+        t = (w.text or "").strip()
+        if t:
+            db.add(
+                SourceWarmup(
+                    id=str(uuid.uuid4()),
+                    organization_id=scope.organization_id,
+                    source_ids=canonical,
+                    text=t,
+                )
+            )
+
+    # ---- KPIs: upsert by id, scoped to org.
+    for k in body.kpis:
+        if not (k.name.strip() and k.definition.strip()):
+            continue
+        sids = list(k.source_ids or canonical)
+        # Ensure every member of THIS group is included so the KPI is
+        # visible whenever the group is active. The user can prune
+        # the list manually later.
+        for s in canonical:
+            if s not in sids:
+                sids.append(s)
+        if k.id:
+            kr = await db.execute(
+                select(OrganizationKpi).where(
+                    OrganizationKpi.id == k.id,
+                    OrganizationKpi.organization_id == scope.organization_id,
+                )
+            )
+            existing = kr.scalar_one_or_none()
+            if existing:
+                existing.name = k.name.strip()
+                existing.definition = k.definition.strip()
+                existing.dependencies = k.dependencies or {}
+                existing.source_ids = sids
+                existing.updated_at = datetime.utcnow()
+                continue
+        db.add(
+            OrganizationKpi(
+                id=str(uuid.uuid4()),
+                organization_id=scope.organization_id,
+                name=k.name.strip(),
+                definition=k.definition.strip(),
+                source_ids=sids,
+                dependencies=k.dependencies or {},
+                created_by_user_id=scope.user.id,
+            )
+        )
+
+    # ---- Filters: replace-all for THIS group's set.
+    f_existing = await db.execute(
+        select(SourceFilter).where(
+            SourceFilter.organization_id == scope.organization_id
+        )
+    )
+    for f in f_existing.scalars().all():
+        if _canonical_source_ids(f.source_ids or []) == canonical:
+            await db.delete(f)
+    for filt in body.filters:
+        name = (filt.name or "").strip()
+        col = (filt.column or "").strip()
+        kind = (filt.kind or "").strip()
+        if not (name and col and kind in ("date", "category")):
+            continue
+        cfg = filt.config if isinstance(filt.config, dict) else {}
+        if kind == "category":
+            vals = cfg.get("values") or []
+            if not isinstance(vals, list):
+                vals = []
+            cfg = {"values": [str(v) for v in vals if str(v).strip()]}
+        else:
+            cfg = {}
+        db.add(
+            SourceFilter(
+                id=str(uuid.uuid4()),
+                organization_id=scope.organization_id,
+                source_ids=canonical,
+                name=name,
+                column=col,
+                kind=kind,
+                config=cfg,
+            )
+        )
+
+    # ---- Agent-scoped instructions ----
+    if group.agent_id and body.agent_instructions is not None:
+        ar = await db.execute(
+            select(Agent).where(
+                Agent.id == group.agent_id, tenant_filter(Agent, scope)
+            )
+        )
+        agent = ar.scalar_one_or_none()
+        if agent:
+            agent.description = body.agent_instructions.strip()
+
+    # ---- Group-level instructions + onboarded stamp ----
+    if body.source_instructions is not None:
+        group.instructions = body.source_instructions.strip()
+    group.onboarding_completed_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(group)
+    return await _load_saved_for_group(db, scope, group)
+
+
+@router.get(
+    "/source-groups/{group_id}/onboarding",
+    response_model=OnboardingSavedResponse,
+)
+async def group_onboarding_get(
+    group_id: str,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    r = await db.execute(
+        select(SourceGroup).where(
+            SourceGroup.id == group_id,
+            SourceGroup.organization_id == scope.organization_id,
+        )
+    )
+    group = r.scalar_one_or_none()
+    if not group:
+        raise HTTPException(404, "Group not found")
+    return await _load_saved_for_group(db, scope, group)

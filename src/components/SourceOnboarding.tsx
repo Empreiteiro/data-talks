@@ -34,18 +34,25 @@ import { useLanguage } from "@/contexts/LanguageContext";
  * by `existingMode`) so the user can edit what was saved before.
  */
 export interface SourceOnboardingProps {
-  sourceId: string;
-  /** Called after save (or skip). Always receives the source id back. */
-  onDone: (sourceId: string) => void;
+  /**
+   * Onboarding target. Provide EITHER `sourceId` (legacy
+   * single-source path) OR `groupId` (multi-source path). The group
+   * path is preferred when available — it routes through the
+   * group-aware endpoints that build a combined profile and pin
+   * assets to the group's source_ids set instead of a single source.
+   */
+  sourceId?: string;
+  groupId?: string;
+  /** Called after save (or skip). Always receives an id back (group
+   *  id when in group mode, source id otherwise). */
+  onDone: (id: string) => void;
   /** Called when the user explicitly cancels — modal should close. */
   onCancel: () => void;
   /**
-   * If true, skip the "this source has been onboarded before → load
-   * saved" gate and always call POST /onboarding/profile to re-run
-   * the LLM. Used by the "re-run setup" entry point next to the
-   * Available Columns header — the user explicitly asked for fresh
-   * suggestions, so even a previously-completed source goes back
-   * through the wizard. Default: false (auto-detect via
+   * If true, skip the "this has been onboarded before → load saved"
+   * gate and always call POST /onboarding/profile to re-run the
+   * LLM. Used by the "re-run setup" entry point next to the
+   * Available Columns header. Default: false (auto-detect via
    * `onboarding_completed_at`).
    */
   forceFresh?: boolean;
@@ -80,7 +87,16 @@ interface Filter {
 
 type Step = "loading" | "clarifications" | "warmups" | "filters" | "kpis" | "saving";
 
-export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = false }: SourceOnboardingProps) {
+export function SourceOnboarding({ sourceId, groupId, onDone, onCancel, forceFresh = false }: SourceOnboardingProps) {
+  // The component runs against a group when given groupId; otherwise
+  // it falls back to the legacy single-source endpoints. We pick the
+  // pair of read/profile/save calls up front so the rest of the
+  // logic doesn't have to branch.
+  const isGroup = Boolean(groupId);
+  const targetId = (groupId || sourceId || "") as string;
+  const apiGet = isGroup ? dataClient.getSourceGroupOnboarding : dataClient.getSourceOnboarding;
+  const apiProfile = isGroup ? dataClient.getSourceGroupOnboardingProfile : dataClient.getSourceOnboardingProfile;
+  const apiSave = isGroup ? dataClient.saveSourceGroupOnboarding : dataClient.saveSourceOnboarding;
   const { language, t } = useLanguage();
   const [step, setStep] = useState<Step>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +128,7 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
     (async () => {
       try {
         setError(null);
-        const saved = await dataClient.getSourceOnboarding(sourceId);
+        const saved = await apiGet(targetId);
         if (cancelled) return;
         // The right signal for "this source has been onboarded before"
         // is the per-source `onboarding_completed_at` timestamp on the
@@ -165,7 +181,7 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
           setStep("clarifications");
           return;
         }
-        const fresh = await dataClient.getSourceOnboardingProfile(sourceId, language);
+        const fresh = await apiProfile(targetId, language);
         if (cancelled) return;
         setClarifications(
           fresh.clarifications.map((c) => ({ question: c.question, answer: "" })),
@@ -202,7 +218,8 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
     return () => {
       cancelled = true;
     };
-  }, [sourceId, language, forceFresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId, language, forceFresh]);
 
   const persist = async (markSkipped: boolean) => {
     setStep("saving");
@@ -257,8 +274,8 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
               ? { source_instructions: sourceInstructions }
               : {}),
           };
-      await dataClient.saveSourceOnboarding(sourceId, payload);
-      onDone(sourceId);
+      await apiSave(targetId, payload);
+      onDone(targetId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setStep("kpis");

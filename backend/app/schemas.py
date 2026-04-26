@@ -278,6 +278,20 @@ class OnboardingFilterSaved(BaseModel):
     source_ids: list[str] = []
 
 
+class SourceGroupCreate(BaseModel):
+    """Upsert a SourceGroup by (agent_id, source_ids set)."""
+    agent_id: Optional[str] = None
+    source_ids: list[str]
+
+
+class SourceGroupResponse(BaseModel):
+    id: str
+    agent_id: Optional[str] = None
+    source_ids: list[str]
+    instructions: str = ""
+    onboarding_completed_at: Optional[str] = None
+
+
 class OnboardingProfileResponse(BaseModel):
     """Returned by `POST /sources/{id}/onboarding/profile` — the source
     profile the LLM saw, plus its initial suggestions."""

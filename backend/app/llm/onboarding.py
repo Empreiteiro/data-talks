@@ -50,6 +50,15 @@ _SYSTEM_PROMPT = (
     "sample profile's `top_values`. Only include filters whose "
     "column actually appears in the source schema.\n"
     "\n"
+    "If the profile has `\"kind\": \"multi_source\"`, the user is "
+    "onboarding several sources together. In that case you should "
+    "explicitly probe the JOIN/KEY relationships between them in the "
+    "clarifications (e.g. 'Is `users.id` the same identifier as "
+    "`orders.user_id`?', 'Do both sources use the same timezone?'), "
+    "and propose KPIs/warm-ups that COMBINE the sources where it "
+    "makes sense — that's where the most useful onboarding signal "
+    "lives.\n"
+    "\n"
     "Return ONLY a JSON object with exactly this shape — no prose, no "
     "code fences, no preamble:\n"
     "{\n"
@@ -142,6 +151,36 @@ async def generate_onboarding_suggestions(
         "warmup_questions": _safe_list(parsed, "warmup_questions"),
         "kpis": _safe_list(parsed, "kpis"),
         "filters": _safe_list(parsed, "filters"),
+    }
+
+
+def build_multi_source_profile(
+    profiles: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Combine N single-source profiles into a single profile object the
+    `generate_onboarding_suggestions` prompt can reason over.
+
+    Shape:
+      {
+        "kind": "multi_source",
+        "source_count": N,
+        "sources": [
+          {"name": "...", "type": "...", "tables": [...], "sample_profile": {...}, "sample_rows": [...]},
+          ...
+        ]
+      }
+
+    The kind discriminator tells the LLM "this profile spans more than
+    one source — propose clarifications/KPIs/filters that USE this
+    combination, not just each source in isolation". Cross-source
+    join keys, conflicting column meanings, mismatched timezones —
+    these are exactly the points the user said are most worth
+    capturing during a group onboarding pass.
+    """
+    return {
+        "kind": "multi_source",
+        "source_count": len(profiles),
+        "sources": profiles,
     }
 
 
