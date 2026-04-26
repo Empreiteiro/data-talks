@@ -845,6 +845,12 @@ export const apiClient = {
       clarifications: Array<{ question: string }>;
       warmup_questions: Array<{ text: string }>;
       kpis: Array<{ name: string; definition: string; dependencies: Record<string, unknown> }>;
+      filters: Array<{
+        name: string;
+        column: string;
+        kind: 'date' | 'category';
+        config: Record<string, unknown>;
+      }>;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding/profile`, {
       method: 'POST',
       body: JSON.stringify({ language: language || undefined }),
@@ -862,6 +868,14 @@ export const apiClient = {
         dependencies?: Record<string, unknown>;
         source_ids?: string[];
       }>;
+      filters?: Array<{
+        id?: string;
+        name: string;
+        column: string;
+        kind: 'date' | 'category';
+        config?: Record<string, unknown>;
+        source_ids?: string[];
+      }>;
       // Mirror of the agent's `description` field — same content as
       // the "Specific Instructions for the Agent" textarea in the
       // agent-settings modal. Omit (undefined) to leave the current
@@ -877,6 +891,7 @@ export const apiClient = {
       clarifications: Array<{ id?: string; question: string; answer: string }>;
       warmup_questions: Array<{ text: string }>;
       kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
+      filters: Array<{ id?: string; name: string; column: string; kind: 'date' | 'category'; config?: Record<string, unknown>; source_ids?: string[] }>;
       onboarding_completed_at: string | null;
       agent_instructions: string;
       source_instructions: string;
@@ -890,10 +905,22 @@ export const apiClient = {
       clarifications: Array<{ id?: string; question: string; answer: string }>;
       warmup_questions: Array<{ text: string }>;
       kpis: Array<{ id?: string; name: string; definition: string; dependencies?: Record<string, unknown>; source_ids?: string[] }>;
+      filters: Array<{ id?: string; name: string; column: string; kind: 'date' | 'category'; config?: Record<string, unknown>; source_ids?: string[] }>;
       onboarding_completed_at: string | null;
       agent_instructions: string;
       source_instructions: string;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding`, { method: 'GET' });
+  },
+  async listAgentFilters(agentId: string) {
+    return api<{
+      filters: Array<{
+        id: string;
+        name: string;
+        column: string;
+        kind: 'date' | 'category';
+        config: Record<string, unknown>;
+      }>;
+    }>(`/api/agents/${encodeURIComponent(agentId)}/filters`, { method: 'GET' });
   },
   /** Merged warm-ups: agent.suggested_questions ∪ active sources' SourceWarmup. */
   async listAgentWarmupQuestions(agentId: string) {

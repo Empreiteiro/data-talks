@@ -29,7 +29,7 @@ _SYSTEM_PROMPT = (
     "You are a senior data analyst helping the user onboard a new data "
     "source into an analytics platform. Your job is to read a structured "
     "profile of the source (tables, columns, types, sample rows, sample "
-    "stats) and produce three things: \n"
+    "stats) and produce four things: \n"
     "  1. clarifications: 3 to 6 short questions whose answers will help "
     "you write better SQL/Python against this data later (ambiguous "
     "column names, business meaning of identifiers, time-zone of date "
@@ -39,6 +39,16 @@ _SYSTEM_PROMPT = (
     "  3. kpis: 2 to 6 candidate KPIs (name + one-line definition + "
     "the tables/columns the KPI reads). Only propose KPIs the data "
     "actually supports — do not invent columns.\n"
+    "  4. filters: 0 to 5 useful filter candidates the user is likely "
+    "to slice the data by. Each is one of:\n"
+    "       - kind=\"date\": a date column you'd put a range filter on "
+    "(e.g. created_at, order_date). config={} (defaults inferred at "
+    "query time).\n"
+    "       - kind=\"category\": a low-cardinality column with a small "
+    "set of values (region, status, plan_type). config={\"values\": "
+    "[\"...\"]} listing the realistic candidate values from the "
+    "sample profile's `top_values`. Only include filters whose "
+    "column actually appears in the source schema.\n"
     "\n"
     "Return ONLY a JSON object with exactly this shape — no prose, no "
     "code fences, no preamble:\n"
@@ -46,7 +56,9 @@ _SYSTEM_PROMPT = (
     '  "clarifications": [{"question": "..."}],\n'
     '  "warmup_questions": [{"text": "..."}],\n'
     '  "kpis": [{"name": "...", "definition": "...", '
-    '"dependencies": {"tables": ["..."], "columns": ["..."]}}]\n'
+    '"dependencies": {"tables": ["..."], "columns": ["..."]}}],\n'
+    '  "filters": [{"name": "...", "column": "...", '
+    '"kind": "date" | "category", "config": {"values": ["..."]}}]\n'
     "}"
 )
 
@@ -129,6 +141,7 @@ async def generate_onboarding_suggestions(
         "clarifications": _safe_list(parsed, "clarifications"),
         "warmup_questions": _safe_list(parsed, "warmup_questions"),
         "kpis": _safe_list(parsed, "kpis"),
+        "filters": _safe_list(parsed, "filters"),
     }
 
 

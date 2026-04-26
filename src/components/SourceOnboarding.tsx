@@ -68,8 +68,17 @@ interface Kpi {
   source_ids: string[];
   keep: boolean;
 }
+interface Filter {
+  id?: string;
+  name: string;
+  column: string;
+  kind: "date" | "category";
+  values: string[]; // category only — empty for date filters
+  source_ids: string[];
+  keep: boolean;
+}
 
-type Step = "loading" | "clarifications" | "warmups" | "kpis" | "saving";
+type Step = "loading" | "clarifications" | "warmups" | "filters" | "kpis" | "saving";
 
 export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = false }: SourceOnboardingProps) {
   const { language, t } = useLanguage();
@@ -78,6 +87,7 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
   const [clarifications, setClarifications] = useState<Clarification[]>([]);
   const [warmups, setWarmups] = useState<Warmup[]>([]);
   const [kpis, setKpis] = useState<Kpi[]>([]);
+  const [filters, setFilters] = useState<Filter[]>([]);
   // "Specific Instructions for the Agent" — mirrors the textarea on
   // the agent settings modal. Pre-filled from `agent_instructions`
   // returned by GET /onboarding (which reads `Agent.description`).
@@ -138,6 +148,20 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
               keep: true,
             })),
           );
+          setFilters(
+            (saved.filters || []).map((f) => ({
+              id: f.id,
+              name: f.name,
+              column: f.column,
+              kind: f.kind,
+              values:
+                f.kind === "category"
+                  ? ((f.config as { values?: unknown })?.values as string[]) || []
+                  : [],
+              source_ids: f.source_ids || [],
+              keep: true,
+            })),
+          );
           setStep("clarifications");
           return;
         }
@@ -152,6 +176,19 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
             name: k.name,
             definition: k.definition,
             dependencies: k.dependencies || {},
+            source_ids: [],
+            keep: true,
+          })),
+        );
+        setFilters(
+          (fresh.filters || []).map((f) => ({
+            name: f.name,
+            column: f.column,
+            kind: f.kind,
+            values:
+              f.kind === "category"
+                ? ((f.config as { values?: unknown })?.values as string[]) || []
+                : [],
             source_ids: [],
             keep: true,
           })),
@@ -174,7 +211,7 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
       // onboarded — this is what stops the modal from reappearing on
       // every reopen. The empty payload is intentional.
       const payload = markSkipped
-        ? { clarifications: [], warmup_questions: [], kpis: [] }
+        ? { clarifications: [], warmup_questions: [], kpis: [], filters: [] }
         : {
             clarifications: clarifications
               .filter((c) => c.question.trim() && c.answer.trim())
@@ -190,6 +227,19 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
                 definition: k.definition,
                 dependencies: k.dependencies,
                 source_ids: k.source_ids,
+              })),
+            filters: filters
+              .filter((f) => f.keep && f.name.trim() && f.column.trim())
+              .map((f) => ({
+                id: f.id,
+                name: f.name,
+                column: f.column,
+                kind: f.kind,
+                config:
+                  f.kind === "category"
+                    ? { values: f.values.filter((v) => v.trim()) }
+                    : {},
+                source_ids: f.source_ids,
               })),
             // Only send `agent_instructions` when the user actually
             // touched the textarea — otherwise omitting the field
@@ -364,7 +414,123 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
             <Button variant="ghost" onClick={() => setStep("clarifications")}>
               {t("common.back") || "Back"}
             </Button>
-            <Button onClick={() => setStep("kpis")}>{t("common.next") || "Next"}</Button>
+            <Button onClick={() => setStep("filters")}>{t("common.next") || "Next"}</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Step 3.5 — Filters
+        *
+        * Date filters: just `name` + `column`. The user picks the
+        * actual range later, in the workspace's filter menu. We
+        * don't capture defaults here; if the LLM provided any, we
+        * already discarded them on save (kept config = {}).
+        *
+        * Category filters: `name` + `column` + an editable list of
+        * candidate values. We render values as a textarea (one per
+        * line) — the simplest UX that lets the user add/remove/edit
+        * without forcing us to build chip pickers. Trim and dedupe
+        * happens at save time. */}
+      {step === "filters" && (
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">
+              {t("onboarding.filtersTitle") || "Suggested filters"}
+            </h4>
+            <Badge variant="secondary">
+              {filters.filter((f) => f.keep).length} kept
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("onboarding.filtersHint") ||
+              "Date and category filters become a workspace-level menu next to the logs button."}
+          </p>
+          <ul className="space-y-3">
+            {filters.map((f, i) => (
+              <li
+                key={i}
+                className="space-y-2 rounded-md border border-border/60 p-3 bg-card"
+              >
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] uppercase tracking-wide"
+                  >
+                    {f.kind}
+                  </Badge>
+                  <Input
+                    value={f.name}
+                    placeholder="Filter name"
+                    onChange={(e) =>
+                      setFilters((prev) =>
+                        prev.map((p, j) => (j === i ? { ...p, name: e.target.value } : p)),
+                      )
+                    }
+                    className="font-medium flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setFilters((prev) =>
+                        prev.map((p, j) => (j === i ? { ...p, keep: !p.keep } : p)),
+                      )
+                    }
+                    title={f.keep ? "Discard" : "Keep"}
+                    className={f.keep ? "" : "opacity-40"}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Input
+                  value={f.column}
+                  placeholder="Column"
+                  onChange={(e) =>
+                    setFilters((prev) =>
+                      prev.map((p, j) => (j === i ? { ...p, column: e.target.value } : p)),
+                    )
+                  }
+                  className="font-mono text-xs"
+                />
+                {f.kind === "category" && (
+                  <Textarea
+                    rows={3}
+                    placeholder="One value per line"
+                    value={f.values.join("\n")}
+                    onChange={(e) =>
+                      setFilters((prev) =>
+                        prev.map((p, j) =>
+                          j === i
+                            ? {
+                                ...p,
+                                values: e.target.value
+                                  .split("\n")
+                                  .map((v) => v.trim())
+                                  .filter(Boolean),
+                              }
+                            : p,
+                        ),
+                      )
+                    }
+                    className="font-mono text-xs"
+                  />
+                )}
+              </li>
+            ))}
+            {filters.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">
+                {t("onboarding.filtersEmpty") ||
+                  "No filters suggested. You can add them later in the source settings."}
+              </p>
+            )}
+          </ul>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" onClick={() => setStep("warmups")}>
+              {t("common.back") || "Back"}
+            </Button>
+            <Button onClick={() => setStep("kpis")}>
+              {t("common.next") || "Next"}
+            </Button>
           </div>
         </Card>
       )}
@@ -492,7 +658,7 @@ export function SourceOnboarding({ sourceId, onDone, onCancel, forceFresh = fals
           </div>
 
           <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => setStep("warmups")}>
+            <Button variant="ghost" onClick={() => setStep("filters")}>
               {t("common.back") || "Back"}
             </Button>
             <Button onClick={() => void persist(false)}>

@@ -49,7 +49,8 @@ import { usePageWalkthrough } from "@/contexts/WalkthroughContext";
 import { workspaceSteps } from "@/components/walkthrough/steps/workspaceSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { dataClient } from "@/services/dataClient";
-import { BarChart3, Bot, ChevronRight, History, Layout, Link2, Loader2, RefreshCw, RotateCcw, Send, Settings2, Sparkles, Table, Terminal, Upload, X } from "lucide-react";
+import { BarChart3, Bot, ChevronRight, Filter as FilterIcon, History, Layout, Link2, Loader2, RefreshCw, RotateCcw, Send, Settings2, Sparkles, Table, Terminal, Upload, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -308,6 +309,29 @@ export default function Workspace() {
   const [availableKpis, setAvailableKpis] = useState<
     Array<{ id: string; name: string; definition: string }>
   >([]);
+  // Workspace-level filters captured during onboarding (date or
+  // category). Applied at query time by prepending a "Constraints:"
+  // line to the user's question — the LLM is uniformly good at
+  // following such directives across providers, and keeping this
+  // out of SQL/Python lets the same filters work for CSV / SQL /
+  // BigQuery / sheets without per-script translation.
+  type WSFilter = {
+    id: string;
+    name: string;
+    column: string;
+    kind: "date" | "category";
+    config: Record<string, unknown>;
+  };
+  const [availableFilters, setAvailableFilters] = useState<WSFilter[]>([]);
+  // Applied values: maps filter id → user-supplied value. Cleared
+  // explicitly via the popover, NOT after sending — users typically
+  // want the same filter to apply to follow-up questions in the
+  // same conversation.
+  type AppliedDate = { kind: "date"; from?: string; to?: string };
+  type AppliedCategory = { kind: "category"; value?: string };
+  const [appliedFilters, setAppliedFilters] = useState<
+    Record<string, AppliedDate | AppliedCategory>
+  >({});
   const [warmupQuestions, setWarmupQuestions] = useState<string[]>([]);
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false);
   const [workspaceType, setWorkspaceType] = useState("analysis");
@@ -344,6 +368,7 @@ export default function Workspace() {
     loadHistory();
     loadAvailableColumns();
     loadAvailableKpis();
+    loadAvailableFilters();
     loadWarmupQuestions();
     loadSqlSourcesCount();
     checkLlmStatus();
@@ -476,6 +501,45 @@ export default function Workspace() {
       setAvailableKpis([]);
     }
   }
+
+  async function loadAvailableFilters() {
+    if (!id) return;
+    try {
+      const data = await dataClient.listAgentFilters(id);
+      setAvailableFilters(data?.filters || []);
+    } catch (error) {
+      console.error("Erro ao carregar filtros:", error);
+      setAvailableFilters([]);
+    }
+  }
+
+  // Compose a "Constraints:" line from `appliedFilters`. Empty
+  // string when no filter has a value set. Date filters render as
+  // `BETWEEN from AND to` (or just lower/upper bound when one side
+  // is missing); category filters render as `= "value"`. Joined
+  // with semicolons because the LLM is more reliable when each
+  // constraint is on its own atom-like phrase.
+  function buildConstraintsLine(): string {
+    const parts: string[] = [];
+    for (const f of availableFilters) {
+      const applied = appliedFilters[f.id];
+      if (!applied) continue;
+      if (applied.kind === "date") {
+        const a = applied as AppliedDate;
+        if (a.from && a.to) parts.push(`${f.column} BETWEEN ${a.from} AND ${a.to}`);
+        else if (a.from) parts.push(`${f.column} >= ${a.from}`);
+        else if (a.to) parts.push(`${f.column} <= ${a.to}`);
+      } else {
+        const a = applied as AppliedCategory;
+        if (a.value) parts.push(`${f.column} = "${a.value}"`);
+      }
+    }
+    return parts.length ? `Constraints: ${parts.join("; ")}.\n\n` : "";
+  }
+  const activeFilterCount = Object.values(appliedFilters).filter((v) => {
+    if (v.kind === "date") return Boolean(v.from || v.to);
+    return Boolean(v.value);
+  }).length;
 
   async function loadWarmupQuestions() {
     if (!id) return;
@@ -726,7 +790,14 @@ export default function Workspace() {
         return;
       }
 
-      const data = await dataClient.askQuestion(id, userMessage, currentSessionId || undefined);
+      // Compose the actual outgoing question: any active filter
+      // values become a "Constraints:" prefix the LLM is told to
+      // honor. We do NOT show this prefix in the chat bubble (the
+      // user already saw the values they picked in the filter
+      // popover), only in what we send.
+      const constraints = buildConstraintsLine();
+      const outgoing = constraints + userMessage;
+      const data = await dataClient.askQuestion(id, outgoing, currentSessionId || undefined);
 
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -804,6 +875,139 @@ export default function Workspace() {
               >
                 <Terminal className="h-4 w-4" />
               </Button>
+
+              {/*
+                Filters menu: only renders when at least one filter
+                exists for this workspace (saved during onboarding).
+                The badge counter shows how many filters currently
+                have a value applied — so users see the constraint
+                state of their conversation at a glance without
+                opening the popover.
+              */}
+              {availableFilters.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      title={t('filters.button') || 'Filters'}
+                      className="relative"
+                    >
+                      <FilterIcon className="h-4 w-4" />
+                      {activeFilterCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium flex items-center justify-center">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium">
+                          {t('filters.title') || 'Filters'}
+                        </h4>
+                        {activeFilterCount > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs"
+                            onClick={() => setAppliedFilters({})}
+                          >
+                            {t('filters.clearAll') || 'Clear'}
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t('filters.help') ||
+                          'Applied as a constraint prefix on every question you send.'}
+                      </p>
+                      {availableFilters.map((f) => {
+                        const applied = appliedFilters[f.id];
+                        if (f.kind === "date") {
+                          const v = (applied as AppliedDate | undefined) || { kind: "date" as const };
+                          return (
+                            <div key={f.id} className="space-y-1.5">
+                              <Label className="text-xs">
+                                {f.name}{" "}
+                                <span className="text-muted-foreground font-mono">
+                                  ({f.column})
+                                </span>
+                              </Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="date"
+                                  value={v.from || ""}
+                                  onChange={(e) =>
+                                    setAppliedFilters((prev) => ({
+                                      ...prev,
+                                      [f.id]: {
+                                        kind: "date",
+                                        from: e.target.value || undefined,
+                                        to: v.to,
+                                      },
+                                    }))
+                                  }
+                                  className="flex-1 h-8 px-2 text-xs rounded-md border border-input bg-background"
+                                />
+                                <input
+                                  type="date"
+                                  value={v.to || ""}
+                                  onChange={(e) =>
+                                    setAppliedFilters((prev) => ({
+                                      ...prev,
+                                      [f.id]: {
+                                        kind: "date",
+                                        from: v.from,
+                                        to: e.target.value || undefined,
+                                      },
+                                    }))
+                                  }
+                                  className="flex-1 h-8 px-2 text-xs rounded-md border border-input bg-background"
+                                />
+                              </div>
+                            </div>
+                          );
+                        }
+                        // Category
+                        const v = (applied as AppliedCategory | undefined) || { kind: "category" as const };
+                        const values =
+                          ((f.config as { values?: unknown })?.values as string[]) || [];
+                        return (
+                          <div key={f.id} className="space-y-1.5">
+                            <Label className="text-xs">
+                              {f.name}{" "}
+                              <span className="text-muted-foreground font-mono">
+                                ({f.column})
+                              </span>
+                            </Label>
+                            <select
+                              className="w-full h-8 px-2 text-xs rounded-md border border-input bg-background"
+                              value={v.value || ""}
+                              onChange={(e) =>
+                                setAppliedFilters((prev) => ({
+                                  ...prev,
+                                  [f.id]: {
+                                    kind: "category",
+                                    value: e.target.value || undefined,
+                                  },
+                                }))
+                              }
+                            >
+                              <option value="">{t('filters.any') || 'Any'}</option>
+                              {values.map((val) => (
+                                <option key={val} value={val}>
+                                  {val}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
               <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="icon" data-walkthrough="ws-history-btn">
@@ -1311,6 +1515,7 @@ export default function Workspace() {
         loadSqlSourcesCount();
         loadWarmupQuestions();
         loadAvailableKpis();
+        loadAvailableFilters();
       }} />
 
       {id && (
@@ -1341,9 +1546,10 @@ export default function Workspace() {
         onSaved={() => {
           // Mirror what AgentSettings does — pick up any warm-ups
           // that landed on agent.suggested_questions during save,
-          // plus any new KPIs the user just confirmed.
+          // plus any new KPIs and filters the user just confirmed.
           loadWarmupQuestions();
           loadAvailableKpis();
+          loadAvailableFilters();
         }}
       />
 

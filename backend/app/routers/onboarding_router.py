@@ -40,6 +40,7 @@ from app.models import (
     OrganizationKpi,
     Source,
     SourceClarification,
+    SourceFilter,
     SourceWarmup,
 )
 from app.routers.ask import _llm_config_to_overrides
@@ -185,6 +186,32 @@ async def _load_saved(
         if source.id in sids:
             warmups.append({"text": sw.text})
 
+    # Filters: same shape rule as KPIs/warm-ups — include rows whose
+    # source_ids contain this source. Cross-source filters (empty
+    # source_ids) are NOT included here because the onboarding flow
+    # is per-source; if you want a filter across multiple sources,
+    # the filter has to be created with explicit pinning to those
+    # sources.
+    filters: list[dict] = []
+    f_rows = await db.execute(
+        select(SourceFilter).where(
+            SourceFilter.organization_id == scope.organization_id
+        )
+    )
+    for f in f_rows.scalars().all():
+        sids = f.source_ids or []
+        if source.id in sids:
+            filters.append(
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "column": f.column,
+                    "kind": f.kind,
+                    "config": f.config or {},
+                    "source_ids": sids,
+                }
+            )
+
     # Agent.description = workspace-wide "Specific Instructions for
     # the Agent". Surfaced so the UI can pre-fill the textarea.
     agent_instructions = ""
@@ -207,6 +234,7 @@ async def _load_saved(
         clarifications=clarifications,
         warmup_questions=warmups,
         kpis=kpi_rows,
+        filters=filters,
         onboarding_completed_at=completed_raw,
         agent_instructions=agent_instructions,
         source_instructions=source_instructions,
@@ -258,6 +286,7 @@ async def onboarding_profile(
         clarifications=suggestions["clarifications"],
         warmup_questions=suggestions["warmup_questions"],
         kpis=suggestions["kpis"],
+        filters=suggestions.get("filters", []),
     )
 
 
@@ -389,6 +418,51 @@ async def onboarding_save(
         )
         incoming_ids.add(new_id)
 
+    # ---- Filters: replace-all for THIS source's set ----
+    # Same semantics as warm-ups: the onboarding flow is
+    # source-scoped, so we wipe filters whose source_ids match this
+    # source's set and re-insert from the body. We don't touch
+    # filters that span other sources — they'd have multi-element
+    # source_ids that don't equal `[source.id]`.
+    f_existing = await db.execute(
+        select(SourceFilter).where(
+            SourceFilter.organization_id == scope.organization_id
+        )
+    )
+    for f in f_existing.scalars().all():
+        if (f.source_ids or []) == [source.id]:
+            await db.delete(f)
+    for filt in body.filters:
+        name = (filt.name or "").strip()
+        col = (filt.column or "").strip()
+        kind = (filt.kind or "").strip()
+        if not (name and col and kind in ("date", "category")):
+            continue
+        sids = list(filt.source_ids or [])
+        if source.id not in sids:
+            sids.append(source.id)
+        cfg = filt.config if isinstance(filt.config, dict) else {}
+        # Sanitize config per kind so we don't persist garbage. Date
+        # filters carry no values; category filters carry a list.
+        if kind == "category":
+            vals = cfg.get("values") or []
+            if not isinstance(vals, list):
+                vals = []
+            cfg = {"values": [str(v) for v in vals if str(v).strip()]}
+        else:
+            cfg = {}
+        db.add(
+            SourceFilter(
+                id=str(uuid.uuid4()),
+                organization_id=scope.organization_id,
+                source_ids=sids,
+                name=name,
+                column=col,
+                kind=kind,
+                config=cfg,
+            )
+        )
+
     # ---- Source-scoped instructions + onboarded stamp ----
     # Both live on Source.metadata_ (a JSON column), so we mutate a
     # shallow copy and reassign — SQLAlchemy doesn't pick up in-place
@@ -454,6 +528,55 @@ async def list_agent_kpis(
     # every reload of the workspace.
     out.sort(key=lambda x: x["name"].lower())
     return {"kpis": out}
+
+
+@router.get("/agents/{agent_id}/filters")
+async def list_agent_filters(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    """Filters relevant to a workspace's active sources.
+
+    Returns SourceFilter rows whose `source_ids` overlap with at
+    least one active source on this agent. Cross-source filters
+    (empty source_ids) are also included so a workspace-wide
+    constraint surfaces even when sources change.
+    """
+    r = await db.execute(
+        select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope))
+    )
+    agent = r.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    r = await db.execute(
+        select(Source).where(
+            Source.agent_id == agent_id,
+            tenant_filter(Source, scope),
+            Source.is_active == True,  # noqa: E712
+        )
+    )
+    active_source_ids = {s.id for s in r.scalars().all()}
+    rows = await db.execute(
+        select(SourceFilter).where(
+            SourceFilter.organization_id == scope.organization_id
+        )
+    )
+    out: list[dict] = []
+    for f in rows.scalars().all():
+        sids = f.source_ids or []
+        if not sids or any(sid in active_source_ids for sid in sids):
+            out.append(
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "column": f.column,
+                    "kind": f.kind,
+                    "config": f.config or {},
+                }
+            )
+    out.sort(key=lambda x: x["name"].lower())
+    return {"filters": out}
 
 
 @router.get("/agents/{agent_id}/warmup-questions")

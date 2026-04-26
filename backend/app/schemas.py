@@ -257,6 +257,27 @@ class OnboardingKpiSaved(BaseModel):
     source_ids: list[str] = []
 
 
+class OnboardingFilterSuggestion(BaseModel):
+    """LLM-generated filter candidate. `kind` is "date" or "category";
+    `config` is loose: `{}` for dates (defaults inferred at query
+    time) or `{"values": [...]}` for categories. See SourceFilter."""
+    name: str
+    column: str
+    kind: str  # "date" | "category"
+    config: dict = {}
+
+
+class OnboardingFilterSaved(BaseModel):
+    """Filter the user confirmed/edited. `source_ids` filled by the
+    server (always includes the onboarded source)."""
+    id: Optional[str] = None
+    name: str
+    column: str
+    kind: str
+    config: dict = {}
+    source_ids: list[str] = []
+
+
 class OnboardingProfileResponse(BaseModel):
     """Returned by `POST /sources/{id}/onboarding/profile` — the source
     profile the LLM saw, plus its initial suggestions."""
@@ -264,6 +285,7 @@ class OnboardingProfileResponse(BaseModel):
     clarifications: list[OnboardingClarificationSuggestion] = []
     warmup_questions: list[OnboardingWarmupQuestion] = []
     kpis: list[OnboardingKpiSuggestion] = []
+    filters: list[OnboardingFilterSuggestion] = []
 
 
 class OnboardingSaveRequest(BaseModel):
@@ -280,6 +302,7 @@ class OnboardingSaveRequest(BaseModel):
     clarifications: list[OnboardingClarificationSaved] = []
     warmup_questions: list[OnboardingWarmupQuestion] = []
     kpis: list[OnboardingKpiSaved] = []
+    filters: list[OnboardingFilterSaved] = []
     agent_instructions: Optional[str] = None
     # Source-scoped instructions — additional prompt that ONLY applies
     # when this source is active in a workspace, layered on top of
@@ -296,6 +319,7 @@ class OnboardingSavedResponse(BaseModel):
     clarifications: list[OnboardingClarificationSaved] = []
     warmup_questions: list[OnboardingWarmupQuestion] = []
     kpis: list[OnboardingKpiSaved] = []
+    filters: list[OnboardingFilterSaved] = []
     onboarding_completed_at: Optional[str] = None
     # Mirror of `Agent.description` for the active agent of this
     # source. Empty string when unset / no agent. The UI uses this to

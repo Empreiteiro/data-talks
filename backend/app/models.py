@@ -711,6 +711,37 @@ class SourceWarmup(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class SourceFilter(Base):
+    """Saved-from-onboarding filter pinned to a source (or set of sources).
+
+    Two kinds today:
+      - `date`: a date-range picker. `config` may carry suggested
+        defaults (`{"min": "...", "max": "..."}`) but is otherwise
+        empty — the user picks the range at query time.
+      - `category`: a value picker. `config["values"]` is the list of
+        candidate values the LLM extracted from the sample profile;
+        the user can add/remove entries during onboarding and at
+        query time picks one (or several) to apply.
+
+    Filters become a workspace-level menu next to the logs button.
+    Applying filters appends a "Constraints" line to the outgoing
+    question; we don't translate them into SQL here because the
+    same filter must work across CSV / SQL / BigQuery / sheets, and
+    natural-language constraints are the lingua franca every
+    `ask_*.py` script handles consistently via the LLM.
+    """
+    __tablename__ = "source_filters"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
+    source_ids: Mapped[list] = mapped_column(JSON, default=list)
+    name: Mapped[str] = mapped_column(String(255))
+    column: Mapped[str] = mapped_column(String(255))
+    kind: Mapped[str] = mapped_column(String(20))  # "date" | "category"
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class OrganizationKpi(Base):
     """A KPI definition scoped to an organization, optionally pinned to one
     or more sources.
