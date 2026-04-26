@@ -60,9 +60,9 @@ export const IntercomSourceForm = forwardRef<IntercomSourceFormHandle, IntercomS
         } finally {
           setLoadingResources(false);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setConnectionTested(false);
-        toast.error(t('addSource.intercomConnectionFailed'), { description: error.message });
+        toast.error(t('addSource.intercomConnectionFailed'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setTestingConnection(false);
       }
@@ -82,13 +82,13 @@ export const IntercomSourceForm = forwardRef<IntercomSourceFormHandle, IntercomS
           selectedResources: resources.map((r) => r.id),
         };
 
-        const source = await dataClient.createSource(name, 'intercom' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'intercom', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
             existingSources
-              .filter((s: any) => s.id !== source.id && s.type !== 'sql_database')
-              .map((s: any) => dataClient.updateSource(s.id, { is_active: false }))
+              .filter((s) => s.id !== source.id && s.type !== 'sql_database')
+              .map((s) => dataClient.updateSource(s.id, { is_active: false }))
           );
           await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
         }
@@ -99,9 +99,9 @@ export const IntercomSourceForm = forwardRef<IntercomSourceFormHandle, IntercomS
         toast.success(t('addSource.intercomConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Intercom connection error:', error);
-        toast.error(t('addSource.intercomConnectError'), { description: error.message });
+        toast.error(t('addSource.intercomConnectError'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setConnecting(false);
       }

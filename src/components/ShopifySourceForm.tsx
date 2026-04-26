@@ -56,9 +56,9 @@ export const ShopifySourceForm = forwardRef<ShopifySourceFormHandle, ShopifySour
         } catch {
           setResourceCounts(null);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setConnectionTested(false);
-        toast.error(t('addSource.shopifyConnectionFailed'), { description: error.message });
+        toast.error(t('addSource.shopifyConnectionFailed'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setTestingConnection(false);
       }
@@ -79,13 +79,13 @@ export const ShopifySourceForm = forwardRef<ShopifySourceFormHandle, ShopifySour
           resourceCounts: resourceCounts || {},
         };
 
-        const source = await dataClient.createSource(name, 'shopify' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'shopify', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
             existingSources
-              .filter((s: any) => s.id !== source.id && s.type !== 'sql_database')
-              .map((s: any) => dataClient.updateSource(s.id, { is_active: false }))
+              .filter((s) => s.id !== source.id && s.type !== 'sql_database')
+              .map((s) => dataClient.updateSource(s.id, { is_active: false }))
           );
           await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
         }
@@ -96,9 +96,9 @@ export const ShopifySourceForm = forwardRef<ShopifySourceFormHandle, ShopifySour
         toast.success(t('addSource.shopifyConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Shopify connection error:', error);
-        toast.error(t('addSource.shopifyConnectError'), { description: error.message });
+        toast.error(t('addSource.shopifyConnectError'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setConnecting(false);
       }

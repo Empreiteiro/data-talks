@@ -103,7 +103,7 @@ export const StripeSourceForm = forwardRef<StripeSourceFormHandle, StripeSourceF
           tables: selectedTables,
         };
 
-        const source = await dataClient.createSource(name, 'stripe' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'stripe', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
@@ -184,7 +184,11 @@ export const StripeSourceForm = forwardRef<StripeSourceFormHandle, StripeSourceF
             <div className="max-h-56 overflow-y-auto rounded-md border p-2 space-y-2">
               {resources.map((res) => {
                 const isChecked = selectedTables.includes(res.table);
-                const hasError = !!(res as any)._error;
+                // `_error` is an optional flag attached by the discovery
+                // call when a specific resource failed to introspect.
+                // The catalog type doesn't model it; cast to a small
+                // structural shape rather than using `any`.
+                const hasError = !!(res as { _error?: unknown })._error;
                 return (
                   <label
                     key={res.table}

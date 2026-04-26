@@ -51,9 +51,9 @@ export const PipedriveSourceForm = forwardRef<PipedriveSourceFormHandle, Pipedri
         } catch {
           setResourceCounts(null);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setConnectionTested(false);
-        toast.error(t('addSource.pipedriveConnectionFailed'), { description: error.message });
+        toast.error(t('addSource.pipedriveConnectionFailed'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setTestingConnection(false);
       }
@@ -68,13 +68,13 @@ export const PipedriveSourceForm = forwardRef<PipedriveSourceFormHandle, Pipedri
       try {
         const name = "Pipedrive CRM";
         const metadata: Record<string, unknown> = { apiToken, resourceCounts: resourceCounts || {} };
-        const source = await dataClient.createSource(name, 'pipedrive' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'pipedrive', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
             existingSources
-              .filter((s: any) => s.id !== source.id && s.type !== 'sql_database')
-              .map((s: any) => dataClient.updateSource(s.id, { is_active: false }))
+              .filter((s) => s.id !== source.id && s.type !== 'sql_database')
+              .map((s) => dataClient.updateSource(s.id, { is_active: false }))
           );
           await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
         }
@@ -82,8 +82,8 @@ export const PipedriveSourceForm = forwardRef<PipedriveSourceFormHandle, Pipedri
         toast.success(t('addSource.pipedriveConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
-      } catch (error: any) {
-        toast.error(t('addSource.pipedriveConnectError'), { description: error.message });
+      } catch (error: unknown) {
+        toast.error(t('addSource.pipedriveConnectError'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setConnecting(false);
       }

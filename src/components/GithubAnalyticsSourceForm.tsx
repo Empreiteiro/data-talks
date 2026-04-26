@@ -70,9 +70,9 @@ export const GithubAnalyticsSourceForm = forwardRef<GithubAnalyticsSourceFormHan
         } finally {
           setDiscovering(false);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setConnectionTested(false);
-        toast.error(t('addSource.githubAnalyticsConnectionFailed'), { description: error.message });
+        toast.error(t('addSource.githubAnalyticsConnectionFailed'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setTestingConnection(false);
       }
@@ -94,13 +94,13 @@ export const GithubAnalyticsSourceForm = forwardRef<GithubAnalyticsSourceFormHan
           repoFullName: repoInfo?.full_name || `${owner}/${repo}`,
         };
 
-        const source = await dataClient.createSource(name, 'github_analytics' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'github_analytics', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
             existingSources
-              .filter((s: any) => s.id !== source.id && s.type !== 'sql_database')
-              .map((s: any) => dataClient.updateSource(s.id, { is_active: false }))
+              .filter((s) => s.id !== source.id && s.type !== 'sql_database')
+              .map((s) => dataClient.updateSource(s.id, { is_active: false }))
           );
           await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
         }
@@ -111,9 +111,9 @@ export const GithubAnalyticsSourceForm = forwardRef<GithubAnalyticsSourceFormHan
         toast.success(t('addSource.githubAnalyticsConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('GitHub Analytics connection error:', error);
-        toast.error(t('addSource.githubAnalyticsConnectError'), { description: error.message });
+        toast.error(t('addSource.githubAnalyticsConnectError'), { description: error instanceof Error ? error.message : String(error) });
       } finally {
         setConnecting(false);
       }

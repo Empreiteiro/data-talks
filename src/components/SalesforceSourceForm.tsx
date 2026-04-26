@@ -53,9 +53,11 @@ export const SalesforceSourceForm = forwardRef<SalesforceSourceFormHandle, Sales
         } catch {
           setObjectCounts(null);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setConnectionTested(false);
-        toast.error(t('addSource.salesforceConnectionFailed'), { description: error.message });
+        toast.error(t('addSource.salesforceConnectionFailed'), {
+          description: error instanceof Error ? error.message : String(error),
+        });
       } finally {
         setTestingConnection(false);
       }
@@ -76,13 +78,13 @@ export const SalesforceSourceForm = forwardRef<SalesforceSourceFormHandle, Sales
           objectCounts: objectCounts || {},
         };
 
-        const source = await dataClient.createSource(name, 'salesforce' as any, metadata, undefined);
+        const source = await dataClient.createSource(name, 'salesforce', metadata, undefined);
         if (agentId && source?.id) {
           const existingSources = await dataClient.listSources(agentId);
           await Promise.all(
             existingSources
-              .filter((s: any) => s.id !== source.id && s.type !== 'sql_database')
-              .map((s: any) => dataClient.updateSource(s.id, { is_active: false }))
+              .filter((s) => s.id !== source.id && s.type !== 'sql_database')
+              .map((s) => dataClient.updateSource(s.id, { is_active: false }))
           );
           await dataClient.updateSource(source.id, { agent_id: agentId, is_active: true });
         }
@@ -93,9 +95,11 @@ export const SalesforceSourceForm = forwardRef<SalesforceSourceFormHandle, Sales
         toast.success(t('addSource.salesforceConnectSuccess'));
         onSourceAdded?.(source.id);
         onClose();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Salesforce connection error:', error);
-        toast.error(t('addSource.salesforceConnectError'), { description: error.message });
+        toast.error(t('addSource.salesforceConnectError'), {
+          description: error instanceof Error ? error.message : String(error),
+        });
       } finally {
         setConnecting(false);
       }

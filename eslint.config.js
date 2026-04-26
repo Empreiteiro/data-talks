@@ -5,7 +5,10 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "**/node_modules/**", "**/.venv/**"] },
+  // `.claude/worktrees/**` are throwaway copies of the repo this
+  // process spins up for sub-agent runs; they don't exist on CI but
+  // pollute local lint output. Treat them like other generated dirs.
+  { ignores: ["dist", "**/node_modules/**", "**/.venv/**", ".claude/**"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
