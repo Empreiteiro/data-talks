@@ -26,17 +26,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/templates", tags=["templates"])
 
 
-def _llm_overrides_from_cfg(cfg: LlmConfig | LlmSettings | None) -> dict | None:
-    if not cfg:
-        return None
-    overrides: dict[str, Any] = {}
-    for attr in ("llm_provider", "openai_api_key", "openai_base_url", "openai_model",
-                 "ollama_base_url", "ollama_model", "litellm_base_url", "litellm_model",
-                 "litellm_api_key", "claude_code_model", "claude_code_oauth_token"):
-        val = getattr(cfg, attr, None)
-        if val:
-            overrides[attr] = val
-    return overrides or None
+# Re-export the canonical helper from ask.py — earlier we had a
+# divergent local copy that was missing google/anthropic/audio_model
+# fields, which silently dropped the user's saved API keys for those
+# providers. resolve_agent_llm_overrides additionally falls back to
+# the user's default LlmConfig when the workspace has none picked.
+from app.routers.ask import (  # noqa: E402
+    _llm_config_to_overrides as _llm_overrides_from_cfg,  # back-compat alias
+    resolve_agent_llm_overrides,
+)
 
 
 LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "es": "Spanish"}
@@ -209,14 +207,9 @@ async def generate_template(
         raise HTTPException(404, "Source not found")
 
     # Resolve LLM config
-    llm_overrides = None
     r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
-    if agent and agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_overrides_from_cfg(cfg)
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id) if agent else None
 
     # Build schema context from source metadata
     meta = source.metadata_ or {}
@@ -481,14 +474,9 @@ async def run_template_as_report(
         }
 
     # Resolve LLM config
-    llm_overrides = None
     r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
-    if agent and agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_overrides_from_cfg(cfg)
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id) if agent else None
 
     settings = get_settings()
 
@@ -747,14 +735,9 @@ async def add_query_to_template(
         raise HTTPException(404, "Template not found or is built-in (read-only)")
 
     # Resolve LLM
-    llm_overrides = None
     r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
-    if agent and agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_overrides_from_cfg(cfg)
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id) if agent else None
 
     # Build schema context
     meta = source.metadata_ or {}
@@ -845,14 +828,9 @@ async def run_template_with_commentary(
         }
 
     # Resolve LLM
-    llm_overrides = None
     r_agent = await db.execute(select(Agent).where(Agent.id == body.agentId, tenant_filter(Agent, scope)))
     agent = r_agent.scalar_one_or_none()
-    if agent and agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_overrides_from_cfg(cfg)
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id) if agent else None
 
     settings = get_settings()
 

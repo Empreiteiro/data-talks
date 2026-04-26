@@ -44,13 +44,8 @@ async def _get_agent_sources_llm(agent_id: str, user: User, db: AsyncSession):
     )
     sources = list(r_src.scalars().all())
 
-    llm_overrides = None
-    if agent.llm_config_id:
-        from app.routers.ask import _llm_config_to_overrides
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_config_to_overrides(cfg)
+    from app.routers.ask import resolve_agent_llm_overrides
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id)
 
     return agent, sources, llm_overrides
 

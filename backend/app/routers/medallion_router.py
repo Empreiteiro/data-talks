@@ -48,13 +48,30 @@ async def _resolve_llm_overrides(
     agent = result.scalar_one_or_none()
     if agent and agent.llm_config_id:
         cfg_result = await db.execute(
-            select(LlmConfig).where(LlmConfig.id == agent.llm_config_id)
+            select(LlmConfig).where(
+                LlmConfig.id == agent.llm_config_id,
+                LlmConfig.user_id == scope.user.id,
+            )
         )
         cfg = cfg_result.scalar_one_or_none()
         if cfg:
             return _llm_config_to_overrides(cfg)
 
-    # Fallback to user default LlmSettings
+    # Fallback 1: user's default LlmConfig (the one with is_default=True).
+    # This is what makes a workspace with NO config selected still work
+    # — the user picked a sensible default in Account → LLM, we honor it.
+    default_result = await db.execute(
+        select(LlmConfig).where(
+            LlmConfig.user_id == scope.user.id,
+            LlmConfig.is_default == True,  # noqa: E712
+        ).limit(1)
+    )
+    default_cfg = default_result.scalar_one_or_none()
+    if default_cfg:
+        return _llm_config_to_overrides(default_cfg)
+
+    # Fallback 2: legacy LlmSettings (single-row table predating
+    # LlmConfig). Kept so old setups don't break.
     settings_result = await db.execute(
         select(LlmSettings).where(LlmSettings.user_id == scope.user.id)
     )

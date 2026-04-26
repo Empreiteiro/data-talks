@@ -60,15 +60,10 @@ async def public_ask(
     # SQL mode: request override > agent default
     sql_mode = body.sql_mode if body.sql_mode is not None else getattr(agent, "sql_mode", False)
 
-    # LLM overrides
-    llm_overrides = None
-    if agent.llm_config_id:
-        r_cfg = await db.execute(
-            select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == user.id)
-        )
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_config_to_overrides(cfg)
+    # LLM overrides — agent-attached config, with fallback to the
+    # user's default LlmConfig when the workspace has none.
+    from app.routers.ask import resolve_agent_llm_overrides
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, user.id)
 
     # Retrieve history
     history: list[dict] = []

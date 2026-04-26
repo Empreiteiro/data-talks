@@ -69,16 +69,11 @@ async def generate_summary(
     meta = source.metadata_ or {}
     settings = get_settings()
 
-    # LLM overrides: agent.llm_config_id > env (when "Default (env/config)")
-    # Same resolution logic as the ask router
-    llm_overrides = None
-    if agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == scope.user.id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_config_to_overrides(cfg)
-        else:
-            raise HTTPException(400, "The LLM configuration assigned to this workspace no longer exists. Please update it in workspace settings.")
+    # LLM resolution: agent's selected config > user's default
+    # LlmConfig > env. The fallback to default is what makes
+    # workspaces with no explicit config still work.
+    from app.routers.ask import resolve_agent_llm_overrides
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id)
 
     if source.type == "bigquery":
         creds = meta.get("credentialsContent") or meta.get("credentials_content")

@@ -99,6 +99,51 @@ def _llm_config_to_overrides(cfg: LlmConfig | LlmSettings | None) -> dict | None
     return overrides if overrides else None
 
 
+async def resolve_agent_llm_overrides(
+    db, agent, user_id: str
+):
+    """Resolve the LLM overrides dict for an agent's Q&A pipeline.
+
+    Resolution order:
+      1. The LlmConfig the agent explicitly points at via
+         `agent.llm_config_id` (must belong to `user_id`).
+      2. If the agent has no config selected — OR the selected
+         config has been deleted/transferred — fall back to the
+         user's default LlmConfig (the one with `is_default=True`).
+      3. Nothing on either path → return `None`, which leaves
+         `chat_completion` to use env-level credentials.
+
+    Centralized so every router that runs an agent-attached LLM
+    pipeline gets the same fallback. Without this, a workspace
+    that the user simply forgot to assign a config to (or whose
+    config got deleted) would silently fall through to env
+    settings even when the user has a perfectly good default.
+
+    Returns a `dict` (the overrides) or `None`.
+    """
+    from app.models import LlmConfig as _LlmConfig
+    from sqlalchemy import select as _select
+
+    cfg = None
+    if getattr(agent, "llm_config_id", None):
+        r = await db.execute(
+            _select(_LlmConfig).where(
+                _LlmConfig.id == agent.llm_config_id,
+                _LlmConfig.user_id == user_id,
+            )
+        )
+        cfg = r.scalar_one_or_none()
+    if cfg is None:
+        r = await db.execute(
+            _select(_LlmConfig).where(
+                _LlmConfig.user_id == user_id,
+                _LlmConfig.is_default == True,  # noqa: E712
+            ).limit(1)
+        )
+        cfg = r.scalar_one_or_none()
+    return _llm_config_to_overrides(cfg)
+
+
 class GenerateChartRequest(BaseModel):
     turnId: str | None = None
     turnIndex: int | None = None
@@ -989,26 +1034,21 @@ async def ask_question(
     settings = get_settings()
     data_files_dir = settings.data_files_dir
 
-    # LLM overrides: agent.llm_config_id > env (when "Default (env/config)") > LlmSettings
-    # When workspace uses "Default (env/config)", llm_config_id is null -> prefer env so .env wins over stale LlmSettings
-    llm_overrides = None
-    if agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == scope.user.id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_config_to_overrides(cfg)
-        else:
-            raise HTTPException(400, "The LLM configuration assigned to this workspace no longer exists. Please update it in workspace settings.")
+    # LLM overrides resolution. Order: agent.llm_config_id → user's
+    # default LlmConfig → env (LlmSettings). The fallback to the
+    # default config is what saves users from "I added a workspace
+    # but forgot to pick an LLM" silently using stale env.
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id)
     if llm_overrides is None:
-        # "Default (env/config)": use env vars (get_settings) so OPENAI_API_KEY + LLM_PROVIDER from .env apply
-        # Validate that env actually has usable LLM credentials
+        # No override found at all → env-level. Validate env actually
+        # has usable credentials, otherwise fail loudly so the user
+        # gets a real error instead of a cryptic "openai 401".
         _env = settings
         if _env.llm_provider == "openai" and not (_env.openai_api_key or "").strip():
             raise HTTPException(
                 400,
                 "No LLM configured. Add an LLM configuration in Account > LLM / AI settings, or set OPENAI_API_KEY in the environment.",
             )
-        llm_overrides = None
 
     # Retrieve History
     history = []
@@ -1077,13 +1117,10 @@ async def generate_chart_for_turn(
     if not agent:
         raise HTTPException(404, "Agent not found")
 
-    llm_overrides = None
-    if agent.llm_config_id:
-        r_cfg = await db.execute(select(LlmConfig).where(LlmConfig.id == agent.llm_config_id, LlmConfig.user_id == scope.user.id))
-        cfg = r_cfg.scalar_one_or_none()
-        if cfg:
-            llm_overrides = _llm_config_to_overrides(cfg)
-    # When llm_config_id is null ("Default (env/config)"): validate env has usable LLM
+    llm_overrides = await resolve_agent_llm_overrides(db, agent, scope.user.id)
+    # When neither agent-config nor user-default exists, validate env
+    # has usable LLM so we fail loudly instead of producing a 401
+    # downstream.
     if llm_overrides is None:
         _env = get_settings()
         if _env.llm_provider == "openai" and not (_env.openai_api_key or "").strip():
