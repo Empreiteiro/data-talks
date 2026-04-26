@@ -95,6 +95,12 @@ async def snapshot_pipeline(
     version = PipelineVersion(
         id=str(uuid.uuid4()),
         user_id=user.id,
+        # organization_id is NOT NULL on the model. Pull it off the
+        # agent (every Agent is tenant-scoped). Without this, the
+        # INSERT failed with "NOT NULL constraint failed:
+        # pipeline_versions.organization_id" — caught by the test
+        # suite once tests started actually running.
+        organization_id=agent.organization_id,
         agent_id=agent.id,
         pipeline_id=pipeline_id,
         version_number=version_number,
