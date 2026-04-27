@@ -13,6 +13,15 @@ export interface SqlSourceRelationship {
   rightColumn: string;
 }
 
+/** LLM-suggested relationship — superset of `SqlSourceRelationship`
+ * with an optional rationale string. Returned by the
+ * `/sql/agents/:id/suggest-relationships-llm` endpoint. The rationale
+ * is informational for the user; persisting (PUT relationships) drops
+ * it back to a plain `SqlSourceRelationship`. */
+export interface SqlSourceRelationshipSuggestion extends SqlSourceRelationship {
+  reason?: string;
+}
+
 // Medallion Architecture types
 export interface MedallionLayerOut {
   id: string;
@@ -264,6 +273,23 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify({ key }),
     });
+  },
+  /** Ask the LLM to suggest relationships across the agent's SQL
+   * sources. Validated server-side and filtered to exclude existing
+   * + dismissed entries. Used by the onboarding flow's relationships
+   * step; the manual relationships modal can also call it on-demand
+   * via a "Suggest with AI" affordance. */
+  async suggestAgentSqlRelationshipsLlm(agentId: string) {
+    return api<{
+      sources: Array<{
+        id: string;
+        name: string;
+        is_active?: boolean;
+        table_infos?: Array<{ table: string; columns?: string[]; preview_rows?: Record<string, unknown>[] }>;
+      }>;
+      relationships: SqlSourceRelationship[];
+      suggestions: SqlSourceRelationshipSuggestion[];
+    }>(`/api/sql/agents/${agentId}/suggest-relationships-llm`, { method: 'POST' });
   },
   async refreshSourceBigQueryMetadata(sourceId: string) {
     return api<{ metaJSON: Record<string, unknown> }>(`/api/bigquery/sources/${sourceId}/refresh-metadata`, { method: 'POST' });
@@ -851,6 +877,7 @@ export const apiClient = {
         kind: 'date' | 'category';
         config: Record<string, unknown>;
       }>;
+      sql_agent_id?: string | null;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding/profile`, {
       method: 'POST',
       body: JSON.stringify({ language: language || undefined }),
@@ -895,6 +922,11 @@ export const apiClient = {
       onboarding_completed_at: string | null;
       agent_instructions: string;
       source_instructions: string;
+      // Set when this source/group has at least one SQL source. The
+      // onboarding flow renders an extra LLM-driven relationships
+      // step at the end when this is non-null. See `OnboardingSavedResponse`
+      // / `OnboardingProfileResponse` on the backend.
+      sql_agent_id?: string | null;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding/save`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -909,6 +941,11 @@ export const apiClient = {
       onboarding_completed_at: string | null;
       agent_instructions: string;
       source_instructions: string;
+      // Set when this source/group has at least one SQL source. The
+      // onboarding flow renders an extra LLM-driven relationships
+      // step at the end when this is non-null. See `OnboardingSavedResponse`
+      // / `OnboardingProfileResponse` on the backend.
+      sql_agent_id?: string | null;
     }>(`/api/sources/${encodeURIComponent(sourceId)}/onboarding`, { method: 'GET' });
   },
   // ----- Source groups: onboarding for a SET of sources at once. -----
@@ -940,6 +977,7 @@ export const apiClient = {
       warmup_questions: Array<{ text: string }>;
       kpis: Array<{ name: string; definition: string; dependencies: Record<string, unknown> }>;
       filters: Array<{ name: string; column: string; kind: 'date' | 'category'; config: Record<string, unknown> }>;
+      sql_agent_id?: string | null;
     }>(`/api/source-groups/${encodeURIComponent(groupId)}/onboarding/profile`, {
       method: 'POST',
       body: JSON.stringify({ language: language || undefined }),
@@ -977,6 +1015,11 @@ export const apiClient = {
       onboarding_completed_at: string | null;
       agent_instructions: string;
       source_instructions: string;
+      // Set when this source/group has at least one SQL source. The
+      // onboarding flow renders an extra LLM-driven relationships
+      // step at the end when this is non-null. See `OnboardingSavedResponse`
+      // / `OnboardingProfileResponse` on the backend.
+      sql_agent_id?: string | null;
     }>(`/api/source-groups/${encodeURIComponent(groupId)}/onboarding/save`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -991,6 +1034,11 @@ export const apiClient = {
       onboarding_completed_at: string | null;
       agent_instructions: string;
       source_instructions: string;
+      // Set when this source/group has at least one SQL source. The
+      // onboarding flow renders an extra LLM-driven relationships
+      // step at the end when this is non-null. See `OnboardingSavedResponse`
+      // / `OnboardingProfileResponse` on the backend.
+      sql_agent_id?: string | null;
     }>(`/api/source-groups/${encodeURIComponent(groupId)}/onboarding`, { method: 'GET' });
   },
 

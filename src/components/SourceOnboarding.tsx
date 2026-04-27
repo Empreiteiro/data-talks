@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Check,
+  Loader2,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +18,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { dataClient } from "@/services/dataClient";
+import type {
+  SqlSourceRelationship,
+  SqlSourceRelationshipSuggestion,
+} from "@/services/apiClient";
+import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 /**
@@ -85,7 +98,35 @@ interface Filter {
   keep: boolean;
 }
 
-type Step = "loading" | "clarifications" | "warmups" | "filters" | "kpis" | "saving";
+type Step =
+  | "loading"
+  | "clarifications"
+  | "warmups"
+  | "filters"
+  | "kpis"
+  | "relationships"
+  | "saving";
+
+/** Side metadata for an LLM relationship suggestion in the onboarding
+ * step. We keep a stable client-side key (the canonical relationship
+ * key) so accept/dismiss state survives across re-renders without
+ * reaching back into the suggestion list by index. */
+interface RelationshipChoice {
+  key: string;
+  suggestion: SqlSourceRelationshipSuggestion;
+  status: "pending" | "accepted" | "dismissed";
+}
+
+function relationshipKey(rel: SqlSourceRelationship): string {
+  return [
+    rel.leftSourceId,
+    rel.leftTable,
+    rel.leftColumn,
+    rel.rightSourceId,
+    rel.rightTable,
+    rel.rightColumn,
+  ].join("|");
+}
 
 export function SourceOnboarding({ sourceId, groupId, onDone, onCancel, forceFresh = false }: SourceOnboardingProps) {
   // The component runs against a group when given groupId; otherwise
@@ -118,6 +159,33 @@ export function SourceOnboarding({ sourceId, groupId, onDone, onCancel, forceFre
   // actually edited the field.
   const [sourceInstructions, setSourceInstructions] = useState("");
   const [sourceInstructionsTouched, setSourceInstructionsTouched] = useState(false);
+  // Relationships step (only used when at least one SQL source is in
+  // scope). `sqlAgentId` doubles as the gate: when null, the step is
+  // skipped entirely and KPIs goes straight to persist().
+  const [sqlAgentId, setSqlAgentId] = useState<string | null>(null);
+  // Captured at load time so the relationships step is only auto-shown
+  // for genuinely fresh onboardings (or explicit re-runs via
+  // `forceFresh`). Re-opening an already-onboarded source to tweak
+  // KPIs shouldn't re-prompt for relationships every time — that lives
+  // in the dedicated Relationships modal.
+  const [isFreshOnboarding, setIsFreshOnboarding] = useState(false);
+  const [sqlSources, setSqlSources] = useState<
+    Array<{
+      id: string;
+      name: string;
+      table_infos?: Array<{ table: string; columns?: string[] }>;
+    }>
+  >([]);
+  const [existingRelationships, setExistingRelationships] = useState<
+    SqlSourceRelationship[]
+  >([]);
+  const [relationshipChoices, setRelationshipChoices] = useState<
+    RelationshipChoice[]
+  >([]);
+  const [relationshipsLoading, setRelationshipsLoading] = useState(false);
+  const [relationshipsError, setRelationshipsError] = useState<string | null>(
+    null,
+  );
 
   // Step 1: load profile + suggestions. We try the saved-state endpoint
   // first; if anything is already there, treat it as "edit existing"
@@ -145,6 +213,16 @@ export function SourceOnboarding({ sourceId, groupId, onDone, onCancel, forceFre
         // they previously typed in agent settings.
         setAgentInstructions(saved.agent_instructions || "");
         setSourceInstructions(saved.source_instructions || "");
+        // Surfaces from the backend: non-null when the source / group
+        // includes a SQL source with an agent. Drives the
+        // relationships step entirely — when null, the new step is a
+        // no-op and we behave exactly like before.
+        setSqlAgentId(saved.sql_agent_id || null);
+        // Track whether this is a fresh onboarding (no completion
+        // timestamp, or user explicitly hit "re-run"). Drives whether
+        // the SQL relationships step gets auto-prompted at the end.
+        const isFresh = !saved.onboarding_completed_at || forceFresh;
+        setIsFreshOnboarding(isFresh);
         // `forceFresh` is the explicit "re-run setup" entry point —
         // user clicked the refresh icon to ask for new LLM
         // suggestions, so we skip the edit-existing branch even when
@@ -220,6 +298,104 @@ export function SourceOnboarding({ sourceId, groupId, onDone, onCancel, forceFre
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetId, language, forceFresh]);
+
+  // Fetches LLM relationship suggestions plus the current saved
+  // relationships from the agent. Idempotent — safe to call again on
+  // retry. We replace state wholesale so a retry never leaves stale
+  // entries behind.
+  const loadRelationshipSuggestions = async (agentId: string) => {
+    setRelationshipsLoading(true);
+    setRelationshipsError(null);
+    try {
+      const data = await dataClient.suggestAgentSqlRelationshipsLlm(agentId);
+      setSqlSources(data.sources || []);
+      setExistingRelationships(data.relationships || []);
+      setRelationshipChoices(
+        (data.suggestions || []).map((s) => ({
+          key: relationshipKey(s),
+          suggestion: s,
+          status: "pending" as const,
+        })),
+      );
+    } catch (e: unknown) {
+      setRelationshipsError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRelationshipsLoading(false);
+    }
+  };
+
+  // Advance past the KPIs step. SQL fresh-onboarding gets the extra
+  // relationships step; everything else (non-SQL, or re-edit of an
+  // already-onboarded SQL source) goes straight to save. The
+  // re-edit case keeps the existing flow because relationships have
+  // their own dedicated modal — re-running setup just to edit a KPI
+  // shouldn't re-prompt for joins.
+  const handleKpisNext = () => {
+    if (sqlAgentId && isFreshOnboarding) {
+      setStep("relationships");
+      void loadRelationshipSuggestions(sqlAgentId);
+      return;
+    }
+    void persist(false);
+  };
+
+  // Persist accepted relationships, then run the regular onboarding
+  // save. We save relationships FIRST: if the PUT fails the user
+  // hasn't lost their work — they're still on the relationships step
+  // and can retry or skip. Persisting first would mean a second
+  // failure path where onboarding is "done" but joins were never
+  // saved, which is harder to reason about.
+  const finishRelationshipsStep = async () => {
+    if (!sqlAgentId) {
+      void persist(false);
+      return;
+    }
+    const accepted = relationshipChoices
+      .filter((c) => c.status === "accepted")
+      .map((c) => ({
+        leftSourceId: c.suggestion.leftSourceId,
+        leftTable: c.suggestion.leftTable,
+        leftColumn: c.suggestion.leftColumn,
+        rightSourceId: c.suggestion.rightSourceId,
+        rightTable: c.suggestion.rightTable,
+        rightColumn: c.suggestion.rightColumn,
+      }));
+    if (accepted.length > 0) {
+      try {
+        // Merge with existing — the backend dedupes (forward + reverse
+        // pairs) so sending duplicates is safe, but it's still nicer
+        // to keep the payload minimal.
+        const existingKeys = new Set(existingRelationships.map(relationshipKey));
+        const merged = [
+          ...existingRelationships,
+          ...accepted.filter((rel) => !existingKeys.has(relationshipKey(rel))),
+        ];
+        await dataClient.saveAgentSqlRelationships(sqlAgentId, merged);
+        toast.success(
+          `${accepted.length} ${t("onboarding.relationshipsAcceptedCount") || "accepted"}`,
+        );
+      } catch (e: unknown) {
+        setRelationshipsError(e instanceof Error ? e.message : String(e));
+        return; // stay on the step; user can retry or skip
+      }
+    }
+    // Fire-and-forget the dismiss endpoint for explicitly rejected
+    // suggestions so the user doesn't see them again next time.
+    // Errors here are non-fatal — they're a UX nicety, not data loss.
+    const dismissed = relationshipChoices.filter(
+      (c) => c.status === "dismissed",
+    );
+    if (dismissed.length > 0) {
+      void Promise.all(
+        dismissed.map((c) =>
+          dataClient
+            .dismissRelationshipSuggestion(sqlAgentId, c.key)
+            .catch(() => {}),
+        ),
+      );
+    }
+    void persist(false);
+  };
 
   const persist = async (markSkipped: boolean) => {
     setStep("saving");
@@ -678,7 +854,190 @@ export function SourceOnboarding({ sourceId, groupId, onDone, onCancel, forceFre
             <Button variant="ghost" onClick={() => setStep("filters")}>
               {t("common.back") || "Back"}
             </Button>
-            <Button onClick={() => void persist(false)}>
+            <Button onClick={handleKpisNext}>
+              {sqlAgentId && isFreshOnboarding
+                ? t("common.next") || "Next"
+                : t("onboarding.finish") || "Finish"}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Step 5 — SQL Relationships (only for fresh SQL onboarding).
+        *
+        * The LLM is asked to propose foreign-key style joins between
+        * tables across the agent's SQL sources. The user picks which
+        * to accept; accepted ones are persisted to
+        * `Agent.source_relationships` and become editable from the
+        * "Relacionamentos SQL" modal afterwards. Dismissed ones are
+        * remembered server-side so the heuristic suggestions modal
+        * doesn't re-surface them on every reopen. */}
+      {step === "relationships" && (
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              {t("onboarding.relationshipsTitle") || "Suggested table relationships"}
+            </h4>
+            <Badge variant="secondary">
+              {relationshipChoices.filter((c) => c.status === "accepted").length}{" "}
+              {t("onboarding.relationshipsAcceptedCount") || "accepted"}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("onboarding.relationshipsHint") ||
+              "AI-detected joins between your SQL tables."}
+          </p>
+
+          {relationshipsLoading && (
+            <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("onboarding.relationshipsLoading") || "Looking for relationships…"}
+            </div>
+          )}
+
+          {!relationshipsLoading && relationshipsError && (
+            <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+              <p className="text-sm text-destructive">
+                {t("onboarding.relationshipsError") ||
+                  "Could not generate suggestions."}
+              </p>
+              <p className="text-xs text-muted-foreground break-words">
+                {relationshipsError}
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    sqlAgentId && void loadRelationshipSuggestions(sqlAgentId)
+                  }
+                >
+                  {t("onboarding.relationshipsRetry") || "Retry"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!relationshipsLoading &&
+            !relationshipsError &&
+            relationshipChoices.length === 0 && (
+              <p className="text-sm text-muted-foreground italic py-2">
+                {t("onboarding.relationshipsEmpty") ||
+                  "No relationships were suggested."}
+              </p>
+            )}
+
+          {!relationshipsLoading && relationshipChoices.length > 0 && (
+            <ul className="space-y-2">
+              {relationshipChoices.map((choice) => {
+                const leftSource = sqlSources.find(
+                  (s) => s.id === choice.suggestion.leftSourceId,
+                );
+                const rightSource = sqlSources.find(
+                  (s) => s.id === choice.suggestion.rightSourceId,
+                );
+                const dimmed = choice.status === "dismissed";
+                const accepted = choice.status === "accepted";
+                return (
+                  <li
+                    key={choice.key}
+                    className={cn(
+                      "rounded-md border p-3 space-y-2 transition-opacity",
+                      dimmed && "opacity-40",
+                      accepted && "border-primary/50 bg-primary/5",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sm font-mono min-w-0">
+                        <span className="truncate">
+                          {leftSource?.name || choice.suggestion.leftSourceId}.
+                          {choice.suggestion.leftTable}.
+                          <span className="text-primary">
+                            {choice.suggestion.leftColumn}
+                          </span>
+                        </span>
+                        <ArrowLeftRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span className="truncate">
+                          {rightSource?.name || choice.suggestion.rightSourceId}.
+                          {choice.suggestion.rightTable}.
+                          <span className="text-primary">
+                            {choice.suggestion.rightColumn}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant={accepted ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() =>
+                            setRelationshipChoices((prev) =>
+                              prev.map((c) =>
+                                c.key === choice.key
+                                  ? {
+                                      ...c,
+                                      status:
+                                        c.status === "accepted"
+                                          ? "pending"
+                                          : "accepted",
+                                    }
+                                  : c,
+                              ),
+                            )
+                          }
+                          title={
+                            t("onboarding.relationshipsAccept") || "Accept"
+                          }
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() =>
+                            setRelationshipChoices((prev) =>
+                              prev.map((c) =>
+                                c.key === choice.key
+                                  ? {
+                                      ...c,
+                                      status:
+                                        c.status === "dismissed"
+                                          ? "pending"
+                                          : "dismissed",
+                                    }
+                                  : c,
+                              ),
+                            )
+                          }
+                          title={
+                            t("onboarding.relationshipsDismiss") || "Dismiss"
+                          }
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    {choice.suggestion.reason && (
+                      <p className="text-xs text-muted-foreground">
+                        {choice.suggestion.reason}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="flex items-center justify-between pt-2">
+            <Button variant="ghost" onClick={() => setStep("kpis")}>
+              {t("common.back") || "Back"}
+            </Button>
+            <Button
+              onClick={() => void finishRelationshipsStep()}
+              disabled={relationshipsLoading}
+            >
               {t("onboarding.finish") || "Finish"}
             </Button>
           </div>
