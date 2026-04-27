@@ -300,6 +300,10 @@ class OnboardingProfileResponse(BaseModel):
     warmup_questions: list[OnboardingWarmupQuestion] = []
     kpis: list[OnboardingKpiSuggestion] = []
     filters: list[OnboardingFilterSuggestion] = []
+    # Set when at least one SQL source is in scope (single source or
+    # group). Tells the UI to render the LLM-driven relationships step
+    # at the end of onboarding. Empty/None for non-SQL sources.
+    sql_agent_id: Optional[str] = None
 
 
 class OnboardingSaveRequest(BaseModel):
@@ -343,3 +347,8 @@ class OnboardingSavedResponse(BaseModel):
     # Mirror of `Source.metadata_["onboarding_instructions"]`. Empty
     # string when unset.
     source_instructions: str = ""
+    # See OnboardingProfileResponse.sql_agent_id — same purpose, also
+    # surfaced on GET so the UI can re-render the relationships step
+    # when the user reopens onboarding for an already-onboarded SQL
+    # source.
+    sql_agent_id: Optional[str] = None

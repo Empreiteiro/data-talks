@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import TenantScope, require_membership
 from app.services.tenant_scope import tenant_filter
 from app.database import get_db
-from app.models import Agent, Source
+from app.models import Agent, LlmConfig, Source
+from app.scripts.sql_relationships_llm import suggest_source_relationships_llm
 from app.scripts.sql_utils import (
     list_sql_tables_sync,
     relationship_key,
@@ -132,6 +133,88 @@ async def list_relationship_suggestions(
             for row in source_rows
         ],
         "relationships": agent.source_relationships or [],
+        "suggestions": suggestions,
+    }
+
+
+async def _resolve_llm_overrides_for_agent(
+    db: AsyncSession, scope: TenantScope, agent: Agent
+) -> dict | None:
+    """Pick the LLM config to use for this agent.
+
+    Mirrors the resolver in `onboarding_router._resolve_llm_overrides_for_agent`
+    but takes a hydrated `Agent` to avoid re-fetching: the caller already
+    has it from `_get_agent_sql_sources`.
+
+    Order of preference:
+      1. The agent's own `llm_config_id` (if set and the user owns it).
+      2. The user's default `LlmConfig` (`is_default=True`).
+      3. None — `chat_completion` falls back to env-level settings.
+    """
+    # Local import to avoid a circular dependency between sql_router and ask
+    # (ask depends on quite a bit of the request stack at import time).
+    from app.routers.ask import _llm_config_to_overrides
+
+    if agent.llm_config_id:
+        r = await db.execute(
+            select(LlmConfig).where(
+                LlmConfig.id == agent.llm_config_id,
+                LlmConfig.user_id == scope.user.id,
+            )
+        )
+        cfg = r.scalar_one_or_none()
+        if cfg:
+            return _llm_config_to_overrides(cfg)
+    r_default = await db.execute(
+        select(LlmConfig).where(
+            LlmConfig.user_id == scope.user.id,
+            LlmConfig.is_default == True,  # noqa: E712
+        )
+    )
+    default_cfg = r_default.scalar_one_or_none()
+    if default_cfg:
+        return _llm_config_to_overrides(default_cfg)
+    return None
+
+
+@router.post("/agents/{agent_id}/suggest-relationships-llm")
+async def llm_relationship_suggestions(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db),
+    scope: TenantScope = Depends(require_membership),
+):
+    """Use the LLM to suggest foreign-key style relationships across the
+    agent's SQL sources. Validated against actual table/column metadata
+    and filtered to exclude already-saved or dismissed entries — the
+    caller can render the result directly.
+
+    POST (not GET) because each call burns LLM tokens; we don't want
+    HTTP caching layers to hide that cost from the user.
+    """
+    agent, sources = await _get_agent_sql_sources(agent_id, db, scope)
+    source_rows = [_source_sql_payload(source) for source in sources]
+    existing = list(agent.source_relationships or [])
+    dismissed = set(getattr(agent, "dismissed_relationship_suggestions", None) or [])
+
+    overrides = await _resolve_llm_overrides_for_agent(db, scope, agent)
+    suggestions = await suggest_source_relationships_llm(
+        source_rows,
+        existing_relationships=existing,
+        llm_overrides=overrides,
+    )
+    suggestions = [s for s in suggestions if relationship_key(s) not in dismissed]
+
+    return {
+        "sources": [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "is_active": row["is_active"],
+                "table_infos": row["table_infos"],
+            }
+            for row in source_rows
+        ],
+        "relationships": existing,
         "suggestions": suggestions,
     }
 

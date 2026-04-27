@@ -310,6 +310,20 @@ async def _load_saved_for_group(
         agent = ar.scalar_one_or_none()
         if agent:
             agent_instructions = agent.description or ""
+    # Surface the agent id when at least one source in the group is
+    # SQL — the UI uses it to render the relationships step after the
+    # standard onboarding flow.
+    sql_agent_id: Optional[str] = None
+    if group.agent_id and canonical:
+        type_q = await db.execute(
+            select(Source.id).where(
+                Source.id.in_(canonical),
+                Source.type == "sql_database",
+                tenant_filter(Source, scope),
+            ).limit(1)
+        )
+        if type_q.scalar_one_or_none():
+            sql_agent_id = group.agent_id
     return OnboardingSavedResponse(
         clarifications=clarifications,
         warmup_questions=warmups,
@@ -322,6 +336,7 @@ async def _load_saved_for_group(
         ),
         agent_instructions=agent_instructions,
         source_instructions=group.instructions or "",
+        sql_agent_id=sql_agent_id,
     )
 
 
@@ -422,6 +437,9 @@ async def _load_saved(
         "onboarding_instructions", ""
     ) or ""
     completed_raw = (source.metadata_ or {}).get("onboarding_completed_at")
+    sql_agent_id = (
+        source.agent_id if source.type == "sql_database" and source.agent_id else None
+    )
     return OnboardingSavedResponse(
         clarifications=clarifications,
         warmup_questions=warmups,
@@ -430,6 +448,7 @@ async def _load_saved(
         onboarding_completed_at=completed_raw,
         agent_instructions=agent_instructions,
         source_instructions=source_instructions,
+        sql_agent_id=sql_agent_id,
     )
 
 
@@ -479,6 +498,11 @@ async def onboarding_profile(
         warmup_questions=suggestions["warmup_questions"],
         kpis=suggestions["kpis"],
         filters=suggestions.get("filters", []),
+        sql_agent_id=(
+            source.agent_id
+            if source.type == "sql_database" and source.agent_id
+            else None
+        ),
     )
 
 
@@ -953,12 +977,18 @@ async def group_onboarding_profile(
             502,
             f"LLM failed to produce onboarding suggestions: {type(e).__name__}: {str(e)[:300]}",
         )
+    sql_agent_id = (
+        group.agent_id
+        if group.agent_id and any(s.type == "sql_database" for s in sources)
+        else None
+    )
     return OnboardingProfileResponse(
         profile=combined,
         clarifications=suggestions["clarifications"],
         warmup_questions=suggestions["warmup_questions"],
         kpis=suggestions["kpis"],
         filters=suggestions.get("filters", []),
+        sql_agent_id=sql_agent_id,
     )
 
 
