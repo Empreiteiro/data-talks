@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "data-talks"
-version = "1.0.0"
+version = "1.0.1"
 description = "Data Talks backend - FastAPI, SQLite/PostgreSQL, LLM (OpenAI or Ollama). No Supabase."
 readme = "README.md"
 requires-python = ">=3.11"
