@@ -33,10 +33,10 @@ install-frontend:
 	npm install
 
 install-backend:
-	uv pip install -e ./backend
+	cd backend && uv sync
 
 install-cli:
-	uv pip install -e ./backend
+	cd backend && uv sync
 
 # ------------------------------------------------------------------
 # Build & Run
@@ -46,13 +46,13 @@ build:
 	npm run build
 
 run: build setup-env
-	uv run data-talks run
+	cd backend && uv run data-talks run
 
 dev: setup-env
 	@echo "Starting backend and frontend dev server..."
 	@echo "Freeing dev ports (only kills our own uvicorn/data-talks/vite processes)..."
 	@./scripts/free-dev-ports.sh
-	@uv run data-talks run &
+	@(cd backend && uv run data-talks run) &
 	@echo "Waiting for backend to start..."
 	@for i in 1 2 3 4 5 6 7 8 9 10; do \
 		if [ -f backend/.backend_port ]; then break; fi; \
