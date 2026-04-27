@@ -6,10 +6,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import TenantScope, require_membership, require_user
+from app.auth import TenantScope, require_membership
 from app.services.tenant_scope import tenant_filter
 from app.database import get_db
-from app.models import Agent, Source, User
+from app.models import Agent, Source
 from app.scripts.sql_utils import (
     list_sql_tables_sync,
     relationship_key,
@@ -53,7 +53,7 @@ def _source_sql_payload(source: Source) -> dict:
 async def _get_agent_sql_sources(
     agent_id: str,
     db: AsyncSession,
-    user: User,
+    scope: TenantScope,
 ) -> tuple[Agent, list[Source]]:
     result = await db.execute(select(Agent).where(Agent.id == agent_id, tenant_filter(Agent, scope)))
     agent = result.scalar_one_or_none()
@@ -94,7 +94,7 @@ async def list_agent_sql_sources(
     db: AsyncSession = Depends(get_db),
     scope: TenantScope = Depends(require_membership),
 ):
-    agent, sources = await _get_agent_sql_sources(agent_id, db, user)
+    agent, sources = await _get_agent_sql_sources(agent_id, db, scope)
     source_rows = [_source_sql_payload(source) for source in sources]
     return {
         "sources": [
@@ -116,7 +116,7 @@ async def list_relationship_suggestions(
     db: AsyncSession = Depends(get_db),
     scope: TenantScope = Depends(require_membership),
 ):
-    agent, sources = await _get_agent_sql_sources(agent_id, db, user)
+    agent, sources = await _get_agent_sql_sources(agent_id, db, scope)
     source_rows = [_source_sql_payload(source) for source in sources]
     all_suggestions = suggest_source_relationships(source_rows)
     dismissed = set(getattr(agent, "dismissed_relationship_suggestions", None) or [])
@@ -143,7 +143,7 @@ async def dismiss_relationship_suggestion(
     db: AsyncSession = Depends(get_db),
     scope: TenantScope = Depends(require_membership),
 ):
-    agent, _ = await _get_agent_sql_sources(agent_id, db, user)
+    agent, _ = await _get_agent_sql_sources(agent_id, db, scope)
     dismissed = list(getattr(agent, "dismissed_relationship_suggestions", None) or [])
     key = (body.key or "").strip()
     if key and key not in dismissed:
@@ -160,7 +160,7 @@ async def save_agent_relationships(
     db: AsyncSession = Depends(get_db),
     scope: TenantScope = Depends(require_membership),
 ):
-    agent, sources = await _get_agent_sql_sources(agent_id, db, user)
+    agent, sources = await _get_agent_sql_sources(agent_id, db, scope)
     source_rows = [_source_sql_payload(source) for source in sources]
     try:
         validated = validate_source_relationships(source_rows, body.relationships)
