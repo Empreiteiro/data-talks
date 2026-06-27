@@ -243,6 +243,7 @@ async def ask_sql_multi_source(
             "imageUrl": None,
             "followUpQuestions": follow_up,
             "chartInput": chart_input,
+            "sqlQuery": sql_query or None,
         }
     finally:
         sqlite_conn.close()

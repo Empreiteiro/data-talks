@@ -3,6 +3,7 @@ import { AgentSettingsModal } from "@/components/AgentSettingsModal";
 import { SourceSettingsModal } from "@/components/SourceSettingsModal";
 import { AudioOverviewModal } from "@/components/AudioOverviewModal";
 import { ChartRenderer, ChartSpec } from "@/components/ChartRenderer";
+import { GeneratedSqlPanel } from "@/components/GeneratedSqlPanel";
 import { GraphViewModal } from "@/components/GraphViewModal";
 import { LogsModal } from "@/components/LogsModal";
 import { ProtectedImage } from "@/components/ProtectedImage";
@@ -231,6 +232,8 @@ type ChatMessage = {
   chartInput?: unknown;
   chartSpec?: ChartSpec | unknown;
   chartScript?: string;
+  generatedSql?: string;
+  generatedSqlLang?: string;
   isChartLoading?: boolean;
 };
 
@@ -622,6 +625,8 @@ export default function Workspace() {
               chartInput: updatedMessages[i + 1].chartInput,
               chartSpec: updatedMessages[i + 1].chartSpec,
               chartScript: updatedMessages[i + 1].chartScript,
+              generatedSql: updatedMessages[i + 1].generatedSql,
+              generatedSqlLang: updatedMessages[i + 1].generatedSqlLang,
             });
           }
         }
@@ -659,6 +664,8 @@ export default function Workspace() {
               chartInput: updatedMessages[i + 1].chartInput,
               chartSpec: updatedMessages[i + 1].chartSpec,
               chartScript: updatedMessages[i + 1].chartScript,
+              generatedSql: updatedMessages[i + 1].generatedSql,
+              generatedSqlLang: updatedMessages[i + 1].generatedSqlLang,
             });
           }
         }
@@ -745,6 +752,8 @@ export default function Workspace() {
           chartInput: entry.chartInput,
           chartSpec: entry.chartSpec,
           chartScript: entry.chartScript,
+          generatedSql: entry.generatedSql,
+          generatedSqlLang: entry.generatedSqlLang,
         });
       });
     }
@@ -809,6 +818,8 @@ export default function Workspace() {
         turnId: data.turnId,
         followUpQuestions: data.followUpQuestions || [],
         chartInput: data.chartInput,
+        generatedSql: data.generatedSql,
+        generatedSqlLang: data.generatedSqlLang,
       }]);
       
       if (data.followUpQuestions && Array.isArray(data.followUpQuestions)) {
@@ -1311,6 +1322,18 @@ export default function Workspace() {
                         </div>
                       </div>
                     </div>
+                    {/* Generated SQL / query transparency panel (issue #219) */}
+                    {message.role === "assistant" && message.generatedSql && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[90%] w-full">
+                          <GeneratedSqlPanel
+                            sql={message.generatedSql}
+                            lang={message.generatedSqlLang}
+                            t={t}
+                          />
+                        </div>
+                      </div>
+                    )}
                     {/* Chart area — below the message bubble */}
                     {message.role === "assistant" && (
                       <div className="flex justify-start">

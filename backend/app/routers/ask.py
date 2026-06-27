@@ -248,6 +248,26 @@ def _build_agent_description(agent: Agent) -> str:
     return type_context or base_desc
 
 
+def _extract_generated_query(result: dict) -> tuple[str | None, str | None]:
+    """Pull the query the LLM produced out of an ask-script result.
+
+    Different source scripts name this field differently: most SQL-backed
+    sources return ``sqlQuery``, a few return ``sql``, and document stores
+    (e.g. MongoDB) return generated pandas as ``pandasCode``. We normalize
+    all of them into a single (query, language) pair so the frontend's
+    transparency panel has one shape to render. Returns ``(None, None)``
+    when the script produced no inspectable query (e.g. the LLM answered
+    from schema/context alone).
+    """
+    sql = result.get("sqlQuery") or result.get("sql")
+    if isinstance(sql, str) and sql.strip():
+        return sql.strip(), "sql"
+    pandas_code = result.get("pandasCode")
+    if isinstance(pandas_code, str) and pandas_code.strip():
+        return pandas_code.strip(), "python"
+    return None, None
+
+
 async def dispatch_question(
     question: str,
     agent: Agent,
@@ -924,6 +944,7 @@ async def dispatch_question(
 
     # Save QA session
     turn_id = str(uuid.uuid4())
+    generated_sql, generated_sql_lang = _extract_generated_query(result)
     conversation_entry = {
         "id": turn_id,
         "question": question,
@@ -933,6 +954,8 @@ async def dispatch_question(
         "chartInput": result.get("chartInput"),
         "chartSpec": result.get("chartSpec"),
         "chartScript": result.get("chartScript"),
+        "generatedSql": generated_sql,
+        "generatedSqlLang": generated_sql_lang,
         "timestamp": datetime.utcnow().isoformat(),
     }
 
@@ -998,6 +1021,8 @@ async def dispatch_question(
         "turn_id": turn_id,
         "follow_up_questions": result.get("followUpQuestions", []),
         "chart_input": result.get("chartInput"),
+        "generated_sql": generated_sql,
+        "generated_sql_lang": generated_sql_lang,
     }
 
 
@@ -1086,6 +1111,8 @@ async def ask_question(
         followUpQuestions=result.get("follow_up_questions", []),
         turnId=result["turn_id"],
         chartInput=result.get("chart_input"),
+        generatedSql=result.get("generated_sql"),
+        generatedSqlLang=result.get("generated_sql_lang"),
     )
 
 

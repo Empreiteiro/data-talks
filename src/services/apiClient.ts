@@ -711,7 +711,7 @@ export const apiClient = {
   },
 
   async askQuestion(agentId: string, question: string, sessionId?: string) {
-    const data = await api<{ answer: string; imageUrl?: string; sessionId?: string; followUpQuestions?: string[]; turnId?: string; chartInput?: unknown }>('/api/ask-question', {
+    const data = await api<{ answer: string; imageUrl?: string; sessionId?: string; followUpQuestions?: string[]; turnId?: string; chartInput?: unknown; generatedSql?: string; generatedSqlLang?: string }>('/api/ask-question', {
       method: 'POST',
       body: JSON.stringify({ question, agentId, sessionId }),
     });

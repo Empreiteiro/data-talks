@@ -51,6 +51,8 @@ class AskQuestionResponse(BaseModel):
     followUpQuestions: list[str] = []
     turnId: Optional[str] = None
     chartInput: Optional[dict[str, Any]] = None
+    generatedSql: Optional[str] = None
+    generatedSqlLang: Optional[str] = None
 
 
 # API Keys
