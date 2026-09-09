@@ -19,7 +19,7 @@ def upgrade() -> None:
     if "llm_configs" in inspector.get_table_names():
         cols = [c["name"] for c in inspector.get_columns("llm_configs")]
         if "is_default" not in cols:
-            op.add_column("llm_configs", sa.Column("is_default", sa.Boolean(), server_default=sa.text("0"), nullable=False))
+            op.add_column("llm_configs", sa.Column("is_default", sa.Boolean(), server_default=sa.false(), nullable=False))
 
 
 def downgrade() -> None:
