@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_user
+from app.auth import require_user
 from app.config import get_settings
 from app.database import get_db
 from app.models import Agent, SlackBotConfig, SlackConnection, SlackOAuthState, User
@@ -65,7 +65,7 @@ class SlackChannelConnect(BaseModel):
 @router.get("/bot-configs")
 async def list_bot_configs(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     env_config = _env_bot_option()
     result = await db.execute(
@@ -109,7 +109,7 @@ async def list_bot_configs(
 async def create_bot_config(
     body: SlackBotConfigCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     name = body.name.strip()
     if not name:
@@ -149,7 +149,7 @@ async def create_bot_config(
 async def delete_bot_config(
     config_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     cfg = await db.get(SlackBotConfig, config_id)
     if not cfg or cfg.user_id != current_user.id:
@@ -193,7 +193,7 @@ async def oauth_start(
     request: Request,
     config_key: str = "env",
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     """Redirect user to Slack OAuth2 authorization page."""
     config = await _resolve_config(db, current_user.id, config_key)
@@ -346,7 +346,7 @@ def _oauth_result_html(success: bool, message: str) -> str:
 async def list_channels(
     agent_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     agent = await db.get(Agent, agent_id)
     if not agent or agent.user_id != current_user.id:
@@ -388,7 +388,7 @@ async def connect_channel(
     agent_id: str,
     body: SlackChannelConnect,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     agent = await db.get(Agent, agent_id)
     if not agent or agent.user_id != current_user.id:
@@ -439,7 +439,7 @@ async def connect_channel(
 async def remove_channel(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     conn = await db.get(SlackConnection, connection_id)
     if not conn or conn.user_id != current_user.id:

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, Agent, WhatsAppBotConfig, WhatsAppConnection
-from app.auth import get_current_user
+from app.auth import require_user
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class WhatsAppBotConfigCreate(BaseModel):
 @router.get("/bot-configs")
 async def list_bot_configs(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     env_config = _env_config_option()
     result = await db.execute(
@@ -93,7 +93,7 @@ async def list_bot_configs(
 async def create_bot_config(
     body: WhatsAppBotConfigCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     name = body.name.strip()
     phone_number_id = body.phone_number_id.strip()
@@ -145,7 +145,7 @@ async def create_bot_config(
 async def delete_bot_config(
     config_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     cfg = await db.get(WhatsAppBotConfig, config_id)
     if not cfg or cfg.user_id != current_user.id:
@@ -175,7 +175,7 @@ async def create_connection(
     agent_id: str,
     body: WhatsAppConnectRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     """Link a WhatsApp phone number to an agent."""
     agent = await db.get(Agent, agent_id)
@@ -253,7 +253,7 @@ async def create_connection(
 async def get_connections(
     agent_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     """List active WhatsApp connections for a specific agent."""
     agent = await db.get(Agent, agent_id)
@@ -285,7 +285,7 @@ async def get_connections(
 async def remove_connection(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     """Remove a WhatsApp connection."""
     conn = await db.get(WhatsAppConnection, connection_id)

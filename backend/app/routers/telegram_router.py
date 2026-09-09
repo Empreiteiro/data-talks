@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, Agent, TelegramLinkToken, TelegramConnection, TelegramBotConfig
-from app.auth import get_current_user
+from app.auth import require_user
 from app.config import get_settings
 
 router = APIRouter(prefix="/telegram", tags=["Telegram"])
@@ -56,7 +56,7 @@ class TelegramLinkRequest(BaseModel):
 @router.get("/bot-configs")
 async def list_bot_configs(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     env_config = _env_bot_option()
     result = await db.execute(
@@ -97,7 +97,7 @@ async def list_bot_configs(
 async def create_bot_config(
     body: TelegramBotConfigCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     name = body.name.strip()
     token = body.bot_token.strip()
@@ -148,7 +148,7 @@ async def create_bot_config(
 async def delete_bot_config(
     config_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     cfg = await db.get(TelegramBotConfig, config_id)
     if not cfg or cfg.user_id != current_user.id:
@@ -195,7 +195,7 @@ async def generate_connection_link(
     agent_id: str,
     body: TelegramLinkRequest | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user),
 ):
     """Generates a deep link to add the selected bot to a Telegram group and link it to the agent."""
     selected_bot = await _resolve_selected_bot(db, current_user.id, body.bot_key if body else None)
@@ -236,7 +236,7 @@ async def generate_connection_link(
 
 
 @router.get("/connections/{agent_id}")
-async def get_connections(agent_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_connections(agent_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_user)):
     """List active Telegram connections for a specific agent."""
     # Verify agent ownership
     agent = await db.get(Agent, agent_id)
@@ -278,7 +278,7 @@ async def get_connections(agent_id: str, db: AsyncSession = Depends(get_db), cur
     }
 
 @router.delete("/connections/{connection_id}")
-async def remove_connection(connection_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def remove_connection(connection_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_user)):
     """Remove a Telegram connection so the bot stops responding in that group."""
     conn = await db.get(TelegramConnection, connection_id)
     if not conn or conn.user_id != current_user.id:
