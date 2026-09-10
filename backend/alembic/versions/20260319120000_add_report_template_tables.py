@@ -30,7 +30,7 @@ def upgrade() -> None:
             sa.Column("queries", sa.JSON, nullable=False, server_default="[]"),
             sa.Column("layout", sa.String(50), nullable=False, server_default="grid_2x2"),
             sa.Column("refresh_interval", sa.Integer, nullable=False, server_default="3600"),
-            sa.Column("is_builtin", sa.Boolean, nullable=False, server_default=sa.text("0")),
+            sa.Column("is_builtin", sa.Boolean, nullable=False, server_default=sa.false()),
             sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
             sa.Column("updated_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
         )

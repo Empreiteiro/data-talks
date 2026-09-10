@@ -208,7 +208,7 @@ async def _ensure_agent_source_relationships_column():
         if "agents" in table_columns and "dismissed_relationship_suggestions" not in table_columns["agents"]:
             await conn.execute(text("ALTER TABLE agents ADD COLUMN dismissed_relationship_suggestions JSON"))
         if "agents" in table_columns and "sql_mode" not in table_columns["agents"]:
-            await conn.execute(text("ALTER TABLE agents ADD COLUMN sql_mode BOOLEAN DEFAULT 0"))
+            await conn.execute(text("ALTER TABLE agents ADD COLUMN sql_mode BOOLEAN DEFAULT false"))
 
 
 async def _ensure_alert_system_columns():
@@ -225,9 +225,9 @@ async def _ensure_alert_system_columns():
             if "type" not in cols:
                 await conn.execute(text("ALTER TABLE alerts ADD COLUMN type VARCHAR(50) DEFAULT 'alert'"))
             if "is_active" not in cols:
-                await conn.execute(text("ALTER TABLE alerts ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+                await conn.execute(text("ALTER TABLE alerts ADD COLUMN is_active BOOLEAN DEFAULT true"))
             if "last_run" not in cols:
-                await conn.execute(text("ALTER TABLE alerts ADD COLUMN last_run DATETIME"))
+                await conn.execute(text("ALTER TABLE alerts ADD COLUMN last_run TIMESTAMP"))
             if "last_status" not in cols:
                 await conn.execute(text("ALTER TABLE alerts ADD COLUMN last_status VARCHAR(50)"))
 

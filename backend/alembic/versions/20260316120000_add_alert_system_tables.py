@@ -23,7 +23,7 @@ def upgrade() -> None:
         if "type" not in existing:
             op.add_column("alerts", sa.Column("type", sa.String(50), server_default="alert"))
         if "is_active" not in existing:
-            op.add_column("alerts", sa.Column("is_active", sa.Boolean(), server_default=sa.text("1")))
+            op.add_column("alerts", sa.Column("is_active", sa.Boolean(), server_default=sa.true()))
         if "last_run" not in existing:
             op.add_column("alerts", sa.Column("last_run", sa.DateTime(), nullable=True))
         if "last_status" not in existing:
@@ -38,7 +38,7 @@ def upgrade() -> None:
             sa.Column("status", sa.String(50), nullable=False),
             sa.Column("answer", sa.Text(), nullable=True),
             sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column("email_sent", sa.Boolean(), server_default=sa.text("0")),
+            sa.Column("email_sent", sa.Boolean(), server_default=sa.false()),
             sa.Column("webhooks_fired", sa.Integer(), server_default=sa.text("0")),
             sa.Column("duration_ms", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
@@ -56,7 +56,7 @@ def upgrade() -> None:
             sa.Column("secret", sa.String(512), nullable=True),
             sa.Column("events", sa.JSON(), nullable=True),
             sa.Column("headers", sa.JSON(), nullable=True),
-            sa.Column("is_active", sa.Boolean(), server_default=sa.text("1")),
+            sa.Column("is_active", sa.Boolean(), server_default=sa.true()),
             sa.Column("last_triggered_at", sa.DateTime(), nullable=True),
             sa.Column("last_status_code", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
