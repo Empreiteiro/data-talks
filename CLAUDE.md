@@ -139,6 +139,27 @@ Role is per-`OrganizationMembership`, so the same user may be `admin` in org A a
 - Telegram/WhatsApp/Slack bot tokens + Slack client/signing secrets are wrapped via the `EncryptedText` SQLAlchemy type, so `cfg.bot_token` is always plaintext in Python but encrypted in the DB.
 - GitHub OAuth access/refresh tokens are encrypted via the same Fernet key (see `app/services/github_oauth.py`).
 
+## Skills
+
+Task-specific guidance lives in `.claude/skills/<name>/SKILL.md` (loaded on demand). Use them before changing these areas:
+
+| Skill | Use when |
+|---|---|
+| `qa-pipeline` | Changing how a question is answered: dispatch, context block, elaboration, follow-ups, charts, SQL mode |
+| `sql-sources` | SQL databases, SQLite, BigQuery, Snowflake, dbt, multi-source joins, table relationships |
+| `file-sources` | Uploads, file loaders, profiling, storage, Sheets/Excel/S3/REST/MongoDB/Firebase Q&A |
+| `add-data-source` | Adding or fixing a connector (SaaS/API or other source type) and wiring it end to end |
+| `source-onboarding` | Clarifications, warm-ups, KPIs, filters, source groups, source-scoped instructions |
+| `llm-client` | LLM providers, config resolution, JSON parsing, logging, language |
+| `studio-reports` | Summaries, exploratory reports, audio overviews, report templates |
+| `data-engineering` | Medallion, ETL, lineage, pipeline versioning, CDP, AutoML, demo data |
+| `tenancy-and-secrets` | Tenant scoping, roles, API keys, encryption at rest, masking, audit |
+| `alerts-and-channels` | Alerts, email, webhooks, Telegram/WhatsApp/Slack bots, MCP server, public API |
+| `db-migrations` | Models, Alembic migrations, `_ensure_*` startup DDL, SQLite/PostgreSQL portability |
+| `backend-testing` | Writing or running backend tests and the checks CI does not run |
+
+General versions of most of these live in the `data-analytics` plugin at https://github.com/Empreiteiro/skills.
+
 ## Testing
 
 - Frontend: `npm test` (Vitest). Tests in `src/__tests__/`.
@@ -149,5 +170,5 @@ Role is per-`OrganizationMembership`, so the same user may be `admin` in org A a
 
 - The frontend dev server runs on port **5173** (Vite default), backend on **8000**. Vite proxies API calls via `VITE_API_URL`. Port 8080 was the previous default but conflicts with common local services (Firestore emulator, Tomcat, Jenkins).
 - SQLAlchemy models are all in a single `models.py` file — keep it that way.
-- Charts are generated server-side (matplotlib) and served as images, not rendered in the frontend.
+- Q&A charts are an LLM-planned JSON `chartSpec` (`app/llm/charting.py`), generated on demand and rendered in the frontend with Recharts (`ChartRenderer.tsx`). Matplotlib is only used for Studio/template report PNGs.
 - The `dist/` folder is served by FastAPI as static files in production mode.

@@ -38,8 +38,9 @@ backend/*.db
 __pycache__/
 **/__pycache__/
 
-# Claude Code
-.claude/
+# Claude Code: keep local settings out, share project skills
+.claude/*
+!.claude/skills/
 
 # package-lock.json USED to be ignored, but it's required for
 # reproducible CI builds: the workflow uses `cache: npm` + `npm ci`,

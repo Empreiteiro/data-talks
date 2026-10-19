@@ -111,6 +111,6 @@ import { Button } from "../../components/ui/button";
 
 - Dev server is on port **5173** (Vite default). Configured in `vite.config.ts` with `strictPort: true`, so a port collision fails loudly instead of silently falling back to a different port. The previous default (8080) clashed with Firestore emulator / Tomcat / Jenkins.
 - `VITE_API_URL` must point to the backend (default: `http://localhost:8000`).
-- Charts are server-rendered images — the frontend just displays `<img>` tags, not chart libraries.
+- Q&A charts arrive as a JSON `chartSpec` and are drawn with Recharts in `ChartRenderer.tsx`; Studio/template reports embed server-rendered PNGs.
 - The `dist/` folder is what FastAPI serves in production; do not rely on Vite in prod.
 - TypeScript config has `noImplicitAny: false` and `strictNullChecks: false` — the codebase is not fully strict-typed.

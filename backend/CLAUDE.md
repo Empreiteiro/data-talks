@@ -17,7 +17,7 @@ cd backend && pytest         # Run tests
 3. Router gets DB session via `Depends(get_db)`
 4. For Q&A: router dispatches to `app/scripts/ask_<source_type>.py` based on the source type
 5. Script builds prompt, calls LLM via `app/llm/client.py`, executes generated code, returns result
-6. Charts generated with matplotlib, saved as images, served via static endpoint
+6. Charts are generated on demand (`POST /ask-question/{session_id}/chart`): `build_chart_plan` returns a JSON `chartSpec` that the frontend renders with Recharts
 
 ### Key Files
 - `app/main.py` — App factory, middleware, router registration, static file mounting
@@ -49,7 +49,7 @@ Summary scripts follow the pattern `summary_<type>.py`.
 
 ### LLM Module (`app/llm/`)
 - `client.py` — Provider-agnostic LLM client (OpenAI, Ollama, LiteLLM)
-- `charting.py` — Chart planning and matplotlib code generation
+- `charting.py` — Chart planning (LLM JSON spec + validation + heuristic fallback); shared matplotlib theme for reports
 - `elaborate.py` — Answer elaboration/expansion
 - `followups.py` — Follow-up question suggestion
 
